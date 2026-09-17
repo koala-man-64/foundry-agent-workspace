@@ -1,6 +1,6 @@
 # Coordinator and child orchestration — implementation plan
 
-**Status: proposed; awaiting Rudy's approval.** Prepared 17 September 2026 against `f75d1edde5b467049aed4edb51a768520305958c` (0.2.0). This document is the only planned repository change in this planning turn. None of the orchestration behavior below has been implemented or validated yet.
+**Status: approved by Rudy and implemented locally on branch `agent/claude/coordinator-orchestration`.** Prepared 17 September 2026 against `f75d1edde5b467049aed4edb51a768520305958c` (0.2.0). Actual delivered behavior, validation evidence, review findings and remaining gates are recorded in [implementation status](implementation-status.md); the design text below is retained as the approved requirement, not as evidence.
 
 The [product baseline](foundry-agent-workspace-plan.html#safety) and [current implementation status](implementation-status.md) remain authoritative for scope and existing evidence. The baseline's phase 03 requires coordinator-led delegation, isolated children, serial integration, aggregate budgets, and combined-result validation. Parallel independent chats do not meet that requirement.
 
