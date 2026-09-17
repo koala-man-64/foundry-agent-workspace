@@ -921,8 +921,9 @@ export class Orchestrator implements OrchestrationToolHooks {
       this.records.setLifecycle(childTaskId, 'queued');
     });
     this.publish('orchestration.child-provision-reconciled', { childTaskId, worktreePath: outcome.worktreePath }, rootTaskId);
-    const rootRun = this.records.run(rootTaskId)!;
-    if (run.cancelRequested || rootRun.cancelRequested) { this.finishChild(childTaskId, 'cancelled'); return { kind: 'complete', detail: 'Worktree creation was proven complete; the child was already cancelled and did not start.' }; }
+    // Re-read both runs: a cancellation may have landed during the asynchronous Git check.
+    const rootRun = this.records.run(rootTaskId)!; const childRun = this.records.run(childTaskId)!;
+    if (childRun.cancelRequested || rootRun.cancelRequested) { this.finishChild(childTaskId, 'cancelled'); return { kind: 'complete', detail: 'Worktree creation was proven complete; the child was already cancelled and did not start.' }; }
     if (this.store.detail(childTaskId).messages.length === 0) {
       try { this.port.startTurn(childTaskId, childBrief(this.records.assignment(assignment.id)!), this.hooks()); }
       catch { this.finishChild(childTaskId, 'failed'); }
