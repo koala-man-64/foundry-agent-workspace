@@ -1,0 +1,59 @@
+{
+  "name": "foundry-agent-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local Windows agent workspace for Azure Foundry deployments",
+  "author": "Rudy Prokes",
+  "license": "UNLICENSED",
+  "main": "out/main/index.js",
+  "packageManager": "pnpm@10.28.1",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "pnpm build && playwright test",
+    "package:dir": "pnpm build && electron-builder --dir",
+    "package:win": "pnpm build && electron-builder --win nsis",
+    "smoke:package": "node scripts/packaged-smoke.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "22.20.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@eslint/js": "10.0.1",
+    "eslint": "10.10.0",
+    "typescript-eslint": "8.70.0",
+    "electron": "44.4.1",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "5.0.1"
+  },
+  "build": {
+    "appId": "com.rudy.foundryagentworkspace",
+    "productName": "Foundry Agent Workspace",
+    "npmRebuild": false,
+    "electronDist": "node_modules/electron/dist",
+    "directories": { "output": "release" },
+    "files": ["out/**/*", "package.json"],
+    "asarUnpack": ["**/*.node"],
+    "win": { "target": "nsis" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
+    "publish": null
+  }
+}
