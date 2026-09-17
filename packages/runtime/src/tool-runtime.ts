@@ -1,23 +1,67 @@
 import { randomUUID } from 'node:crypto';
 import type { Approval, ProviderToolResult, Task, ToolCall } from '../../protocol/src/index';
-import { CommandRunner, CommandPreflightError, type PreparedCommand } from './command-runner';
+import { CommandRunner, CommandPreflightError, type CommandResult, type PreparedCommand } from './command-runner';
 import { RepositoryService, RepositoryError, type PreparedEdit } from './repository';
 import { Redactor } from './redaction';
 import { Store } from './store';
 import { ToolArguments, type ToolName } from './tool-definitions';
 import { ExecutionSlots } from './execution-slots';
+import { agentRole, isOrchestrationTool, ROLE_TOOLS } from './orchestration-tools';
+import { covers, inScope, normalizeScopePath } from './scope';
+
+export interface ApprovalBinding { rootTaskId: string; assignmentId: string | null; generation: number; targetLabel: string }
+/** Orchestration extension points. Only the runtime supplies them; nothing in model output does. */
+export interface OrchestrationToolHooks {
+  execute(task: Task, call: ToolCall, signal: AbortSignal): Promise<ProviderToolResult>;
+  binding(task: Task): ApprovalBinding | undefined;
+  scopes(task: Task): { read: string[]; write: string[] } | undefined;
+  /** Serialize coordinator commands with integration on the same worktree. */
+  withRootLock<T>(task: Task, action: () => Promise<T>): Promise<T>;
+  /** Called inside the execution slot immediately before and after an approved command. */
+  commandStarting(task: Task): Promise<unknown>;
+  commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult): Promise<{ evidenceId: string; passed: boolean } | undefined>;
+  denied(task: Task, tool: string, reason: string): void;
+}
 
 /** One-shot decisions. Nothing in model output, repository text, or a saved intent grants approval. */
 export class ToolRuntime {
   private readonly waiting = new Map<string, { taskId: string; resolve: (approved: boolean) => void }>();
+  private orchestration?: OrchestrationToolHooks;
   constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly commands: CommandRunner, private readonly redactor: Redactor, private readonly publish: (type: string, data: unknown, taskId: string) => void, private readonly slots = new ExecutionSlots()) {}
 
+  attachOrchestration(hooks: OrchestrationToolHooks): void { this.orchestration = hooks; }
+
   decide(taskId: string, id: string, nonce: string, decision: 'approve' | 'reject'): { accepted: boolean } {
-    const approval = this.store.approval(id); const waiter = this.waiting.get(id);
+    const approval = this.store.approval(id);
+    // Coordinated approvals must carry their full root/target/revision/generation binding.
+    if (approval.rootTaskId) throw new Error('This approval belongs to a coordinated task and requires its bound decision.');
+    return this.resolveDecision(approval, taskId, nonce, decision);
+  }
+
+  decideBound(input: { rootTaskId: string; taskId: string; approvalId: string; nonce: string; assignmentId: string | null; generation: number; fingerprint: string; decision: 'approve' | 'reject' }, currentGeneration: number): { accepted: boolean } {
+    const approval = this.store.approval(input.approvalId);
+    if (!approval.rootTaskId || approval.rootTaskId !== input.rootTaskId || (approval.assignmentId ?? null) !== input.assignmentId || approval.generation !== input.generation || approval.generation !== currentGeneration || approval.fingerprint !== input.fingerprint) {
+      throw new Error('This approval is stale or does not match the selected agent, revision or generation.');
+    }
+    return this.resolveDecision(approval, input.taskId, input.nonce, input.decision);
+  }
+
+  private resolveDecision(approval: Approval, taskId: string, nonce: string, decision: 'approve' | 'reject'): { accepted: boolean } {
+    const waiter = this.waiting.get(approval.id);
     if (approval.taskId !== taskId || approval.nonce !== nonce || approval.state !== 'awaiting-approval' || waiter?.taskId !== taskId) throw new Error('This approval is stale or does not match the active task.');
     approval.state = decision === 'approve' ? 'approved' : 'rejected';
-    this.save(approval); this.waiting.delete(id); waiter.resolve(decision === 'approve');
+    this.save(approval); this.waiting.delete(approval.id); waiter.resolve(decision === 'approve');
     return { accepted: true };
+  }
+
+  /** Revoke every waiting decision for a task (used by scoped cancellation). */
+  revokeWaiting(taskId: string): void {
+    for (const [id, waiter] of [...this.waiting]) {
+      if (waiter.taskId !== taskId) continue;
+      const approval = this.store.approval(id);
+      if (approval.state === 'awaiting-approval') { approval.state = 'revoked'; this.save(approval); }
+      this.waiting.delete(id); waiter.resolve(false);
+    }
   }
 
   async reconcile(taskId: string, id: string): Promise<Approval> {
@@ -30,6 +74,8 @@ export class ToolRuntime {
         else if (file.hash === approval.expectedHash) { approval.state = 'failed'; approval.result = { content: 'Read-only reconciliation found the original content. No retry was performed.', isError: true }; }
         else approval.result = { content: 'File content matches neither the original nor approved result. Outcome remains unknown; inspect the worktree.', isError: true };
       } catch { approval.result = { content: 'The file could not be checked safely. Outcome remains unknown.', isError: true }; }
+    } else if (approval.handoff || approval.integration) {
+      approval.result = { content: 'Use the orchestration operation check for this Git action. Its outcome is reconciled from repository state, never replayed.', isError: true };
     } else approval.result = { content: 'Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.', isError: true, cleanupVerified: false };
     this.save(approval); return approval;
   }
@@ -44,14 +90,43 @@ export class ToolRuntime {
     let command: PreparedCommand | undefined;
     try {
       signal.throwIfAborted();
+      const role = agentRole(task);
+      if (role !== 'coding' && !(ROLE_TOOLS[role] as string[]).includes(call.name)) {
+        // Policy boundary: a fabricated coordinator-only call from a child (or edit call from a coordinator) is denied here even if an adapter accepted it.
+        this.orchestration?.denied(task, call.name, `Tool is not available to the ${role} role.`);
+        throw new Error(`Tool is not available to the ${role} role.`);
+      }
+      if (isOrchestrationTool(call.name)) {
+        if (role === 'coding' || !this.orchestration) throw new Error('Tool is not available.');
+        this.assertNoSecrets(JSON.stringify(call.arguments));
+        return await this.orchestration.execute(task, call, signal);
+      }
       if (!Object.hasOwn(ToolArguments, call.name)) throw new Error('Tool is not available.');
       this.assertNoSecrets(JSON.stringify(call.arguments));
       const name = call.name as ToolName;
-      if (name === 'list_directory') { const args = ToolArguments.list_directory.parse(call.arguments); return result(JSON.stringify(await this.repositories.listFiles(task.worktreePath, args.path))); }
-      if (name === 'read_file') { const args = ToolArguments.read_file.parse(call.arguments); return result(JSON.stringify(await this.repositories.readFile(task.worktreePath, args.path))); }
-      if (name === 'search_text') { const args = ToolArguments.search_text.parse(call.arguments); return result(JSON.stringify(await this.repositories.search(task.worktreePath, args.query, args.path))); }
+      const scopes = role === 'child' ? this.orchestration?.scopes(task) : undefined;
+      if (role === 'child' && !scopes) throw new Error('Child scope is unavailable; no repository access was performed.');
+      if (name === 'list_directory') {
+        const args = ToolArguments.list_directory.parse(call.arguments);
+        if (scopes && !this.readableDirectory(scopes.read, args.path)) throw new Error('Path is outside this assignment read scope.');
+        const entries = await this.repositories.listFiles(task.worktreePath, args.path);
+        return result(JSON.stringify(scopes ? entries.filter(entry => entry.kind === 'directory' ? this.readableDirectory(scopes.read, entry.path) : inScope(scopes.read, entry.path) || scopes.read.includes('')) : entries));
+      }
+      if (name === 'read_file') {
+        const args = ToolArguments.read_file.parse(call.arguments);
+        if (scopes && !this.readable(scopes.read, args.path)) throw new Error('Path is outside this assignment read scope.');
+        return result(JSON.stringify(await this.repositories.readFile(task.worktreePath, args.path)));
+      }
+      if (name === 'search_text') {
+        const args = ToolArguments.search_text.parse(call.arguments);
+        if (scopes && !this.readableDirectory(scopes.read, args.path)) throw new Error('Path is outside this assignment read scope.');
+        const found = await this.repositories.search(task.worktreePath, args.query, args.path);
+        return result(JSON.stringify(scopes ? { ...found, matches: found.matches.filter(match => this.readable(scopes.read, match.path)) } : found));
+      }
       let edit: PreparedEdit | undefined;
-      const common = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: name, state: 'awaiting-approval' as const, createdAt: new Date().toISOString() };
+      const binding = this.orchestration?.binding(task);
+      if (role !== 'coding' && !binding) throw new Error('This agent is fenced or no longer active; no action was proposed.');
+      const common = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: name, state: 'awaiting-approval' as const, createdAt: new Date().toISOString(), ...(binding ?? {}) };
       if (name === 'run_command') {
         const args = ToolArguments.run_command.parse(call.arguments);
         command = await this.commands.prepare(task.worktreePath, args);
@@ -62,44 +137,70 @@ export class ToolRuntime {
         if (name === 'write_file') { const args = ToolArguments.write_file.parse(call.arguments); relativePath = args.path; expectedHash = args.expectedHash; after = args.content; }
         else {
           const args = ToolArguments.replace_text.parse(call.arguments); relativePath = args.path; expectedHash = args.expectedHash;
+          if (scopes && !inScope(scopes.write, relativePath)) throw new Error('Path is outside this assignment write scope.');
           const file = await this.repositories.readFile(task.worktreePath, args.path);
           if (file.hash !== args.expectedHash) throw new Error('File changed since it was read. Read it again before proposing an edit.');
           if (file.content.split(args.oldText).length !== 2) throw new Error('oldText must occur exactly once in the file.');
           after = file.content.replace(args.oldText, () => args.newText);
         }
+        // Scope is enforced before any file access for the edit.
+        if (scopes && !inScope(scopes.write, relativePath)) throw new Error('Path is outside this assignment write scope.');
         edit = await this.repositories.prepareEdit(task.worktreePath, relativePath, expectedHash, after);
+        if (scopes && !inScope(scopes.write, edit.path)) throw new Error('Path is outside this assignment write scope.');
         this.assertNoSecrets(edit.before ?? ''); this.assertNoSecrets(edit.after);
         approval = { ...common, summary: expectedHash === null ? `Create ${edit.path}` : `Edit ${edit.path}`, path: edit.path, before: edit.before, after: edit.after, expectedHash, resultingHash: edit.resultingHash, fingerprint: edit.fingerprint };
       }
-      if (!await this.awaitDecision(approval, signal)) return result(signal.aborted ? 'Action cancelled before execution.' : 'User rejected this action. Do not repeat this proposal without new user instructions.', true);
+      if (!await this.requestApproval(approval, signal)) return result(signal.aborted ? 'Action cancelled before execution.' : 'User rejected this action. Do not repeat this proposal without new user instructions.', true);
       signal.throwIfAborted();
       // The executing intent is durable before any repository or process mutation.
       const approved = approval;
-      await this.slots.use(signal, async () => {
-      approved.state = 'executing'; this.save(approved);
-      if (edit) {
-        await this.repositories.applyEdit(edit);
-        approved.state = 'complete'; approved.result = { content: JSON.stringify({ path: edit.path, hash: edit.resultingHash, applied: true }), isError: false };
-      } else if (command) {
-        const executed = await this.commands.execute(command, signal);
-        const content = this.redactor.text(JSON.stringify(executed));
-        approved.state = executed.cleanupVerified ? (executed.exitCode === 0 && !executed.cancelled && !executed.timedOut ? 'complete' : 'failed') : 'unknown';
-        approved.result = { content, isError: approved.state !== 'complete', cleanupVerified: executed.cleanupVerified, ...(executed.exitCode !== null ? { exitCode: executed.exitCode } : {}) };
-      }
+      let evidence: { evidenceId: string; passed: boolean } | undefined;
+      const perform = () => this.slots.use(signal, async () => {
+        approved.state = 'executing'; this.save(approved);
+        if (edit) {
+          await this.repositories.applyEdit(edit);
+          approved.state = 'complete'; approved.result = { content: JSON.stringify({ path: edit.path, hash: edit.resultingHash, applied: true }), isError: false };
+        } else if (command) {
+          const before = role !== 'coding' ? await this.orchestration!.commandStarting(task).catch(() => undefined) : undefined;
+          const executed = await this.commands.execute(command, signal);
+          approved.state = executed.cleanupVerified ? (executed.exitCode === 0 && !executed.cancelled && !executed.timedOut ? 'complete' : 'failed') : 'unknown';
+          if (role !== 'coding') {
+            evidence = await this.orchestration!.commandFinished(task, approved, before, executed).catch(() => undefined);
+            if (evidence) approved.evidenceId = evidence.evidenceId;
+          }
+          const content = this.redactor.text(JSON.stringify(evidence ? { ...executed, evidenceId: evidence.evidenceId, validationPassed: evidence.passed } : executed));
+          approved.result = { content, isError: approved.state !== 'complete', cleanupVerified: executed.cleanupVerified, ...(executed.exitCode !== null ? { exitCode: executed.exitCode } : {}) };
+        }
       });
+      if (command && role === 'coordinator') await this.orchestration!.withRootLock(task, perform);
+      else await perform();
       this.save(approval);
       return result(approval.result!.content, approval.result!.isError);
     } catch (error) {
       const content = this.redactor.text(error instanceof Error ? error.message : 'Tool failed.');
       if (approval) {
         const knownUnstarted = error instanceof CommandPreflightError || (error instanceof RepositoryError && error.outcome === 'none');
-        approval.state = approval.state === 'executing' && !knownUnstarted ? 'unknown' : signal.aborted ? 'revoked' : 'failed';
+        approval.state = approval.state === 'executing' && !knownUnstarted ? 'unknown' : signal.aborted ? 'revoked' : approval.state === 'rejected' ? 'rejected' : 'failed';
         approval.result = { content, isError: true, ...(approval.command ? { cleanupVerified: false } : {}) }; this.save(approval);
       }
       return result(content, true);
     } finally {
       if (command) this.commands.discard?.(command);
     }
+  }
+
+  /** Persist a proposal and wait for its one-shot decision without holding an execution slot. */
+  requestApproval(approval: Approval, signal: AbortSignal): Promise<boolean> { return this.awaitDecision(approval, signal); }
+  saveApproval(approval: Approval): void { this.save(approval); }
+
+  private readable(scopes: string[], candidate: string): boolean {
+    try { return scopes.some(scope => covers(scope, normalizeScopePath(candidate, false))); } catch { return false; }
+  }
+  /** A directory is navigable when it is inside a read scope or is an ancestor of one. */
+  private readableDirectory(scopes: string[], candidate: string): boolean {
+    let normalized: string;
+    try { normalized = normalizeScopePath(candidate, true); } catch { return false; }
+    return scopes.some(scope => covers(scope, normalized) || covers(normalized, scope));
   }
   private assertNoSecrets(value: string): void { if (this.redactor.text(value) !== value) throw new Error('This action contains secret-like content and cannot be persisted or executed.'); }
   private save(approval: Approval): void { this.store.saveApproval(approval); this.publish('approval.changed', { approvalId: approval.id, state: approval.state }, approval.taskId); }
