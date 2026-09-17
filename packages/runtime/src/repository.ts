@@ -40,6 +40,10 @@ export class RepositoryService {
 
   public constructor(private readonly worktreeBase: string) {}
 
+  public get worktreeBaseDirectory(): string {
+    return this.worktreeBase;
+  }
+
   public async createTaskWorktree(
     projectPath: string,
     taskId: string,

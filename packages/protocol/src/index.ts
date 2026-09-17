@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CoordinationConfigSchema, OrchestrationRpc, type AgentRole, type ChildDetail, type CoordinationConfig, type OrchestrationView, type SchemaStatus, type UpgradeResult } from './orchestration';
+export * from './orchestration';
 
 export const MAX_RPC_BYTES = 1024 * 1024;
 export const ApiKindSchema = z.enum(['fake', 'responses', 'chat-completions', 'anthropic']);
@@ -13,7 +15,9 @@ export const ModelProfileSchema = z.object({
 }).strict();
 export type ModelProfile = z.infer<typeof ModelProfileSchema>;
 export type TaskStatus = 'idle' | 'running' | 'cancelled' | 'interrupted' | 'failed';
-export interface Task { id: string; title: string; projectPath: string; worktreePath: string; branch: string; baseCommit: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding'; }
+export interface Task { id: string; title: string; projectPath: string; worktreePath: string; branch: string; baseCommit: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding' | 'coordinated';
+  /** Present only on coordinated roots and their children. Legacy tasks omit every field below. */
+  rootTaskId?: string; parentTaskId?: string; role?: AgentRole; assignmentId?: string; coordination?: CoordinationConfig; }
 export interface Message { id: string; taskId: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; status: 'complete' | 'streaming' | 'cancelled' | 'interrupted' | 'failed'; }
 export interface WorkspaceEvent { sequence: number; type: string; taskId?: string; data: unknown; createdAt: string; }
 export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; lastSequence: number; runtime: 'ready'; }
@@ -26,7 +30,7 @@ export interface ProbeResult { ok: boolean; capabilities: { streaming: boolean; 
 const Id = z.string().uuid();
 export const RpcMethods = {
   'workspace.snapshot': z.object({}).strict(),
-  'task.create': z.object({ title: z.string().trim().min(1).max(160), projectPath: z.string().min(1).max(4096), profileId: Id, tokenBudget: z.number().int().min(1024).max(10000000).default(100000), mode: z.enum(['chat', 'coding']).default('chat') }).strict(),
+  'task.create': z.object({ title: z.string().trim().min(1).max(160), projectPath: z.string().min(1).max(4096), profileId: Id, tokenBudget: z.number().int().min(1024).max(10000000).default(100000), mode: z.enum(['chat', 'coding', 'coordinated']).default('chat'), coordination: CoordinationConfigSchema.optional() }).strict(),
   'task.get': z.object({ taskId: Id }).strict(),
   'task.send': z.object({ taskId: Id, content: z.string().trim().min(1).max(64000) }).strict(),
   'task.cancel': z.object({ taskId: Id }).strict(),
@@ -36,7 +40,8 @@ export const RpcMethods = {
   'files.read': z.object({ taskId: Id, path: z.string().min(1).max(4096) }).strict(),
   'task.diff': z.object({ taskId: Id }).strict(),
   'approval.decide': z.object({ taskId: Id, approvalId: Id, nonce: z.string().min(16).max(128), decision: z.enum(['approve', 'reject']) }).strict(),
-  'approval.reconcile': z.object({ taskId: Id, approvalId: Id }).strict()
+  'approval.reconcile': z.object({ taskId: Id, approvalId: Id }).strict(),
+  ...OrchestrationRpc
 } as const;
 export type RpcMethod = keyof typeof RpcMethods;
 export const RpcRequestSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string().min(1).max(100), method: z.enum(Object.keys(RpcMethods) as [RpcMethod, ...RpcMethod[]]), params: z.unknown() }).strict();
@@ -58,6 +63,17 @@ export interface DesktopApi {
   invoke(method: 'task.diff', params: { taskId: string }): Promise<DiffResult>;
   invoke(method: 'approval.decide', params: { taskId: string; approvalId: string; nonce: string; decision: 'approve' | 'reject' }): Promise<{ accepted: boolean }>;
   invoke(method: 'approval.reconcile', params: { taskId: string; approvalId: string }): Promise<Approval>;
+  invoke(method: 'workspace.schema', params: Record<string, never>): Promise<SchemaStatus>;
+  invoke(method: 'workspace.upgrade', params: { confirm: 'backup-and-upgrade' }): Promise<UpgradeResult>;
+  invoke(method: 'orchestration.get', params: { rootTaskId: string; runsCursor?: number; eventsBefore?: number }): Promise<OrchestrationView>;
+  invoke(method: 'orchestration.child', params: { rootTaskId: string; childTaskId: string }): Promise<ChildDetail>;
+  invoke(method: 'orchestration.cancelChild', params: { rootTaskId: string; childTaskId: string; generation: number }): Promise<{ accepted: boolean }>;
+  invoke(method: 'orchestration.cancelRoot', params: { rootTaskId: string }): Promise<{ accepted: boolean }>;
+  invoke(method: 'orchestration.resume', params: { rootTaskId: string; content: string }): Promise<{ accepted: boolean; delivered: number }>;
+  invoke(method: 'orchestration.reviseAssignment', params: { rootTaskId: string; assignmentId: string; objective: string; acceptance: string[] }): Promise<{ assignmentId: string; revision: number }>;
+  invoke(method: 'orchestration.decide', params: { rootTaskId: string; taskId: string; approvalId: string; nonce: string; assignmentId: string | null; generation: number; fingerprint: string; decision: 'approve' | 'reject' }): Promise<{ accepted: boolean }>;
+  invoke(method: 'orchestration.reconcile', params: { rootTaskId: string; operationId: string }): Promise<{ kind: string; detail: string }>;
+  invoke(method: 'orchestration.prepareContinue', params: { rootTaskId: string; operationId: string }): Promise<{ approvalId: string }>;
   pickProject(): Promise<string | null>;
   saveCredential(profileId: string, value: string): Promise<void>;
   onEvent(listener: (event: WorkspaceEvent) => void): () => void;
@@ -79,4 +95,8 @@ export interface Approval {
   expectedHash?: string | null; resultingHash?: string;
   command?: string; cwd?: string; shell?: string; environment?: Record<string, string>; timeoutMs?: number;
   fingerprint: string; result?: { content: string; isError: boolean; exitCode?: number; cleanupVerified?: boolean };
+  /** Orchestration binding. A coordinated approval can only be decided through `orchestration.decide` with all of these. */
+  rootTaskId?: string; assignmentId?: string | null; generation?: number; targetLabel?: string; evidenceId?: string;
+  handoff?: { operationId: string; branch: string; expectedHead: string; paths: string[]; manifestSha256: string; message: string; patch: string; patchTruncated: boolean; gitPath: string; gitSha256: string };
+  integration?: { operationId: string; kind: 'cherry-pick' | 'continue'; resultId: string; assignmentId: string; sourceSha: string; expectedHead: string; expectedTree: string; manifestSha256: string; resolvedTree: string | null; changedPaths: string[]; patch: string; patchTruncated: boolean; gitPath: string; gitSha256: string };
 }
