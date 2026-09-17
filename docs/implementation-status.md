@@ -1,5 +1,16 @@
 # Implementation status
 
+## Local task-branch integration — 17 September 2026
+
+Claude's completed `3a45143` branch was merged without conflicts into `agent/codex/foundation/foundry-agent-workspace` at `aa524c9bb62f26a709f5d791c9bab7fa0fdb9bcc`. Application source matches the independently reviewed final Claude branch; the extra change is the comprehensive HTML progress section. Subsequent documentation commits do not change application code.
+
+Codex reran the required checks in this checkout: `pnpm check` passed (145 tests, clean typecheck/lint); `pnpm test:e2e` passed (6 tests); `pnpm package:dir` exited 0; `pnpm smoke:package` passed (14 bound approvals, at most two active children, three serial integrations and exact-tree validation). Full logs: `.local/validation/integrated-check.log`, `integrated-e2e.log`, `integrated-package.log`, `integrated-smoke.log`.
+
+Packaged `resources/app.asar` SHA-256: `ba77f180c5a2c1f1cd0342c62f926cd95cde7a82f747988fa611820371752bb0`.
+
+Rudy authorized push, PR and merge. Publication remains blocked because this repository has no configured remote/default branch; destination requested. This local task-branch merge is not a remote/default-branch merge. No PR URL, CI result, live Foundry qualification, signed installer or deployment is claimed. The historical evidence below retains its original source and scope.
+
+
 ## Coordinated orchestration increment
 
 Recorded 17 September 2026 (America/Chicago) on private branch `agent/claude/coordinator-orchestration`, a direct descendant of `f75d1ed` (0.2.0). This implements the [approved coordinator plan](coordinator-orchestration-plan.md). It is a local engineering build, not full v1 acceptance. Validated code commit: `3e5385e316248802296764ec10b01d0dae442cd8`; a following documentation-only commit records this evidence.
