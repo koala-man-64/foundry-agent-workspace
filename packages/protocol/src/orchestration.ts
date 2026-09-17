@@ -21,8 +21,11 @@ export const ORCHESTRATION_LIMITS = {
   patchBytes: 128 * 1024
 } as const;
 
-/** Coordinated mode stays unavailable to normal users until all release gates pass on the final source. */
-export const COORDINATED_MODE_ENABLED = false;
+/**
+ * Coordinated mode is enabled after the approved increments passed local tests, E2E, packaged smoke
+ * and independent review. It still requires a v2 database (a verified, backed-up upgrade for v1 data).
+ */
+export const COORDINATED_MODE_ENABLED = true;
 
 /** Current SQLite schema version produced by this build. */
 export const SCHEMA_VERSION = 2;
