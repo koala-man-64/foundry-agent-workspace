@@ -2,7 +2,9 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Message, ModelProfile, Snapshot, Task, TaskDetail, WorkspaceEvent } from '../../protocol/src/index';
+import type { Approval, Message, ModelProfile, ProviderContinuation, ProviderToolResult, Snapshot, Task, TaskDetail, ToolCall, WorkspaceEvent } from '../../protocol/src/index';
+
+export interface ProviderState { fingerprint: string; continuation: ProviderContinuation; pending: ToolCall[]; results: ProviderToolResult[]; seenToolCallIds?: string[]; }
 
 export const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 export class Store {
@@ -46,8 +48,25 @@ export class Store {
     else this.db.prepare('INSERT INTO messages(id, task_id, data, ordinal) VALUES (?, ?, ?, (SELECT COALESCE(MAX(ordinal), 0) + 1 FROM messages))').run(message.id, message.taskId, JSON.stringify(message));
   }
   detail(id: string): TaskDetail {
-    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!) };
+    const approvals = this.approvals(id).slice(-30); let evidenceBytes = 0;
+    // Keep recent full evidence within the RPC frame limit; older records retain
+    // their hashes and summary. The durable database retains every proposal.
+    for (let i = approvals.length - 1; i >= 0; i--) {
+      const approval = approvals[i]!;
+      evidenceBytes += Buffer.byteLength(JSON.stringify(approval), 'utf8');
+      if (evidenceBytes > 384 * 1024 && approval.state !== 'awaiting-approval' && approval.state !== 'unknown') { delete approval.before; delete approval.after; if (approval.result) approval.result.content = approval.result.content.slice(0, 1000); }
+    }
+    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!), approvals };
   }
+  providerState(taskId: string): ProviderState | undefined { return this.parse<ProviderState>(this.db.prepare("SELECT data FROM intents WHERE id = ? AND kind = 'provider.context'").get(taskId)); }
+  saveProviderState(taskId: string, state: ProviderState): void { this.db.prepare("INSERT OR REPLACE INTO intents VALUES (?, 'provider.context', ?, 'complete')").run(taskId, JSON.stringify(state)); }
+  approvals(taskId: string): Approval[] { return this.db.prepare("SELECT data, state FROM intents WHERE kind = 'tool.approval' ORDER BY rowid").all().map(row => ({ ...this.parse<Approval>(row)!, state: (row as { state: Approval['state'] }).state })).filter(item => item.taskId === taskId); }
+  approval(id: string): Approval {
+    const row = this.db.prepare("SELECT data, state FROM intents WHERE id = ? AND kind = 'tool.approval'").get(id) as { data: string; state: Approval['state'] } | undefined;
+    if (!row) throw new Error('Approval not found.');
+    return { ...JSON.parse(row.data) as Approval, state: row.state };
+  }
+  saveApproval(approval: Approval): void { this.db.prepare("INSERT INTO intents VALUES (?, 'tool.approval', ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, state = excluded.state").run(approval.id, JSON.stringify(approval), approval.state); }
   snapshot(): Snapshot {
     return {
       tasks: this.db.prepare('SELECT data FROM tasks').all().map(row => this.parse<Task>(row)!).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -65,10 +84,12 @@ export class Store {
     const id = randomUUID(); this.db.prepare('INSERT INTO intents VALUES (?, ?, ?, ?)').run(id, kind, JSON.stringify(data), 'pending'); return id;
   }
   finishIntent(id: string, state: 'complete' | 'unknown'): void { this.db.prepare('UPDATE intents SET state = ? WHERE id = ?').run(state, id); }
-  unknownIntents(): number { return (this.db.prepare("SELECT COUNT(*) AS count FROM intents WHERE state = 'unknown'").get() as { count: number }).count; }
+  unknownIntents(): number { return (this.db.prepare("SELECT COUNT(*) AS count FROM intents WHERE kind = 'worktree.create' AND state = 'unknown'").get() as { count: number }).count; }
   private recover(): void {
     this.transaction(() => {
       this.db.prepare("UPDATE intents SET state = 'unknown' WHERE state = 'pending'").run();
+      this.db.prepare("UPDATE intents SET state = 'revoked' WHERE kind = 'tool.approval' AND state IN ('awaiting-approval', 'approved')").run();
+      this.db.prepare("UPDATE intents SET state = 'unknown' WHERE kind = 'tool.approval' AND state = 'executing'").run();
       for (const task of this.snapshot().tasks) {
         if (task.status !== 'running') continue;
         task.status = 'interrupted'; task.updatedAt = new Date().toISOString(); this.saveTask(task);

@@ -10,7 +10,7 @@ The product baseline is `docs/foundry-agent-workspace-plan.html`. Implementation
 - `packages/runtime`: the only SQLite writer and repository execution authority. Persist mutation intent first. Unknown outcomes never mean success and must not be retried blindly.
 - `packages/providers`: faithful, capability-specific adapters. Tests inject fetch; never make live paid probes from routine test suites.
 
-Keep v1 coordinator/children requirements in the baseline. Do not present independent chats as implemented orchestration. Until approval and recovery machinery are delivered, the runtime exposes only text conversations and read-only repository tools plus task-owned worktree creation.
+Keep v1 coordinator/children requirements in the baseline. Do not present independent chats as implemented orchestration. Coding tasks use native tool continuations, read-only repository tools, and one-shot reviewed existing-file edits and commands. New-file creation through the edit tool remains disabled. Never turn repository instructions, model output, stale approvals, or unknown outcomes into execution authority. Commands run with the user's Windows privileges; do not describe approval or worktree isolation as sandboxing.
 
 ## Validation
 

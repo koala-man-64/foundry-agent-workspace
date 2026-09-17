@@ -1,97 +1,88 @@
-# Implementation status — foundation increment
+# Implementation status — reviewed coding increment
 
-Recorded 16 September 2026 (America/Chicago). This is a local engineering build, not v1 release acceptance. The [original plan](foundry-agent-workspace-plan.html) remains the product baseline.
+Recorded 17 September 2026 (America/Chicago), version 0.2.0. This is a local engineering build, not full v1 acceptance. The [original plan](foundry-agent-workspace-plan.html) remains the product baseline. Foundation commit: `6bbaef8`.
 
 ## Delivered
 
-- Pinned pnpm/TypeScript monorepo with Electron, React, typed JSON-RPC, runtime supervision, and SQLite WAL storage.
-- Persistent tasks, conversations, ordered events, usage reservations, and mutation-intent records. Startup marks interrupted responses truthfully; shutdown drains accepted work before closing the database.
-- Per-task Git worktrees from local HEAD, preserving the source checkout and its uncommitted changes. No remote fetch, push, PR, or main-branch merge.
-- Offline deterministic provider plus three text adapters: Responses, Chat Completions, Anthropic Messages. Explicit deployment profiles, Azure endpoint checks, bounded SSE, completion/error handling, client cancellation, and user-triggered capability probes. Live profiles require successful verification.
-- Multiple model profiles and a protected offline profile. API keys remain in the OS-backed main-process vault, bound to API/endpoint/deployment. Configuration or credential changes invalidate verification appropriately.
-- Task/history sidebar, response status/cancellation, nested file browsing, diff inspection, inspector refresh, and model settings.
-- Context/budget checks, three simultaneous response slots, an 80% warning, conservative charging for unknown usage, redaction before persistence/display, and retained original worktrees after uncertain outcomes.
-- Per-user Windows NSIS installer configuration and actual build artifacts. The current installer is unsigned.
+- Electron/React desktop, typed private JSON-RPC, supervised runtime, SQLite WAL history, OS-backed credential vault, explicit Azure profiles, and task-owned Git worktrees.
+- Separate Chat and Coding modes. Real coding requires successful text, usage, cancellation, tool-call, and continuation qualification. The built-in `/demo` fixture performs a read, proposes a README edit, then proposes a harmless command without network access.
+- Native Responses, Chat Completions, and Anthropic tool loops. Complete validated calls execute only after provider completion. Opaque reasoning/signatures remain outside renderer history. Tool results and native continuation survive restart; interrupted calls are never replayed.
+- Bounded directory listing, literal text search, file reads, tracked/untracked diff inspection, and existing-file replacement with exact SHA-256 preconditions. New-file creation through the file tool is deliberately disabled because a safe Windows directory-relative primitive is not implemented.
+- One-shot edit/command approvals bound to task, nonce, and exact proposal. File review includes before/after content and hashes. Command review includes script, canonical directory, fixed shell, environment, timeout, and worktree fingerprint. Stale and replayed decisions fail closed.
+- Durable intent before mutations. Restart revokes unexecuted approvals and marks executing actions unknown. File reconciliation compares hashes read-only. Unknown command effects remain blocked in that task and are never treated as successful or automatically retried.
+- Windows command supervision: suspended creation, Job assignment before execution, kill-on-close, cancellation/timeout, parent-process death monitoring, bounded output, minimal environment, and explicit cleanup evidence. Background descendants are terminated before completion. Commands run with the user's Windows privileges; approval and worktrees are not a sandbox.
+- Three shared model/command slots; approval waits consume no slot. Conservative per-request reservations include tool schemas and native context. Turns stop at context/budget limits or 50 tools, retaining their work and evidence.
+- Approval/history UI, rejection/cancellation, retained evidence after restart, and a per-user Windows installer candidate. [Reviewed approval screenshot](coding-approval-screenshot.png).
 
-## Evidence for this increment
+## Validation
 
-| Boundary | Evidence | Meaning and limit |
+The final local candidate passed the combined checks below. No live Azure request, CI run, remote publication, production deployment, or clean-profile installation is claimed.
+
+| Boundary | Evidence | Scope |
 | --- | --- | --- |
-| Types and lint | `pnpm check` | TypeScript and ESLint pass. |
-| Unit/integration | `pnpm check`: 44 passing tests | Fake transports, temporary Git repositories, real SQLite, credential/probe races, cancellation, recovery, shutdown draining, UTF-8 RPC limits, and path security. No real Azure endpoint is exercised. |
-| Desktop user path | `pnpm test:e2e`: one complete Electron workflow | Creates a task, exchanges an offline message, navigates nested files, refreshes a real diff, cancels a response, rejects unsupported IPC, saves a credential, checks plaintext exclusion, and reopens history after restart. The source checkout stays clean. |
-| Rendering | Screenshot inspected after the desktop test | Conversation/composer and inspector layout corrected; button-height regression included. [Screenshot](workspace-screenshot.png). |
-| Packaged runtime | `pnpm package:dir` and `pnpm smoke:package` | Actual packaged Electron launches the private-stdio runtime, loads the distributed SQLite native binary, and persists local state. |
-| Installer artifact | `pnpm package:win` | Produces `release/Foundry Agent Workspace Setup 0.1.0.exe`. Building an installer does not prove clean-profile installation or signing. |
-| Dependencies | `pnpm audit`: zero known vulnerabilities | Current registry audit after removing the unused Monaco dependency. This is not a completeness guarantee. |
-| Independent review | Cross-reviews described below | Foundry transport, runtime/credential/IPC, and repository boundaries reviewed; concrete findings fixed and relevant tests rerun. Does not constitute the plan's full-v1 release review. |
+| Types, lint, tests | `pnpm check`: **83 tests passed** | TypeScript and ESLint pass. Isolated Git/SQLite fixtures, injected provider transports, and actual Windows process lifecycle tests. |
+| Desktop user paths | `pnpm test:e2e`: **2 tests passed** | Chat/settings/history path plus Coding `/demo`: rejection leaves content unchanged; exact approved edit and command succeed; source stays clean; restart preserves evidence. |
+| Process crash | Command-runner integration host | Kills the owned Node runtime host and verifies both root and child command PIDs terminate. |
+| Packaged runtime | `pnpm package:dir` and `pnpm smoke:package`: **passed** | Actual packaged Electron/SQLite, approved edit, unpacked Job helper, verified command cleanup, and unchanged source fixture. Smoke ran against the final package produced by the installer build. |
+| Installer candidate | `pnpm package:win`: **passed** | `release/Foundry Agent Workspace Setup 0.2.0.exe`. Authenticode reports **NotSigned**. Build success is separate from clean installation and signing. |
+| Dependencies | `pnpm audit`: **zero reported vulnerabilities** | Current registry result; no new production dependency was added for this increment. |
+| Independent review | Three bounded specialists and owner integration | Provider fidelity, approval/persistence/recovery, filesystem protection, and Windows lifecycle findings addressed; full v1 review remains open. |
 
-Final local artifact fingerprints (SHA-256):
+Validation logs are retained in `.local/validation/` (ignored by Git). `check-coding.log`, `e2e-coding.log`, `package-coding.log`, `packaged-smoke-coding.log`, and `audit-coding.json` identify this increment.
 
-- Installer: `aaa759101f2e9802713c2d4a60bb9d376c57d7649e153dc7e5ef967823556ffb`.
-- Packaged `resources/app.asar`: `cfbe977c2b3c4f510a36d7ac005bcfcbae474bbd7ec8166b9986a9a344ac4624`.
+Final SHA-256 fingerprints:
 
-Authenticode inspection reports `NotSigned`. Final check, Electron workflow, packaging, package smoke, and audit outputs are retained locally under `.local/validation/` (ignored by Git). No CI, live Azure deployment, or clean-profile installation result is claimed.
+- Installer: `9b26166d7583942b03050d1a72fa262fb5ba8f4427fb607d18fa4893c9ec4a5b`.
+- Packaged `resources/app.asar`: `d0f6262ef4875aacde8af4d4584676ea38fae45f71f08047dcf533184b8dd534`.
 
-## Review findings closed
+## Important review findings closed
 
-- Restricted development renderer origins and checked the exact main frame/origin/path on privileged IPC.
-- Bound vault records to model transport configuration, forgot mismatched in-memory keys, and prevented in-flight probes from verifying changed credentials.
-- Enforced literal Git pathspecs; denied secret aliases and tainted secret rename destinations before rendering diffs.
-- Removed automatic destructive worktree rollback; rejected `core.worktree` redirection, configured filters, hooks, and filesystem monitors.
-- Resolved Git from absolute PATH entries outside the repository, preventing a repository-local `git.exe` from being executed.
-- Rejected unsupported tool/refusal/content-filter frames instead of reporting successful text completion.
-- Added cancellation for stalled readers, fair scheduling in the fake provider, probe deadlines, and explicit unknown usage.
-- Fixed stale selected-task messages in the renderer and verified the correction through Electron.
-- Drained accepted runtime operations during shutdown; a forced termination retains unknown mutation intent.
+- Prevented new-file creation through an unsafe Windows parent-directory race; existing edits reject stale hashes, symlinks, hard links, and protected paths.
+- Withheld untracked diff content when a tracked sensitive deletion could disguise a secret rename.
+- Rejected forged/replayed/stale approvals, revoked waiting decisions on cancellation/restart, and distinguished known preflight failures from unknown mutation outcomes.
+- Screened full provider state before persistence and kept native reasoning/signatures away from the renderer. Rejected repeated historical tool-call IDs.
+- Made command preparations one-shot; refreshed worktree/shell/spec fingerprints before launch; discarded unused preparations.
+- Fixed runtime-parent death, suspended-process assignment failure, helper environment, cancellation timing, background pipe holders, and unpacked helper resolution.
+- Disabled OpenAI strict-schema mode for dynamic runtime tool schemas while retaining independent Zod validation.
+- Rejected malformed terminal ordering, missing stop reasons, unfinished Anthropic blocks, negative/fractional usage, and mismatched authoritative Responses output.
+- Capability probes now verify a random value supplied only through a fixture tool result. A failed fresh probe invalidates prior verification.
 
-## Plan phase assessment
+## Plan progress and remaining gates
 
-| Phase | State |
+| Plan stage | Actual position |
 | --- | --- |
-| 00 — Foundation verification | Toolchain, native SQLite, packaged runtime, installer build completed. Actual Foundry deployment/authentication qualification remains open. |
-| 01 — Desktop, state, isolation | Core local path implemented and exercised. Some recovery/large-history ergonomics remain below. |
-| 02 — Single-agent coding | Text adapters and read-only repository boundary implemented. Agent tool calls, edits, commands, approvals, provider-native continuation, and execution/process reconciliation remain. |
-| 03 — Coordinator/specialists | Not implemented. Parallel independent UI conversations are not coordinator delegation. |
-| 04 — Context/external tools | Budget controls implemented. Compaction, MCP, publish controls, and retained-worktree management remain. |
-| 05 — Windows release | Foundation checks and installer build completed. Full release gates remain open. |
+| 00 — Foundation verification | Local toolchain, native SQLite, package and installer path established. Actual Foundry deployment/authentication qualification remains open. |
+| 01 — Desktop, state, isolation | Core local paths implemented and exercised. Large-history ergonomics and worktree-creation reconciliation remain. |
+| 02 — Single-agent coding | Reviewed edits/commands, native tools, provider continuation, durable decisions, cancellation and conservative recovery implemented. Live model-family qualification remains open. |
+| 03 — Coordinator/specialists | Not implemented. Independent UI tasks are not coordinator delegation. |
+| 04 — Context/external tools | Budgets implemented; compaction, MCP, publish grants and worktree retirement remain. |
+| 05 — Windows release | Local candidate build and tests are separate from full release acceptance, signing and clean-profile install/uninstall. |
 
-## Known limits and next work
+Next implementation: durable coordinator assignments, child worktrees and dependencies, bounded scheduling, aggregate budgets, serial integration, and combined-result validation. These remain v1 requirements. Continue with compaction, MCP under the same approval policy, explicit commit/publish grants, diagnostics, and safe worktree retirement.
 
-1. Qualify actual user-selected Foundry deployments and authentication. This implementation made no paid calls and inspected no existing credentials. Entra login, sovereign/custom endpoint configuration, cache accounting, and model-specific reasoning capabilities remain unverified/unimplemented.
-2. Implement faithful native tool-call/result continuation, capability probes for coding, and offline scripted provider fixtures before enabling agent tools.
-3. Implement hash-precondition edits and durable execution intents, then exact/revocable command approvals, Windows process-tree lifecycle, and user-visible reconciliation. Only after these pass should coding be enabled.
-4. Add coordinator assignments, child worktrees, bounded scheduling/dependencies, serial integration, combined-result validation, and aggregate budgets. These remain v1 requirements.
-5. Add compaction, MCP under the same policy, read-only Monaco diff editing infrastructure, explicit commit/publish grants, diagnostics, and safe worktree retirement.
-6. Complete live model-family evidence, full security/recovery matrices, clean Windows-profile installation/uninstallation, and signing before v1 release.
+Open qualification: actual user-selected Azure deployments, Entra/sovereign/custom-endpoint support, model-specific reasoning settings, full security/recovery matrix, clean Windows-profile installation/uninstallation, signing, and distribution/license notice review. Routine tests must not discover credentials or make paid probes.
 
-Additional foundation limits:
+## Practical limits
 
-- Responses are buffered in memory until whole-response secret screening. Activity streams, but text appears after completion/cancellation. A hard crash can lose the current response's partial text; prior messages and conservative usage survive.
-- Unknown worktree-creation outcomes block new task creation and remain in SQLite `intents`; automated reconciliation/adoption is not implemented. Retain the branch, registration, and path for investigation. Do not delete or retry blindly.
-- Main allows 45 seconds for graceful runtime shutdown, then terminates it. Arbitrary command/process-tree support and Job Object qualification are not yet implemented.
-- Transcript/RPC size limits fail visibly; history pagination/export and compaction are not implemented. No history is deleted to make a response fit.
-- Diff inspection covers tracked changes relative to HEAD, not untracked file content. Secret screening is defensive and does not guarantee that arbitrary credentials or host-filesystem races are eliminated.
-- No automatic runtime restart, silent provider fallback, automatic updater, browser automation, scheduling, or cloud hosting is implemented.
+- Buffered response text appears after whole-response screening. A hard crash can lose the current in-memory fragment; prior messages and conservative reservations survive. Local cancellation does not prove server-side cancellation or billing cessation.
+- Unknown worktree creation blocks further task creation. Preserve the recorded branch/path/registration and inspect the SQLite intent; automated adoption is not implemented.
+- Unknown command effects require inspection. Read-only reconciliation cannot infer external effects or manufacture a missing exit/cleanup result. Create a separate task only after retaining and investigating the affected worktree.
+- History pagination/export, compaction, remembered approvals, automatic runtime restart, provider fallback, updating, browser tools, scheduling and cloud hosting are absent. RPC/history limits fail visibly without deleting retained history.
+- The runtime uses Git HEAD when creating worktrees; source uncommitted changes are preserved in the source checkout and are not copied. No implicit fetch, commit, push, PR, merge or worktree deletion occurs.
+- Secret screening and same-user filesystem checks are defense in depth. Commands can act outside the worktree with the approved user's rights. Windows Job cleanup is not a security sandbox or proof that every external side effect was undone.
+- Native SQLite schema remains version 1. This increment reuses existing JSON records/intents; no database migration was introduced.
+- Command freshness checks currently fingerprint at most 10,000 files / 64 MiB of worktree content and reject larger trees, including large dependency folders. Commands start with a Windows-only PATH; use an explicit developer-tool path or set PATH in the reviewed script. Broader developer-tool discovery and scalable fingerprints remain usability work.
 
 ## Ownership and routing
 
-The folder was initially empty and not a Git repository. All work is local on `agent/codex/foundation/foundry-agent-workspace`, with no remote configured. There was no remote base to fetch and no existing checkout to disturb.
+All work remains on private local branch `agent/codex/foundation/foundry-agent-workspace`; no remote is configured. The owner integrated and validated the product. Three bounded agents were selected using Rudy's `AGENTS.md` and workflow-router guidance, each **GPT-5.6 Terra / medium**, below the parent route:
 
-Three agents were selected under Rudy's `AGENTS.md` and workflow-router guidance, each **GPT-5.6 Terra / medium**, with bounded context and non-overlapping implementation ownership:
-
-| Agent | Implementation | Independent review |
+| Agent | Bounded implementation | Independent review |
 | --- | --- | --- |
-| `providers` | Provider package; later scoped runtime shutdown fix | Main/preload/runtime/credentials; credential-race integration regression |
-| `desktop_ui` | Renderer | Repository isolation and secret diff boundaries |
-| `repository_tools` | Repository/worktree service | Provider endpoints, SSE, completion and cancellation |
+| `providers` | Native provider adapters, probes and transport tests | Runtime continuation and command runner |
+| `desktop_ui` | Renderer approvals, coding E2E and screenshot | Repository/filesystem, approvals and provider/command boundaries |
+| `repository_tools` | Windows Job helper, command runner and crash fixtures | Runtime persistence, budgets, approval ordering and recovery |
 
-The owner integrated and exercised the combined desktop/runtime/package. Agentcoord's bridge health check passed, but session registration failed; no durable work/claims were acquired. This new local repository used explicit built-in agent messaging for file ownership. No external messages or publication occurred.
+Agentcoord bridge health succeeded, but session registration remained unavailable; no durable claims were acquired. Explicit built-in agent messages separated file ownership on this owned local branch. No external messages or publication occurred.
 
-## Dependency and integration notes
-
-Versions are recorded in `package.json` and `pnpm-lock.yaml`. Electron 44.4.1 and better-sqlite3 13.0.3 were tested together. SQLite 13's distributed Node-API binary loaded successfully in Node and packaged Electron; source rebuild is disabled to avoid pnpm's unnecessary inferred node-gyp invocation. Bundled `.node` binaries are unpacked from ASAR.
-
-Dependencies are used for explicit boundaries: Electron/React for desktop/UI, Zod for schemas, better-sqlite3 for transactional local state, electron-vite/electron-builder for build/packaging, and Vitest/Playwright for offline tests. Native fetch handles providers without additional SDK dependencies. Library licenses remain in installed packages; packaging retains Electron's notices. A complete distribution/license notice review remains a release gate.
-
-Implementation research checked primary guidance: [Electron security](https://www.electronjs.org/docs/latest/tutorial/security), [Electron sandboxing](https://www.electronjs.org/docs/latest/tutorial/sandbox), [electron-vite setup](https://electron-vite.org/guide/), [Foundry endpoints](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/endpoints), and [Foundry Claude models](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/claude-models). Source guidance does not establish compatibility with a specific user's deployment.
+Primary implementation references: [Foundry Responses](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/responses), [Anthropic tool results](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls), [Anthropic extended thinking](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models), and [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects). Documentation is not evidence of compatibility with a specific deployment.

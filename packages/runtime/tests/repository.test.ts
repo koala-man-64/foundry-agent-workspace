@@ -140,4 +140,47 @@ describe('RepositoryService', () => {
     expect(result.patch).not.toContain('public.txt');
     expect(result.patch).not.toContain('never-expose');
   });
+
+  it('omits untracked content when a sensitive tracked file was deleted', async () => {
+    const { root, service } = await fixtureRepository();
+    await fs.writeFile(path.join(root, '.env'), 'TOKEN=never-expose\n');
+    await git(root, ['add', '.env']); await git(root, ['commit', '-m', 'add secret']);
+    await fs.rm(path.join(root, '.env'));
+    await fs.writeFile(path.join(root, 'public.txt'), 'TOKEN=never-expose\n');
+    const result = await service.diff(root);
+    expect(result.patch).not.toContain('never-expose');
+    expect(result.patch).not.toContain('public.txt');
+    expect(result.summary).toContain('Untracked content omitted');
+    expect(result.truncated).toBe(true);
+  });
+
+  it('applies only an existing file edit with a fresh hash', async () => {
+    const { root, service } = await fixtureRepository();
+    const initial = await service.readFile(root, 'README.md');
+    const edit = await service.prepareEdit(root, 'README.md', initial.hash, 'updated\n');
+    await fs.writeFile(path.join(root, 'README.md'), 'changed elsewhere\n');
+    await expect(service.applyEdit(edit)).rejects.toThrow(/stale/i);
+    await expect(fs.readFile(path.join(root, 'README.md'), 'utf8')).resolves.toBe('changed elsewhere\n');
+  });
+
+  it('refuses secret paths, hard-linked files, and new-file edits', async () => {
+    const { root, service } = await fixtureRepository();
+    await fs.writeFile(path.join(root, '.env'), 'TOKEN=never-expose\n');
+    const readme = await service.readFile(root, 'README.md');
+    await expect(service.prepareEdit(root, '.env', readme.hash, 'changed\n')).rejects.toThrow(/forbidden|available/i);
+    await fs.link(path.join(root, 'README.md'), path.join(root, 'README-copy.md'));
+    await expect(service.prepareEdit(root, 'README.md', readme.hash, 'changed\n')).rejects.toThrow(/hard-linked/i);
+    await expect(service.prepareEdit(root, 'new.txt', null, 'new\n')).rejects.toThrow(/creating new files is unavailable/i);
+    await expect(fs.access(path.join(root, 'new.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('searches accessible text without changing repository files', async () => {
+    const { root, service } = await fixtureRepository();
+    await fs.writeFile(path.join(root, 'notes.txt'), 'needle appears here\n');
+    await fs.writeFile(path.join(root, '.env'), 'needle secret\n');
+    const result = await service.search(root, 'needle');
+    expect(result.matches).toEqual([{ path: 'notes.txt', line: 1, text: 'needle appears here' }]);
+    await expect(fs.readFile(path.join(root, 'notes.txt'), 'utf8')).resolves.toBe('needle appears here\n');
+    await expect(fs.readFile(path.join(root, '.env'), 'utf8')).resolves.toBe('needle secret\n');
+  });
 });

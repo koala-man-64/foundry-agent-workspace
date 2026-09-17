@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { DesktopApi, DiffResult, FileContent, FileEntry, ModelProfile, ProbeResult, Snapshot, TaskDetail, TaskStatus } from '../../../../packages/protocol/src/index';
+import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, ModelProfile, ProbeResult, Snapshot, TaskDetail, TaskStatus } from '../../../../packages/protocol/src/index';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -36,6 +36,7 @@ function App() {
   const [projectPath, setProjectPath] = useState('');
   const [title, setTitle] = useState('');
   const [profileId, setProfileId] = useState(OFFLINE_PROFILE.id);
+  const [taskMode, setTaskMode] = useState<'chat' | 'coding'>('chat');
   const [composer, setComposer] = useState('');
   const [notice, setNotice] = useState('');
   const [creating, setCreating] = useState(false);
@@ -43,10 +44,11 @@ function App() {
   const [file, setFile] = useState<FileContent>();
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
-  const [rightTab, setRightTab] = useState<'files' | 'changes'>('files');
+  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals'>('files');
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
+  const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileVersion = useRef(0);
   const inspectorVersion = useRef(0);
@@ -61,6 +63,11 @@ function App() {
 
   const profiles = snapshot.profiles.length ? snapshot.profiles : [OFFLINE_PROFILE];
   const selectedTask = detail?.task ?? snapshot.tasks.find((task) => task.id === selectedId);
+  const selectedProfile = profiles.find((profile) => profile.id === profileId) ?? OFFLINE_PROFILE;
+  const taskProfile = selectedTask ? profiles.find((profile) => profile.id === selectedTask.profileId) : undefined;
+  const codingReady = selectedProfile.apiKind === 'fake' || Boolean(selectedProfile.verifiedAt && selectedProfile.capabilities?.tools && selectedProfile.capabilities?.continuation);
+  const taskModeLabel = (selectedTask?.mode ?? 'chat') === 'coding' ? 'Coding with reviewed tools' : 'Chat';
+  const awaitingApproval = detail?.approvals?.some((approval) => approval.state === 'awaiting-approval') ?? false;
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
 
   const loadTaskDetail = useCallback(async (taskId: string) => {
@@ -146,8 +153,10 @@ function App() {
     setCreating(true); setNotice('');
     try {
       const activeProfile = profiles.find((profile) => profile.id === profileId) ?? OFFLINE_PROFILE;
+      const canCode = activeProfile.apiKind === 'fake' || Boolean(activeProfile.verifiedAt && activeProfile.capabilities?.tools && activeProfile.capabilities?.continuation);
+      if (taskMode === 'coding' && !canCode) throw new Error('Coding mode requires a freshly verified profile with tool and continuation support.');
       if (!snapshot.profiles.some((profile) => profile.id === activeProfile.id)) await api.invoke('profile.save', activeProfile);
-      const task = await api.invoke('task.create', { projectPath: projectPath.trim(), title: title.trim(), profileId: activeProfile.id, tokenBudget: 100000 });
+      const task = await api.invoke('task.create', { projectPath: projectPath.trim(), title: title.trim(), profileId: activeProfile.id, tokenBudget: 100000, mode: taskMode });
       setTitle(''); setSelectedId(task.id); await refresh(task.id);
     } catch (error) { setNotice(`Could not create task: ${error instanceof Error ? error.message : String(error)}`); } finally { setCreating(false); }
   };
@@ -176,6 +185,24 @@ function App() {
     if (file) void readFile(file.path);
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
+  const decideApproval = async (approval: Approval, decision: 'approve' | 'reject') => {
+    if (!selectedId || approvalInFlight[approval.id]) return;
+    setApprovalInFlight((current) => ({ ...current, [approval.id]: decision }));
+    try {
+      await api.invoke('approval.decide', { taskId: selectedId, approvalId: approval.id, nonce: approval.nonce, decision });
+      await refresh(selectedId); await loadTaskDetail(selectedId);
+    } catch (error) { setNotice(`Could not ${decision} this approval: ${error instanceof Error ? error.message : String(error)}`); }
+    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
+  };
+  const reconcileApproval = async (approval: Approval) => {
+    if (!selectedId || approvalInFlight[approval.id]) return;
+    setApprovalInFlight((current) => ({ ...current, [approval.id]: 'reconcile' }));
+    try {
+      await api.invoke('approval.reconcile', { taskId: selectedId, approvalId: approval.id });
+      await refresh(selectedId); await loadTaskDetail(selectedId);
+    } catch (error) { setNotice(`Could not check this approval outcome: ${error instanceof Error ? error.message : String(error)}`); }
+    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
+  };
   const openSettings = () => { const profile = profiles.find((item) => item.id === profileId) ?? OFFLINE_PROFILE; setProfileDraft(profile); setCredential(''); setProbe(undefined); dialogRef.current?.showModal(); };
   const newProfile = () => { setProfileDraft({ id: crypto.randomUUID(), name: 'New Azure profile', apiKind: 'responses', endpoint: '', deployment: '', contextLimit: 128000, outputLimit: 8192 }); setCredential(''); setProbe(undefined); };
   const saveProfile = async (event: FormEvent) => {
@@ -195,7 +222,9 @@ function App() {
       <form className="new-task" onSubmit={createTask}><h2>New task</h2>
         <label>Project <div className="project-picker"><input value={projectPath} onChange={(e) => setProjectPath(e.target.value)} placeholder="Choose a local project" aria-label="Project path" /><button type="button" onClick={() => void chooseProject()}>Browse</button></div></label>
         <label>Task title <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What should this task do?" /></label>
-        <label>Profile <select value={profileId} onChange={(e) => setProfileId(e.target.value)}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.apiKind}</option>)}</select></label>
+        <label>Profile <select value={profileId} onChange={(e) => { const next = profiles.find((profile) => profile.id === e.target.value) ?? OFFLINE_PROFILE; setProfileId(next.id); if (taskMode === 'coding' && next.apiKind !== 'fake' && !(next.verifiedAt && next.capabilities?.tools && next.capabilities?.continuation)) setTaskMode('chat'); }}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.apiKind}</option>)}</select></label>
+        <label>Mode <select value={taskMode} onChange={(e) => setTaskMode(e.target.value as 'chat' | 'coding')}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding with reviewed tools</option></select></label>
+        <p className="mode-note">{taskMode === 'coding' ? selectedProfile.apiKind === 'fake' ? 'Offline deterministic demo: type /demo to propose a bounded README edit and command.' : 'Tools require a reviewed approval before they run.' : 'Chat does not request tool execution.'}</p>
         <button className="primary" disabled={creating}>{creating ? 'Creating…' : 'Create task'}</button>
       </form>
       <div className="history-head"><h2>Task history</h2><button className="quiet" type="button" onClick={() => void refresh()}>Refresh</button></div>
@@ -203,13 +232,13 @@ function App() {
       <button className="settings-link" type="button" onClick={openSettings}>Model settings <span>↗</span></button>
     </aside>
     <section className="conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens</p></div>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}</> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens</p></div>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}</> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
-      <div className="messages" aria-live="polite">{detail?.messages.map((message) => <article className={`message ${message.role}`} key={message.id}><div className="message-meta">{message.role === 'assistant' ? 'Agent' : message.role === 'user' ? 'You' : 'System'} <span>{message.status === 'streaming' ? 'Receiving response…' : relativeTime(message.createdAt)}</span></div><p>{message.content || (message.status === 'streaming' ? 'Receiving response…' : '')}</p></article>)}{!selectedTask && <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div>}{selectedTask && !detail?.messages.length && <div className="empty-state"><h2>{selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>}</div>
+      <div className="messages" aria-live="polite">{detail?.messages.map((message) => <article className={`message ${message.role}`} key={message.id}><div className="message-meta">{message.role === 'assistant' ? 'Agent' : message.role === 'user' ? 'You' : 'System'} <span>{message.status === 'streaming' ? awaitingApproval ? 'Awaiting approval…' : 'Receiving response…' : relativeTime(message.createdAt)}</span></div><p>{message.content || (message.status === 'streaming' ? awaitingApproval ? 'Awaiting your reviewed tool approval.' : 'Receiving response…' : '')}</p></article>)}{!selectedTask && <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div>}{selectedTask && !detail?.messages.length && <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>}</div>
       <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || selectedTask?.status === 'running'} placeholder={selectedId ? selectedTask?.status === 'running' ? 'The agent is working. Cancel to send a new direction.' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || selectedTask?.status === 'running'}>Send <span>↵</span></button></form>
     </section>
     <aside className="inspector">
-      <div className="inspector-tabs"><button className={rightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button><button className={rightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button></div>
+      <div className="inspector-tabs"><button className={rightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button><button className={rightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button><button className={rightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button></div>
       {!selectedId ? <p className="muted inspector-empty">Select a task to inspect its local worktree.</p> : rightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
@@ -218,7 +247,26 @@ function App() {
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div>}
+      </> : rightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div> : <div className="approvals-panel">
+        {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
+        {(detail?.approvals ?? []).map((approval) => <article className={`approval-card ${approval.state}`} key={approval.id}>
+          <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
+          <p>{approval.summary}</p>
+          {approval.path && <dl><dt>File</dt><dd>{approval.path}</dd></dl>}
+          {approval.before !== undefined && <dl><dt>Before</dt><dd><pre>{approval.before}</pre></dd></dl>}
+          {approval.after !== undefined && <dl><dt>After</dt><dd><pre>{approval.after}</pre></dd></dl>}
+          {(approval.expectedHash !== undefined || approval.resultingHash !== undefined) && <dl><dt>Hash</dt><dd>{approval.expectedHash ?? 'none'} → {approval.resultingHash ?? 'pending'}</dd></dl>}
+          {approval.command && <div className="command-evidence"><strong>Command</strong><pre>{approval.command}</pre><small>Runs with your Windows privileges; approval is not sandboxing.</small></div>}
+          {approval.cwd && <dl><dt>Working directory</dt><dd>{approval.cwd}</dd></dl>}
+          {approval.shell && <dl><dt>Shell</dt><dd>{approval.shell}</dd></dl>}
+          {approval.environment && <dl><dt>Environment</dt><dd>{Object.entries(approval.environment).map(([key, value]) => <span className="environment" key={key}>{key}={value}</span>)}</dd></dl>}
+          {approval.timeoutMs !== undefined && <dl><dt>Timeout</dt><dd>{approval.timeoutMs.toLocaleString()} ms</dd></dl>}
+          {approval.result && <div className="approval-result"><strong>{approval.result.isError ? 'Redacted error result' : 'Redacted result'}</strong><pre>{approval.result.content}</pre>{approval.result.exitCode !== undefined && <small>Exit code {approval.result.exitCode}</small>}{approval.result.cleanupVerified !== undefined && <small>Cleanup {approval.result.cleanupVerified ? 'verified' : 'not verified'}</small>}</div>}
+          {approval.state === 'awaiting-approval' && <div className="approval-actions"><button type="button" className="primary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void decideApproval(approval, 'approve')}>{approvalInFlight[approval.id] === 'approve' ? 'Approving…' : 'Approve'}</button><button type="button" className="danger" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void decideApproval(approval, 'reject')}>{approvalInFlight[approval.id] === 'reject' ? 'Rejecting…' : 'Reject'}</button></div>}
+          {approval.state === 'unknown' && <div className="approval-actions"><button type="button" className="secondary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void reconcileApproval(approval)}>{approvalInFlight[approval.id] === 'reconcile' ? 'Checking…' : 'Check outcome'}</button><small>Read-only reconciliation; this never retries or discards the action.</small></div>}
+        </article>)}
+        {!detail?.approvals?.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
+      </div>}
     </aside>
     <dialog ref={dialogRef} className="settings-dialog" onClose={() => setCredential('')}>
       <form method="dialog" className="dialog-head">
@@ -232,7 +280,7 @@ function App() {
         <label>Deployment <input value={profileDraft.deployment} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, deployment: e.target.value })} /></label>
         <div className="limits"><label>Context limit <input type="number" disabled={isBuiltinProfile} min="1024" max="2000000" value={profileDraft.contextLimit} onChange={(e) => setProfileDraft({ ...profileDraft, contextLimit: Number(e.target.value) })} /></label><label>Output limit <input type="number" disabled={isBuiltinProfile} min="16" max="128000" value={profileDraft.outputLimit} onChange={(e) => setProfileDraft({ ...profileDraft, outputLimit: Number(e.target.value) })} /></label></div>
         <label>Credential <input type="password" disabled={isBuiltinProfile} value={credential} onChange={(e) => setCredential(e.target.value)} placeholder="Stored by the local credential service" autoComplete="off" /><small>Cleared from this form after it is saved or tested.</small></label>
-        {isBuiltinProfile ? <p className="probe-note">Offline demo is built in and tests local readiness only; it sends no remote request. Create a new profile to configure an Azure provider.</p> : <p className="probe-note">{profileDraft.apiKind === 'fake' ? 'Offline demo checks local readiness and sends no remote request.' : 'Testing sends two small requests to the selected endpoint. It checks the connection only; tool readiness is unavailable in this workspace.'}</p>}
+        {isBuiltinProfile ? <p className="probe-note">Offline demo is built in and tests local readiness only; it sends no remote request. Create a new profile to configure an Azure provider.</p> : <p className="probe-note">{profileDraft.apiKind === 'fake' ? 'Offline demo checks local readiness and sends no remote request.' : 'Testing may send up to four small requests to the selected endpoint. It records connection and supported capabilities; re-probe after changing a profile.'}</p>}
         {probe && <div className={`probe ${probe.ok ? 'success' : 'failure'}`} role="status"><strong>{probe.ok ? 'Connection ready' : 'Connection unavailable'}</strong><p>{probe.detail}</p><small>Streaming {probe.capabilities.streaming ? 'available' : 'unavailable'} · tools {probe.capabilities.tools ? 'available' : 'unavailable'} · cancellation {probe.capabilities.cancellation ? 'available' : 'unavailable'}</small></div>}
         <div className="dialog-actions"><button type="button" className="secondary" onClick={() => void probeProfile()}>Test connection</button><button className="primary" disabled={isBuiltinProfile}>Save profile</button></div>
       </form>

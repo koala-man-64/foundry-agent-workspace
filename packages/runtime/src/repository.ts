@@ -15,6 +15,9 @@ const SECRET_NAME = /^(?:\.env(?:\..*)?|\.envrc|\.npmrc|\.pypirc|\.netrc|\.pgpas
 const RESERVED_WINDOWS_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
 
 type GitOutput = { stdout: string; truncated: boolean; exitCode: number };
+export interface PreparedEdit {
+  root: string; path: string; before: string; after: string; expectedHash: string | null; resultingHash: string; fingerprint: string;
+}
 
 /** Distinguishes a preflight rejection from a Git operation whose effects need reconciliation. */
 export class RepositoryError extends Error {
@@ -101,14 +104,110 @@ export class RepositoryService {
     };
   }
 
+  public async prepareEdit(root: string, relativePath: string, expectedHash: string | null, after: string): Promise<PreparedEdit> {
+    if (Buffer.byteLength(after, 'utf8') > MAX_FILE_BYTES || after.includes('\0')) throw new Error('Edits must be UTF-8 text of at most 64 KB.');
+    if (expectedHash === null) throw new Error('Creating new files is unavailable until a race-safe Windows directory creation primitive is available.');
+    const safeRoot = await this.requireRoot(root);
+    this.validateRelativePath(relativePath, false);
+    // Parents must exist already. Directory creation is a separately approved command.
+    const parent = path.dirname(relativePath).replaceAll('\\', '/');
+    await this.resolveSafePath(safeRoot, parent === '.' ? '' : parent, true);
+    const target = path.resolve(safeRoot, relativePath);
+    const current = await this.readFile(safeRoot, relativePath);
+    if (current.hash !== expectedHash) throw new Error('Stale edit: file content changed since it was read.');
+    const stat = await fs.stat(await this.resolveSafePath(safeRoot, relativePath, false));
+    if (stat.nlink !== 1) throw new Error('Hard-linked files cannot be edited.');
+    const before = current.content;
+    const normalized = this.toPortableRelativePath(safeRoot, target);
+    const resultingHash = createHash('sha256').update(after, 'utf8').digest('hex');
+    const fingerprint = createHash('sha256').update(JSON.stringify([safeRoot, normalized, expectedHash, resultingHash])).digest('hex');
+    return { root: safeRoot, path: normalized, before, after, expectedHash, resultingHash, fingerprint };
+  }
+
+  public async applyEdit(edit: PreparedEdit): Promise<{ path: string; hash: string }> {
+    let fresh: PreparedEdit;
+    try {
+      fresh = await this.prepareEdit(edit.root, edit.path, edit.expectedHash, edit.after);
+      if (fresh.fingerprint !== edit.fingerprint) throw new Error('Edit approval is stale.');
+    } catch (error) { throw new RepositoryError(error instanceof Error ? error.message : 'Edit preflight failed.', 'none'); }
+    const target = path.resolve(fresh.root, fresh.path);
+    // Creation is unavailable, so opening the existing file itself cannot mutate it.
+    const handle = await fs.open(target, 'r+').catch((error: unknown) => { throw new RepositoryError(error instanceof Error ? error.message : 'Cannot open file for editing.', 'none'); });
+    let mutationStarted = false;
+    try {
+      const opened = await handle.stat();
+      if (!opened.isFile() || opened.nlink !== 1) throw new Error('Only unlinked regular files can be edited.');
+      if (fresh.expectedHash !== null) {
+        const current = await handle.readFile();
+        if (createHash('sha256').update(current).digest('hex') !== fresh.expectedHash) throw new Error('Stale edit: file changed before execution.');
+      }
+      // Re-check canonical identity immediately before mutation. The host filesystem
+      // is not a sandbox; external processes with this user's rights can still race.
+      const resolved = await this.resolveSafePath(fresh.root, fresh.path, false);
+      const named = await fs.stat(resolved);
+      if (named.dev !== opened.dev || named.ino !== opened.ino) throw new Error('File identity changed before execution.');
+      const bytes = Buffer.from(fresh.after, 'utf8');
+      mutationStarted = true;
+      let offset = 0;
+      while (offset < bytes.length) {
+        const result = await handle.write(bytes, offset, bytes.length - offset, offset);
+        if (!result.bytesWritten) throw new Error('File write made no progress.');
+        offset += result.bytesWritten;
+      }
+      await handle.truncate(bytes.length); await handle.sync();
+    } catch (error) {
+      if (!mutationStarted) throw new RepositoryError(error instanceof Error ? error.message : 'Edit preflight failed.', 'none');
+      throw error;
+    } finally { await handle.close(); }
+    const result = await this.readFile(fresh.root, fresh.path);
+    if (result.hash !== fresh.resultingHash) throw new Error('File verification failed; inspect the retained operation.');
+    return { path: result.path, hash: result.hash };
+  }
+
+  public async search(root: string, query: string, start = ''): Promise<{ matches: { path: string; line: number; text: string }[]; truncated: boolean; skipped: number }> {
+    const pending = [start]; const matches: { path: string; line: number; text: string }[] = [];
+    let visited = 0; let skipped = 0; let truncated = false;
+    while (pending.length) {
+      const current = pending.pop()!;
+      if (++visited > 2000) { truncated = true; break; }
+      for (const entry of await this.listFiles(root, current)) {
+        if (++visited > 2000) return { matches, truncated: true, skipped };
+        if (entry.kind === 'directory') {
+          if (!['node_modules', 'dist', 'out', 'coverage', '.venv'].includes(path.basename(entry.path))) pending.push(entry.path);
+          else skipped++;
+          continue;
+        }
+        try {
+          const file = await this.readFile(root, entry.path);
+          for (const [index, text] of file.content.split(/\r?\n/).entries()) {
+            if (text.includes(query)) matches.push({ path: file.path, line: index + 1, text: text.slice(0, 500) });
+            if (matches.length >= 100) return { matches, truncated: true, skipped };
+          }
+        } catch { skipped++; }
+      }
+    }
+    return { matches, truncated, skipped };
+  }
+
   public async diff(root: string): Promise<DiffResult> {
     const repositoryRoot = await this.requireRepository(root);
     const safePaths = await this.safeDiffPaths(repositoryRoot);
-    if (!safePaths.length) return { summary: '', patch: '', truncated: false };
-
-    const summary = await this.git(repositoryRoot, ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--no-color', '--stat', 'HEAD', '--', ...safePaths]);
-    const patch = await this.git(repositoryRoot, ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--no-color', '--binary', 'HEAD', '--', ...safePaths], true);
-    return { summary: summary.stdout, patch: patch.stdout, truncated: patch.truncated };
+    const summary = safePaths.length ? await this.git(repositoryRoot, ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--no-color', '--stat', 'HEAD', '--', ...safePaths]) : { stdout: '' };
+    const patch = safePaths.length ? await this.git(repositoryRoot, ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--no-color', '--binary', 'HEAD', '--', ...safePaths], true) : { stdout: '', truncated: false };
+    const omitUntracked = await this.hasSensitiveTrackedDeletion(repositoryRoot);
+    const untracked = omitUntracked ? [] : (await this.git(repositoryRoot, ['ls-files', '--others', '--exclude-standard', '-z'])).stdout.split('\0').filter(Boolean);
+    let truncated = patch.truncated; let output = patch.stdout; let stat = summary.stdout;
+    for (const name of untracked.slice(0, 100)) {
+      if (this.isDeniedRelativePath(name)) continue;
+      try {
+        const file = await this.readFile(repositoryRoot, name);
+        const addition = `diff --git a/${file.path} b/${file.path}\nnew file\n--- /dev/null\n+++ b/${file.path}\n${file.content.split('\n').map(line => '+' + line).join('\n')}\n`;
+        if (Buffer.byteLength(output + addition) > GIT_MAX_OUTPUT_BYTES) { truncated = true; break; }
+        output += addition; stat += `${file.path} | new file\n`;
+      } catch { /* Unsupported/denied untracked content remains unavailable. */ }
+    }
+    if (omitUntracked) stat += 'Untracked content omitted because a sensitive tracked deletion is present.\n';
+    return { summary: stat, patch: output, truncated: truncated || untracked.length > 100 || omitUntracked };
   }
 
   private async requireRepository(candidate: string): Promise<string> {
@@ -226,6 +325,18 @@ export class RepositoryService {
       for (const entry of paths) safe.add(entry);
     }
     return [...safe];
+  }
+
+  private async hasSensitiveTrackedDeletion(repositoryRoot: string): Promise<boolean> {
+    const fields = (await this.git(repositoryRoot, ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-status', '-z', 'HEAD', '--'])).stdout.split('\0');
+    for (let index = 0; index < fields.length - 1;) {
+      const code = fields[index++];
+      if (!code) continue;
+      const changedPath = fields[index++];
+      if (!changedPath) throw new Error('Git returned malformed changed-path data.');
+      if (code.startsWith('D') && this.isDeniedRelativePath(changedPath)) return true;
+    }
+    return false;
   }
 
   private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false): Promise<GitOutput> {

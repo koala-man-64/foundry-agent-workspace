@@ -1,6 +1,6 @@
 {
   "name": "foundry-agent-workspace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A local Windows agent workspace for Azure Foundry deployments",
   "author": "Rudy Prokes",
@@ -51,7 +51,7 @@
     "electronDist": "node_modules/electron/dist",
     "directories": { "output": "release" },
     "files": ["out/**/*", "package.json"],
-    "asarUnpack": ["**/*.node"],
+    "asarUnpack": ["**/*.node", "out/main/job-runner.ps1"],
     "win": { "target": "nsis" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
     "publish": null

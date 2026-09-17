@@ -86,3 +86,71 @@ test('isolated task, offline conversation, file inspection and restart history',
     expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });
+
+test('offline coding demo keeps review evidence, rejects safely, and applies only approved worktree changes', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'foundry-coding-e2e-'));
+  const project = join(fixture, 'repository'); await mkdir(project);
+  const git = (...args: string[]): void => { execFileSync('git', ['-c', 'core.hooksPath=NUL', '-C', project, ...args], { windowsHide: true, stdio: 'ignore' }); };
+  const sourceReadme = '# Fixture\n\nInitial README content.\n';
+  git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
+  await writeFile(join(project, 'README.md'), sourceReadme); git('add', 'README.md'); git('commit', '-m', 'Fixture');
+  const environment: Record<string, string> = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
+  environment.FOUNDRY_WORKSPACE_TEST_DATA = join(fixture, 'state'); delete environment.ELECTRON_RUN_AS_NODE;
+  let app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
+  try {
+    let page = await app.firstWindow();
+    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+    const createCodingTask = async (title: string): Promise<{ id: string; worktreePath: string }> => {
+      await page.getByLabel('Project path').fill(project);
+      await page.getByLabel('Task title').fill(title);
+      await page.getByLabel('Mode').selectOption('coding');
+      await page.getByRole('button', { name: 'Create task', exact: true }).click();
+      await expect(page.getByRole('heading', { name: title })).toBeVisible();
+      return page.evaluate(async (taskTitle) => {
+        const snapshot = await window.workspace.invoke('workspace.snapshot', {});
+        const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
+        if (!task) throw new Error('Coding task was not created.');
+        return { id: task.id, worktreePath: task.worktreePath };
+      }, title);
+    };
+    const requestDemo = async (): Promise<void> => {
+      await page.getByLabel('Task message').fill('/demo');
+      await page.getByRole('button', { name: /^Send/ }).click();
+      await page.getByRole('button', { name: 'Approvals', exact: false }).click();
+      await expect(page.locator('article.approval-card.awaiting-approval').first()).toBeVisible();
+    };
+
+    const rejected = await createCodingTask('Reject offline demo');
+    await requestDemo();
+    const rejectedEdit = page.locator('article.approval-card').filter({ has: page.locator('dt', { hasText: 'File' }) }).first();
+    await expect(rejectedEdit).toBeVisible();
+    await rejectedEdit.getByRole('button', { name: 'Reject', exact: true }).click();
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).approvals?.find((approval) => approval.state === 'rejected')?.state, rejected.id)).toBe('rejected');
+    await expect(readFile(join(rejected.worktreePath, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
+
+    await page.getByRole('button', { name: 'Files', exact: true }).click();
+    const accepted = await createCodingTask('Approve offline demo');
+    await requestDemo();
+    const editApproval = page.locator('article.approval-card').filter({ has: page.locator('dt', { hasText: 'File' }) }).first();
+    const reviewedAfter = await editApproval.locator('dl').filter({ has: page.locator('dt', { hasText: 'After' }) }).locator('pre').textContent();
+    expect(reviewedAfter).toBeTruthy();
+    await editApproval.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).approvals?.find((approval) => approval.command)?.state, accepted.id)).toBe('awaiting-approval');
+    const commandApproval = page.locator('article.approval-card').filter({ has: page.locator('.command-evidence') }).first();
+    await expect(commandApproval).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
+    await page.screenshot({ path: 'docs/coding-approval-screenshot.png', fullPage: true });
+    await commandApproval.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, accepted.id)).toBe('idle');
+    await expect(readFile(join(accepted.worktreePath, 'README.md'), 'utf8')).resolves.toBe(reviewedAfter);
+    await expect(readFile(join(project, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
+    expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
+
+    await app.close();
+    app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
+    page = await app.firstWindow();
+    await page.getByRole('button', { name: /Approve offline demo/ }).click();
+    await page.getByRole('button', { name: 'Approvals', exact: false }).click();
+    await expect(page.locator('article.approval-card.complete')).toHaveCount(2);
+    await expect(page.getByText('Redacted result', { exact: false }).first()).toBeVisible();
+  } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
+});

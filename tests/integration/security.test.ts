@@ -83,4 +83,13 @@ describe('runtime credential generation', () => {
     expect(reopened.task(task.id).status).toBe('idle');
     reopened.close();
   });
+  it('revokes earlier capabilities when a fresh probe fails', async () => {
+    let ok = true;
+    const provider: ProviderAdapter = { streamTurn: () => { throw new Error('unused'); }, probe: async () => ({ ok, capabilities: { streaming: ok, cancellation: ok, usage: ok, continuation: ok, tools: ok }, detail: 'fixture', fingerprint: 'fixture' }) };
+    runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), () => {}, () => provider);
+    await runtime.dispatch('profile.save', profile); runtime.setCredential(profile.id, 'fixture-value');
+    await runtime.dispatch('profile.probe', { profileId: profile.id }); expect(store.profile(profile.id)?.capabilities?.tools).toBe(true);
+    ok = false; await runtime.dispatch('profile.probe', { profileId: profile.id });
+    expect(store.profile(profile.id)?.capabilities).toBeUndefined(); expect(store.profile(profile.id)?.verificationFingerprint).toBeUndefined();
+  });
 });
