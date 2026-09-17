@@ -26,7 +26,9 @@ else {
     window.webContents.on('will-attach-webview', event => event.preventDefault());
     const dataDirectory = app.getPath('userData');
     const vault = new CredentialVault(join(dataDirectory, 'credentials'));
-    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event); }, () => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', { sequence: 0, type: 'runtime.stopped', data: {}, createdAt: new Date().toISOString() }); });
+    // Coordinated mode can be enabled before release qualification only for unpackaged development/test runs.
+    const runtimeEnvironment: Record<string, string> = !app.isPackaged && process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1' ? { FOUNDRY_WORKSPACE_ENABLE_COORDINATED: '1' } : {};
+    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event); }, () => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', { sequence: 0, type: 'runtime.stopped', data: {}, createdAt: new Date().toISOString() }); }, runtimeEnvironment);
     runtime.start();
     const developmentUrl = process.env.ELECTRON_RENDERER_URL;
     const expectedUrl = !app.isPackaged && developmentUrl ? new URL(developmentUrl) : pathToFileURL(join(__dirname, '../renderer/index.html'));
@@ -49,10 +51,14 @@ else {
         if (!previous || binding(previous) !== binding(next)) credentialsLoaded.delete(next.id);
       }
       // Credentials never enter a renderer request or response, history, or logs.
-      if (method === 'task.send' || method === 'profile.probe') {
+      if (method === 'task.send' || method === 'profile.probe' || method === 'orchestration.resume') {
         const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
-        const profileId = method === 'profile.probe' ? (validated as { profileId: string }).profileId : snapshot.tasks.find(task => task.id === (validated as { taskId: string }).taskId)?.profileId;
-        if (profileId && !credentialsLoaded.has(profileId)) {
+        const taskId = method === 'orchestration.resume' ? (validated as { rootTaskId: string }).rootTaskId : (validated as { taskId?: string }).taskId;
+        const task = snapshot.tasks.find(item => item.id === taskId);
+        // A coordinated root schedules children with its explicitly configured child profiles.
+        const profileIds = method === 'profile.probe' ? [(validated as { profileId: string }).profileId] : task ? [task.profileId, ...(task.coordination?.childProfileIds ?? [])] : [];
+        for (const profileId of new Set(profileIds)) {
+          if (credentialsLoaded.has(profileId)) continue;
           const profile = snapshot.profiles.find(value => value.id === profileId);
           const credential = profile ? await vault.load(profileId, binding(profile)) : undefined;
           if (credential && profile) await runtime!.request('runtime.credential', { id: profileId, value: credential, binding: binding(profile) });
