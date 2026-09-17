@@ -183,7 +183,9 @@ export class CommandRunner {
 
   private async worktreeState(root: string): Promise<string> {
     const git = await resolveExecutable('git.exe', root);
-    const env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0' };
+    // Kept self-contained (the crash-host test loads this file alone). Inherited GIT_* variables could redirect Git away from the worktree.
+    const env: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
+    env.GIT_CONFIG_NOSYSTEM = '1'; env.GIT_TERMINAL_PROMPT = '0';
     const options = { cwd: root, env, windowsHide: true, timeout: 15_000, maxBuffer: 256 * 1024 };
     const [head, status] = await Promise.all([
       execFile(git, ['--no-pager', '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=', '-c', 'credential.helper=', 'rev-parse', '--verify', 'HEAD^{commit}'], options),

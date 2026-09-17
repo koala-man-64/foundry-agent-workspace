@@ -11,12 +11,12 @@ export class RuntimeSupervisor {
   private decoder = new LineDecoder(MAX_RPC_BYTES);
   private closed = false;
   private readonly pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout }>();
-  constructor(private readonly runtimePath: string, private readonly dataDirectory: string, private readonly onEvent: (event: WorkspaceEvent) => void, private readonly onExit: () => void) {}
+  constructor(private readonly runtimePath: string, private readonly dataDirectory: string, private readonly onEvent: (event: WorkspaceEvent) => void, private readonly onExit: () => void, private readonly extraEnvironment: Record<string, string> = {}) {}
   start(): void {
     if (this.child) return;
     this.closed = false; this.decoder = new LineDecoder(MAX_RPC_BYTES);
     // The runtime receives no inherited API tokens or Azure credentials.
-    const env: NodeJS.ProcessEnv = { ELECTRON_RUN_AS_NODE: '1', FOUNDRY_WORKSPACE_DATA: this.dataDirectory };
+    const env: NodeJS.ProcessEnv = { ELECTRON_RUN_AS_NODE: '1', FOUNDRY_WORKSPACE_DATA: this.dataDirectory, ...this.extraEnvironment };
     for (const name of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'TEMP', 'TMP', 'LOCALAPPDATA', 'USERPROFILE', 'APPDATA', 'HOME']) if (process.env[name]) env[name] = process.env[name];
     const child = spawn(process.execPath, [this.runtimePath], { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child = child;

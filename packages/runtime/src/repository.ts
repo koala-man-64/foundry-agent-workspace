@@ -2,6 +2,7 @@ import { execFile as execFileCallback } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { gitEnvironment } from './git-environment';
 import { promisify } from 'node:util';
 import type { DiffResult, FileContent, FileEntry } from '../../protocol/src/index';
 
@@ -39,6 +40,10 @@ export class RepositoryService {
   private gitExecutable: Promise<string> | undefined;
 
   public constructor(private readonly worktreeBase: string) {}
+
+  public get worktreeBaseDirectory(): string {
+    return this.worktreeBase;
+  }
 
   public async createTaskWorktree(
     projectPath: string,
@@ -341,11 +346,7 @@ export class RepositoryService {
 
   private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false): Promise<GitOutput> {
     const hooksPath = path.join(path.resolve(this.worktreeBase), EMPTY_HOOKS_DIRECTORY);
-    const env = {
-      ...process.env,
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_TERMINAL_PROMPT: '0',
-    };
+    const env = gitEnvironment();
     try {
       const executable = await this.getGitExecutable(cwd);
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', '-c', 'credential.helper=', ...args], {

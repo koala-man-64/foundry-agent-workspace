@@ -1,5 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { ApiKind, ModelProfile, ProbeResult, ProviderAdapter, ProviderContinuation, ProviderEvent, ProviderMessage, ProviderRequest, ProviderToolResult, ToolCall, ToolDefinition } from "../../protocol/src/index.js";
+import { isOrchestrationRequest, orchestrationFixture } from "./orchestration-fixture.js";
+/** A definite HTTP rejection before any response stream was accepted. Retry-After is bounded and advisory only; nothing retries automatically. */
+export class ProviderHttpError extends Error {
+    constructor(readonly status: number, readonly retryAfterSeconds: number | undefined) { super(`Provider request failed with HTTP ${status}.`); this.name = "ProviderHttpError"; }
+}
+function retryAfter(value: string | null): number | undefined { if (!value) return undefined; const seconds = Number(value); if (Number.isFinite(seconds) && seconds >= 0) return Math.min(3600, Math.ceil(seconds)); const date = Date.parse(value); return Number.isNaN(date) ? undefined : Math.min(3600, Math.max(0, Math.ceil((date - Date.now()) / 1000))); }
 const MAX_SSE_EVENT_BYTES = 1024 * 1024, MAX_SSE_STREAM_BYTES = 8 * 1024 * 1024, MAX_SSE_EVENTS = 10000;
 const AZURE_HOST_SUFFIXES = [".openai.azure.com", ".services.ai.azure.com", ".cognitiveservices.azure.com", ".inference.ai.azure.com"] as const;
 type FetchImplementation = typeof fetch;
@@ -14,6 +20,7 @@ export function createProvider(apiKind: ApiKind, options: ProviderOptions = {}):
 export function profileFingerprint(profile: ModelProfile): string { return createHash("sha256").update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.apiKind === "fake" ? profile.endpoint : normalizeEndpoint(profile.endpoint).toString(), deployment: profile.deployment, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit })).digest("hex"); }
 class FakeProvider implements ProviderAdapter {
     async *streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent> {
+        if (isOrchestrationRequest(request)) { yield* orchestrationFixture(request); return; }
         const state = fakeState(request.continuation);
         throwIfAborted(request.signal);
         if (!state && request.tools?.length && lastUser(request.messages).startsWith("/demo")) {
@@ -74,7 +81,7 @@ class AzureProvider implements ProviderAdapter {
         const prepared = nativeRequest(this.apiKind, request);
         const response = await this.fetchImplementation(buildTarget(normalizeEndpoint(request.profile.endpoint), this.apiKind), { method: "POST", headers: headersFor(this.apiKind, request.credential), body: JSON.stringify(prepared.body), signal: request.signal, redirect: "error" });
         if (!response.ok)
-            throw new Error(`Provider request failed with HTTP ${response.status}.`);
+            throw new ProviderHttpError(response.status, response.status === 429 ? retryAfter(response.headers.get("retry-after")) : undefined);
         if (!response.body)
             throw new Error("Provider returned no response stream.");
         if (this.apiKind === "responses")
