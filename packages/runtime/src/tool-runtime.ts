@@ -19,7 +19,8 @@ export interface OrchestrationToolHooks {
   withRootLock<T>(task: Task, action: () => Promise<T>): Promise<T>;
   /** Called inside the execution slot immediately before and after an approved command. */
   commandStarting(task: Task): Promise<unknown>;
-  commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult): Promise<{ evidenceId: string; passed: boolean } | undefined>;
+  /** `requestedEnvironment` is the model-supplied environment change set; validation evidence requires it to be empty. */
+  commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult, requestedEnvironment: Record<string, string>): Promise<{ evidenceId: string; passed: boolean } | undefined>;
   denied(task: Task, tool: string, reason: string): void;
 }
 
@@ -124,11 +125,13 @@ export class ToolRuntime {
         return result(JSON.stringify(scopes ? { ...found, matches: found.matches.filter(match => this.readable(scopes.read, match.path)) } : found));
       }
       let edit: PreparedEdit | undefined;
+      let requestedEnvironment: Record<string, string> = {};
       const binding = this.orchestration?.binding(task);
       if (role !== 'coding' && !binding) throw new Error('This agent is fenced or no longer active; no action was proposed.');
       const common = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: name, state: 'awaiting-approval' as const, createdAt: new Date().toISOString(), ...(binding ?? {}) };
       if (name === 'run_command') {
         const args = ToolArguments.run_command.parse(call.arguments);
+        requestedEnvironment = args.environment;
         command = await this.commands.prepare(task.worktreePath, args);
         this.assertNoSecrets(JSON.stringify(command));
         approval = { ...common, summary: 'Run this exact PowerShell command with your Windows privileges.', ...command };
@@ -165,7 +168,7 @@ export class ToolRuntime {
           const executed = await this.commands.execute(command, signal);
           approved.state = executed.cleanupVerified ? (executed.exitCode === 0 && !executed.cancelled && !executed.timedOut ? 'complete' : 'failed') : 'unknown';
           if (role !== 'coding') {
-            evidence = await this.orchestration!.commandFinished(task, approved, before, executed).catch(() => undefined);
+            evidence = await this.orchestration!.commandFinished(task, approved, before, executed, requestedEnvironment).catch(() => undefined);
             if (evidence) approved.evidenceId = evidence.evidenceId;
           }
           const content = this.redactor.text(JSON.stringify(evidence ? { ...executed, evidenceId: evidence.evidenceId, validationPassed: evidence.passed } : executed));

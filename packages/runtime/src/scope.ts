@@ -12,7 +12,7 @@ export function normalizeScopePath(value: string, allowRoot: boolean): string {
   for (const segment of portable.split('/')) {
     if (!segment || segment === '.' || segment === '..') throw new Error('Scope paths cannot contain empty, "." or ".." segments.');
     // eslint-disable-next-line no-control-regex -- control characters are deliberately rejected in path segments
-    if (segment.toLowerCase() === '.git' || segment.toLowerCase() === '.gitmodules' || segment.includes(':') || /[. ]$/.test(segment) || RESERVED_WINDOWS_NAME.test(segment) || SECRET_NAME.test(segment) || /[\u0000-\u001f*?"<>|]/.test(segment)) {
+    if (segment.toLowerCase() === '.git' || segment.toLowerCase() === '.gitmodules' || segment.toLowerCase() === '.gitattributes' || segment.includes(':') || /[. ]$/.test(segment) || RESERVED_WINDOWS_NAME.test(segment) || SECRET_NAME.test(segment) || /[\u0000-\u001f*?"<>|]/.test(segment)) {
       throw new Error(`Scope path segment "${segment.slice(0, 64)}" is not permitted.`);
     }
   }

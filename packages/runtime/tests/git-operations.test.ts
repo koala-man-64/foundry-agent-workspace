@@ -616,3 +616,56 @@ describe('GitOperations.isAncestor', () => {
     expect((error as GitOperationError).outcome).toBe('none');
   });
 });
+
+describe('GitOperations review hardening', () => {
+  it('reads filter attributes from the exact base commit, not the source working tree', async () => {
+    const fx = await fixture();
+    const clean = await headSha(fx.sourceRoot);
+    await fs.writeFile(path.join(fx.sourceRoot, '.gitattributes'), 'README.md filter=demo\n');
+    await git(fx.sourceRoot, ['add', '.gitattributes']);
+    await git(fx.sourceRoot, ['commit', '-m', 'add filter attribute']);
+    const filtered = await headSha(fx.sourceRoot);
+    // The source checkout goes back to a commit without the attribute; the child base still has it.
+    await git(fx.sourceRoot, ['checkout', '-q', clean]);
+    const error = await fx.ops.createChildWorktree(fx.sourceRoot, randomUUID(), filtered).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(GitOperationError);
+    expect((error as GitOperationError).outcome).toBe('none');
+    expect((error as Error).message).toContain('filter');
+    await expect(fx.ops.createChildWorktree(fx.sourceRoot, randomUUID(), clean)).resolves.toMatchObject({ baseCommit: clean });
+  }, 60_000);
+
+  it('rejects .gitattributes changes and untracked embedded repositories before staging anything', async () => {
+    const fx = await fixture();
+    const child = await createChild(fx);
+    await fs.writeFile(path.join(child.worktreePath, '.gitattributes'), '*.txt text\n');
+    const attributes = await fx.ops.prepareHandoff(child.worktreePath, { branch: child.branch, expectedHead: child.baseCommit, message: 'attrs', allowed: allowAll() }).catch((reason: unknown) => reason);
+    expect((attributes as GitOperationError).outcome).toBe('none');
+    expect((attributes as Error).message).toContain('.gitattributes');
+    await fs.rm(path.join(child.worktreePath, '.gitattributes'));
+    const nested = path.join(child.worktreePath, 'vendor');
+    await fs.mkdir(nested);
+    await git(nested, ['init', '-q']);
+    await fs.writeFile(path.join(nested, 'inner.txt'), 'inner\n');
+    await git(nested, ['-c', 'user.name=x', '-c', 'user.email=x@example.invalid', 'add', 'inner.txt']);
+    await git(nested, ['-c', 'user.name=x', '-c', 'user.email=x@example.invalid', 'commit', '-q', '-m', 'inner']);
+    const embedded = await fx.ops.prepareHandoff(child.worktreePath, { branch: child.branch, expectedHead: child.baseCommit, message: 'embedded', allowed: allowAll() }).catch((reason: unknown) => reason);
+    expect((embedded as GitOperationError).outcome).toBe('none');
+    expect((embedded as Error).message).toMatch(/gitlink/);
+    expect((await git(child.worktreePath, ['diff', '--cached', '--name-only'])).trim()).toBe('');
+  }, 60_000);
+
+  it('ignores inherited GIT_* environment that would redirect operations', async () => {
+    const fx = await fixture();
+    const child = await createChild(fx);
+    const saved = { GIT_DIR: process.env.GIT_DIR, GIT_WORK_TREE: process.env.GIT_WORK_TREE, GIT_INDEX_FILE: process.env.GIT_INDEX_FILE };
+    process.env.GIT_DIR = path.join(fx.base, 'not-a-repository');
+    process.env.GIT_WORK_TREE = fx.base;
+    process.env.GIT_INDEX_FILE = path.join(fx.base, 'bogus-index');
+    try {
+      const state = await fx.ops.state(child.worktreePath);
+      expect(state).toMatchObject({ head: child.baseCommit, branch: child.branch, clean: true });
+    } finally {
+      for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    }
+  }, 60_000);
+});

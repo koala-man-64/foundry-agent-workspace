@@ -94,6 +94,19 @@ export class OrchestrationRecords {
   setAssignmentWait(id: string, waitReason: WaitReason | null): void {
     this.db.prepare("UPDATE assignments SET wait_reason = ?, updated_at = ? WHERE id = ? AND state = 'proposed'").run(waitReason, now(), id);
   }
+  /** Follow user/coordinator revisions forward: a dependency on a revised assignment means its latest revision. */
+  effectiveAssignment(id: string): Assignment | undefined {
+    let current = this.assignment(id);
+    for (let depth = 0; current && depth < 16; depth++) {
+      const next = this.db.prepare('SELECT id FROM assignments WHERE supersedes_id = ? ORDER BY revision DESC LIMIT 1').get(current.id) as { id: string } | undefined;
+      if (!next) return current;
+      current = this.assignment(next.id);
+    }
+    return current;
+  }
+  provisioningIntent(childTaskId: string): { id: string; state: string } | undefined {
+    return this.db.prepare("SELECT id, state FROM intents WHERE kind = 'child.worktree.create' AND json_extract(data, '$.childTaskId') = ?").get(childTaskId) as { id: string; state: string } | undefined;
+  }
   admitAssignment(id: string, childTaskId: string): void {
     const changed = this.db.prepare("UPDATE assignments SET state = 'admitted', wait_reason = NULL, child_task_id = ?, updated_at = ? WHERE id = ? AND state = 'proposed' AND child_task_id IS NULL").run(childTaskId, now(), id).changes;
     if (changed !== 1) throw new Error('Assignment is no longer waiting for admission.');

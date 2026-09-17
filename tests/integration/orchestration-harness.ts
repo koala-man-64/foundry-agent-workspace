@@ -7,6 +7,7 @@ import { expect, vi } from 'vitest';
 import type { Approval, ModelProfile, ProviderAdapter, ProviderRequest, Task, WorkspaceEvent } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { CommandRunner } from '../../packages/runtime/src/command-runner';
+import type { GitOperations } from '../../packages/runtime/src/git-operations';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
@@ -26,7 +27,7 @@ export interface Harness {
 }
 
 /** Temporary Git repository plus an isolated SQLite state directory. Never touches a user's repository or data. */
-export async function createHarness(provider?: (kind: ModelProfile['apiKind']) => ProviderAdapter): Promise<Harness> {
+export async function createHarness(provider?: (kind: ModelProfile['apiKind']) => ProviderAdapter, options: { git?: (worktreeBase: string) => GitOperations } = {}): Promise<Harness> {
   const directory = await mkdtemp(join(tmpdir(), 'foundry-orchestration-'));
   const project = join(directory, 'source'); await mkdir(project);
   git(project, 'init', '-b', 'main'); git(project, 'config', 'user.name', 'Fixture'); git(project, 'config', 'user.email', 'fixture@example.invalid');
@@ -51,12 +52,12 @@ export async function createHarness(provider?: (kind: ModelProfile['apiKind']) =
     async restart(next) {
       await harness.runtime.shutdown();
       harness.store = new Store(join(directory, 'state', 'workspace.db'));
-      harness.runtime = new RuntimeService(harness.store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), next ? (kind => { const adapter = next(kind); return { probe: p => adapter.probe(p), streamTurn: r => { requests.push({ profileId: r.profile.id, request: r }); return adapter.streamTurn(r); } }; }) : recording, new CommandRunner(), { coordinatedMode: true });
+      harness.runtime = new RuntimeService(harness.store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), next ? (kind => { const adapter = next(kind); return { probe: p => adapter.probe(p), streamTurn: r => { requests.push({ profileId: r.profile.id, request: r }); return adapter.streamTurn(r); } }; }) : recording, new CommandRunner(), { coordinatedMode: true, ...(options.git ? { git: options.git(join(directory, 'worktrees')) } : {}) });
     },
     async close() { await harness.runtime.shutdown(); await rm(directory, { recursive: true, force: true }); }
   };
   harness.store.saveProfile(SECOND_PROFILE);
-  harness.runtime = new RuntimeService(harness.store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), recording, new CommandRunner(), { coordinatedMode: true });
+  harness.runtime = new RuntimeService(harness.store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), recording, new CommandRunner(), { coordinatedMode: true, ...(options.git ? { git: options.git(join(directory, 'worktrees')) } : {}) });
   return harness;
 }
 

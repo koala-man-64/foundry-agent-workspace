@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { OrchestrationView, ProviderAdapter, Task } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
-import { approveUntil, bound, createCoordinated, createHarness, decide, git, pendingApprovals, SECOND_PROFILE, waitFor, type Harness } from './orchestration-harness';
+import { GitOperationError, GitOperations } from '../../packages/runtime/src/git-operations';
+import { approveUntil, bound, createCoordinated, createHarness, decide, git, pendingApprovals, REQUIRED_VALIDATION, SECOND_PROFILE, waitFor, type Harness } from './orchestration-harness';
 
 let harness: Harness | undefined;
 afterEach(async () => { await harness?.close(); harness = undefined; });
@@ -287,6 +288,111 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     expect(wait.state).toBe('delivered');
     expect(() => harness!.store.db.prepare("UPDATE wait_operations SET result = 'x' WHERE root_task_id = ?").run(root.id)).toThrow('at most once');
   }, 120_000);
+
+  it('records combined validation only for the exact configured command without model-supplied environment changes', async () => {
+    const seen: { content: string; isError: boolean }[] = [];
+    const provider: ProviderAdapter = { probe: async () => { throw new Error('unused'); }, async *streamTurn(request) {
+      const stage = (request.continuation?.data as { stage?: string } | undefined)?.stage;
+      if (request.toolResults?.length) seen.push(...request.toolResults.map(item => ({ content: item.content, isError: item.isError })));
+      const command = (id: string, environment: Record<string, string>) => ({ id, name: 'run_command', arguments: { command: REQUIRED_VALIDATION.command, cwd: '', environment, timeoutMs: REQUIRED_VALIDATION.timeoutMs } });
+      if (!stage) { const call = command('with-environment', { FOUNDRY_FIXTURE_FLAG: 'pass' }); yield { type: 'tool_call', call }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'env', calls: [call] } } }; return; }
+      if (stage === 'env') { const call = command('exact', {}); yield { type: 'tool_call', call }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'exact', calls: [call] } } }; return; }
+      yield { type: 'text', text: 'done' }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'complete', calls: [] } } };
+    } };
+    harness = await createHarness(() => provider);
+    const root = await createCoordinated(harness);
+    await harness.runtime.dispatch('task.send', { taskId: root.id, content: 'validate' });
+    await approveUntil(harness, root.id, () => harness!.store.task(root.id).status !== 'running' && pendingApprovals(harness!, root.id).length === 0 && seen.length === 2);
+    expect(seen.map(item => item.isError)).toEqual([false, false]);
+    expect(JSON.parse(seen[0]!.content).evidenceId).toBeUndefined();
+    expect(JSON.parse(seen[1]!.content)).toMatchObject({ validationPassed: true });
+    const evidence = records().evidenceFor(root.id);
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]).toMatchObject({ kind: 'combined', passed: true, id: JSON.parse(seen[1]!.content).evidenceId });
+  }, 120_000);
+
+  it('reconciles an unknown child worktree creation from observed Git state: visible unknown, then proven complete', async () => {
+    let crash = true;
+    class CrashAfterCreate extends GitOperations {
+      override async createChildWorktree(source: string, id: string, base: string) {
+        if (!crash) return super.createChildWorktree(source, id, base);
+        crash = false; await super.createChildWorktree(source, id, base);
+        throw new GitOperationError('Simulated process failure after Git created the worktree.', 'unknown');
+      }
+    }
+    harness = await createHarness(undefined, { git: base => new CrashAfterCreate(base) });
+    const root = await createCoordinated(harness);
+    await harness.runtime.dispatch('task.send', { taskId: root.id, content: '/orchestrate-demo' });
+    const blocked = await waitFor(() => records().runs(root.id).find(run => run.role === 'child' && run.waitReason === 'reconciliation'));
+    expect(harness.store.detail(blocked.taskId).messages).toHaveLength(0);
+    const worktree = join(harness.directory, 'worktrees', 'children', blocked.taskId);
+    // An unexpected change in the created worktree keeps the outcome visibly unknown.
+    await writeFile(join(worktree, 'alpha.txt'), 'external change\n');
+    expect(await harness.runtime.dispatch('orchestration.reconcile', { rootTaskId: root.id, operationId: blocked.taskId })).toMatchObject({ kind: 'unknown' });
+    expect(records().run(blocked.taskId)).toMatchObject({ lifecycle: 'waiting', waitReason: 'reconciliation' });
+    await writeFile(join(worktree, 'alpha.txt'), 'alpha fixture\n');
+    expect(await harness.runtime.dispatch('orchestration.reconcile', { rootTaskId: root.id, operationId: blocked.taskId })).toMatchObject({ kind: 'complete' });
+    expect(harness.store.task(blocked.taskId).worktreePath.toLowerCase()).toContain(blocked.taskId);
+    await approveUntil(harness, root.id, () => records().run(root.id)?.lifecycle === 'terminal');
+    expect(records().run(root.id)?.outcome).toBe('succeeded');
+    expect(harness.store.db.prepare("SELECT COUNT(*) AS count FROM intents WHERE kind = 'child.worktree.create' AND state <> 'complete'").get()).toEqual({ count: 0 });
+  }, 240_000);
+
+  it('proves an unknown child worktree creation never happened before failing it with no effect', async () => {
+    let crash = true;
+    class CrashBeforeCreate extends GitOperations {
+      override async createChildWorktree(source: string, id: string, base: string) {
+        if (!crash) return super.createChildWorktree(source, id, base);
+        crash = false; throw new GitOperationError('Simulated process failure with no Git effect.', 'unknown');
+      }
+    }
+    harness = await createHarness(undefined, { git: base => new CrashBeforeCreate(base) });
+    const root = await createCoordinated(harness);
+    await harness.runtime.dispatch('task.send', { taskId: root.id, content: '/orchestrate-demo' });
+    const blocked = await waitFor(() => records().runs(root.id).find(run => run.role === 'child' && run.waitReason === 'reconciliation'));
+    expect(harness.runtime.orchestrator.ledger.summary(root.id).runs.find(run => run.taskId === blocked.taskId)?.released).toBe(false);
+    expect(await harness.runtime.dispatch('orchestration.reconcile', { rootTaskId: root.id, operationId: blocked.taskId })).toMatchObject({ kind: 'not-started' });
+    expect(records().run(blocked.taskId)).toMatchObject({ lifecycle: 'terminal', outcome: 'failed' });
+    expect(harness.runtime.orchestrator.ledger.summary(root.id).runs.find(run => run.taskId === blocked.taskId)?.released).toBe(true);
+    expect(git(harness.project, 'branch', '--list', `codex/child/${blocked.taskId}`)).toBe('');
+  }, 120_000);
+
+  it('keeps a dependent chain on the latest revision when a failed predecessor and its dependent are revised', async () => {
+    harness = await createHarness();
+    const root = await createCoordinated(harness);
+    await harness.runtime.dispatch('task.send', { taskId: root.id, content: '/orchestrate-demo' });
+    const alphaEdit = await waitFor(() => pendingApprovals(harness!, root.id).find(item => item.path === 'alpha.txt'));
+    await decide(harness, alphaEdit, 'reject');
+    await waitFor(() => assignment(root.id, 'alpha')?.state === 'incomplete' && assignment(root.id, 'gamma')?.state === 'revoked');
+    const alphaRevision = await harness.runtime.dispatch('orchestration.reviseAssignment', { rootTaskId: root.id, assignmentId: assignment(root.id, 'alpha').id, objective: 'Append the alpha child change again.', acceptance: ['alpha.txt ends with the change'] }) as { assignmentId: string };
+    const gammaRevision = await harness.runtime.dispatch('orchestration.reviseAssignment', { rootTaskId: root.id, assignmentId: assignment(root.id, 'gamma').id, objective: 'Append the gamma change after alpha.', acceptance: ['gamma.txt ends with the change'] }) as { assignmentId: string };
+    expect(records().effectiveAssignment(records().assignment(gammaRevision.assignmentId)!.dependsOn[0]!)?.id).toBe(alphaRevision.assignmentId);
+    // Free an admission slot so the scheduler evaluates the revised dependent (the bound is two active children).
+    const beta = records().run(assignment(root.id, 'beta').childTaskId!)!;
+    await harness.runtime.dispatch('orchestration.cancelChild', { rootTaskId: root.id, childTaskId: beta.taskId, generation: beta.generation });
+    await waitFor(() => records().assignment(gammaRevision.assignmentId)?.waitReason === 'dependencies');
+    expect(records().assignment(gammaRevision.assignmentId)).toMatchObject({ state: 'proposed', childTaskId: null });
+    expect(records().assignment(alphaRevision.assignmentId)?.createdBy).toBe('user');
+  }, 180_000);
+
+  it('rejects waiting on an assignment that cannot be admitted while no child is active', async () => {
+    const seen: { content: string; isError: boolean }[] = [];
+    const provider: ProviderAdapter = { probe: async () => { throw new Error('unused'); }, async *streamTurn(request) {
+      const stage = (request.continuation?.data as { stage?: string } | undefined)?.stage;
+      if (request.toolResults?.length) seen.push(...request.toolResults.map(item => ({ content: item.content, isError: item.isError })));
+      if (!stage) { const call = { id: 'solo-delegate', name: 'delegate_assignments', arguments: { assignments: [{ key: 'solo', objective: 'Change alpha', acceptance: ['changed'], writePaths: ['alpha.txt'], profileId: SECOND_PROFILE.id, allocation: 60000, dependsOn: [] }] } }; yield { type: 'tool_call', call }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'delegate', calls: [call] } } }; return; }
+      if (stage === 'delegate') { const id = JSON.parse(seen[0]!.content).assignments[0].assignmentId as string; const call = { id: 'solo-await', name: 'await_children', arguments: { assignmentIds: [id] } }; yield { type: 'tool_call', call }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'await', calls: [call] } } }; return; }
+      yield { type: 'text', text: 'stopped' }; yield { type: 'done', continuation: { apiKind: 'fake', data: { stage: 'complete', calls: [] } } };
+    } };
+    harness = await createHarness(() => provider);
+    const root = await createCoordinated(harness);
+    records().setCooldown(SECOND_PROFILE.id, new Date(Date.now() + 3_600_000).toISOString(), 'test rate limit');
+    await harness.runtime.dispatch('task.send', { taskId: root.id, content: 'delegate and wait' });
+    await waitFor(() => harness!.store.task(root.id).status !== 'running' && seen.length === 2);
+    expect(assignment(root.id, 'solo')).toMatchObject({ state: 'proposed', waitReason: 'profile-quota', childTaskId: null });
+    expect(seen[1]).toMatchObject({ isError: true }); expect(seen[1]!.content).toContain('profile-quota');
+    expect(records().run(root.id)?.lifecycle).toBe('waiting');
+  }, 60_000);
 
   it('keeps coordinated mode behind the build gate and the backed-up database upgrade while legacy tasks keep working', async () => {
     harness = await createHarness();

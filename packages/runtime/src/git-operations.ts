@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { gitEnvironment } from './git-environment';
 
 const execFile = promisify(execFileCallback);
 
@@ -146,7 +147,8 @@ export class GitOperations {
       if (verified !== normalizedBase) throw new Error('Base commit does not exist in the source repository.');
       const baseTree = (await this.git(projectRoot, ['rev-parse', '--verify', `${normalizedBase}^{tree}`])).stdout.trim();
 
-      await this.rejectTrackedFilters(projectRoot);
+      // Attributes are read from the base commit that will actually be checked out, not the source working tree.
+      await this.rejectTrackedFilters(projectRoot, normalizedBase);
 
       const id = this.requireChildId(childTaskId);
       const branch = `codex/child/${id}`;
@@ -160,6 +162,43 @@ export class GitOperations {
       await this.git(worktreePath, ['checkout', '--no-recurse-submodules', branch], { mutating: true });
 
       return { worktreePath, branch, baseCommit: normalizedBase, baseTree };
+    });
+  }
+
+  /**
+   * Read-only reconciliation of an interrupted or unknown child worktree creation. `complete`
+   * requires the app-owned branch at the exact base, a registered worktree at the expected path,
+   * and a clean checkout on that branch; `not-started` requires branch, registration and path to
+   * all be absent. Everything else stays unknown for inspection. Nothing is created or removed.
+   */
+  public async reconcileChildWorktree(
+    sourceProjectPath: string,
+    childTaskId: string,
+    baseCommit: string,
+  ): Promise<{ kind: 'complete'; worktreePath: string; branch: string; baseCommit: string; baseTree: string } | { kind: 'not-started' } | { kind: 'unknown'; detail: string }> {
+    return this.guardedNone(async () => {
+      const projectRoot = await this.requireRepository(sourceProjectPath);
+      if (!/^[0-9a-f]{40}$/i.test(baseCommit)) throw new Error('Base commit must be a full 40-character hex commit id.');
+      const base = baseCommit.toLowerCase();
+      const id = this.requireChildId(childTaskId);
+      const branch = `codex/child/${id}`;
+      const worktreePath = path.join(await this.prepareChildrenBase(), id);
+      const ref = await this.git(projectRoot, ['rev-parse', '--verify', '-q', `refs/heads/${branch}^{commit}`], { allowNonZero: true });
+      if (ref.exitCode !== 0 && ref.exitCode !== 1) return { kind: 'unknown' as const, detail: 'The child branch could not be inspected.' };
+      const branchHead = ref.exitCode === 0 ? ref.stdout.trim().toLowerCase() : null;
+      const listing = (await this.git(projectRoot, ['worktree', 'list', '--porcelain', '-z'])).stdout.split('\0');
+      const normalize = (value: string): string => path.resolve(value).toLowerCase();
+      const registered = listing.some((entry) => entry.startsWith('worktree ') && normalize(entry.slice('worktree '.length)) === normalize(worktreePath));
+      const pathExists = await fs.lstat(worktreePath).then(() => true, (error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return false; throw error; });
+      if (!branchHead && !registered && !pathExists) return { kind: 'not-started' as const };
+      if (branchHead === base && registered && pathExists) {
+        const current = await this.state(worktreePath);
+        if (current.head.toLowerCase() === base && current.branch === branch && current.clean && current.operation === 'none') {
+          const baseTree = (await this.git(projectRoot, ['rev-parse', '--verify', `${base}^{tree}`])).stdout.trim();
+          return { kind: 'complete' as const, worktreePath, branch, baseCommit: base, baseTree };
+        }
+      }
+      return { kind: 'unknown' as const, detail: `branch ${branchHead ? (branchHead === base ? 'at base' : 'moved') : 'absent'}, worktree ${registered ? 'registered' : 'unregistered'}, path ${pathExists ? 'present' : 'absent'}` };
     });
   }
 
@@ -208,6 +247,8 @@ export class GitOperations {
           try {
             const lstat = await fs.lstat(full);
             if (lstat.isSymbolicLink()) worktreeMode = '120000';
+            // An untracked directory is reported only when Git treats it as an embedded repository; staging it would create a gitlink.
+            else if (lstat.isDirectory() || record.path.endsWith('/')) worktreeMode = '160000';
           } catch {
             worktreeMode = null;
           }
@@ -286,6 +327,7 @@ export class GitOperations {
       for (const relativePath of uniquePaths) {
         if (this.hasForbiddenSegment(relativePath)) throw new Error(`Path uses a forbidden .git segment: ${relativePath}`);
         if (relativePath.toLowerCase() === '.gitmodules') throw new Error('Changes to .gitmodules are not permitted.');
+        if (path.posix.basename(relativePath).toLowerCase() === '.gitattributes') throw new Error('Changes to .gitattributes are not permitted in a handoff.');
         if (!input.allowed(relativePath)) throw new Error(`Path is outside the approved scope: ${relativePath}`);
       }
 
@@ -316,6 +358,8 @@ export class GitOperations {
           if (entry.worktreeMode && DANGEROUS_MODES.has(entry.worktreeMode)) throw new Error(`Path has a symlink or gitlink worktree mode: ${relativePath}`);
         }
       }
+
+      await this.rejectFilterAttributes(worktreePath, uniquePaths);
 
       const committerIdent = await this.git(worktreePath, ['var', 'GIT_COMMITTER_IDENT'], { allowNonZero: true });
       if (committerIdent.exitCode !== 0 || !committerIdent.stdout.trim()) throw new Error('A committer identity is not available.');
@@ -502,7 +546,10 @@ export class GitOperations {
         if (DANGEROUS_MODES.has(entry.oldMode) || DANGEROUS_MODES.has(entry.newMode)) {
           throw new Error(`Path has a symlink or gitlink mode: ${entry.path}`);
         }
+        if (path.posix.basename(entry.path).toLowerCase() === '.gitattributes' || entry.path.toLowerCase() === '.gitmodules') throw new Error(`Integration cannot change Git attribute or submodule files: ${entry.path}`);
       }
+      await this.rejectFilterAttributes(worktreePath, manifestPaths);
+      await this.rejectFilterAttributes(worktreePath, manifestPaths, info.sha);
 
       const committerIdent = await this.git(worktreePath, ['var', 'GIT_COMMITTER_IDENT'], { allowNonZero: true });
       if (committerIdent.exitCode !== 0 || !committerIdent.stdout.trim()) throw new Error('A committer identity is not available.');
@@ -874,14 +921,24 @@ export class GitOperations {
     return root;
   }
 
-  private async rejectTrackedFilters(repositoryRoot: string): Promise<void> {
-    const tracked = (await this.git(repositoryRoot, ['ls-files', '-z'])).stdout.split('\0').filter(Boolean);
+  private async rejectTrackedFilters(repositoryRoot: string, source: string): Promise<void> {
+    const tracked = (await this.git(repositoryRoot, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', source])).stdout.split('\0').filter(Boolean);
     if (tracked.length > MAX_PATHS) throw new Error('Repository has too many tracked paths to safely inspect filters.');
-    for (let index = 0; index < tracked.length; index += 100) {
-      const batch = tracked.slice(index, index + 100);
-      const values = (await this.git(repositoryRoot, ['check-attr', '-z', 'filter', '--', ...batch])).stdout.split('\0');
+    await this.rejectFilterAttributes(repositoryRoot, tracked, source);
+  }
+
+  /**
+   * Filters (clean/smudge/process) can execute configured programs during staging, checkout and
+   * cherry-pick. Reject any path whose effective `filter` attribute is set, reading attributes from
+   * the working tree and, when given, from the exact source commit (`check-attr --source`).
+   */
+  private async rejectFilterAttributes(cwd: string, paths: string[], source?: string): Promise<void> {
+    for (let index = 0; index < paths.length; index += 100) {
+      const batch = paths.slice(index, index + 100);
+      if (!batch.length) continue;
+      const values = (await this.git(cwd, ['check-attr', '-z', ...(source ? [`--source=${source}`] : []), 'filter', '--', ...batch])).stdout.split('\0');
       if (values.some((value, position) => position % 3 === 2 && value && value !== 'unspecified')) {
-        throw new Error('Repository uses Git filters; refusing checkout because filters may execute code.');
+        throw new Error('A path uses a Git filter attribute; refusing because filters may execute code.');
       }
     }
   }
@@ -1010,12 +1067,7 @@ export class GitOperations {
       '-c', 'protocol.allow=never', '-c', 'merge.renames=false',
     ];
     const config = options.mutating ? [...baseConfig, ...mutatingConfig] : baseConfig;
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_TERMINAL_PROMPT: '0',
-      ...(options.mutating ? { GIT_EDITOR: ':', GIT_SEQUENCE_EDITOR: ':', GIT_NO_LAZY_FETCH: '1', GIT_MERGE_AUTOEDIT: 'no' } : {}),
-    };
+    const env = gitEnvironment(options.mutating ? { GIT_EDITOR: ':', GIT_SEQUENCE_EDITOR: ':', GIT_NO_LAZY_FETCH: '1', GIT_MERGE_AUTOEDIT: 'no' } : {});
     try {
       const executable = await this.getGitExecutable(cwd);
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', ...config, ...args], {

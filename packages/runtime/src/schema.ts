@@ -268,6 +268,15 @@ export const V2_MIGRATION = `
     updated_at TEXT NOT NULL
   );
 
+  CREATE TRIGGER assignments_no_delete BEFORE DELETE ON assignments BEGIN SELECT RAISE(ABORT, 'assignments are retained'); END;
+  CREATE TRIGGER agent_runs_no_delete BEFORE DELETE ON agent_runs BEGIN SELECT RAISE(ABORT, 'agent runs are retained'); END;
+  CREATE TRIGGER budget_holds_no_delete BEFORE DELETE ON budget_holds BEGIN SELECT RAISE(ABORT, 'budget holds are retained'); END;
+  CREATE TRIGGER budget_reservations_no_delete BEFORE DELETE ON budget_reservations BEGIN SELECT RAISE(ABORT, 'budget reservations are retained'); END;
+  CREATE TRIGGER wait_operations_no_delete BEFORE DELETE ON wait_operations BEGIN SELECT RAISE(ABORT, 'waits are retained'); END;
+  CREATE TRIGGER handoff_operations_no_delete BEFORE DELETE ON handoff_operations BEGIN SELECT RAISE(ABORT, 'handoff operations are retained'); END;
+  CREATE TRIGGER integration_operations_no_delete BEFORE DELETE ON integration_operations BEGIN SELECT RAISE(ABORT, 'integration operations are retained'); END;
+  CREATE TRIGGER validation_no_delete BEFORE DELETE ON validation_evidence BEGIN SELECT RAISE(ABORT, 'validation evidence is retained'); END;
+
   CREATE TABLE task_completions (
     root_task_id TEXT PRIMARY KEY REFERENCES tasks(id),
     head TEXT NOT NULL,
@@ -277,4 +286,5 @@ export const V2_MIGRATION = `
     created_at TEXT NOT NULL
   );
   CREATE TRIGGER task_completions_immutable BEFORE UPDATE ON task_completions BEGIN SELECT RAISE(ABORT, 'completion records are immutable'); END;
+  CREATE TRIGGER task_completions_no_delete BEFORE DELETE ON task_completions BEGIN SELECT RAISE(ABORT, 'completion records are retained'); END;
 `;

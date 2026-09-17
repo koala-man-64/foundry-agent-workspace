@@ -90,9 +90,12 @@ export class Orchestrator implements OrchestrationToolHooks {
 
   commandStarting(task: Task): Promise<WorktreeState> { return this.git.state(task.worktreePath); }
 
-  async commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult): Promise<{ evidenceId: string; passed: boolean } | undefined> {
+  async commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult, requestedEnvironment: Record<string, string>): Promise<{ evidenceId: string; passed: boolean } | undefined> {
     const run = this.records.run(task.id);
     if (!run || !approval.command || approval.cwd === undefined) return undefined;
+    // Validation is configured without environment changes. A run with any model-supplied variables
+    // is not the configured command, so it never becomes child or combined validation evidence.
+    if (Object.keys(requestedEnvironment).length) return undefined;
     const root = this.store.task(run.rootTaskId);
     const relativeCwd = await this.relativeCwd(task.worktreePath, approval.cwd);
     let kind: 'child' | 'combined';
@@ -211,9 +214,10 @@ export class Orchestrator implements OrchestrationToolHooks {
       const assignment = this.records.assignment(id);
       if (!assignment || assignment.rootTaskId !== root.id) throw new ToolFailure('Every awaited assignment must belong to this task.');
       if (assignment.state === 'proposed') {
-        const predecessors = assignment.dependsOn.map(item => this.records.assignment(item)!);
+        const predecessors = assignment.dependsOn.map(item => this.records.effectiveAssignment(item)!);
         if (predecessors.some(item => item.state !== 'integrated')) throw new ToolFailure(`Assignment ${assignment.key} depends on predecessors that must be integrated and validated first; waiting now would never finish.`);
-        if (this.records.activeChildren(root.id) === 0 && assignment.waitReason === 'task-budget') throw new ToolFailure(`Assignment ${assignment.key} cannot be admitted within the remaining budget.`);
+        // With no active child, nothing would release budget or reschedule a profile wait while the coordinator is parked.
+        if (this.records.activeChildren(root.id) === 0 && (assignment.waitReason === 'task-budget' || assignment.waitReason === 'profile-quota')) throw new ToolFailure(`Assignment ${assignment.key} cannot be admitted now (${assignment.waitReason}); waiting would never finish.`);
       }
       return assignment;
     });
@@ -539,7 +543,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     const target = await this.git.state(root.worktreePath);
     const active = this.records.activeIntegration(rootTaskId);
     for (const assignment of proposed) {
-      const predecessors = assignment.dependsOn.map(id => this.records.assignment(id)!);
+      const predecessors = assignment.dependsOn.map(id => this.records.effectiveAssignment(id)!);
       if (predecessors.some(item => FAILED_ASSIGNMENT.has(item.state))) {
         this.records.setAssignmentState(assignment.id, 'revoked', 'dependencies');
         this.publish('orchestration.assignment-revoked', { assignmentId: assignment.id, reason: 'A predecessor did not complete; the dependent assignment will not start.' }, rootTaskId);
@@ -710,15 +714,16 @@ export class Orchestrator implements OrchestrationToolHooks {
       if (child.role !== 'child') continue;
       for (const handoff of this.records.handoffs(child.taskId)) if (handoff.state === 'unknown') await this.reconcile(rootTaskId, handoff.id).catch(() => undefined);
       if (child.lifecycle === 'terminal' || this.port.isRunning(child.taskId)) continue;
+      if (child.waitReason === 'reconciliation') { await this.reconcileProvisioning(rootTaskId, child.taskId).catch(() => undefined); continue; }
       const assignment = this.records.assignment(child.assignmentId!)!;
-      const neverStarted = child.waitReason !== 'reconciliation' && Boolean(assignment.baseCommit) && this.store.detail(child.taskId).messages.length === 0;
+      const neverStarted = Boolean(assignment.baseCommit) && this.store.detail(child.taskId).messages.length === 0;
       if (neverStarted && !run.cancelRequested) {
         // Proven never started: no provider request or tool call exists for this child.
         try { this.port.startTurn(child.taskId, childBrief(assignment), this.hooks()); } catch { this.finishChild(child.taskId, 'failed'); }
         continue;
       }
       // Interrupted child turns are never resumed silently; they become incomplete (or succeeded when a result was already recorded).
-      this.finishChild(child.taskId, child.waitReason === 'reconciliation' ? 'failed' : 'incomplete');
+      this.finishChild(child.taskId, 'incomplete');
     }
     let delivered = 0;
     const state = this.store.providerState(rootTaskId);
@@ -856,6 +861,8 @@ export class Orchestrator implements OrchestrationToolHooks {
   async reconcile(rootTaskId: string, operationId: string): Promise<{ kind: string; detail: string }> {
     this.store.requireOrchestration();
     const root = this.store.task(rootTaskId);
+    const childRun = this.records.run(operationId);
+    if (childRun?.role === 'child') return this.reconcileProvisioning(rootTaskId, operationId);
     const integration = this.records.integration(operationId);
     if (integration) {
       if (integration.rootTaskId !== rootTaskId) throw new Error('Operation not found for this task.');
@@ -875,7 +882,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     if (handoff.state !== 'unknown') throw new Error('Only an unknown handoff can be checked.');
     const child = this.store.task(handoff.childTaskId);
     const prepared = handoff.prepared as { manifest: { entries: never[]; sha256: string } };
-    const outcome = await this.git.reconcileHandoff(child.worktreePath, { branch: handoff.branch, expectedHead: handoff.expectedHead, manifest: prepared.manifest, ...(handoff.stagedTree ? { tree: handoff.stagedTree } : {}), ...(handoff.commit ? { commit: handoff.commit } : {}) });
+    const outcome = await this.git.reconcileHandoff(child.worktreePath, { branch: handoff.branch, expectedHead: handoff.expectedHead, manifest: prepared.manifest });
     const approval = this.store.approval(handoff.approvalId);
     this.store.transaction(() => {
       if (outcome.kind === 'complete') { this.records.updateHandoff(handoff.id, { state: 'complete', commit: outcome.commit, stagedTree: outcome.tree }); approval.state = 'complete'; approval.result = { content: JSON.stringify({ reconciled: true, commit: outcome.commit, tree: outcome.tree }), isError: false }; }
@@ -884,6 +891,43 @@ export class Orchestrator implements OrchestrationToolHooks {
       this.tools.saveApproval(approval);
     });
     return { kind: outcome.kind, detail: outcome.kind === 'unknown' ? this.redactor.text(outcome.detail).slice(0, 500) : 'Read-only reconciliation from observed Git state.' };
+  }
+
+  /**
+   * Read-only reconciliation of a child whose worktree creation outcome is unknown. A proven
+   * creation continues as never started; a proven absence fails with no effect; anything else
+   * stays visibly blocked. Nothing is retried, created or deleted here.
+   */
+  private async reconcileProvisioning(rootTaskId: string, childTaskId: string): Promise<{ kind: string; detail: string }> {
+    const run = this.records.requireRun(childTaskId, rootTaskId);
+    if (run.role !== 'child' || run.lifecycle !== 'waiting' || run.waitReason !== 'reconciliation') throw new Error('Only a child whose worktree creation outcome is unknown can be checked.');
+    const root = this.store.task(rootTaskId); const child = this.store.task(childTaskId);
+    const assignment = this.records.assignment(run.assignmentId!)!;
+    const intent = this.records.provisioningIntent(childTaskId);
+    const outcome = await this.git.reconcileChildWorktree(root.projectPath, childTaskId, child.baseCommit);
+    if (outcome.kind === 'unknown') {
+      this.publish('orchestration.child-provision-unknown', { childTaskId, detail: this.redactor.text(outcome.detail).slice(0, 500) }, rootTaskId);
+      return { kind: 'unknown', detail: `Worktree creation remains unknown: ${this.redactor.text(outcome.detail).slice(0, 500)}. The child stays blocked for inspection.` };
+    }
+    if (outcome.kind === 'not-started') {
+      if (intent) this.store.finishIntent(intent.id, 'complete');
+      this.finishChild(childTaskId, 'failed');
+      return { kind: 'not-started', detail: 'Read-only reconciliation proved the worktree was never created. The assignment failed with no repository effect.' };
+    }
+    this.store.transaction(() => {
+      this.store.saveTask({ ...this.store.task(childTaskId), worktreePath: outcome.worktreePath, branch: outcome.branch, baseCommit: outcome.baseCommit });
+      if (!assignment.baseCommit) this.records.recordBase(assignment.id, outcome.baseCommit, outcome.baseTree);
+      if (intent) this.store.finishIntent(intent.id, 'complete');
+      this.records.setLifecycle(childTaskId, 'queued');
+    });
+    this.publish('orchestration.child-provision-reconciled', { childTaskId, worktreePath: outcome.worktreePath }, rootTaskId);
+    const rootRun = this.records.run(rootTaskId)!;
+    if (run.cancelRequested || rootRun.cancelRequested) { this.finishChild(childTaskId, 'cancelled'); return { kind: 'complete', detail: 'Worktree creation was proven complete; the child was already cancelled and did not start.' }; }
+    if (this.store.detail(childTaskId).messages.length === 0) {
+      try { this.port.startTurn(childTaskId, childBrief(this.records.assignment(assignment.id)!), this.hooks()); }
+      catch { this.finishChild(childTaskId, 'failed'); }
+    }
+    return { kind: 'complete', detail: 'Read-only reconciliation proved the exact child worktree exists; the never-started child was scheduled.' };
   }
 
   // ---------------------------------------------------------------- views
