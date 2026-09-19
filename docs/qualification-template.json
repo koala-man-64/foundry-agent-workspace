@@ -1,0 +1,66 @@
+{
+  "timestamp": "2026-09-19T14:49:48.535Z",
+  "endpoint": "https://mock.openai.azure.com",
+  "deployment": "mock-deployment",
+  "apiKind": "responses",
+  "fingerprint": "4a1a35561fb6a1f7760c6d1cdf6f5d14df56f6dc9201a12a10d4654ea2eeae52",
+  "mock": true,
+  "capabilities": {
+    "streaming": true,
+    "toolCalling": true,
+    "toolContinuation": true,
+    "cancellation": true,
+    "usageAccounting": true
+  },
+  "checks": {
+    "streaming": {
+      "ok": true,
+      "detail": "Streamed 13 character(s) of text and received a completion signal.",
+      "timeToFirstTokenMs": 27,
+      "totalStreamMs": 59
+    },
+    "toolCalling": {
+      "ok": true,
+      "detail": "Received exactly one completed tool call with the nonce argument intact.",
+      "toolCall": {
+        "id": "call-1",
+        "name": "report_nonce",
+        "arguments": {
+          "nonce": "42e81009-10f3-4e36-a7b0-4f4e50551333"
+        }
+      }
+    },
+    "toolContinuation": {
+      "ok": true,
+      "detail": "Continued the conversation past the tool result and preserved any opaque reasoning/signature data unchanged.",
+      "preservedOpaqueContinuationData": true
+    },
+    "cancellation": {
+      "ok": true,
+      "detail": "The stream terminated with an abort error promptly after the client cancelled it.",
+      "teardownMs": 0,
+      "timeToFirstTokenMs": 16
+    },
+    "usageAccounting": {
+      "ok": true,
+      "detail": "Prompt and completion token counts were reported; cache token fields were parsed or explicitly marked unknown.",
+      "usage": {
+        "promptTokens": 18,
+        "completionTokens": 6,
+        "cacheReadTokens": 4,
+        "cacheCreationTokens": "unknown"
+      }
+    }
+  },
+  "latency": {
+    "timeToFirstTokenMs": 27,
+    "totalStreamMs": 59,
+    "cancellationTeardownMs": 0
+  },
+  "usage": {
+    "promptTokens": 18,
+    "completionTokens": 6,
+    "cacheReadTokens": 4,
+    "cacheCreationTokens": "unknown"
+  }
+}
