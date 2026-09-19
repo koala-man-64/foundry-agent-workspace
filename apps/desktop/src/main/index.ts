@@ -35,8 +35,12 @@ else {
     if (!app.isPackaged && developmentUrl && (expectedUrl.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(expectedUrl.hostname) || expectedUrl.username || expectedUrl.password)) throw new Error('Development UI must use a local HTTP origin.');
     const authorize = (event: Electron.IpcMainInvokeEvent): void => {
       if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('Untrusted IPC sender.');
-      const actual = new URL(event.senderFrame.url);
-      if (actual.origin !== expectedUrl.origin || actual.pathname !== expectedUrl.pathname) throw new Error('Untrusted IPC origin.');
+      let actual: URL;
+      // An unparsable frame URL is never the loaded renderer, and an unusable URL must not surface a parser error.
+      try { actual = new URL(event.senderFrame.url); } catch { throw new Error('Untrusted IPC origin.'); }
+      // `origin` is the opaque value "null" for file: and for every non-special scheme alike, so it cannot
+      // separate the packaged renderer from a foreign scheme carrying the same path; compare the scheme too.
+      if (actual.protocol !== expectedUrl.protocol || actual.origin !== expectedUrl.origin || actual.pathname !== expectedUrl.pathname) throw new Error('Untrusted IPC origin.');
     };
     const binding = (profile: ModelProfile): string => JSON.stringify([profile.apiKind, profile.endpoint, profile.deployment]);
     const credentialsLoaded = new Set<string>();
