@@ -7,5 +7,6 @@ playwright-report/
 .local/
 *.log
 *.db*
+/qualification-report.json
 .env*
 !.env.example
