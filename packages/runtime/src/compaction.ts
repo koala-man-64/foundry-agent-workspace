@@ -80,7 +80,7 @@ export function applyCompactions(messages: OrdinalMessage[], compactions: Compac
     if (message.status !== 'complete') continue;
     const range = ordered.find(record => message.ordinal >= record.fromOrdinal && message.ordinal <= record.toOrdinal);
     if (!range) { output.push({ role: message.role, content: message.content }); continue; }
-    if (!emitted.has(range.id)) { emitted.add(range.id); output.push({ role: 'system', content: range.summary }); }
+    if (!emitted.has(range.id)) { emitted.add(range.id); output.push({ role: 'user', content: range.summary }); }
   }
   return output;
 }
@@ -173,7 +173,7 @@ export function compactContinuation(continuation: ProviderContinuation, summary:
   const items = data[key] as Record<string, unknown>[];
   const boundaries = items.map((item, index) => isUserBoundary(kind, item) ? index : -1).filter(index => index >= 0);
   if (boundaries.length <= Math.max(1, keepRecentTurns)) throw new CompactionError('Nothing to compact: the native conversation has no earlier user turns beyond the recent turns that are kept verbatim.');
-  const summaryItem: Record<string, unknown> = kind === 'anthropic' ? { role: 'user', content: [{ type: 'text', text: summary }] } : kind === 'responses' ? { role: 'system', content: summary } : { role: 'system', content: summary };
+  const summaryItem: Record<string, unknown> = kind === 'anthropic' ? { role: 'user', content: [{ type: 'text', text: summary }] } : { role: 'user', content: summary };
   // Cut at the boundary that keeps exactly `keepRecentTurns` user turns; fall back to earlier boundaries (removing less) if validation rejects a cut.
   const candidates = boundaries.slice(1, boundaries.length - Math.max(1, keepRecentTurns) + 1).reverse();
   let lastIssues: string[] = [];

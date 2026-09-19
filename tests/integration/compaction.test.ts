@@ -85,7 +85,7 @@ describe('controlled compaction and usage visibility', () => {
 
     await send(task.id, 'After compaction');
     const request = requests[requests.length - 1]!;
-    expect(request.messages[0]).toEqual({ role: 'system', content: record.summary });
+    expect(request.messages[0]).toEqual({ role: 'user', content: record.summary });
     expect(request.messages.map(message => message.content)).not.toContain(filler(1));
     expect(request.messages.map(message => message.content)).toContain(filler(5));
     expect(request.messages.at(-1)).toEqual({ role: 'user', content: 'After compaction' });
@@ -109,7 +109,7 @@ describe('controlled compaction and usage visibility', () => {
     const record = await runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 2 }) as CompactionRecord;
     const compacted = (store.providerState(task.id)!.continuation.data as { messages: Record<string, unknown>[] }).messages;
     expect(compacted[0]).toEqual(items[0]);
-    expect(compacted[1]).toEqual({ role: 'system', content: record.summary });
+    expect(compacted[1]).toEqual({ role: 'user', content: record.summary });
     expect(compacted[2]).toEqual({ role: 'user', content: 'third turn' });
     expect(compacted.some(item => item.role === 'tool')).toBe(false);
     expect(record.estimatedTokensAfter).toBeLessThan(record.estimatedTokensBefore);
@@ -144,5 +144,13 @@ describe('controlled compaction and usage visibility', () => {
     await expect(runtime.dispatch('task.compact', { taskId: coding.id, keepRecent: 1 })).rejects.toThrow('failed provider continuation validation');
     expect(store.providerState(coding.id)).toEqual(broken);
     expect(store.compactions(coding.id)).toEqual([]);
+  });
+
+  it('refuses compaction when the summary would not reduce context size', async () => {
+    const task = await runtime.dispatch('task.create', { title: 'Tiny', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
+    await send(task.id, 'short 1');
+    await send(task.id, 'short 2');
+    await send(task.id, 'short 3');
+    await expect(runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 1 })).rejects.toThrow('would not reduce context size');
   });
 });

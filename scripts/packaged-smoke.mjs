@@ -101,7 +101,7 @@ try {
 
   // 3. Controlled compaction of a chat task retains every original message and records the summary range.
   const chat = await invoke('task.create', { title: 'Packaged compaction smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'chat', tokenBudget: 200000 });
-  for (const content of ['alpha direction', 'beta direction', 'gamma direction']) {
+  for (const content of ['alpha direction '.repeat(30).trim(), 'beta direction '.repeat(30).trim(), 'gamma direction '.repeat(30).trim()]) {
     await invoke('task.send', { taskId: chat.id, content });
     for (let i = 0; i < 200 && (await invoke('task.get', { taskId: chat.id })).task.status === 'running'; i++) await delay(50);
   }

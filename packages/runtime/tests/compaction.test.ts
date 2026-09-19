@@ -12,7 +12,7 @@ describe('message compaction', () => {
     expect(plan.messages.map(item => item.ordinal)).toEqual([1, 2, 3]);
     const record = { id: 'c1', taskId: 't', fromOrdinal: 1, toOrdinal: 3, messageIds: ['m1', 'm2', 'm3'], summary: 'S', estimatedTokensBefore: 10, estimatedTokensAfter: 5, createdAt: at(9) };
     expect(() => planMessageCompaction(history, [record], 2)).toThrow('Nothing to compact');
-    expect(applyCompactions(history, [record])).toEqual([{ role: 'system', content: 'S' }, { role: 'assistant', content: 'second answer' }, { role: 'user', content: 'third' }]);
+    expect(applyCompactions(history, [record])).toEqual([{ role: 'user', content: 'S' }, { role: 'assistant', content: 'second answer' }, { role: 'user', content: 'third' }]);
   });
   it('writes a bounded deterministic summary that names reviewed actions and stays labelled as data', () => {
     const summary = summarizeMessages(history.slice(0, 3), [{ tool: 'replace_text', state: 'complete', path: 'README.md', createdAt: at(2) }, { tool: 'run_command', state: 'rejected', createdAt: at(8) }]);
@@ -46,7 +46,7 @@ describe('continuation compaction', () => {
     const result = compactContinuation(responses(), 'SUMMARY', 2);
     const input = (result.continuation.data as { input: Record<string, unknown>[] }).input;
     expect(input[0]).toEqual({ role: 'system', content: 'SYSTEM' });
-    expect(input[1]).toEqual({ role: 'system', content: 'SUMMARY' });
+    expect(input[1]).toEqual({ role: 'user', content: 'SUMMARY' });
     expect(input[2]).toEqual({ role: 'user', content: 'u2' });
     expect(input.some(item => item.call_id === 'c1')).toBe(false);
     expect(input.at(-1)).toMatchObject({ type: 'function_call', call_id: 'c3' });
@@ -57,7 +57,7 @@ describe('continuation compaction', () => {
   it('keeps assistant tool_calls with their tool results together for Chat Completions', () => {
     const result = compactContinuation(chat(), 'SUMMARY', 1);
     const messages = (result.continuation.data as { messages: Record<string, unknown>[] }).messages;
-    expect(messages.map(item => item.role)).toEqual(['system', 'system', 'user', 'assistant']);
+    expect(messages.map(item => item.role)).toEqual(['system', 'user', 'user', 'assistant']);
     expect(continuationIssues(result.continuation)).toEqual([]);
     expect(() => compactContinuation(chat(), 'SUMMARY', 3)).toThrow('Nothing to compact');
   });

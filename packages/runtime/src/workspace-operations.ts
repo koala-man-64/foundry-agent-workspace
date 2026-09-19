@@ -47,6 +47,9 @@ export class WorkspaceOperations {
     const nextState = state && compacted ? { ...state, continuation: compacted.continuation } : undefined;
     const record: CompactionRecord = { id: randomUUID(), taskId, fromOrdinal: plan.fromOrdinal, toOrdinal: plan.toOrdinal, messageIds: plan.messages.map(message => message.id), summary, estimatedTokensBefore: before, estimatedTokensAfter: 0, createdAt: new Date().toISOString() };
     record.estimatedTokensAfter = nextState ? estimateContinuationTokens(nextState.continuation) : Buffer.byteLength(JSON.stringify(applyCompactions(messages, [...existing, record])), 'utf8');
+    if (record.estimatedTokensAfter >= record.estimatedTokensBefore) {
+      throw new Error('Compaction would not reduce context size for this message range.');
+    }
     this.store.transaction(() => {
       this.store.saveCompaction(record, state, nextState);
       if (nextState) this.store.saveProviderState(taskId, nextState);

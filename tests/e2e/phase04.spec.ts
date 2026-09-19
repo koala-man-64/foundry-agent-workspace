@@ -39,13 +39,14 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
 
     // 1. Compaction of a chat task keeps the originals visible and shows the runtime summary and usage.
     const chat = await createTask('Compaction task', 'chat');
-    for (const content of ['first direction', 'second direction', 'third direction']) await send(content);
+    const first = 'first direction '.repeat(30).trim();
+    for (const content of [first, 'second direction '.repeat(30).trim(), 'third direction '.repeat(30).trim()]) await send(content);
     await page.getByRole('button', { name: 'Compact context', exact: true }).first().click();
     await expect(page.getByRole('status')).toContainText('Compacted 2 earlier messages');
     await expect(page.locator('article.compaction-summary')).toHaveCount(1);
     await expect(page.locator('article.compaction-summary')).toContainText('runtime-generated');
     await expect(page.locator('article.message.compacted')).toHaveCount(2);
-    await expect(page.getByText('Fake response: first direction', { exact: true })).toBeVisible();
+    await expect(page.getByText(`Fake response: ${first}`, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Usage', exact: true }).click();
     await expect(page.getByTestId('usage-panel')).toContainText('2 messages');
     await expect(page.getByTestId('usage-panel')).toContainText('Requests');
