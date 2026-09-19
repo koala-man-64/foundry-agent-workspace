@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foundry Agent Workspace — System Recreation &amp; Implementation Guide</title>
+<style>
+:root {
+  --paper: #f5f2e9;
+  --ink: #172f32;
+  --muted: #526467;
+  --line: #cbd1c7;
+  --accent: #b44c2b;
+  --white: #fffef9;
+  --green: #dce7df;
+  --green-dark: #2d5a3f;
+  --blue: #e0ecf4;
+  --blue-dark: #1f4e79;
+  --warn: #fff3cd;
+  --warn-dark: #856404;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 30px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.65 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+a { color: inherit; text-underline-offset: 4px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+
+.shell { max-width: 1380px; margin: auto; display: grid; grid-template-columns: 280px 1fr; gap: 48px; padding: 40px 32px; }
+aside { position: sticky; top: 32px; align-self: start; font-size: 14px; max-height: calc(100vh - 64px); overflow-y: auto; padding-right: 12px; }
+aside .brand { font-weight: 800; font-size: 18px; line-height: 1.3; margin-bottom: 24px; letter-spacing: -0.5px; }
+aside .brand span { color: var(--accent); }
+nav a { display: block; padding: 8px 0; text-decoration: none; border-bottom: 1px solid var(--line); color: var(--ink); font-size: 13.5px; }
+nav a:hover { color: var(--accent); }
+
+/* Progress widget */
+.progress-card { background: var(--white); border: 1px solid var(--line); padding: 16px; margin: 20px 0; border-radius: 4px; }
+.progress-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.progress-bar-wrap { background: var(--line); height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+.progress-bar { background: var(--accent); height: 100%; width: 0%; transition: width 0.3s ease; }
+.progress-stats { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+.progress-actions { display: flex; gap: 8px; margin-top: 12px; }
+.progress-actions button { flex: 1; padding: 6px 8px; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; border: 1px solid var(--line); background: var(--paper); }
+.progress-actions button:hover { background: var(--line); }
+
+.tag, .eyebrow { font: 700 12px/1.5 Consolas, monospace; letter-spacing: 1.5px; text-transform: uppercase; }
+.tag { display: inline-block; padding: 5px 9px; border: 1px solid var(--line); background: var(--white); }
+.eyebrow { color: var(--accent); }
+
+header { padding: 24px 0 40px; border-bottom: 3px solid var(--ink); }
+h1 { font: normal clamp(38px, 4.8vw, 68px)/1.06 Georgia, serif; letter-spacing: -2px; margin: 20px 0 16px; }
+h2 { font: normal 32px/1.22 Georgia, serif; margin: 12px 0 20px; }
+h3 { font-size: 20px; margin: 24px 0 10px; }
+h4 { font-size: 16px; font-weight: 700; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+p { margin: 10px 0 16px; }
+.lead { font-size: 20px; line-height: 1.55; max-width: 820px; color: var(--ink); }
+.meta { font-size: 13.5px; color: var(--muted); }
+
+section { padding: 40px 0; border-bottom: 1px solid var(--line); }
+ul, ol { padding-left: 24px; }
+li { margin: 8px 0; }
+
+.note { background: var(--green); padding: 18px 22px; border-left: 4px solid var(--green-dark); margin: 22px 0; font-size: 15px; }
+.warn-box { background: var(--warn); padding: 18px 22px; border-left: 4px solid var(--warn-dark); margin: 22px 0; font-size: 15px; }
+.info-box { background: var(--blue); padding: 18px 22px; border-left: 4px solid var(--blue-dark); margin: 22px 0; font-size: 15px; }
+.small { font-size: 13.5px; color: var(--muted); }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 20px 0; }
+.panel { background: var(--white); padding: 22px; border: 1px solid var(--line); }
+main { min-width: 0; }
+
+.table-wrap { overflow-x: auto; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; background: var(--ink); color: var(--paper); font-weight: 600; }
+td, th { padding: 12px 14px; vertical-align: top; border-bottom: 1px solid var(--line); }
+code { font: 13.5px/1.4 Consolas, Monaco, monospace; background: #e8e9e0; padding: 2px 5px; border-radius: 2px; }
+pre { background: #1a2324; color: #f0f3ed; padding: 16px 20px; overflow-x: auto; font: 13px/1.55 Consolas, Monaco, monospace; border-radius: 4px; margin: 16px 0; }
+pre code { background: none; color: inherit; padding: 0; }
+
+details { border-top: 1px solid var(--line); padding: 16px 0; }
+summary { cursor: pointer; font-weight: 700; user-select: none; }
+summary:hover { color: var(--accent); }
+
+/* Interactive Checklist Styles */
+.task-group { margin: 24px 0 32px; background: var(--white); border: 1px solid var(--line); border-radius: 4px; }
+.task-group-header { background: #f0ede4; padding: 14px 20px; font-weight: 700; font-size: 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+.task-group-header span.badge { font-family: Consolas, monospace; font-size: 12px; font-weight: 600; padding: 2px 8px; background: var(--line); border-radius: 10px; }
+.checklist-item { display: flex; align-items: flex-start; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.checklist-item:last-child { border-bottom: none; }
+.checklist-item.done { background: #f9fbf9; }
+.checklist-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 3px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.checklist-body { flex: 1; min-width: 0; }
+.checklist-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+.checklist-desc { font-size: 14px; color: var(--muted); margin: 4px 0 10px; }
+.checklist-code { margin: 8px 0 0; }
+
+.gate-box { background: var(--green); padding: 14px 18px; border-left: 4px solid var(--green-dark); font-size: 14px; font-weight: 600; margin-top: 12px; }
+
+.toolbar { display: flex; gap: 12px; margin: 24px 0; flex-wrap: wrap; }
+button.btn { font: 600 13px 'Segoe UI', sans-serif; background: var(--ink); color: var(--paper); border: 0; padding: 10px 18px; cursor: pointer; border-radius: 2px; }
+button.btn:hover { background: var(--accent); }
+button.btn-secondary { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
+button.btn-secondary:hover { background: var(--line); }
+
+footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+
+@media (max-width: 992px) {
+  .shell { grid-template-columns: 1fr; gap: 16px; padding: 24px; }
+  aside { position: static; max-height: none; }
+}
+@media print {
+  body { background: white; font-size: 11pt; }
+  .shell { display: block; padding: 0; }
+  aside, .toolbar, .progress-actions { display: none; }
+  header, section { padding: 16px 0; }
+  pre { background: #f4f4f4; color: black; border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside>
+  <div class="brand">FOUND<span>R</span>Y<br>RECREATION GUIDE</div>
+  
+  <div class="progress-card">
+    <div class="progress-title">Build Progress</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-stats">
+      <span id="progressText">0 of 42 completed</span>
+      <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-actions">
+      <button type="button" onclick="checkAll(true)">Check All</button>
+      <button type="button" onclick="checkAll(false)">Reset</button>
+    </div>
+  </div>
+
+  <nav aria-label="Recreation steps">
+    <a href="#overview">00 / System Overview &amp; Invariants</a>
+    <a href="#substitutions">01 / Tooling &amp; Package Alternatives</a>
+    <a href="#phase-0">Phase 0 / Monorepo Bootstrap</a>
+    <a href="#phase-1">Phase 1 / Protocol &amp; IPC Contracts</a>
+    <a href="#phase-2">Phase 2 / Storage &amp; Recovery Engine</a>
+    <a href="#phase-3">Phase 3 / Process Isolation &amp; Policy</a>
+    <a href="#phase-4">Phase 4 / Model Adapters &amp; Probes</a>
+    <a href="#phase-5">Phase 5 / Worktrees &amp; Multi-Agent</a>
+    <a href="#phase-6">Phase 6 / Context &amp; MCP Integration</a>
+    <a href="#phase-7">Phase 7 / Sandboxed Desktop UI</a>
+    <a href="#phase-8">Phase 8 / Packaging &amp; Verification</a>
+  </nav>
+  <p class="small" style="margin-top: 24px;">Autonomous Agent Guide<br>Target: Independent Reconstruction<br>Published: September 2026</p>
+</aside>
+
+<main>
+
+<header>
+  <span class="tag">Autonomous Agent Reference · Implementation Blueprint</span>
+  <h1>Build It From Scratch.<br>Own the Architecture.<br>Every Invariant Intact.</h1>
+  <p class="lead">A rigorous, step-by-step engineering manual for an autonomous AI agent to reconstruct the Foundry Agent Workspace on another machine, with complete guidance on package substitutions, security boundaries, and testable milestones.</p>
+  <div class="meta">Target Architect: Autonomous AI Coding Agent · Target OS: Windows 10/11 x64 · Output: Clean, verifiable desktop workspace.</div>
+  
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">Print / Save PDF</button>
+    <button class="btn btn-secondary" id="expandToggle" onclick="toggleDetails()">Expand All Technical Details</button>
+  </div>
+</header>
+
+<!-- ========================================================================= -->
+<section id="overview">
+  <div class="eyebrow">00 / System Architecture</div>
+  <h2>The Non-Negotiable Invariants</h2>
+  <p>Before writing a line of code or installing a dependency, you must internalize the five structural boundaries that make this system durable. An agent rebuilding this codebase may swap specific libraries or tools, but <strong>violating these boundaries breaks the core safety and recovery model</strong>:</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>1. The Single-Writer Rule</h3>
+      <p>Only the background Node.js runtime process may ever connect to or write to SQLite. The Electron main process supervises the runtime child over private stdio JSON-RPC 2.0. The React renderer is completely sandboxed: it holds no SQLite handles, no direct Node APIs, and reconstructs state strictly from immutable snapshots and push events.</p>
+    </div>
+    <div class="panel">
+      <h3>2. Process Tree Reclamation</h3>
+      <p>Windows commands and MCP servers do not run as untracked child processes. Every execution must be spawned in a suspended state (or immediately bound) into an operating system <strong>Windows Job Object</strong> configured with <code>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>. When a command times out, cancels, or the host exits, zero orphan processes survive.</p>
+    </div>
+    <div class="panel">
+      <h3>3. Pre-Mutation Intent Persistence</h3>
+      <p>Never perform a disk, Git, or tool side effect before recording the intent in SQLite. If the runtime terminates mid-mutation, the operation restarts into an explicit <code>unknown</code> outcome. Interrupted mutations must <strong>never</strong> be blindly re-executed or assumed successful; they require read-only reconciliation.</p>
+    </div>
+    <div class="panel">
+      <h3>4. Approval Defense-in-Depth</h3>
+      <p>Tool execution requires explicit user authorization. Each proposal binds a unique cryptographic nonce, task ID, working directory, script, environment, and repository fingerprint. File edits require an exact SHA-256 hash precondition. Path traversal guards reject UNC device paths (<code>\\.\</code>), NTFS Alternate Data Streams (<code>:stream</code>), short-names (8.3), and directory junctions.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Zero-Paid-Network Testing Invariant:</strong> Routine automated test suites (unit, integration, and E2E) must execute 100% offline using deterministic mock/fixture providers. Real Azure Foundry credentials and network calls are isolated exclusively to optional pre-deployment qualification CLI runs.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="substitutions">
+  <div class="eyebrow">01 / Package &amp; Tooling Alternatives</div>
+  <h2>Dependency Substitution Matrix</h2>
+  <p>Your target machine might have different Node versions, package managers, or native build tools. You are encouraged to adapt packages as needed, provided the functional contract is preserved:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Subsystem</th>
+          <th>Reference Stack</th>
+          <th>Viable Alternatives</th>
+          <th>Load-Bearing Requirements &amp; Gotchas</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Package Manager</strong></td>
+          <td><code>pnpm</code> (v10)</td>
+          <td><code>npm</code> workspaces, <code>yarn</code> (Berry), <code>bun</code></td>
+          <td>Must support monorepo workspace resolution (<code>workspace:*</code>) and produce deterministic lockfiles.</td>
+        </tr>
+        <tr>
+          <td><strong>Desktop Shell</strong></td>
+          <td><code>electron</code> (v44) + <code>electron-vite</code></td>
+          <td><code>tauri</code> (v2), <code>neutralinojs</code>, standard <code>vite</code> + <code>electron</code></td>
+          <td>Must enforce context isolation, disable Node integration in renderer, and validate IPC frame senders and protocol schemes.</td>
+        </tr>
+        <tr>
+          <td><strong>Database</strong></td>
+          <td><code>better-sqlite3</code> (v13)</td>
+          <td><code>node:sqlite</code> (Node 22.5+), <code>@libsql/client</code>, <code>sqlite3</code></td>
+          <td>Must run synchronously or with strict serialization in <strong>WAL mode</strong> with <code>synchronous = NORMAL</code> and <code>busy_timeout &ge; 5000ms</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Schema Validation</strong></td>
+          <td><code>zod</code> (v4 preview)</td>
+          <td><code>zod</code> (v3), <code>valibot</code>, <code>typebox</code>, <code>arktype</code></td>
+          <td>Must validate JSON-RPC parameters, emit typed TypeScript inference, and support discriminated union events.</td>
+        </tr>
+        <tr>
+          <td><strong>Test Runner</strong></td>
+          <td><code>vitest</code> (v5)</td>
+          <td><code>node:test</code>, <code>jest</code></td>
+          <td>Must support ESM, mock timers, parallel worker isolation, and asynchronous stream iterators.</td>
+        </tr>
+        <tr>
+          <td><strong>E2E Testing</strong></td>
+          <td><code>@playwright/test</code></td>
+          <td><code>webdriverio</code>, automated Spectron, Playwright-electron</td>
+          <td>Must attach to packaged or unpackaged Electron binary and verify DOM accessibility attributes and Monaco editor buffers.</td>
+        </tr>
+        <tr>
+          <td><strong>Diff &amp; Code View</strong></td>
+          <td><code>@monaco-editor/react</code></td>
+          <td><code>CodeMirror 6</code>, <code>prismjs</code> + unified diff renderer</td>
+          <td>Must be configured as strictly <strong>read-only</strong>. The renderer must never perform direct file saves.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-0">
+  <div class="eyebrow">Phase 00</div>
+  <h2>Monorepo Topology &amp; Bootstrap</h2>
+  <p>Set up the repository workspace with clean boundaries between runtime execution, shared contracts, and the desktop presentation layer.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 0: Workspace Structure &amp; Build Configuration</span>
+      <span class="badge">4 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-0-1">
+      <input type="checkbox" id="step-0-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-0-1">0.1 Initialize Workspace Monorepo</label></div>
+        <div class="checklist-desc">Create the monorepo root with packages for protocol, runtime, providers, and desktop app.</div>
+        <pre><code>├── apps/
+│   └── desktop/          # Electron main, preload, and React renderer
+├── packages/
+│   ├── protocol/         # Shared Zod schemas, RPC types, and domain contracts
+│   ├── runtime/          # SQLite single-writer, policy, Job Object runner, Git worktrees
+│   └── providers/        # Direct Foundry adapters (Responses, Completions, Anthropic, Fake)
+├── scripts/              # Packaging smoke, qualification CLI, clean-install auditor
+└── tests/                # Integration suites and E2E specs</code></pre>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-0-2">
+      <input type="checkbox" id="step-0-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-0-2">0.2 Configure TypeScript Project References</label></div>
+        <div class="checklist-desc">Set up root <code>tsconfig.json</code> and composite package configs targeting Node 22+ (ES2022+ with ESM resolution). Ensure strict null checks are active.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-0-3">
+      <input type="checkbox" id="step-0-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-0-3">0.3 Wire Native Module Strategy for Electron</label></div>
+        <div class="checklist-desc">If using <code>better-sqlite3</code>, configure your build tool (e.g. <code>electron-builder</code> with <code>npmRebuild: false</code>) to ensure native C++ addons match Electron's NODE_MODULE_VERSION, or execute the runtime via <code>ELECTRON_RUN_AS_NODE=1</code>.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-0-4">
+      <input type="checkbox" id="step-0-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-0-4">0.4 Establish Linter and Test Harness</label></div>
+        <div class="checklist-desc">Wire a root verification command (e.g., <code>pnpm check</code>) executing typecheck, linting, and unit test suites across all packages.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 0: <code>pnpm typecheck &amp;&amp; pnpm test</code> executes across all workspace packages and passes cleanly.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-1">
+  <div class="eyebrow">Phase 01</div>
+  <h2>Protocol &amp; IPC Contracts (<code>packages/protocol</code>)</h2>
+  <p>Define the strict contract that connects the UI, Electron main, and the background runtime. The protocol must be completely decoupled from platform-specific UI bindings.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 1: Domain Schemas &amp; RPC Methods</span>
+      <span class="badge">4 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-1-1">
+      <input type="checkbox" id="step-1-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-1-1">1.1 Author JSON-RPC 2.0 Wire Types</label></div>
+        <div class="checklist-desc">Define standard request, response, error, and notification envelopes. All requests carry an incremental integer or string ID. Errors carry standard numeric codes.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-1-2">
+      <input type="checkbox" id="step-1-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-1-2">1.2 Define ModelProfile and Probe Schemas</label></div>
+        <div class="checklist-desc">Include <code>apiKind</code> enum (<code>responses</code>, <code>chat-completions</code>, <code>anthropic</code>, <code>fake</code>), endpoint URL, deployment name, context/output token limits, and capability flags (streaming, tools, continuation, cancellation, usage).</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-1-3">
+      <input type="checkbox" id="step-1-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-1-3">1.3 Define Task, Message, and Approval Schemas</label></div>
+        <div class="checklist-desc">Model Task states (<code>idle</code>, <code>running</code>, <code>interrupted</code>, <code>failed</code>, <code>retired</code>), Approval states (<code>awaiting-approval</code>, <code>approved</code>, <code>rejected</code>, <code>unknown</code>), and tool arguments with strict Zod types.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-1-4">
+      <input type="checkbox" id="step-1-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-1-4">1.4 Define Coordination &amp; Handoff Schemas</label></div>
+        <div class="checklist-desc">Define coordinator assignment records: parent ID, specialist agent role, allowed file scope (glob patterns), base commit hash, and validation acceptance criteria.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 1: <code>packages/protocol</code> exports validated Zod schemas, TypeScript types, and passes round-trip JSON serialization unit tests.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-2">
+  <div class="eyebrow">Phase 02</div>
+  <h2>Storage &amp; Recovery Engine (<code>packages/runtime</code>)</h2>
+  <p>Implement the single-writer SQLite store, pre-mutation intent logging, and credential canary redaction engine.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 2: SQLite Store &amp; Secret Redaction</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-2-1">
+      <input type="checkbox" id="step-2-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-2-1">2.1 Initialize SQLite with WAL Mode</label></div>
+        <div class="checklist-desc">Configure database with <code>PRAGMA journal_mode = WAL;</code>, <code>PRAGMA synchronous = NORMAL;</code>, and <code>PRAGMA busy_timeout = 5000;</code>. Enforce single-writer by opening connections only in the runtime.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-2-2">
+      <input type="checkbox" id="step-2-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-2-2">2.2 Implement Numbered Schema Migrations &amp; Backup</label></div>
+        <div class="checklist-desc">Version database schema with <code>PRAGMA user_version</code>. Before executing an upgrade migration, create a verified <code>.bak</code> file copy. If migration fails, restore the backup.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-2-3">
+      <input type="checkbox" id="step-2-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-2-3">2.3 Implement Durable Execution Intents</label></div>
+        <div class="checklist-desc">Before executing edits, commands, commits, or retirement, insert a record into <code>execution_intents</code>. If a crash occurs, restart reconciles the state and marks unresolved operations as <code>unknown</code>.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-2-4">
+      <input type="checkbox" id="step-2-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-2-4">2.4 Implement Credential Canary Redaction Engine</label></div>
+        <div class="checklist-desc">Build a <code>Redactor</code> class. For every registered secret, register its literal needle PLUS its JSON string-escaped variants (escaping <code>\</code>, <code>"</code>, and <code>\n</code>). Add regex heuristics for raw bearer tokens and private keys.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-2-5">
+      <input type="checkbox" id="step-2-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-2-5">2.5 Author Store Crash Recovery Integration Tests</label></div>
+        <div class="checklist-desc">Test runtime simulated crash: assert unstarted usage reservations reset cleanly to 0 tokens without leaking budget, and pending approvals transition to revoked/unknown.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 2: Database integrity check passes (<code>PRAGMA integrity_check</code>) and tests verify zero secret canaries escape into SQLite WAL, logs, or diagnostic dumps.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-3">
+  <div class="eyebrow">Phase 03</div>
+  <h2>Process Isolation &amp; Tool Policy</h2>
+  <p>Implement Windows Job Objects, path traversal defense, and one-shot reviewed mutation execution.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 3: Job Runner &amp; Policy Service</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-3-1">
+      <input type="checkbox" id="step-3-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-3-1">3.1 Author Windows Job Object Runner (<code>job-runner.ps1</code>)</label></div>
+        <div class="checklist-desc">Use Windows Win32 API via P/Invoke or native C++ addon to create an anonymous Job Object with <code>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>. Create process suspended, assign to job, then resume thread.</div>
+        <pre><code># Essential Win32 Job Object configuration pattern
+$job = [JobManagement]::CreateJobObject([IntPtr]::Zero, $null)
+$info = New-Object JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+$info.BasicLimitInformation.LimitFlags = 0x2000 # KILL_ON_JOB_CLOSE
+[JobManagement]::SetInformationJobObject($job, 9, [ref]$info, ...)
+[JobManagement]::AssignProcessToJobObject($job, $processHandle)</code></pre>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-3-2">
+      <input type="checkbox" id="step-3-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-3-2">3.2 Implement Windows Path Containment Guards</label></div>
+        <div class="checklist-desc">Canonicalize paths through existing ancestors. Reject paths containing UNC device prefixes (<code>\\.\</code>, <code>\\?\</code>), NTFS Alternate Data Streams (<code>:stream</code>), 8.3 aliases, and directory junctions pointing outside the worktree.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-3-3">
+      <input type="checkbox" id="step-3-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-3-3">3.3 Implement Exact Precondition File Edits (<code>replace_text</code>)</label></div>
+        <div class="checklist-desc">Editing tools must require an <code>expectedHash</code> parameter matching the SHA-256 of the target file before modification. Exact string match must occur exactly once. Reject stale edits and writes to <code>.git/</code> metadata.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-3-4">
+      <input type="checkbox" id="step-3-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-3-4">3.4 Implement One-Shot Nonce Approval Binding</label></div>
+        <div class="checklist-desc">Commands require user approval binding the cryptographic nonce, exact script, working directory, environment overrides, and worktree fingerprint. Fingerprint re-checks before execution.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-3-5">
+      <input type="checkbox" id="step-3-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-3-5">3.5 Author Security Audit Regression Suite</label></div>
+        <div class="checklist-desc">Create <code>tests/integration/security-audit.test.ts</code> testing path traversal bypasses, canary leaks in MCP stderr, and orphan process termination on command timeouts.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 3: Background child processes (e.g. <code>cmd.exe /c start ping 127.0.0.1 -t</code>) terminate completely upon parent command timeout or cancellation.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-4">
+  <div class="eyebrow">Phase 04</div>
+  <h2>Model Adapters &amp; Qualification Engine (<code>packages/providers</code>)</h2>
+  <p>Implement faithful, streaming adapters for Azure Foundry deployments and a 5-point qualification engine.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 4: Provider Adapters &amp; Qualification CLI</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-4-1">
+      <input type="checkbox" id="step-4-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-4-1">4.1 Implement Resilient SSE Stream Reader</label></div>
+        <div class="checklist-desc">Parse Server-Sent Events (SSE) line-by-line. Handle multi-line data frames, enforce a maximum event buffer limit (1MB), and properly handle <code>[DONE]</code> signals and HTTP 429 <code>Retry-After</code> headers.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-4-2">
+      <input type="checkbox" id="step-4-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-4-2">4.2 Implement Azure Chat Completions Adapter</label></div>
+        <div class="checklist-desc">Target <code>/openai/v1/chat/completions</code> with streaming tool calls, delta assembly by tool call index, and usage reporting extraction from <code>choices[].finish_reason</code>.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-4-3">
+      <input type="checkbox" id="step-4-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-4-3">4.3 Implement Azure Foundry Anthropic Adapter</label></div>
+        <div class="checklist-desc">Target <code>/anthropic/v1/messages</code> with streaming <code>content_block_start</code>, <code>content_block_delta</code>, and <code>content_block_stop</code> events. Preserve opaque signatures and extended thinking blocks outside user history.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-4-4">
+      <input type="checkbox" id="step-4-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-4-4">4.4 Implement Deterministic Offline Fake Provider</label></div>
+        <div class="checklist-desc">Build offline fixture provider responding to <code>/demo</code> by reading README.md, proposing an edit, and proposing a command. Enable 100% offline verification across all test suites.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-4-5">
+      <input type="checkbox" id="step-4-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-4-5">4.5 Author Standalone Qualification CLI (<code>scripts/qualify-deployments.mjs</code>)</label></div>
+        <div class="checklist-desc">Implement the 5-point qualification protocol: (1) streaming text &amp; TTFT, (2) native tool calling with nonce verification, (3) continuation round-trip, (4) cancellation via AbortController, and (5) token usage accounting. Include <code>--mock</code> flag.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 4: <code>node scripts/qualify-deployments.mjs --mock</code> passes all 5 capability checks offline across Responses, Chat Completions, and Anthropic wire protocols.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-5">
+  <div class="eyebrow">Phase 05</div>
+  <h2>Worktree Lifecycle &amp; Multi-Agent Coordination</h2>
+  <p>Implement isolated task worktrees, coordinator delegation, and serial cherry-pick integration.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 5: Git Worktrees &amp; Coordinated Orchestration</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-5-1">
+      <input type="checkbox" id="step-5-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-5-1">5.1 Implement App-Owned Worktree Lifecycle</label></div>
+        <div class="checklist-desc">Create isolated worktrees under <code>%LOCALAPPDATA%\FoundryAgentWorkspace\wt\&lt;taskId&gt;</code> on dedicated branches (<code>codex/task/&lt;taskId&gt;</code>). Ensure the user's main checkout and working files are never dirtied.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-5-2">
+      <input type="checkbox" id="step-5-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-5-2">5.2 Implement Bounded Coordinator/Specialist Scheduler</label></div>
+        <div class="checklist-desc">Coordinator plans assignments with bounded scopes. Concurrency is limited (e.g. max 3 active execution slots across the application). Coordinator waiting on children releases its execution slot.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-5-3">
+      <input type="checkbox" id="step-5-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-5-3">5.3 Implement Handoff Commit Preparation</label></div>
+        <div class="checklist-desc">Children stage only files matching their approved scope. Verify <code>.gitattributes</code>, reject gitlinks and embedded repos, and commit with recorded parent commit hashes.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-5-4">
+      <input type="checkbox" id="step-5-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-5-4">5.4 Implement Serial Cherry-Pick Integration &amp; Conflict Path</label></div>
+        <div class="checklist-desc">Coordinator cherry-picks child commits serially into the integration worktree. If conflicts occur, preserve <code>CHERRY_PICK_HEAD</code>, transition task to a visible blocked state, and provide an external editor resolution path.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-5-5">
+      <input type="checkbox" id="step-5-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-5-5">5.5 Implement Combined Tree Validation &amp; Safe Retirement</label></div>
+        <div class="checklist-desc">Execute required validation command on the final combined tree. Allow worktree retirement only when Git proves the tree is 100% clean (no untracked or uncommitted files).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 5: <code>tests/integration/orchestration.test.ts</code> passes: two child agents execute independent worktrees, coordinator integrates serially, and combined tests pass with the main checkout untouched.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-6">
+  <div class="eyebrow">Phase 06</div>
+  <h2>Context Management, Diagnostics &amp; MCP Policy</h2>
+  <p>Implement conversation compaction, Model Context Protocol integration, and sanitized diagnostic bundles.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 6: Compaction, Diagnostics &amp; MCP Client</span>
+      <span class="badge">4 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-6-1">
+      <input type="checkbox" id="step-6-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-6-1">6.1 Implement Conversation Compaction (<code>task.compact</code>)</label></div>
+        <div class="checklist-desc">Summarize older completed turns into structured summary blocks. Preserve provider continuation blocks, system instructions, pending turns, and complete tool units. Retain raw history in SQLite.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-6-2">
+      <input type="checkbox" id="step-6-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-6-2">6.2 Implement Stdio MCP Client (<code>mcp-host.ps1</code>)</label></div>
+        <div class="checklist-desc">Host external Model Context Protocol stdio servers inside a Job Object. Read-only allowlisted tools run automatically; mutating tools trigger one-shot approvals with inspected arguments.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-6-3">
+      <input type="checkbox" id="step-6-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-6-3">6.3 Implement Additive Usage Accounting</label></div>
+        <div class="checklist-desc">Record prompt, completion, cache-read, and cache-creation tokens in <code>usage_records</code>. Ensure unstarted token reservations on idle tasks recover to 0 without wiping history.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-6-4">
+      <input type="checkbox" id="step-6-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-6-4">6.4 Implement Sanitized Diagnostic Export</label></div>
+        <div class="checklist-desc">Build <code>diagnostics.export</code> dumping SQLite schemas, event logs, and environment metadata with all credentials, canaries, and private file contents completely scrubbed.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 6: <code>tests/integration/publish.test.ts</code> passes: explicit commit/push, safe retirement, sanitized diagnostics export, and compaction round-trips cleanly.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-7">
+  <div class="eyebrow">Phase 07</div>
+  <h2>Sandboxed Desktop Shell (<code>apps/desktop</code>)</h2>
+  <p>Implement the Electron main process, secure IPC bridges, OS credential vault, and the React desktop interface.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 7: Electron Main, Security Gates &amp; React UI</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-7-1">
+      <input type="checkbox" id="step-7-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-7-1">7.1 Author Electron Main &amp; Runtime Supervision</label></div>
+        <div class="checklist-desc">Spawn the background runtime using <code>ELECTRON_RUN_AS_NODE=1</code> on private stdio. Supervise process lifecycle, restart on unexpected exit, and pipe events to BrowserWindow.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-7-2">
+      <input type="checkbox" id="step-7-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-7-2">7.2 Implement OS-Backed Credential Vault</label></div>
+        <div class="checklist-desc">Use Electron <code>safeStorage</code> (Windows DPAPI) to encrypt API keys before persisting to disk. Pass credentials to runtime over private IPC only when a task or probe explicitly executes.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-7-3">
+      <input type="checkbox" id="step-7-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-7-3">7.3 Implement Strict IPC Sender &amp; Scheme Verification</label></div>
+        <div class="checklist-desc">In <code>ipcMain.handle</code>, verify <code>event.senderFrame === window.webContents.mainFrame</code>. Because <code>URL.origin</code> is <code>"null"</code> for <code>file:</code> schemes, compare schemes and pathnames explicitly and fail closed.</div>
+        <pre><code>// Essential IPC sender and origin authorization pattern
+const authorize = (event) =&gt; {
+  if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame)
+    throw new Error('Untrusted IPC sender.');
+  let actual;
+  try { actual = new URL(event.senderFrame.url); } catch { throw new Error('Untrusted IPC origin.'); }
+  if (actual.protocol !== expectedUrl.protocol || actual.pathname !== expectedUrl.pathname)
+    throw new Error('Untrusted IPC origin.');
+};</code></pre>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-7-4">
+      <input type="checkbox" id="step-7-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-7-4">7.4 Build React UI &amp; Monaco Diff Inspector</label></div>
+        <div class="checklist-desc">Build task creation sidebar, streaming conversation thread, read-only Monaco diff viewer for file proposals, one-shot approval decision cards, token burndown panel, and Git publish controls.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-7-5">
+      <input type="checkbox" id="step-7-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-7-5">7.5 Build Model Settings &amp; Probe Dialog</label></div>
+        <div class="checklist-desc">Provide modal dialog for configuring Azure Foundry endpoints (Responses, Chat Completions, Anthropic) with live <code>profile.probe</code> testing before saving.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 7: <code>pnpm test:e2e</code> passes: Playwright exercises task creation, reviewed edit/command approval, coordination tree view, and IPC origin spoofing rejection.
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<section id="phase-8">
+  <div class="eyebrow">Phase 08</div>
+  <h2>Packaging, Installer Audit &amp; Release Verification</h2>
+  <p>Produce the production NSIS package, verify clean-profile installation, and establish operational runbooks.</p>
+
+  <div class="task-group">
+    <div class="task-group-header">
+      <span>Milestone 8: Windows Packaging, Clean Install &amp; Runbooks</span>
+      <span class="badge">5 Steps</span>
+    </div>
+
+    <div class="checklist-item" id="item-8-1">
+      <input type="checkbox" id="step-8-1" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-8-1">8.1 Configure Electron Builder &amp; Asar Unpack</label></div>
+        <div class="checklist-desc">Configure per-user non-elevated NSIS target in <code>package.json</code>. Unpack native <code>*.node</code> modules and PowerShell helpers (<code>mcp-host.ps1</code>, <code>job-runner.ps1</code>) out of <code>app.asar</code>.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-8-2">
+      <input type="checkbox" id="step-8-2" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-8-2">8.2 Author Packaged Runtime Smoke Test (<code>scripts/packaged-smoke.mjs</code>)</label></div>
+        <div class="checklist-desc">Launch the built executable with <code>ELECTRON_RUN_AS_NODE=1</code> against isolated temporary data directories. Exercise SQLite v2, 14 bound approvals, 3 cherry-picks, compaction, and retirement.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-8-3">
+      <input type="checkbox" id="step-8-3" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-8-3">8.3 Author Clean Installer Auditor (<code>scripts/verify-clean-install.ps1</code>)</label></div>
+        <div class="checklist-desc">Audit the NSIS package: verify executable presence and size, Authenticode signature check, unpack layout, per-user path containment (<code>%LOCALAPPDATA%\Programs</code>), and safe uninstallation.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-8-4">
+      <input type="checkbox" id="step-8-4" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-8-4">8.4 Author Operational Runbooks</label></div>
+        <div class="checklist-desc">Write <code>docs/recovery.md</code> (disaster recovery, WAL checkpointing, intent reconciliation), <code>docs/signing-and-distribution.md</code> (Authenticode signing, SmartScreen), and <code>docs/release-evidence.md</code>.</div>
+      </div>
+    </div>
+
+    <div class="checklist-item" id="item-8-5">
+      <input type="checkbox" id="step-8-5" onchange="updateStep(this)">
+      <div class="checklist-body">
+        <div class="checklist-title"><label for="step-8-5">8.5 Execute Final Master Release Validation Suite</label></div>
+        <div class="checklist-desc">Execute the complete suite: <code>pnpm check</code> (228+ unit/integration tests), <code>node scripts/qualify-deployments.mjs --mock</code>, <code>pnpm package:dir &amp;&amp; pnpm smoke:package</code>, <code>pnpm package:win</code>, and <code>pnpm test:e2e</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-box">
+    Exit Gate 8: Production installer built (<code>Foundry Agent Workspace Setup 0.2.0.exe</code>), smoke test passes, clean-profile auditor passes 6/6 checks, and all tests pass with zero warnings.
+  </div>
+</section>
+
+<footer>
+  Foundry Agent Workspace · Complete System Recreation Blueprint · Standalone Reference Document · All rights reserved.
+</footer>
+
+</main>
+</div>
+
+<script>
+// Interactive Checklist & LocalStorage Persistence Logic
+const STORAGE_KEY = 'foundry_workspace_recreation_checklist';
+
+function loadChecklistState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const checkedIds = JSON.parse(saved);
+    if (!Array.isArray(checkedIds)) return;
+    
+    document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(checkbox => {
+      if (checkedIds.includes(checkbox.id)) {
+        checkbox.checked = true;
+        const item = checkbox.closest('.checklist-item');
+        if (item) item.classList.add('done');
+      }
+    });
+  } catch (e) {
+    console.error('Could not load checklist state from localStorage:', e);
+  }
+  updateProgress();
+}
+
+function saveChecklistState() {
+  const checked = [];
+  document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(checkbox => {
+    if (checkbox.checked) checked.push(checkbox.id);
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
+}
+
+function updateStep(checkbox) {
+  const item = checkbox.closest('.checklist-item');
+  if (checkbox.checked) {
+    item.classList.add('done');
+  } else {
+    item.classList.remove('done');
+  }
+  saveChecklistState();
+  updateProgress();
+}
+
+function updateProgress() {
+  const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+  const total = checkboxes.length;
+  let done = 0;
+  checkboxes.forEach(cb => { if (cb.checked) done++; });
+  
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressBar').style.width = percent + '%';
+  document.getElementById('progressText').textContent = `${done} of ${total} completed`;
+  document.getElementById('progressPercent').textContent = `${percent}%`;
+}
+
+function checkAll(state) {
+  document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(cb => {
+    cb.checked = state;
+    const item = cb.closest('.checklist-item');
+    if (item) {
+      if (state) item.classList.add('done');
+      else item.classList.remove('done');
+    }
+  });
+  saveChecklistState();
+  updateProgress();
+}
+
+function toggleDetails() {
+  const details = document.querySelectorAll('details');
+  const toggleBtn = document.getElementById('expandToggle');
+  const willOpen = toggleBtn.getAttribute('data-open') !== 'true';
+  details.forEach(d => d.open = willOpen);
+  toggleBtn.setAttribute('data-open', willOpen ? 'true' : 'false');
+  toggleBtn.textContent = willOpen ? 'Collapse Technical Details' : 'Expand All Technical Details';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadChecklistState();
+});
+</script>
+</body>
+</html>
