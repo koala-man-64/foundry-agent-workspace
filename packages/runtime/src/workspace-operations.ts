@@ -179,7 +179,9 @@ export class WorkspaceOperations {
     const members = [task, ...(task.mode === 'coordinated' ? this.store.allTasks().filter(item => item.parentTaskId === task.id) : [])];
     if (task.mode === 'coordinated' && this.ports.activeRuns(task.id) > 0) throw new Error('Every coordinator and child run must be terminal before the worktrees are retired.');
     if (members.some(member => member.status === 'running' || this.ports.isRunning(member.id))) throw new Error('A child agent is still active.');
-    if (this.store.approvals(taskId).some(item => item.state === 'unknown')) throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
+    if (members.some(member => this.store.approvals(member.id).some(item => item.state === 'unknown') || this.store.unknownPublicationIntents(member.id).length > 0)) {
+      throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
+    }
     // Every worktree is checked read-only before any removal starts; one dirty worktree refuses the whole retirement.
     const present: Task[] = [];
     for (const member of members) {

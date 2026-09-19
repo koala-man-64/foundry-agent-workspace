@@ -113,6 +113,44 @@ describe('explicit commit, push and worktree retirement', () => {
     expect(store.task(root.id).status).toBe('idle');
   });
 
+  it('refuses to retire a coordinated task when a member has an unknown mutation outcome', async () => {
+    await runtime.shutdown(); store = new Store(join(directory, 'state', 'workspace.db'));
+    runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), undefined, undefined, { coordinatedMode: true });
+    const root = await runtime.dispatch('task.create', { title: 'Root', projectPath: project, profileId: FAKE_PROFILE_ID, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: { command: 'Write-Output ok', cwd: '', timeoutMs: 60000 } } }) as Task;
+    (store as unknown as { db: { prepare: (sql: string) => { run: (...args: unknown[]) => void } } }).db.prepare("UPDATE agent_runs SET lifecycle = 'terminal', outcome = 'succeeded' WHERE root_task_id = ?").run(root.id);
+    const childId = 'child-task-unknown';
+    store.saveTask({
+      id: childId,
+      title: 'Child 1',
+      projectPath: project,
+      worktreePath: root.worktreePath,
+      branch: 'child-branch',
+      baseCommit: 'HEAD',
+      profileId: FAKE_PROFILE_ID,
+      status: 'idle',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tokenBudget: 100000,
+      usedTokens: 0,
+      mode: 'coding',
+      role: 'child',
+      parentTaskId: root.id,
+      rootTaskId: root.id,
+    });
+    store.saveApproval({
+      id: 'app-child-unknown',
+      taskId: childId,
+      toolCallId: 'call-1',
+      nonce: 'nonce-1',
+      tool: 'run_command',
+      state: 'unknown',
+      createdAt: new Date().toISOString(),
+      summary: 'cmd',
+      fingerprint: 'fp',
+    });
+    await expect(runtime.dispatch('task.retire', { taskId: root.id, confirm: 'retire' })).rejects.toThrow('unknown mutation outcome');
+  });
+
   it('serializes concurrent worktree creation in one repository', async () => {
     const tasks = await Promise.all(Array.from({ length: 6 }, (_, index) => createTask(`Parallel ${index}`)));
     expect(new Set(tasks.map(task => task.worktreePath)).size).toBe(6);
