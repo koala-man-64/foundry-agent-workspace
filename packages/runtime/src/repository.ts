@@ -152,15 +152,19 @@ export class RepositoryService {
     }
   }
 
-  /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains HEAD. */
-  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string): Promise<boolean | undefined> {
+  public async headCommit(worktreePath: string): Promise<string> {
+    const repositoryRoot = await this.requireRepository(worktreePath);
+    return (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+  }
+
+  /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains the attempted commit (or HEAD). */
+  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string, expectedCommit?: string): Promise<boolean | undefined> {
     try {
-      const repositoryRoot = await this.requireRepository(worktreePath);
       const projectRoot = await this.requireRepository(projectPath);
-      const head = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+      const commit = expectedCommit ?? (await this.headCommit(worktreePath));
       const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true });
       if (result.exitCode !== 0) return undefined;
-      return result.stdout.includes(head);
+      return result.stdout.includes(commit);
     } catch {
       return undefined;
     }

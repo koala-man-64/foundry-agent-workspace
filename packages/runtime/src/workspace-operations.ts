@@ -141,8 +141,8 @@ export class WorkspaceOperations {
       let unresolved = 0;
       for (const item of unknowns) {
         if (item.kind === 'git.push') {
-          const data = item.data as { remote: string; branch: string };
-          const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch);
+          const data = item.data as { remote: string; branch: string; commit?: string };
+          const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch, data.commit);
           if (succeeded === undefined) {
             unresolved++;
             continue;
@@ -210,7 +210,8 @@ export class WorkspaceOperations {
     if (this.publishing.has(taskId)) throw new Error('A Git operation is already in progress for this task.');
     this.publishing.add(taskId);
     try {
-      const intent = this.store.intent('git.push', { taskId, branch: task.branch, remote });
+      const commit = await this.repositories.headCommit(task.worktreePath);
+      const intent = this.store.intent('git.push', { taskId, branch: task.branch, remote, commit });
       try {
         const detail = await this.repositories.push(task.worktreePath, task.projectPath, remote, task.branch);
         this.store.finishIntent(intent, 'complete');

@@ -232,4 +232,27 @@ describe('explicit commit, push and worktree retirement', () => {
     expect(store.unknownPublicationIntents(task.id)).toHaveLength(1);
     store.clearPublicationIntent(intent, 'failed');
   });
+
+  it('reconciles push intent against the attempted commit even if local HEAD advances', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'file1.txt'), 'content 1\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 1' });
+    await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' });
+    const commit1 = git(task.worktreePath, 'rev-parse', 'HEAD');
+    // Simulate an unknown push intent that was bound to commit1
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin', commit: commit1 });
+    store.finishIntent(intent, 'unknown');
+    // Advance local HEAD externally
+    await writeFile(join(task.worktreePath, 'file2.txt'), 'content 2\n');
+    git(task.worktreePath, 'add', 'file2.txt');
+    git(task.worktreePath, 'commit', '-m', 'commit 2');
+    const commit2 = git(task.worktreePath, 'rev-parse', 'HEAD');
+    expect(commit2).not.toBe(commit1);
+    // Reconcile: should verify commit1 on remote and mark complete, not fail against commit2
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(0);
+    const row = store['db'].prepare('SELECT state FROM intents WHERE id = ?').get(intent) as { state: string };
+    expect(row.state).toBe('complete');
+  });
 });
