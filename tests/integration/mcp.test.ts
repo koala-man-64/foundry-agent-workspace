@@ -79,6 +79,16 @@ describe('MCP servers under runtime policy', () => {
     expect((await runtime.dispatch('mcp.remove', { serverId: paginated.id })) as { removed: boolean }).toEqual({ removed: true });
   });
 
+  it('does not launch a server when disabled and stops any existing session', async () => {
+    const saved = await runtime.dispatch('mcp.save', config()) as McpServerStatus;
+    expect(saved.tools.length).toBeGreaterThan(0);
+    const disabled = await runtime.dispatch('mcp.save', config({ id: saved.id, enabled: false })) as McpServerStatus;
+    expect(disabled.enabled).toBe(false);
+    expect(disabled.tools).toEqual([]);
+    expect(disabled.running).toBe(false);
+    expect((await runtime.dispatch('mcp.remove', { serverId: saved.id })) as { removed: boolean }).toEqual({ removed: true });
+  });
+
   it('runs allowlisted read-only tools within policy and requires a one-shot decision for everything else', async () => {
     await runtime.dispatch('mcp.save', config());
     const rejected = await codingTask();

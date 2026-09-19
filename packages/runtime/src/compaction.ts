@@ -80,7 +80,15 @@ export function applyCompactions(messages: OrdinalMessage[], compactions: Compac
     if (message.status !== 'complete') continue;
     const range = ordered.find(record => message.ordinal >= record.fromOrdinal && message.ordinal <= record.toOrdinal);
     if (!range) { output.push({ role: message.role, content: message.content }); continue; }
-    if (!emitted.has(range.id)) { emitted.add(range.id); output.push({ role: 'user', content: range.summary }); }
+    if (!emitted.has(range.id)) {
+      emitted.add(range.id);
+      const last = output[output.length - 1];
+      if (last && last.role === 'user') {
+        last.content = `${last.content}\n\n---\n\n${range.summary}`;
+      } else {
+        output.push({ role: 'user', content: range.summary });
+      }
+    }
   }
   return output;
 }
@@ -159,6 +167,19 @@ export function estimateContinuationTokens(continuation: ProviderContinuation | 
   return continuation ? Buffer.byteLength(JSON.stringify(continuation), 'utf8') : 0;
 }
 
+function extractSummaryText(item: Record<string, unknown>): string | undefined {
+  if (item.role !== 'user') return undefined;
+  if (typeof item.content === 'string' && item.content.includes(SUMMARY_HEADER)) return item.content;
+  if (Array.isArray(item.content)) {
+    for (const block of item.content) {
+      if (isRecord(block) && block.type === 'text' && typeof block.text === 'string' && block.text.includes(SUMMARY_HEADER)) {
+        return block.text;
+      }
+    }
+  }
+  return undefined;
+}
+
 /**
  * Replace everything before the `keepRecentTurns`-th most recent plain user turn with one summary
  * item. System/developer items are retained in order ahead of the summary. Throws when nothing
@@ -173,12 +194,18 @@ export function compactContinuation(continuation: ProviderContinuation, summary:
   const items = data[key] as Record<string, unknown>[];
   const boundaries = items.map((item, index) => isUserBoundary(kind, item) ? index : -1).filter(index => index >= 0);
   if (boundaries.length <= Math.max(1, keepRecentTurns)) throw new CompactionError('Nothing to compact: the native conversation has no earlier user turns beyond the recent turns that are kept verbatim.');
-  const summaryItem: Record<string, unknown> = kind === 'anthropic' ? { role: 'user', content: [{ type: 'text', text: summary }] } : { role: 'user', content: summary };
   // Cut at the boundary that keeps exactly `keepRecentTurns` user turns; fall back to earlier boundaries (removing less) if validation rejects a cut.
   const candidates = boundaries.slice(1, boundaries.length - Math.max(1, keepRecentTurns) + 1).reverse();
   let lastIssues: string[] = [];
   for (const cut of candidates) {
     const systems = items.slice(0, cut).filter(item => isSystemItem(kind, item));
+    const priorSummaries: string[] = [];
+    for (const item of items.slice(0, cut)) {
+      const prior = extractSummaryText(item);
+      if (prior && !priorSummaries.includes(prior)) priorSummaries.push(prior);
+    }
+    const fullSummary = priorSummaries.length ? `${priorSummaries.join('\n\n---\n\n')}\n\n---\n\n${summary}` : summary;
+    const summaryItem: Record<string, unknown> = kind === 'anthropic' ? { role: 'user', content: [{ type: 'text', text: fullSummary }] } : { role: 'user', content: fullSummary };
     const retained = [...systems, summaryItem, ...items.slice(cut)];
     const removed = cut - systems.length;
     if (removed <= 0) continue;

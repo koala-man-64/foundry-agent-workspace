@@ -99,7 +99,8 @@ export class Store {
       if (evidenceBytes > 384 * 1024 && approval.state !== 'awaiting-approval' && approval.state !== 'unknown') { delete approval.before; delete approval.after; if (approval.result) approval.result.content = approval.result.content.slice(0, 1000); }
     }
     const compactions = this.compactions(id);
-    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!), approvals, ...(compactions.length ? { compactions } : {}) };
+    const hasUnknownPublication = this.unknownPublicationIntents(id).length > 0;
+    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!), approvals, ...(compactions.length ? { compactions } : {}), ...(hasUnknownPublication ? { hasUnknownPublication: true } : {}) };
   }
   /** Messages with their durable ordinals; compaction ranges are expressed in ordinals. */
   messagesWithOrdinals(taskId: string): (Message & { ordinal: number })[] {

@@ -184,11 +184,23 @@ describe('explicit commit, push and worktree retirement', () => {
     // Simulate an intent marked unknown due to an interrupted push operation
     const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin' });
     store.finishIntent(intent, 'unknown');
+    const detailBefore = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
+    expect(detailBefore.hasUnknownPublication).toBe(true);
     await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown git.push outcome');
     await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 2' })).rejects.toThrow('unknown git.push outcome');
     const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
     expect(reconciled.reconciled).toBe(true);
+    const detailAfter = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
+    expect(detailAfter.hasUnknownPublication).toBeUndefined();
     const pushed = await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' }) as PushResult;
     expect(pushed.branch).toBe(task.branch);
+  });
+
+  it('fences new turns while retirement is in progress', async () => {
+    const task = await createTask();
+    // Simulate runtime.operations marking the task as being retired
+    runtime.operations['retiring'].add(task.id);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'hello' })).rejects.toThrow('retired');
+    runtime.operations['retiring'].delete(task.id);
   });
 });

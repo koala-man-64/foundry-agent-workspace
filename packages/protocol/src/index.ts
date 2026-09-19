@@ -23,7 +23,7 @@ export interface Task { id: string; title: string; projectPath: string; worktree
 export interface Message { id: string; taskId: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; status: 'complete' | 'streaming' | 'cancelled' | 'interrupted' | 'failed'; }
 export interface WorkspaceEvent { sequence: number; type: string; taskId?: string; data: unknown; createdAt: string; }
 export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; lastSequence: number; runtime: 'ready'; }
-export interface TaskDetail { task: Task; messages: Message[]; approvals?: Approval[]; compactions?: CompactionRecord[]; }
+export interface TaskDetail { task: Task; messages: Message[]; approvals?: Approval[]; compactions?: CompactionRecord[]; hasUnknownPublication?: boolean; }
 /** One provider request's accounting. Unknown usage keeps its full conservative reservation. */
 export interface UsageRecord { id: string; taskId: string; requestId: string; reservedTokens: number; promptTokens: number | null; completionTokens: number | null; cacheReadTokens: number | null; cacheCreationTokens: number | null; usageKnown: boolean; reason: string | null; createdAt: string; }
 /** A retained compaction: the summarized message range and the context estimate before and after. Originals are never deleted. */

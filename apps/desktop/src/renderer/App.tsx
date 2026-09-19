@@ -61,7 +61,7 @@ function App() {
   const [compacting, setCompacting] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
   const [pushRemote, setPushRemote] = useState('origin');
-  const [publishBusy, setPublishBusy] = useState<'commit' | 'push' | 'retire' | undefined>();
+  const [publishBusy, setPublishBusy] = useState<'commit' | 'push' | 'retire' | 'reconcile' | undefined>();
   const [confirmAction, setConfirmAction] = useState<'push' | 'retire' | undefined>();
   const [mcpServers, setMcpServers] = useState<McpServerStatus[]>([]);
   const [exporting, setExporting] = useState(false);
@@ -248,6 +248,20 @@ function App() {
     catch (error) { setNotice(`Could not retire: ${error instanceof Error ? error.message : String(error)}`); }
     finally { setPublishBusy(undefined); }
   };
+  const reconcilePublication = async () => {
+    if (!selectedId || publishBusy) return;
+    setPublishBusy('reconcile');
+    try {
+      const result = await api.invoke('task.reconcilePublication', { taskId: selectedId });
+      setNotice(result.detail);
+      await loadTaskDetail(selectedId);
+      void refreshInspector(selectedId, currentPathRef.current);
+    } catch (error) {
+      setNotice(`Could not reconcile publication: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setPublishBusy(undefined);
+    }
+  };
   const confirmUpgrade = async () => {
     setUpgrading(true);
     try {
@@ -389,6 +403,13 @@ function App() {
           <label>Remote <input value={pushRemote} onChange={(e) => setPushRemote(e.target.value)} maxLength={64} disabled={Boolean(publishBusy) || taskBusy || taskRetired} /></label>
           <div className="approval-actions">{confirmAction === 'push' ? <><button type="button" className="danger" disabled={Boolean(publishBusy)} onClick={() => void push()}>Confirm push to {pushRemote || 'origin'}</button><button type="button" className="secondary" onClick={() => setConfirmAction(undefined)}>Keep local</button></> : <button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => setConfirmAction('push')}>{publishBusy === 'push' ? 'Pushing…' : 'Push branch…'}</button>}<small>Publishes {selectedTask?.branch} to the remote configured in the project repository.</small></div>
         </>}
+        {detail?.hasUnknownPublication && <div className="command-evidence">
+          <strong>Unknown publication outcome</strong>
+          <p>A Git commit or push ended with an unknown outcome. Reconcile publication state before continuing.</p>
+          <div className="approval-actions"><button type="button" className="primary" disabled={Boolean(publishBusy)} onClick={() => void reconcilePublication()}>{publishBusy === 'reconcile' ? 'Checking…' : 'Check publication outcome'}</button></div>
+        </div>}
+        <h3>Publication outcome</h3>
+        <div className="approval-actions"><button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => void reconcilePublication()}>{publishBusy === 'reconcile' ? 'Checking…' : 'Check publication outcome'}</button><small>Verifies whether an interrupted or timed-out commit or push succeeded in Git, without retrying.</small></div>
         <h3>Retire worktree</h3>
         <div className="approval-actions">{confirmAction === 'retire' ? <><button type="button" className="danger" disabled={Boolean(publishBusy)} onClick={() => void retire()}>Confirm retire (clean worktrees only)</button><button type="button" className="secondary" onClick={() => setConfirmAction(undefined)}>Keep worktree</button></> : <button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => setConfirmAction('retire')}>{publishBusy === 'retire' ? 'Retiring…' : taskRetired ? 'Retired' : 'Retire worktree…'}</button>}<small>Removes the app-owned worktree directory only when Git proves it has no uncommitted or untracked files. The branch, commits, history and evidence remain.</small></div>
         {taskRetired && <p className="muted">Retired {selectedTask?.retiredAt ? relativeTime(selectedTask.retiredAt) : ''} ago.</p>}

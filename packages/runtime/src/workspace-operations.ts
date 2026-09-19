@@ -22,7 +22,10 @@ export interface OperationPorts {
  * and the commit/push/retire actions that are never proposed or executed by a model.
  */
 export class WorkspaceOperations {
+  private readonly retiring = new Set<string>();
   constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly redactor: Redactor, private readonly mcp: McpManager, private readonly publish: (type: string, data: unknown, taskId?: string) => void, private readonly ports: OperationPorts, private readonly dataDirectory: string) {}
+
+  isRetiring(taskId: string): boolean { return this.retiring.has(taskId); }
 
   // ---------------------------------------------------------------- compaction
 
@@ -180,37 +183,43 @@ export class WorkspaceOperations {
     if (task.status === 'retired') throw new Error('This task worktree is already retired.');
     if (task.parentTaskId || task.role === 'child') throw new Error('Retire a child worktree from its coordinated task; children are retired together with their root.');
     const members = [task, ...(task.mode === 'coordinated' ? this.store.allTasks().filter(item => item.parentTaskId === task.id) : [])];
-    if (task.mode === 'coordinated' && this.ports.activeRuns(task.id) > 0) throw new Error('Every coordinator and child run must be terminal before the worktrees are retired.');
-    if (members.some(member => member.status === 'running' || this.ports.isRunning(member.id))) throw new Error('A child agent is still active.');
-    if (members.some(member => this.store.approvals(member.id).some(item => item.state === 'unknown') || this.store.unknownPublicationIntents(member.id).length > 0)) {
-      throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
-    }
-    // Every worktree is checked read-only before any removal starts; one dirty worktree refuses the whole retirement.
-    const present: Task[] = [];
-    for (const member of members) {
-      const exists = await fs.stat(member.worktreePath).then(stat => stat.isDirectory()).catch(() => false);
-      if (!exists) continue;
-      const dirty = await this.repositories.uncommittedPaths(member.worktreePath);
-      if (dirty.length) throw new Error(`Worktree ${member.worktreePath} has uncommitted or untracked files (${dirty.slice(0, 10).join(', ')}${dirty.length > 10 ? ', …' : ''}). Commit, publish or discard them yourself before retiring; nothing was deleted.`);
-      present.push(member);
-    }
-    const intent = this.store.intent('worktree.retire', { taskId, worktrees: present.map(member => member.worktreePath) });
-    const removed: string[] = [];
+    if (this.retiring.has(taskId) || members.some(member => this.retiring.has(member.id))) throw new Error('Worktree retirement is already in progress for this task.');
+    for (const member of members) this.retiring.add(member.id);
     try {
-      for (const member of present) {
-        await this.repositories.removeWorktree(member.projectPath, member.worktreePath);
-        removed.push(member.worktreePath);
+      if (task.mode === 'coordinated' && this.ports.activeRuns(task.id) > 0) throw new Error('Every coordinator and child run must be terminal before the worktrees are retired.');
+      if (members.some(member => member.status === 'running' || this.ports.isRunning(member.id))) throw new Error('A child agent is still active.');
+      if (members.some(member => this.store.approvals(member.id).some(item => item.state === 'unknown') || this.store.unknownPublicationIntents(member.id).length > 0)) {
+        throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
       }
-      const now = new Date().toISOString();
-      this.store.transaction(() => {
-        for (const member of members) this.store.saveTask({ ...this.store.task(member.id), status: 'retired', retiredAt: now, updatedAt: now });
-        this.store.finishIntent(intent, 'complete');
-      });
-      this.publish('task.retired', { removedWorktrees: removed.length }, taskId);
-      return { taskId, branch: task.branch, removedWorktrees: removed };
-    } catch (error) {
-      this.store.finishIntent(intent, removed.length || !(error instanceof RepositoryError && error.outcome === 'none') ? 'unknown' : 'complete');
-      throw error;
+      // Every worktree is checked read-only before any removal starts; one dirty worktree refuses the whole retirement.
+      const present: Task[] = [];
+      for (const member of members) {
+        const exists = await fs.stat(member.worktreePath).then(stat => stat.isDirectory()).catch(() => false);
+        if (!exists) continue;
+        const dirty = await this.repositories.uncommittedPaths(member.worktreePath);
+        if (dirty.length) throw new Error(`Worktree ${member.worktreePath} has uncommitted or untracked files (${dirty.slice(0, 10).join(', ')}${dirty.length > 10 ? ', …' : ''}). Commit, publish or discard them yourself before retiring; nothing was deleted.`);
+        present.push(member);
+      }
+      const intent = this.store.intent('worktree.retire', { taskId, worktrees: present.map(member => member.worktreePath) });
+      const removed: string[] = [];
+      try {
+        for (const member of present) {
+          await this.repositories.removeWorktree(member.projectPath, member.worktreePath);
+          removed.push(member.worktreePath);
+        }
+        const now = new Date().toISOString();
+        this.store.transaction(() => {
+          for (const member of members) this.store.saveTask({ ...this.store.task(member.id), status: 'retired', retiredAt: now, updatedAt: now });
+          this.store.finishIntent(intent, 'complete');
+        });
+        this.publish('task.retired', { removedWorktrees: removed.length }, taskId);
+        return { taskId, branch: task.branch, removedWorktrees: removed };
+      } catch (error) {
+        this.store.finishIntent(intent, removed.length || !(error instanceof RepositoryError && error.outcome === 'none') ? 'unknown' : 'complete');
+        throw error;
+      }
+    } finally {
+      for (const member of members) this.retiring.delete(member.id);
     }
   }
 }

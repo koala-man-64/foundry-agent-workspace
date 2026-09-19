@@ -28,6 +28,7 @@ export class RuntimeService {
   readonly redactor = new Redactor();
   private closing = false;
   private upgrading = false;
+  private mcpBusy = false;
   private shutdownPromise?: Promise<void>;
   private readonly tools: ToolRuntime;
   private readonly loop: AgentLoop;
@@ -227,23 +228,40 @@ export class RuntimeService {
         const config = McpServerConfigSchema.parse(params);
         const conflict = this.store.mcpServers().find(server => server.key === config.key && server.id !== config.id);
         if (conflict) throw new Error(`Another MCP server already uses the key ${config.key}.`);
-        if (this.running.size) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
-        // The listing is taken from a real launch so the advertised tools match the server; a failed launch is retained with its error and no tools.
+        if (this.running.size || this.mcpBusy) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
+        this.mcpBusy = true;
         try {
+          if (!config.enabled) {
+            await this.mcp.stopServer(config.id);
+            if (this.running.size) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
+            const saved = this.store.saveMcpServer(config, { tools: [], toolsListedAt: null, serverInfo: null, lastError: null });
+            this.publish('mcp.changed', { serverId: config.id });
+            return this.mcpStatus(saved);
+          }
           const listing = await this.mcp.connect(config);
+          if (this.running.size) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
           const saved = this.store.saveMcpServer(config, { tools: listing.tools, toolsListedAt: new Date().toISOString(), serverInfo: listing.serverInfo, lastError: listing.skipped.length ? `Skipped tools: ${listing.skipped.join('; ')}` : null });
           this.publish('mcp.changed', { serverId: config.id }); return this.mcpStatus(saved);
         } catch (error) {
+          if (!config.enabled) throw error;
           const saved = this.store.saveMcpServer(config, { tools: [], toolsListedAt: null, serverInfo: null, lastError: this.redactor.text(error instanceof Error ? error.message : 'The server could not be started.') });
           this.publish('mcp.changed', { serverId: config.id }); return { ...saved, running: false };
+        } finally {
+          this.mcpBusy = false;
         }
       }
       case 'mcp.remove': {
         const id = (params as { serverId: string }).serverId;
-        if (this.running.size) throw new Error('Wait for active responses before removing MCP servers.');
-        await this.mcp.stopServer(id);
-        const removed = this.store.removeMcpServer(id);
-        this.publish('mcp.changed', { serverId: id }); return { removed };
+        if (this.running.size || this.mcpBusy) throw new Error('Wait for active responses before removing MCP servers.');
+        this.mcpBusy = true;
+        try {
+          await this.mcp.stopServer(id);
+          if (this.running.size) throw new Error('Wait for active responses before removing MCP servers.');
+          const removed = this.store.removeMcpServer(id);
+          this.publish('mcp.changed', { serverId: id }); return { removed };
+        } finally {
+          this.mcpBusy = false;
+        }
       }
     }
   }
@@ -254,10 +272,11 @@ export class RuntimeService {
   }
   private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
+    if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');
     if (this.running.has(taskId)) throw new Error('This task already has an active response.');
     if (this.running.size >= 16) throw new Error('Too many active tasks. Finish or cancel a task first.');
     const task = this.store.task(taskId);
-    if (task.status === 'retired') throw new Error('This task worktree is retired. Create a new task to continue the work.');
+    if (task.status === 'retired' || this.operations.isRetiring(taskId)) throw new Error('This task worktree is retired. Create a new task to continue the work.');
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');
     if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');
