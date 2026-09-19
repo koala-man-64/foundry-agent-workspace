@@ -220,6 +220,7 @@ export class RuntimeService {
       case 'diagnostics.export': return this.operations.exportDiagnostics();
       case 'task.commit': { const p = params as { taskId: string; message: string }; return this.operations.commit(p.taskId, p.message); }
       case 'task.push': { const p = params as { taskId: string; remote: string }; return this.operations.push(p.taskId, p.remote); }
+      case 'task.reconcilePublication': return this.operations.reconcilePublication((params as { taskId: string }).taskId);
       case 'task.retire': return this.operations.retire((params as { taskId: string }).taskId);
       case 'mcp.list': return this.store.mcpServers().map(server => this.mcpStatus(server));
       case 'mcp.save': {

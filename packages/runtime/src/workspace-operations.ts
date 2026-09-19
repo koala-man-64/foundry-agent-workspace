@@ -114,7 +114,29 @@ export class WorkspaceOperations {
     if (task.status === 'retired') throw new Error('This task worktree is retired.');
     if (task.parentTaskId || task.role === 'child') throw new Error('Child agent worktrees are published only through reviewed handoff commits and coordinator integration.');
     if (task.mode === 'coordinated') throw new Error('Coordinated task worktrees are integrated through reviewed operations; commit and push are available for chat and coding tasks.');
+    const unknowns = this.store.unknownPublicationIntents(taskId);
+    if (unknowns.length > 0) throw new Error(`This task has an unknown ${unknowns[0]!.kind} outcome. Reconcile publication state before attempting another operation.`);
     return task;
+  }
+
+  async reconcilePublication(taskId: string): Promise<{ reconciled: boolean; detail: string }> {
+    const task = this.store.task(taskId);
+    const unknowns = this.store.unknownPublicationIntents(taskId);
+    if (!unknowns.length) return { reconciled: true, detail: 'No unknown publication intents.' };
+    let resolved = 0;
+    for (const item of unknowns) {
+      if (item.kind === 'git.push') {
+        const data = item.data as { remote: string; branch: string };
+        const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch);
+        this.store.clearPublicationIntent(item.id, succeeded ? 'complete' : 'failed');
+        resolved++;
+      } else if (item.kind === 'git.commit') {
+        const clean = await this.repositories.verifyCommitOutcome(task.worktreePath);
+        this.store.clearPublicationIntent(item.id, clean ? 'complete' : 'failed');
+        resolved++;
+      }
+    }
+    return { reconciled: true, detail: `Reconciled ${resolved} publication intent(s).` };
   }
 
   async commit(taskId: string, message: string): Promise<CommitResult> {

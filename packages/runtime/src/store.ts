@@ -171,6 +171,15 @@ export class Store {
   }
   finishIntent(id: string, state: 'complete' | 'unknown'): void { this.db.prepare('UPDATE intents SET state = ? WHERE id = ?').run(state, id); }
   unknownIntents(): number { return (this.db.prepare("SELECT COUNT(*) AS count FROM intents WHERE kind = 'worktree.create' AND state = 'unknown'").get() as { count: number }).count; }
+  unknownPublicationIntents(taskId: string): Array<{ id: string; kind: string; data: unknown }> {
+    const rows = this.db.prepare("SELECT id, kind, data FROM intents WHERE kind IN ('git.push', 'git.commit') AND state = 'unknown'").all() as { id: string; kind: string; data: string }[];
+    return rows.filter(row => {
+      try { return (JSON.parse(row.data) as { taskId?: string }).taskId === taskId; } catch { return false; }
+    }).map(row => ({ id: row.id, kind: row.kind, data: JSON.parse(row.data) as unknown }));
+  }
+  clearPublicationIntent(intentId: string, state: 'complete' | 'failed' = 'failed'): void {
+    this.db.prepare("UPDATE intents SET state = ? WHERE id = ? AND kind IN ('git.push', 'git.commit')").run(state, intentId);
+  }
   private recoverOrchestration(): void {
     const now = new Date().toISOString();
     // Interrupted requests keep their full conservative reservation; nothing is refunded.

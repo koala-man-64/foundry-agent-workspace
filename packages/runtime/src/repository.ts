@@ -152,6 +152,22 @@ export class RepositoryService {
     }
   }
 
+  /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains HEAD. */
+  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string): Promise<boolean> {
+    const repositoryRoot = await this.requireRepository(worktreePath);
+    const projectRoot = await this.requireRepository(projectPath);
+    const head = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+    const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true);
+    return result.stdout.includes(head);
+  }
+
+  /** Reconcile whether an ambiguous commit succeeded by checking if the worktree is clean. */
+  public async verifyCommitOutcome(worktreePath: string): Promise<boolean> {
+    const repositoryRoot = await this.requireRepository(worktreePath);
+    const dirty = await this.uncommittedPaths(repositoryRoot);
+    return dirty.length === 0;
+  }
+
   /** `git worktree remove` without --force: Git itself refuses when untracked or modified files exist. The branch is kept. */
   public async removeWorktree(projectPath: string, worktreePath: string): Promise<void> {
     const projectRoot = await this.requireRepository(projectPath);

@@ -76,6 +76,7 @@ export const RpcMethods = {
   'diagnostics.export': z.object({}).strict(),
   'task.commit': z.object({ taskId: Id, message: z.string().trim().min(1).max(2000) }).strict(),
   'task.push': z.object({ taskId: Id, remote: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/).default('origin'), confirm: z.literal('push') }).strict(),
+  'task.reconcilePublication': z.object({ taskId: Id }).strict(),
   'task.retire': z.object({ taskId: Id, confirm: z.literal('retire') }).strict(),
   'mcp.list': z.object({}).strict(),
   'mcp.save': McpServerConfigSchema,
@@ -118,6 +119,7 @@ export interface DesktopApi {
   invoke(method: 'diagnostics.export', params: Record<string, never>): Promise<DiagnosticsExport>;
   invoke(method: 'task.commit', params: { taskId: string; message: string }): Promise<CommitResult>;
   invoke(method: 'task.push', params: { taskId: string; remote?: string; confirm: 'push' }): Promise<PushResult>;
+  invoke(method: 'task.reconcilePublication', params: { taskId: string }): Promise<{ reconciled: boolean; detail: string }>;
   invoke(method: 'task.retire', params: { taskId: string; confirm: 'retire' }): Promise<RetireResult>;
   invoke(method: 'mcp.list', params: Record<string, never>): Promise<McpServerStatus[]>;
   invoke(method: 'mcp.save', params: z.input<typeof McpServerConfigSchema>): Promise<McpServerStatus>;

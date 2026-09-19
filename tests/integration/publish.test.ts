@@ -138,4 +138,19 @@ describe('explicit commit, push and worktree retirement', () => {
     expect(text).not.toContain('PRIVATE-FILE-CONTENT-XYZ');
     expect(text).not.toContain('my key is');
   });
+
+  it('blocks repeated commit/push after an unknown publication outcome until reconciled', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'push\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 1' });
+    // Simulate an intent marked unknown due to an interrupted push operation
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin' });
+    store.finishIntent(intent, 'unknown');
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown git.push outcome');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 2' })).rejects.toThrow('unknown git.push outcome');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    const pushed = await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' }) as PushResult;
+    expect(pushed.branch).toBe(task.branch);
+  });
 });
