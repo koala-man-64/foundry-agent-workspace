@@ -39,10 +39,20 @@ export function planMessageCompaction(messages: OrdinalMessage[], existing: Comp
 }
 
 /** Deterministic structured summary of a message range plus the reviewed actions recorded during it. */
-export function summarizeMessages(messages: OrdinalMessage[], approvals: Pick<Approval, 'tool' | 'state' | 'path' | 'createdAt' | 'mcp'>[] = []): string {
+export function summarizeMessages(
+  messages: OrdinalMessage[],
+  approvals: Pick<Approval, 'tool' | 'state' | 'path' | 'createdAt' | 'mcp'>[] = [],
+  nextMessageCreatedAt?: string | null
+): string {
   if (!messages.length) throw new CompactionError('Nothing to summarize.');
   const first = messages[0]!; const last = messages[messages.length - 1]!;
-  const relevant = approvals.filter(approval => approval.createdAt >= first.createdAt && approval.createdAt <= last.createdAt);
+  const relevant = approvals.filter(approval => {
+    if (approval.createdAt < first.createdAt) return false;
+    if (nextMessageCreatedAt !== undefined) {
+      return nextMessageCreatedAt === null || approval.createdAt < nextMessageCreatedAt;
+    }
+    return approval.createdAt <= last.createdAt;
+  });
   const actions = relevant.length
     ? relevant.slice(0, 40).map(approval => `${approval.tool}${approval.path ? ` ${approval.path}` : approval.mcp ? ` ${approval.mcp.serverKey}/${approval.mcp.tool}` : ''} (${approval.state})`).join('; ') + (relevant.length > 40 ? `; +${relevant.length - 40} more` : '')
     : 'none recorded';

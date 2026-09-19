@@ -41,7 +41,8 @@ export class WorkspaceOperations {
     const messages = this.store.messagesWithOrdinals(taskId);
     const existing = this.store.compactions(taskId);
     const plan = planMessageCompaction(messages, existing, keepRecent);
-    const summary = this.redactor.text(summarizeMessages(plan.messages, this.store.approvals(taskId)));
+    const nextMessage = messages.find(message => message.ordinal > plan.toOrdinal);
+    const summary = this.redactor.text(summarizeMessages(plan.messages, this.store.approvals(taskId), nextMessage ? nextMessage.createdAt : null));
     const state = usesTools(task) ? this.store.providerState(taskId) : undefined;
     if (state && state.fingerprint !== this.ports.profileFingerprint(profile)) throw new Error('This task has native conversation state for an earlier profile configuration and cannot be compacted.');
     const before = state ? estimateContinuationTokens(state.continuation) : Buffer.byteLength(JSON.stringify(applyCompactions(messages, existing)), 'utf8');

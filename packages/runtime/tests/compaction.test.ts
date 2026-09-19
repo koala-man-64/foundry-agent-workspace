@@ -23,6 +23,13 @@ describe('message compaction', () => {
     const long = summarizeMessages(Array.from({ length: 400 }, (_, index) => message(index + 1, 'user', 'word '.repeat(200))));
     expect(Buffer.byteLength(long, 'utf8')).toBeLessThanOrEqual(MAX_SUMMARY_BYTES);
   });
+  it('includes approvals proposed during the final compacted assistant turn when nextMessage boundary is given', () => {
+    const approvalDuringLastTurn = { tool: 'replace_text', state: 'complete' as const, path: 'src/app.ts', createdAt: new Date(Date.UTC(2026, 8, 17, 12, 2, 30)).toISOString() };
+    const approvalAfterNextTurn = { tool: 'run_command', state: 'complete' as const, createdAt: at(4) };
+    const summary = summarizeMessages(history.slice(0, 2), [approvalDuringLastTurn, approvalAfterNextTurn], history[2]!.createdAt);
+    expect(summary).toContain('replace_text src/app.ts (complete)');
+    expect(summary).not.toContain('run_command');
+  });
   it('merges adjacent user compaction summaries in applyCompactions', () => {
     const record1 = { id: 'c1', taskId: 't', fromOrdinal: 1, toOrdinal: 2, messageIds: ['m1', 'm2'], summary: 'S1', estimatedTokensBefore: 10, estimatedTokensAfter: 5, createdAt: at(9) };
     const record2 = { id: 'c2', taskId: 't', fromOrdinal: 3, toOrdinal: 4, messageIds: ['m3', 'm4'], summary: 'S2', estimatedTokensBefore: 10, estimatedTokensAfter: 5, createdAt: at(10) };

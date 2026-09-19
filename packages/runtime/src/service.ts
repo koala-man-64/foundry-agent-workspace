@@ -8,7 +8,7 @@ import { Store, FAKE_PROFILE_ID } from './store';
 import { CommandRunner } from './command-runner';
 import { ToolRuntime } from './tool-runtime';
 import { ExecutionSlots } from './execution-slots';
-import { AgentLoop, legacyHooks, prepareRequest, type TurnHooks } from './agent-loop';
+import { AgentLoop, legacyHooks, prepareRequest, type ReservationHandle, type TurnHooks } from './agent-loop';
 import { GitOperations } from './git-operations';
 import { Orchestrator } from './orchestrator';
 import { McpManager } from './mcp';
@@ -286,10 +286,11 @@ export class RuntimeService {
     const abort = new AbortController();
     const fingerprint = profileFingerprint(profile);
     const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : []);
-    const handle = hooks.reserve(task, request);
     const now = new Date().toISOString();
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
+    let handle!: ReservationHandle;
     this.store.transaction(() => {
+      handle = hooks.reserve(task, request);
       this.store.saveMessage({ id: randomUUID(), taskId, role: 'user', content: cleanContent, createdAt: now, status: 'complete' });
       this.store.saveMessage(answer);
       this.store.saveTask({ ...this.store.task(taskId), status: 'running', updatedAt: now });

@@ -227,30 +227,31 @@ export class Store {
       this.db.prepare("UPDATE intents SET state = 'unknown' WHERE kind = 'tool.approval' AND state = 'executing'").run();
       if (this.schema >= 2) this.recoverOrchestration();
       for (const task of this.allTasks()) {
-        if (task.status !== 'running') continue;
-        task.status = 'interrupted'; task.updatedAt = new Date().toISOString(); this.saveTask(task);
-        for (const message of this.detail(task.id).messages) {
-          if (message.status === 'streaming') this.saveMessage({ ...message, status: 'interrupted' });
+        if (task.status === 'running') {
+          task.status = 'interrupted'; task.updatedAt = new Date().toISOString(); this.saveTask(task);
+          for (const message of this.detail(task.id).messages) {
+            if (message.status === 'streaming') this.saveMessage({ ...message, status: 'interrupted' });
+          }
+          const totals = this.usageTotals(task.id);
+          const recorded = totals.prompt + totals.completion + totals.reservedUnknown;
+          const unrecorded = task.usedTokens - recorded;
+          if (unrecorded > 0) {
+            this.saveUsageRecord({
+              id: randomUUID(),
+              taskId: task.id,
+              requestId: randomUUID(),
+              reservedTokens: unrecorded,
+              promptTokens: null,
+              completionTokens: null,
+              cacheReadTokens: null,
+              cacheCreationTokens: null,
+              usageKnown: false,
+              reason: 'Runtime restarted before usage was recorded.',
+              createdAt: new Date().toISOString()
+            });
+          }
+          this.event('task.interrupted', { reason: 'Runtime restarted; partial response retained. Reserved usage retained conservatively.' }, task.id);
         }
-        const totals = this.usageTotals(task.id);
-        const recorded = totals.prompt + totals.completion + totals.reservedUnknown;
-        const unrecorded = task.usedTokens - recorded;
-        if (unrecorded > 0) {
-          this.saveUsageRecord({
-            id: randomUUID(),
-            taskId: task.id,
-            requestId: randomUUID(),
-            reservedTokens: unrecorded,
-            promptTokens: null,
-            completionTokens: null,
-            cacheReadTokens: null,
-            cacheCreationTokens: null,
-            usageKnown: false,
-            reason: 'Runtime restarted before usage was recorded.',
-            createdAt: new Date().toISOString()
-          });
-        }
-        this.event('task.interrupted', { reason: 'Runtime restarted; partial response retained. Reserved usage retained conservatively.' }, task.id);
       }
     });
   }
