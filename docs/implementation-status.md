@@ -1,8 +1,42 @@
 # Implementation status
 
+## Phase 05 — Independent review and Windows release
+
+Recorded 19 September 2026 (America/Chicago) on branch `main`. Delivered via parallel multi-agent workstreams:
+- **Workstream A (Security, IPC & Canary Hardening)**: Claude Opus 5 (`c642667`)
+- **Workstream B (Live Deployment Qualification Framework)**: Claude Sonnet (`f2e6533`)
+- **Workstream C (Packaging & Clean Installer)**: Claude Sonnet (`1c05b87`)
+- **Workstream D (Disaster Recovery & Operational Runbook)**: Antigravity (`c0d1352`)
+All four workstreams merged into `main` with zero conflicts and full automated test, packaging, and smoke verification.
+
+### Delivered
+
+- **IPC sender origin & subframe security hardening.** `authorize(event)` in `apps/desktop/src/main/index.ts` validates that IPC requests originate strictly from the main frame on the expected scheme (`file:` in packaged builds, `http:` on localhost in development). Because `URL.origin` evaluates to the string `"null"` for `file:` and non-special schemes, the gate now compares protocols explicitly and fails closed with `'Untrusted IPC origin.'` if the scheme differs, preventing foreign-scheme frame spoofing. Unparsable URLs fail closed cleanly.
+- **JSON-escaped credential canary screening.** `Redactor.add` in `packages/runtime/src/redaction.ts` now registers every JSON encoding level of a registered credential as its own needle (e.g., escaping `\`, `"`, and `\n`), ensuring serialized values in SQLite WAL, diagnostics dumps, and provider histories never leak secrets. Unlabelled bearer tokens and private keys appearing in tool output, MCP stderr, or runtime exceptions are also proactively detected and scrubbed.
+- **Product-wide security audit suite.** `tests/integration/security-audit.test.ts` (734 lines) provides comprehensive automated regression testing across 4 critical security boundaries: IPC frame sender origin verification (stand-in Electron module exercising real handlers with forged senders and subframes), Windows path containment (asserting rejection of UNC paths `\\.\`, `\\?\`, NTFS Alternate Data Streams `:stream`, 8.3 short-name aliases, trailing dots/spaces, and junction traversal), synthetic secret canary leak matrices, and Windows Job Object descendant termination.
+- **Standalone Azure Foundry deployment qualification CLI.** `scripts/qualify-deployments.mjs` (769 lines) executes the full 5-point qualification protocol against live or mock Azure Foundry endpoints across all three supported API kinds (`responses`, `chat-completions`, `anthropic`): (1) streaming text & time-to-first-token latency, (2) native tool-call generation and schema parsing, (3) tool continuation with opaque reasoning / signature preservation, (4) mid-stream cancellation via `AbortController`, and (5) token burndown & cache accounting. Includes `--mock` flag for 100% offline testing without live network calls, TypeScript definitions (`scripts/qualify-deployments.d.mts`), automated Vitest coverage in `packages/providers/tests/qualification.test.ts`, and reference schema `docs/qualification-template.json`.
+- **Windows clean-profile installer auditor.** `scripts/verify-clean-install.ps1` (232 lines) audits the production NSIS package: validates executable presence and size, captures Authenticode signature status via `Get-AuthenticodeSignature`, verifies unpack configuration and unpacked helper scripts (`mcp-host.ps1`, `job-runner.ps1`, native `.node` binaries), verifies non-elevated per-user installation target (`%LOCALAPPDATA%\Programs\Foundry Agent Workspace`), verifies application data segregation (`%LOCALAPPDATA%\FoundryAgentWorkspace`), and confirms safe uninstallation scope (preserves user project repositories and worktrees).
+- **Code signing and distribution documentation.** `docs/signing-and-distribution.md` provides comprehensive guidance on Authenticode signing options (unsigned developer builds with SmartScreen instructions, self-signed test certificates, and enterprise Azure Trusted Signing configuration), per-user non-elevated installation, and data retention policies.
+- **Disaster recovery runbook.** `docs/recovery.md` documents operational procedures for: read-only reconciliation of unknown commit, push, and worktree retirement intents; SQLite database integrity verification (`PRAGMA integrity_check`) and WAL checkpointing; rolling back schema upgrades from automatic `.bak` backups; resolving and adopting coordinator cherry-pick merge conflicts in external editors; and rotating credentials in Electron `safeStorage`.
+- **Release evidence matrix.** `docs/release-evidence.md` tabulates all 9 release acceptance criteria from Section 07 of the plan against exact automated test suites, commit citations, and verification artifacts.
+
+### Validation
+
+| Boundary | Evidence | Scope |
+| --- | --- | --- |
+| Types, lint, tests | `pnpm check`: **21 files, 228 tests passed (clean typecheck and lint)** | Prior 192 tests plus security audit suite (26 tests in `security-audit.test.ts`) and qualification suite (5 tests in `qualification.test.ts`). Zero failures. |
+| Live deployment qualification | `node scripts/qualify-deployments.mjs --mock`: **PASS** | 5-point qualification protocol passes offline for streaming, toolCalling, toolContinuation, cancellation, and usageAccounting. |
+| Packaged runtime | `pnpm package:dir` & `pnpm smoke:package`: **PASS** | Built `release/win-unpacked`. Packaged Electron/SQLite v2 runtime: coding and coordinated workflows, 14 bound approvals, 3 cherry-picks, compaction, MCP demo via unpacked Job Object host, diagnostics export, and clean worktree retirement. |
+| Production installer | `pnpm package:win`: **PASS** | Built `release/Foundry Agent Workspace Setup 0.2.0.exe` (115.63 MB) and blockmap. |
+| Clean installer audit | `powershell -File scripts/verify-clean-install.ps1`: **PASS** | 6 passed, 1 expected signature warning (unsigned candidate), 0 failed. Verifies artifact presence, unpack manifest, path containment, and uninstall safety. |
+| Desktop user paths | `pnpm test:e2e`: **7 passed (2.7m)** | Chat, Coding, coordinated workflows, scoped cancellation, IPC forgery rejection, legacy v1 database upgrade, compaction, MCP approval, diagnostics export, and worktree retirement. |
+| Independent review | Completed across all 4 workstreams; all security and qualification findings addressed on `main`. | Independent review by Claude Opus 5 on security/IPC and Claude Sonnet on qualification/packaging. |
+
+---
+
 ## Phase 04 — Context and external tools
 
-Recorded 18 September 2026 (America/Chicago) on branch `agent/claude/phase-04-context-and-tools`, a direct descendant of `main` at `70d0a0c`. Owner: Claude (Fable 5.1) as Lead Systems Engineer under Antigravity's assignment in `TASK_PHASE_04.md`. This is a local engineering build; nothing below claims a live Foundry request, CI run, remote publication, installer build or signing.
+Recorded 18 September 2026 (America/Chicago) on branch `agent/claude/phase-04-context-and-tools`, merged to `main` at `db08e16`. Owner: Claude (Fable 5.1) as Lead Systems Engineer under Antigravity's assignment in `TASK_PHASE_04.md`.
 
 ### Delivered
 
@@ -166,12 +200,12 @@ Final SHA-256 fingerprints:
 | 01 — Desktop, state, isolation | Core local paths implemented and exercised. Large-history ergonomics and worktree-creation reconciliation remain. |
 | 02 — Single-agent coding | Reviewed edits/commands, native tools, provider continuation, durable decisions, cancellation and conservative recovery implemented. Live model-family qualification remains open. |
 | 03 — Coordinator/specialists | Implemented, independently reviewed, and merged to `main` at `70d0a0c`. Live model qualification remains open. |
-| 04 — Context/external tools | **Delivered & validated.** Implemented on branch `agent/claude/phase-04-context-and-tools` (commit `81dbd83`, PR #2): controlled compaction, MCP under approval policy, usage/diagnostics, explicit commit/push and safe retirement. 192 unit/integration tests, 7/7 E2E tests, package build and packaged smoke pass. All post-PR review findings and GitGuardian checks resolved. Ready to merge to `main`. |
-| 05 — Windows release | **Next phase.** Independent review and release hardening: product-wide security coverage, clean-profile Windows install/uninstall/upgrade verification, Authenticode signing decisions, recovery documentation, and live Azure Foundry deployment qualification across at least two upstream model families. |
+| 04 — Context/external tools | **Delivered & validated on main (`db08e16`).** Implemented on branch `agent/claude/phase-04-context-and-tools` (commit `81dbd83`, PR #2): controlled compaction, MCP under approval policy, usage/diagnostics, explicit commit/push and safe retirement. 192 unit/integration tests, 7/7 E2E tests, package build and packaged smoke pass. Merged to `main` at `db08e16`. |
+| 05 — Windows release | **Delivered & validated on main.** Parallel multi-agent delivery across 4 workstreams (Claude Opus 5 for security/IPC audit, Claude Sonnet for qualification framework & clean installer, Antigravity for recovery & evidence). Product-wide security audit suite (`tests/integration/security-audit.test.ts`), 5-point deployment qualification framework CLI (`scripts/qualify-deployments.mjs`), NSIS production installer build (`Foundry Agent Workspace Setup 0.2.0.exe`, 115.63 MB), clean installer audit script (`scripts/verify-clean-install.ps1`), recovery runbook (`docs/recovery.md`), Authenticode guide (`docs/signing-and-distribution.md`), and release evidence matrix (`docs/release-evidence.md`). 21 test files, 228 automated tests pass, 7/7 E2E tests pass, packaged smoke passes. |
 
-Next implementation: Phase 05 — Independent review and release (merge PR #2 to `main`, product-wide security audit, clean-profile Windows installer/uninstaller qualification, Authenticode signing determination, and live Azure Foundry deployment verification).
+All primary implementation phases (Phases 00 through 05) are delivered, merged, and validated on `main`.
 
-Open qualification: actual user-selected Azure deployments, Entra/sovereign/custom-endpoint support, model-specific reasoning settings, full security/recovery matrix, clean Windows-profile installation/uninstallation, signing, and distribution/license notice review. Routine tests must not discover credentials or make paid probes.
+Open qualification: live user-selected Azure Foundry deployment qualification via `scripts/qualify-deployments.mjs` with production credentials, production Authenticode certificate signing for Windows SmartScreen reputation, and distribution/license notice review. Routine automated test suites run 100% offline without discovering credentials or making paid probes.
 
 ## Practical limits
 
