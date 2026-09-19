@@ -70,6 +70,15 @@ describe('MCP servers under runtime policy', () => {
     expect((await runtime.dispatch('mcp.remove', { serverId: saved.id })) as { removed: boolean }).toEqual({ removed: true });
   });
 
+  it('follows tools/list pagination cursors up to MAX_TOOLS', async () => {
+    const paginated = await runtime.dispatch('mcp.save', config({
+      key: 'paginated',
+      environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY, MCP_FIXTURE_PAGINATE: '1' },
+    })) as McpServerStatus;
+    expect(paginated.tools.map(tool => tool.name).sort()).toEqual(['page1_tool', 'page2_tool']);
+    expect((await runtime.dispatch('mcp.remove', { serverId: paginated.id })) as { removed: boolean }).toEqual({ removed: true });
+  });
+
   it('runs allowlisted read-only tools within policy and requires a one-shot decision for everything else', async () => {
     await runtime.dispatch('mcp.save', config());
     const rejected = await codingTask();

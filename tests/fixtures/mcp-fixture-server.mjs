@@ -40,7 +40,13 @@ rl.on('line', line => {
   const reply = async () => {
     if (method === 'initialize') return { protocolVersion: params?.protocolVersion ?? '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'foundry-fixture', version: '1.0.0' } };
     if (method === 'ping') return {};
-    if (method === 'tools/list') return { tools };
+    if (method === 'tools/list') {
+      if (process.env.MCP_FIXTURE_PAGINATE === '1') {
+        if (params?.cursor === 'page-2') return { tools: [{ name: 'page2_tool', inputSchema: { type: 'object' } }] };
+        return { tools: [{ name: 'page1_tool', inputSchema: { type: 'object' } }], nextCursor: 'page-2' };
+      }
+      return { tools };
+    }
     if (method === 'tools/call') return call(params?.name, params?.arguments ?? {});
     throw Object.assign(new Error(`Method not found: ${method}`), { code: -32601 });
   };

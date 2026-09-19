@@ -314,19 +314,27 @@ export class McpManager {
   }
 
   private async listTools(session: Session): Promise<McpListing> {
-    const result = await session.client.request('tools/list', {}, START_TIMEOUT_MS);
-    if (!isRecord(result) || !Array.isArray(result.tools)) throw new McpError('The MCP server returned an invalid tools/list result.');
     const tools: McpTool[] = []; const skipped: string[] = [];
-    for (const raw of result.tools.slice(0, MAX_TOOLS)) {
-      if (!isRecord(raw) || typeof raw.name !== 'string') { skipped.push('(invalid tool entry)'); continue; }
-      if (!TOOL_NAME.test(raw.name) || !composeName(session.config.key, raw.name)) { skipped.push(`${raw.name.slice(0, 64)}: unsupported name`); continue; }
-      const schema = isRecord(raw.inputSchema) && raw.inputSchema.type === 'object' ? raw.inputSchema : { type: 'object', properties: {}, additionalProperties: true };
-      if (Buffer.byteLength(JSON.stringify(schema), 'utf8') > MAX_SCHEMA_BYTES) { skipped.push(`${raw.name}: schema too large`); continue; }
-      const description = this.redactor.text(typeof raw.description === 'string' ? raw.description : '').replace(/\s+/g, ' ').trim().slice(0, MAX_TOOL_DESCRIPTION_CHARS);
-      const annotations = isRecord(raw.annotations) ? raw.annotations : {};
-      tools.push({ name: raw.name, description, inputSchema: JSON.parse(this.redactor.text(JSON.stringify(schema))) as Record<string, unknown>, readOnlyHint: annotations.readOnlyHint === true });
-    }
-    if (result.tools.length > MAX_TOOLS) skipped.push(`${result.tools.length - MAX_TOOLS} further tools beyond the limit`);
+    let cursor: string | undefined = undefined;
+    let totalFetched = 0;
+    do {
+      const params: Record<string, unknown> = cursor ? { cursor } : {};
+      const result = await session.client.request('tools/list', params, START_TIMEOUT_MS);
+      if (!isRecord(result) || !Array.isArray(result.tools)) throw new McpError('The MCP server returned an invalid tools/list result.');
+      for (const raw of result.tools) {
+        totalFetched++;
+        if (tools.length >= MAX_TOOLS) continue;
+        if (!isRecord(raw) || typeof raw.name !== 'string') { skipped.push('(invalid tool entry)'); continue; }
+        if (!TOOL_NAME.test(raw.name) || !composeName(session.config.key, raw.name)) { skipped.push(`${raw.name.slice(0, 64)}: unsupported name`); continue; }
+        const schema = isRecord(raw.inputSchema) && raw.inputSchema.type === 'object' ? raw.inputSchema : { type: 'object', properties: {}, additionalProperties: true };
+        if (Buffer.byteLength(JSON.stringify(schema), 'utf8') > MAX_SCHEMA_BYTES) { skipped.push(`${raw.name}: schema too large`); continue; }
+        const description = this.redactor.text(typeof raw.description === 'string' ? raw.description : '').replace(/\s+/g, ' ').trim().slice(0, MAX_TOOL_DESCRIPTION_CHARS);
+        const annotations = isRecord(raw.annotations) ? raw.annotations : {};
+        tools.push({ name: raw.name, description, inputSchema: JSON.parse(this.redactor.text(JSON.stringify(schema))) as Record<string, unknown>, readOnlyHint: annotations.readOnlyHint === true });
+      }
+      cursor = typeof result.nextCursor === 'string' && result.nextCursor.length ? result.nextCursor : undefined;
+    } while (cursor && tools.length < MAX_TOOLS);
+    if (totalFetched > MAX_TOOLS) skipped.push(`${totalFetched - MAX_TOOLS} further tools beyond the limit`);
     return { tools, skipped, serverInfo: session.serverInfo };
   }
 
