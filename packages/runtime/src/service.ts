@@ -277,6 +277,13 @@ export class RuntimeService {
     if (this.running.size >= 16) throw new Error('Too many active tasks. Finish or cancel a task first.');
     const task = this.store.task(taskId);
     if (task.status === 'retired' || this.operations.isRetiring(taskId)) throw new Error('This task worktree is retired. Create a new task to continue the work.');
+    const rootTaskId = task.parentTaskId ?? task.id;
+    if (this.store.unknownRetireIntents(task.id).length > 0 || this.store.unknownRetireIntents(rootTaskId).length > 0) {
+      throw new Error('This task has an unknown worktree retirement outcome. Reconcile state before starting a response.');
+    }
+    if (this.store.unknownPublicationIntents(task.id).length > 0) {
+      throw new Error('This task has an unknown publication outcome. Reconcile publication state before starting a response.');
+    }
     if (this.operations.isPublishing(taskId)) throw new Error('Wait for the Git operation to finish before starting a response.');
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');

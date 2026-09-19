@@ -255,4 +255,70 @@ describe('explicit commit, push and worktree retirement', () => {
     const row = store['db'].prepare('SELECT state FROM intents WHERE id = ?').get(intent) as { state: string };
     expect(row.state).toBe('complete');
   });
+
+  it('blocks commit and push while tool approval outcomes remain unknown', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'staged\n');
+    // Simulate an approval ending in unknown state
+    store.saveApproval({
+      id: 'appr-unknown-1',
+      taskId: task.id,
+      toolCallId: 'call-1',
+      nonce: 'nonce-1',
+      tool: 'run_command',
+      state: 'unknown',
+      summary: 'run command',
+      fingerprint: 'fp-1',
+      command: 'powershell -File script.ps1',
+      cwd: task.worktreePath,
+      createdAt: new Date().toISOString()
+    });
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'try commit' })).rejects.toThrow('unknown mutation outcome');
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown mutation outcome');
+  });
+
+  it('requires commit identity before declaring commit reconciliation successful', async () => {
+    const task = await createTask();
+    const baseCommit = git(task.worktreePath, 'rev-parse', 'HEAD');
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'attempted\n');
+    // Simulate an ambiguous commit intent where baseCommit is recorded
+    const intent = store.intent('git.commit', { taskId: task.id, branch: task.branch, baseCommit, message: 'ambiguous commit' });
+    store.finishIntent(intent, 'unknown');
+    // Discard the dirty changes externally without creating a commit (worktree is now clean, but no commit occurred)
+    git(task.worktreePath, 'checkout', 'HEAD', '--', 'hello.txt');
+    expect(git(task.worktreePath, 'status', '--porcelain')).toBe('');
+    expect(git(task.worktreePath, 'rev-parse', 'HEAD')).toBe(baseCommit);
+    // Reconcile: HEAD never moved from baseCommit, so the commit failed
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    const row = store['db'].prepare('SELECT state FROM intents WHERE id = ?').get(intent) as { state: string };
+    expect(row.state).toBe('failed');
+  });
+
+  it('treats a remote tip that moved to a non-ancestor as inconclusive during push reconciliation', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'push target\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'my commit' });
+    const myCommit = git(task.worktreePath, 'rev-parse', 'HEAD');
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin', commit: myCommit });
+    store.finishIntent(intent, 'unknown');
+    // Create an unrelated commit on project main and push it directly to the remote branch
+    git(project, 'commit', '--allow-empty', '-m', 'unrelated branch tip');
+    git(project, 'push', remote, `main:refs/heads/${task.branch}`);
+    const remoteTip = git(remote, 'rev-parse', `refs/heads/${task.branch}`);
+    expect(remoteTip).not.toBe(myCommit);
+    // Reconcile: remote tip is not myCommit and myCommit is not ancestor of remoteTip, so it is inconclusive
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(false);
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(1);
+    store.clearPublicationIntent(intent, 'failed');
+  });
+
+  it('blocks task.send while a worktree retirement outcome is unknown', async () => {
+    const task = await createTask();
+    const intent = store.intent('worktree.retire', { taskId: task.id, worktrees: [task.worktreePath] });
+    store.finishIntent(intent, 'unknown');
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'should be blocked' })).rejects.toThrow('unknown worktree retirement outcome');
+    store.clearRetireIntent(intent, 'failed');
+  });
 });

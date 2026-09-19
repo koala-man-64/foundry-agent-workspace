@@ -123,6 +123,7 @@ export class WorkspaceOperations {
     if (task.status === 'retired') throw new Error('This task worktree is retired.');
     if (task.parentTaskId || task.role === 'child') throw new Error('Child agent worktrees are published only through reviewed handoff commits and coordinator integration.');
     if (task.mode === 'coordinated') throw new Error('Coordinated task worktrees are integrated through reviewed operations; commit and push are available for chat and coding tasks.');
+    if (this.store.approvals(taskId).some(item => item.state === 'unknown')) throw new Error('This task has an unknown mutation outcome. Check the outcome and inspect its worktree before publishing.');
     const unknowns = this.store.unknownPublicationIntents(taskId);
     if (unknowns.length > 0) throw new Error(`This task has an unknown ${unknowns[0]!.kind} outcome. Reconcile publication state before attempting another operation.`);
     const unknownRetires = this.store.unknownRetireIntents(taskId);
@@ -151,8 +152,13 @@ export class WorkspaceOperations {
           this.store.clearPublicationIntent(item.id, succeeded ? 'complete' : 'failed');
           resolved++;
         } else if (item.kind === 'git.commit') {
-          const clean = await this.repositories.verifyCommitOutcome(task.worktreePath);
-          this.store.clearPublicationIntent(item.id, clean ? 'complete' : 'failed');
+          const data = item.data as { baseCommit?: string; message?: string };
+          const succeeded = await this.repositories.verifyCommitOutcome(task.worktreePath, data.baseCommit, data.message);
+          if (succeeded === undefined) {
+            unresolved++;
+            continue;
+          }
+          this.store.clearPublicationIntent(item.id, succeeded ? 'complete' : 'failed');
           resolved++;
         }
       }
@@ -190,7 +196,8 @@ export class WorkspaceOperations {
     try {
       const clean = this.redactor.text(message);
       if (clean !== message) throw new Error('The commit message contains secret-like content.');
-      const intent = this.store.intent('git.commit', { taskId, branch: task.branch });
+      const baseCommit = await this.repositories.headCommit(task.worktreePath);
+      const intent = this.store.intent('git.commit', { taskId, branch: task.branch, baseCommit, message: clean });
       try {
         const result = await this.repositories.commitAll(task.worktreePath, task.branch, clean);
         this.store.finishIntent(intent, 'complete');

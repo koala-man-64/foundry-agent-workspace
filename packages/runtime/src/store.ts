@@ -251,6 +251,11 @@ export class Store {
             });
           }
           this.event('task.interrupted', { reason: 'Runtime restarted; partial response retained. Reserved usage retained conservatively.' }, task.id);
+        } else if (task.status !== 'retired' && this.messagesWithOrdinals(task.id).length === 0 && task.usedTokens > 0) {
+          // A task that crashed after reservation but before messages were saved was safely unstarted; reset unrecorded hold.
+          task.usedTokens = 0;
+          task.updatedAt = new Date().toISOString();
+          this.saveTask(task);
         }
       }
     });

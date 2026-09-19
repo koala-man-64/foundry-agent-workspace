@@ -49,4 +49,13 @@ describe('MCP JSON-RPC client', () => {
     expect(composeName('fixture', 'bad.name')).toBeUndefined();
     expect(composeName('k'.repeat(32), 't'.repeat(30))).toBeUndefined();
   });
+  it('handles writable transport errors without crashing and rejects in-flight calls as unknown', async () => {
+    const { client, fromClient, errors } = pair();
+    const pending = client.request('tools/call', { name: 'in_flight' }, 1000);
+    const writeError = new Error('EPIPE: broken pipe');
+    fromClient.emit('error', writeError);
+    await expect(pending).rejects.toMatchObject({ name: 'McpError', unknownOutcome: true, message: expect.stringContaining('write failed') });
+    expect(client.isClosed).toBe(true);
+    expect(errors.some(err => err.message.includes('write failed'))).toBe(true);
+  });
 });

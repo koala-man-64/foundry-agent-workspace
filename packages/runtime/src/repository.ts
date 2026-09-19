@@ -164,17 +164,41 @@ export class RepositoryService {
       const commit = expectedCommit ?? (await this.headCommit(worktreePath));
       const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true });
       if (result.exitCode !== 0) return undefined;
-      return result.stdout.includes(commit);
+      const match = result.stdout.trim().match(/^([0-9a-f]{40})\s+/i);
+      if (!match) {
+        return result.stdout.trim() === '' ? false : undefined;
+      }
+      const remoteTip = match[1]!;
+      if (remoteTip.toLowerCase() === commit.toLowerCase()) return true;
+      const ancestor = await this.git(projectRoot, ['merge-base', '--is-ancestor', commit, remoteTip], false, true);
+      if (ancestor.exitCode === 0) return true;
+      return undefined;
     } catch {
       return undefined;
     }
   }
 
-  /** Reconcile whether an ambiguous commit succeeded by checking if the worktree is clean. */
-  public async verifyCommitOutcome(worktreePath: string): Promise<boolean> {
-    const repositoryRoot = await this.requireRepository(worktreePath);
-    const dirty = await this.uncommittedPaths(repositoryRoot);
-    return dirty.length === 0;
+  /** Reconcile whether an ambiguous commit succeeded by identifying the created commit against its base and expected message. */
+  public async verifyCommitOutcome(worktreePath: string, baseCommit?: string, expectedMessage?: string): Promise<boolean | undefined> {
+    if (!baseCommit) return undefined;
+    try {
+      const repositoryRoot = await this.requireRepository(worktreePath);
+      const currentHead = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+      if (currentHead === baseCommit) {
+        return false;
+      }
+      const parentResult = await this.git(repositoryRoot, ['rev-parse', 'HEAD^'], false, true);
+      const parentCommit = parentResult.exitCode === 0 ? parentResult.stdout.trim() : undefined;
+      const logResult = await this.git(repositoryRoot, ['log', '-1', '--format=%B', 'HEAD'], false, true);
+      const messageMatches = expectedMessage ? logResult.stdout.trim() === expectedMessage.trim() : true;
+      const dirty = await this.uncommittedPaths(repositoryRoot);
+      if (parentCommit === baseCommit && messageMatches && dirty.length === 0) {
+        return true;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /** `git worktree remove` without --force: Git itself refuses when untracked or modified files exist. The branch is kept. */

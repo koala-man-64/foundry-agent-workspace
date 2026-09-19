@@ -49,7 +49,7 @@ export function legacyHooks(store: Store): TurnHooks {
     reserve: (task, request) => {
       const current = store.task(task.id); const amount = reserveRequest(current, request);
       const requestId = randomUUID();
-      store.saveTask({ ...current, usedTokens: current.usedTokens + amount });
+      store.saveTask({ ...current, usedTokens: current.usedTokens + amount, status: 'running' });
       return { amount, requestId };
     },
     settle: (task, handle, usage) => {

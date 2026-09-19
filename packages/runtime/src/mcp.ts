@@ -58,8 +58,9 @@ export class McpClient {
   constructor(private readonly output: NodeJS.WritableStream, input: NodeJS.ReadableStream, private readonly onProtocolError: (error: Error) => void = () => undefined) {
     input.setEncoding('utf8');
     input.on('data', (chunk: string) => this.receive(chunk));
-    input.on('end', () => this.close(new McpError('The MCP server closed its output stream.')));
-    input.on('error', error => this.close(new McpError(`MCP transport failed: ${error instanceof Error ? error.message : 'unknown error'}`)));
+    input.on('end', () => this.close(new McpError('The MCP server closed its output stream.', true)));
+    input.on('error', error => this.close(new McpError(`MCP transport failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
+    output.on('error', error => this.close(new McpError(`MCP transport write failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
   }
   private receive(chunk: string): void {
     let lines: string[];
@@ -88,7 +89,13 @@ export class McpClient {
   private send(value: unknown): void {
     const line = JSON.stringify(value);
     if (Buffer.byteLength(line, 'utf8') > MAX_MESSAGE_BYTES) throw new McpError('MCP request exceeds the message size limit.');
-    this.output.write(line + '\n');
+    try {
+      this.output.write(line + '\n');
+    } catch (error) {
+      const err = new McpError(`MCP transport write failed: ${error instanceof Error ? error.message : 'unknown error'}`, true);
+      this.close(err);
+      throw err;
+    }
   }
   request(method: string, params: unknown, timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
     if (this.closed) return Promise.reject(this.closed);
@@ -103,7 +110,11 @@ export class McpClient {
       try { this.send({ jsonrpc: '2.0', id, method, params }); } catch (error) { clearTimeout(timer); finish(); reject(error); }
     });
   }
-  notify(method: string, params: unknown): void { if (!this.closed) this.send({ jsonrpc: '2.0', method, params }); }
+  notify(method: string, params: unknown): void {
+    if (!this.closed) {
+      try { this.send({ jsonrpc: '2.0', method, params }); } catch { /* closed */ }
+    }
+  }
   close(error: Error): void {
     if (this.closed) return;
     this.closed = error;
