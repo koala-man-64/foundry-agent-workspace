@@ -2,10 +2,14 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { V1_SCHEMA, V2_MIGRATION } from './schema';
-import type { Approval, Message, ModelProfile, ProviderContinuation, ProviderToolResult, Snapshot, Task, TaskDetail, ToolCall, WorkspaceEvent } from '../../protocol/src/index';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION } from './schema';
+import type { Approval, CompactionRecord, McpServerConfig, McpServerStatus, McpTool, Message, ModelProfile, ProviderContinuation, ProviderToolResult, Snapshot, Task, TaskDetail, ToolCall, UsageRecord, WorkspaceEvent } from '../../protocol/src/index';
 
 export interface ProviderState { fingerprint: string; continuation: ProviderContinuation; pending: ToolCall[]; results: ProviderToolResult[]; seenToolCallIds?: string[]; }
+
+interface CompactionRow { id: string; task_id: string; from_ordinal: number; to_ordinal: number; message_ids: string; summary: string; estimated_before: number; estimated_after: number; created_at: string }
+interface UsageRow { id: string; task_id: string; request_id: string; reserved: number; prompt_tokens: number | null; completion_tokens: number | null; cache_read_tokens: number | null; cache_creation_tokens: number | null; usage_known: number; reason: string | null; created_at: string }
+interface McpRow { id: string; key: string; data: string; tools: string; tools_listed_at: string | null; server_info: string | null; last_error: string | null; updated_at: string }
 
 export const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 export const CURRENT_SCHEMA_VERSION = 2;
@@ -29,6 +33,7 @@ export class Store {
       // schema until the user confirms a verified, backed-up upgrade.
       if (fresh) { this.db.exec(V2_MIGRATION); this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`); }
       else if (version === 0) this.db.pragma('user_version = 1');
+      this.db.exec(PHASE4_SCHEMA);
       if (!this.profile(FAKE_PROFILE_ID)) this.saveProfile({ id: FAKE_PROFILE_ID, name: 'Offline demo', apiKind: 'fake', endpoint: '', deployment: 'deterministic-fixture', contextLimit: 32000, outputLimit: 2048 });
     })();
     this.schema = Number(this.db.pragma('user_version', { simple: true }));
@@ -93,7 +98,45 @@ export class Store {
       evidenceBytes += Buffer.byteLength(JSON.stringify(approval), 'utf8');
       if (evidenceBytes > 384 * 1024 && approval.state !== 'awaiting-approval' && approval.state !== 'unknown') { delete approval.before; delete approval.after; if (approval.result) approval.result.content = approval.result.content.slice(0, 1000); }
     }
-    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!), approvals };
+    const compactions = this.compactions(id);
+    return { task: this.task(id), messages: this.db.prepare('SELECT data FROM messages WHERE task_id = ? ORDER BY ordinal').all(id).map(row => this.parse<Message>(row)!), approvals, ...(compactions.length ? { compactions } : {}) };
+  }
+  /** Messages with their durable ordinals; compaction ranges are expressed in ordinals. */
+  messagesWithOrdinals(taskId: string): (Message & { ordinal: number })[] {
+    return (this.db.prepare('SELECT data, ordinal FROM messages WHERE task_id = ? ORDER BY ordinal').all(taskId) as { data: string; ordinal: number }[]).map(row => ({ ...JSON.parse(row.data) as Message, ordinal: row.ordinal }));
+  }
+  compactions(taskId: string): CompactionRecord[] {
+    return (this.db.prepare('SELECT * FROM compactions WHERE task_id = ? ORDER BY from_ordinal').all(taskId) as CompactionRow[]).map(row => ({ id: row.id, taskId: row.task_id, fromOrdinal: row.from_ordinal, toOrdinal: row.to_ordinal, messageIds: JSON.parse(row.message_ids) as string[], summary: row.summary, estimatedTokensBefore: row.estimated_before, estimatedTokensAfter: row.estimated_after, createdAt: row.created_at }));
+  }
+  saveCompaction(record: CompactionRecord, providerStateBefore: ProviderState | undefined, providerStateAfter: ProviderState | undefined): void {
+    this.db.prepare('INSERT INTO compactions(id, task_id, from_ordinal, to_ordinal, message_ids, summary, estimated_before, estimated_after, provider_state_before, provider_state_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(record.id, record.taskId, record.fromOrdinal, record.toOrdinal, JSON.stringify(record.messageIds), record.summary, record.estimatedTokensBefore, record.estimatedTokensAfter, providerStateBefore ? JSON.stringify(providerStateBefore) : null, providerStateAfter ? JSON.stringify(providerStateAfter) : null, record.createdAt);
+  }
+  saveUsageRecord(record: UsageRecord): void {
+    this.db.prepare('INSERT INTO usage_records(id, task_id, request_id, reserved, prompt_tokens, completion_tokens, cache_read_tokens, cache_creation_tokens, usage_known, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(record.id, record.taskId, record.requestId, record.reservedTokens, record.promptTokens, record.completionTokens, record.cacheReadTokens, record.cacheCreationTokens, record.usageKnown ? 1 : 0, record.reason, record.createdAt);
+  }
+  usageRecords(taskId: string, limit = 100): { records: UsageRecord[]; total: number } {
+    const total = (this.db.prepare('SELECT COUNT(*) AS count FROM usage_records WHERE task_id = ?').get(taskId) as { count: number }).count;
+    const rows = this.db.prepare('SELECT * FROM usage_records WHERE task_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?').all(taskId, limit) as UsageRow[];
+    return { total, records: rows.reverse().map(row => ({ id: row.id, taskId: row.task_id, requestId: row.request_id, reservedTokens: row.reserved, promptTokens: row.prompt_tokens, completionTokens: row.completion_tokens, cacheReadTokens: row.cache_read_tokens, cacheCreationTokens: row.cache_creation_tokens, usageKnown: row.usage_known === 1, reason: row.reason, createdAt: row.created_at })) };
+  }
+  usageTotals(taskId: string): { requests: number; knownRequests: number; unknownRequests: number; prompt: number; completion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number } {
+    const row = this.db.prepare(`SELECT COUNT(*) AS requests, COALESCE(SUM(usage_known), 0) AS known, COALESCE(SUM(CASE WHEN usage_known = 1 THEN prompt_tokens ELSE 0 END), 0) AS prompt,
+      COALESCE(SUM(CASE WHEN usage_known = 1 THEN completion_tokens ELSE 0 END), 0) AS completion, COALESCE(SUM(COALESCE(cache_read_tokens, 0)), 0) AS cache_read,
+      COALESCE(SUM(COALESCE(cache_creation_tokens, 0)), 0) AS cache_creation, COALESCE(SUM(CASE WHEN usage_known = 0 THEN reserved ELSE 0 END), 0) AS reserved_unknown FROM usage_records WHERE task_id = ?`).get(taskId) as { requests: number; known: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number };
+    return { requests: row.requests, knownRequests: row.known, unknownRequests: row.requests - row.known, prompt: row.prompt, completion: row.completion, cacheRead: row.cache_read, cacheCreation: row.cache_creation, reservedUnknown: row.reserved_unknown };
+  }
+  mcpServers(): McpServerStatus[] { return (this.db.prepare('SELECT * FROM mcp_servers ORDER BY key').all() as McpRow[]).map(row => this.mcpStatus(row)); }
+  mcpServer(id: string): McpServerStatus | undefined { const row = this.db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id) as McpRow | undefined; return row ? this.mcpStatus(row) : undefined; }
+  saveMcpServer(config: McpServerConfig, listing: { tools: McpTool[]; toolsListedAt: string | null; serverInfo: { name: string; version: string } | null; lastError: string | null }): McpServerStatus {
+    this.db.prepare('INSERT INTO mcp_servers(id, key, data, tools, tools_listed_at, server_info, last_error, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET key = excluded.key, data = excluded.data, tools = excluded.tools, tools_listed_at = excluded.tools_listed_at, server_info = excluded.server_info, last_error = excluded.last_error, updated_at = excluded.updated_at')
+      .run(config.id, config.key, JSON.stringify(config), JSON.stringify(listing.tools), listing.toolsListedAt, listing.serverInfo ? JSON.stringify(listing.serverInfo) : null, listing.lastError, new Date().toISOString());
+    return this.mcpServer(config.id)!;
+  }
+  removeMcpServer(id: string): boolean { return this.db.prepare('DELETE FROM mcp_servers WHERE id = ?').run(id).changes > 0; }
+  private mcpStatus(row: McpRow): McpServerStatus {
+    return { ...JSON.parse(row.data) as McpServerConfig, tools: JSON.parse(row.tools) as McpTool[], toolsListedAt: row.tools_listed_at, serverInfo: row.server_info ? JSON.parse(row.server_info) as { name: string; version: string } : null, lastError: row.last_error, running: false };
   }
   providerState(taskId: string): ProviderState | undefined { return this.parse<ProviderState>(this.db.prepare("SELECT data FROM intents WHERE id = ? AND kind = 'provider.context'").get(taskId)); }
   saveProviderState(taskId: string, state: ProviderState): void { this.db.prepare("INSERT OR REPLACE INTO intents VALUES (?, 'provider.context', ?, 'complete')").run(taskId, JSON.stringify(state)); }
@@ -118,6 +161,10 @@ export class Store {
     const createdAt = new Date().toISOString();
     const result = this.db.prepare('INSERT INTO events(type, task_id, data, created_at) VALUES (?, ?, ?, ?)').run(type, taskId ?? null, JSON.stringify(data), createdAt);
     return { sequence: Number(result.lastInsertRowid), type, taskId, data, createdAt };
+  }
+  recentEvents(limit: number): WorkspaceEvent[] {
+    return (this.db.prepare('SELECT sequence, type, task_id, data, created_at FROM events ORDER BY sequence DESC LIMIT ?').all(limit) as { sequence: number; type: string; task_id: string | null; data: string; created_at: string }[])
+      .reverse().map(row => ({ sequence: row.sequence, type: row.type, taskId: row.task_id ?? undefined, data: JSON.parse(row.data) as unknown, createdAt: row.created_at }));
   }
   intent(kind: string, data: unknown): string {
     const id = randomUUID(); this.db.prepare('INSERT INTO intents VALUES (?, ?, ?, ?)').run(id, kind, JSON.stringify(data), 'pending'); return id;

@@ -99,13 +99,63 @@ try {
   assert.equal(view.budget.inFlight, 0); assert.equal(view.budget.unusedHolds, 0);
   assert.equal(view.budget.charged + view.budget.unallocated, view.budget.cap);
 
-  // The source checkout is unchanged by both workflows.
+  // 3. Controlled compaction of a chat task retains every original message and records the summary range.
+  const chat = await invoke('task.create', { title: 'Packaged compaction smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'chat', tokenBudget: 200000 });
+  for (const content of ['alpha direction', 'beta direction', 'gamma direction']) {
+    await invoke('task.send', { taskId: chat.id, content });
+    for (let i = 0; i < 200 && (await invoke('task.get', { taskId: chat.id })).task.status === 'running'; i++) await delay(50);
+  }
+  const compaction = await invoke('task.compact', { taskId: chat.id, keepRecent: 2 });
+  assert.equal(compaction.messageIds.length, 4);
+  assert.ok(compaction.summary.includes('runtime-generated'));
+  const compactedDetail = await invoke('task.get', { taskId: chat.id });
+  assert.equal(compactedDetail.messages.length, 6); assert.equal(compactedDetail.compactions.length, 1);
+  const usage = await invoke('task.usage', { taskId: chat.id });
+  assert.equal(usage.totals.requests, 3); assert.equal(usage.compactions.length, 1);
+
+  // 4. MCP server hosted by the unpacked Job Object helper: read-only echo runs within policy, write_note needs a one-shot approval.
+  await stat(resolve('release/win-unpacked/resources/app.asar.unpacked/out/main/mcp-host.ps1'));
+  const notes = join(directory, 'notes.txt');
+  const server = await invoke('mcp.save', { id: '7f3c1d2e-4b5a-4c6d-8e9f-0a1b2c3d4e5f', key: 'fixture', name: 'Fixture server', command: process.execPath, arguments: [resolve('tests/fixtures/mcp-fixture-server.mjs')], cwd: '', environment: { MCP_FIXTURE_NOTES: notes }, enabled: true, readOnlyTools: ['echo'], callTimeoutMs: 30000 });
+  assert.ok(server.lastError === null || server.lastError.startsWith('Skipped tools'), JSON.stringify(server));
+  assert.deepEqual(server.tools.map(tool => tool.name).sort(), ['echo', 'fail', 'huge', 'secret_echo', 'slow', 'spawn_child', 'write_note']);
+  const mcpTask = await invoke('task.create', { title: 'Packaged MCP smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'coding', tokenBudget: 200000 });
+  await invoke('task.send', { taskId: mcpTask.id, content: '/mcp-demo' });
+  let mcpFinal;
+  for (let i = 0; i < 600; i++) {
+    const detail = await invoke('task.get', { taskId: mcpTask.id });
+    const approval = detail.approvals.find(value => value.state === 'awaiting-approval');
+    if (approval) { assert.equal(approval.tool, 'mcp__fixture__write_note'); assert.equal(approval.mcp.serverKey, 'fixture'); await invoke('approval.decide', { taskId: mcpTask.id, approvalId: approval.id, nonce: approval.nonce, decision: 'approve' }); }
+    if (detail.task.status !== 'running') { mcpFinal = detail; break; }
+    await delay(100);
+  }
+  assert.equal(mcpFinal?.task.status, 'idle', JSON.stringify(mcpFinal));
+  assert.equal(mcpFinal.approvals.length, 1); assert.equal(mcpFinal.approvals[0].state, 'complete');
+  assert.equal(await readFile(notes, 'utf8'), 'echo said: echo: ping from the offline demo\n');
+
+  // 5. Sanitized diagnostics export.
+  const diagnostics = await invoke('diagnostics.export', {});
+  const bundle = JSON.parse(await readFile(diagnostics.path, 'utf8'));
+  assert.equal(bundle.mcpServers[0].key, 'fixture'); assert.ok(bundle.tasks.some(item => item.id === mcpTask.id));
+  assert.ok(!JSON.stringify(bundle).includes('alpha child change'));
+
+  // 6. Explicit commit and safe retirement of the chat task worktree; the branch survives, the source stays untouched.
+  await writeFile(join(chat.worktreePath, 'smoke.txt'), 'user change\n');
+  const committed = await invoke('task.commit', { taskId: chat.id, message: 'Packaged smoke commit' });
+  assert.equal(committed.changedPaths.length, 1); assert.equal(git(chat.worktreePath, 'rev-parse', 'HEAD'), committed.commit);
+  const retired = await invoke('task.retire', { taskId: chat.id, confirm: 'retire' });
+  assert.deepEqual(retired.removedWorktrees, [chat.worktreePath]);
+  await assert.rejects(stat(chat.worktreePath));
+  assert.equal(git(source, 'rev-parse', '--verify', chat.branch).length, 40);
+  assert.equal((await invoke('task.get', { taskId: chat.id })).task.status, 'retired');
+
+  // The source checkout is unchanged by every workflow.
   assert.equal(await readFile(join(source, 'README.md'), 'utf8'), '# Package fixture\n');
   assert.equal(git(source, 'status', '--porcelain'), '');
   assert.equal(git(source, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
   child.stdin.end(); assert.equal(await exit, 0, errors);
   assert.ok((await stat(join(directory, 'data', 'workspace.db'))).size > 0);
-  console.log(`PASS: packaged runtime loads SQLite v2, applies an approved edit and verified-cleanup command, and completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree) while preserving the source repository.`);
+  console.log(`PASS: packaged runtime loads SQLite v2, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
 } finally {
   clearTimeout(watchdog);
   if (child && child.exitCode === null) { child.kill(); await new Promise(resolve => child.once('exit', resolve)); }

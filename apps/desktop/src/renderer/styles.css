@@ -164,3 +164,28 @@ input:disabled, select:disabled { cursor: not-allowed; color: #79766c; backgroun
 
 @media (max-width: 1050px) { .workspace { grid-template-columns: 250px minmax(390px, 1fr) 260px; } .messages { padding-inline: 8%; } }
 @media (max-width: 880px) { body { min-width: 0; } .workspace { grid-template-columns: 220px 1fr; } .inspector { display: none; } }
+
+.header-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.message.compacted { opacity: .55; }
+.compacted-tag { margin-left: 8px; padding: 1px 6px; color: #5a6a60; background: #e5dfd1; border-radius: 2px; font-size: 10px; text-transform: none; letter-spacing: normal; }
+.compaction-summary { max-width: 780px; margin: 0 0 25px; padding: 12px 14px; border-left: 3px solid #758c72; background: #eee9dc; }
+.compaction-summary p { font-size: 12px; line-height: 1.5; }
+.usage-panel, .publish-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px; font-size: 12px; }
+.usage-panel h3, .publish-panel h3 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: #4a5a50; }
+.usage-grid { display: grid; gap: 8px; }
+.usage-grid div { padding: 8px 10px; background: #f8f3e8; border: 1px solid #d2cabb; }
+.usage-grid dt { margin-bottom: 3px; color: #69766c; font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
+.usage-grid dd { margin: 0; overflow-wrap: anywhere; }
+.usage-grid dd.warning { color: #a86433; font-weight: 650; }
+.usage-actions { margin: 10px 0; }
+.usage-row { display: grid; gap: 2px; padding: 7px 0; border-bottom: 1px solid #ddd5c3; }
+.usage-row span { color: #69766c; font-size: 11px; }
+.publish-panel label { display: grid; gap: 4px; margin-top: 10px; color: #59665d; font-size: 11px; }
+.publish-panel textarea { min-height: 64px; }
+.mcp-settings { border-top: 1px solid #ded6c4; }
+.mcp-settings code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; }
+.mcp-server { padding: 12px; border: 1px solid #d2cabb; background: #fffcf4; font-size: 12px; }
+.mcp-server .muted { overflow-wrap: anywhere; }
+.mcp-error { margin-top: 6px; color: #994734; font-size: 11px; }
+.mcp-form { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #ded6c4; }
+.mcp-form textarea { min-height: 48px; }

@@ -51,7 +51,7 @@
     "electronDist": "node_modules/electron/dist",
     "directories": { "output": "release" },
     "files": ["out/**/*", "package.json"],
-    "asarUnpack": ["**/*.node", "out/main/job-runner.ps1"],
+    "asarUnpack": ["**/*.node", "out/main/job-runner.ps1", "out/main/mcp-host.ps1"],
     "win": { "target": "nsis" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
     "publish": null

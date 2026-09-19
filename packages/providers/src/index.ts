@@ -61,6 +61,32 @@ class FakeProvider implements ProviderAdapter {
             yield { type: "done", continuation: fakeContinuation("complete", []) };
             return;
         }
+        // Offline MCP demo: one user-allowlisted read-only external tool, then one external tool that needs approval.
+        if (!state && request.tools?.length && lastUser(request.messages).startsWith("/mcp-demo")) {
+            requireTools(request.tools, ["mcp__fixture__echo", "mcp__fixture__write_note"]);
+            const call = { id: "fake-mcp-echo-1", name: "mcp__fixture__echo", arguments: { text: "ping from the offline demo" } };
+            yield { type: "tool_call", call };
+            yield { type: "done", continuation: fakeContinuation("mcp-echo", [call]) };
+            return;
+        }
+        if (state?.stage === "mcp-echo") {
+            const result = requiredResults(request, state.calls)[0]!;
+            if (result.isError) {
+                yield* fakeText("Offline MCP demo stopped: the read-only echo tool failed.", request.signal);
+                yield { type: "done", continuation: fakeContinuation("complete", []) };
+                return;
+            }
+            const call = { id: "fake-mcp-write-1", name: "mcp__fixture__write_note", arguments: { text: `echo said: ${result.content.slice(0, 120)}` } };
+            yield { type: "tool_call", call };
+            yield { type: "done", continuation: fakeContinuation("mcp-write", [call]) };
+            return;
+        }
+        if (state?.stage === "mcp-write") {
+            const result = requiredResults(request, state.calls)[0]!;
+            yield* fakeText(result.isError ? "Offline MCP demo completed; the note was not written." : "Offline MCP demo completed: the note was written through the approved external tool.", request.signal);
+            yield { type: "done", continuation: fakeContinuation("complete", []) };
+            return;
+        }
         if (state && state.stage !== "complete" && state.stage !== "chat")
             throw new Error("Invalid fake continuation.");
         yield* fakeText(`Fake response: ${lastUser(request.messages) || "No user message."}`, request.signal);
@@ -335,7 +361,7 @@ async function* streamAnthropic(body: ReadableStream<Uint8Array>, signal: AbortS
                 const totalInput = input + outputCacheCreation + outputCacheRead;
                 if (!Number.isSafeInteger(totalInput))
                     throw new Error("Anthropic usage exceeded the supported range.");
-                usage = { type: "usage", inputTokens: totalInput, outputTokens: out };
+                usage = { type: "usage", inputTokens: totalInput, outputTokens: out, cacheReadTokens: outputCacheRead, cacheCreationTokens: outputCacheCreation };
             }
         }
         else if (type === "content_block_stop") {
@@ -514,8 +540,11 @@ function usageFrom(value: unknown): Extract<ProviderEvent, {
     const cacheRead = usage.cache_read_input_tokens ?? 0;
     if (!validUsageInteger(input) || !validUsageInteger(output) || !validUsageInteger(cacheCreation) || !validUsageInteger(cacheRead))
         return undefined;
+    // OpenAI-style cached prompt tokens are a subset of the prompt count and are reported separately for visibility only.
+    const details = isRecord(usage.prompt_tokens_details) ? usage.prompt_tokens_details : isRecord(usage.input_tokens_details) ? usage.input_tokens_details : undefined;
+    const cachedSubset = validUsageInteger(details?.cached_tokens) ? details.cached_tokens : 0;
     const totalInput = input + cacheCreation + cacheRead;
-    return Number.isSafeInteger(totalInput) ? { type: "usage", inputTokens: totalInput, outputTokens: output } : undefined;
+    return Number.isSafeInteger(totalInput) ? { type: "usage", inputTokens: totalInput, outputTokens: output, cacheReadTokens: cacheRead + cachedSubset, cacheCreationTokens: cacheCreation } : undefined;
 }
 async function* readSse(body: ReadableStream<Uint8Array>, signal: AbortSignal): AsyncIterable<SseFrame> {
     const reader = body.getReader();

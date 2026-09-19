@@ -1,5 +1,54 @@
 # Implementation status
 
+## Phase 04 — Context and external tools
+
+Recorded 18 September 2026 (America/Chicago) on branch `agent/claude/phase-04-context-and-tools`, a direct descendant of `main` at `70d0a0c`. Owner: Claude (Fable 5.1) as Lead Systems Engineer under Antigravity's assignment in `TASK_PHASE_04.md`. This is a local engineering build; nothing below claims a live Foundry request, CI run, remote publication, installer build or signing.
+
+### Delivered
+
+- **Controlled compaction.** `task.compact` (header and Usage-panel button) summarizes older complete turns into a runtime-generated, bounded, secret-screened structured summary that is labelled as data and never produced by a model or from repository text. The summarized range, message ids, estimates before/after and the provider state before/after are retained in the additive `compactions` table; the original messages are never deleted and the transcript keeps them dimmed beneath the summary. Provider-native continuation is compacted shape by shape (Responses `input`, Chat Completions `messages`, Anthropic `messages` + `system`): the cut is placed only at a plain user turn, so system/developer items, complete tool-call/result units, opaque reasoning and signature blocks and the pending tail (calls awaiting results) survive; Anthropic histories still start with a user turn. Every candidate is validated against a per-shape Zod schema plus call/result pairing before anything is persisted; an invalid result throws and leaves the task unchanged. Automatic warnings (`task.context-warning`) fire once per turn when the conservative reservation reaches 80% of the profile context limit; the previous "compaction is not available yet" limit error now points at compaction. Compaction is refused while a response is active or a task is retired.
+- **MCP under the same policy.** `mcp.save/list/remove` configure stdio servers by absolute `.exe` command, arguments, optional working directory and a restricted environment (credential-like and reserved names refused, secret-like values refused at configuration). Saving launches the server once through `mcp-host.ps1`, a kill-on-close Windows Job Object host that verifies the runtime parent, lets the server inherit the runtime's pipes directly, terminates the job on cancellation, lifetime expiry or parent death, and writes a nonce-bearing result once the job is verified empty. Tool listings are bounded (128 tools, 1 KB descriptions, 16 KB schemas, provider-safe names) and stored; coding tasks advertise them as `mcp__key__tool`. Only tools on the user-managed read-only allowlist run within policy; every other call creates a one-shot approval bound to the exact screened arguments (`Approval.mcp`). Server annotations are shown as hints only. Arguments and results are secret-screened; results are bounded to 64 KB with head/tail excerpts; a timeout or broken transport after the request was sent marks the approval **unknown**, stops the server, and is never replayed. Servers idle-stop after two minutes and are terminated with their descendants on runtime shutdown.
+- **Usage visibility and diagnostics.** Every provider reservation is recorded in the additive `usage_records` table with prompt, completion, cache-read and cache-creation tokens (Anthropic cache fields and OpenAI `cached_tokens` are now surfaced by the adapters) or, when usage is unknown, the retained reservation and its reason. `task.usage` returns the burndown, the conservative next-request estimate against the context limit, totals and the compaction history; the Usage panel renders it. `diagnostics.export` writes a sanitized JSON bundle (profiles without credentials, task and usage summaries, approval metadata without before/after/patch/command text, MCP configuration without environment values, bounded recent events) through the redactor and refuses to write if secret-like content remains.
+- **Explicit commit/push and safe retirement.** `task.commit`, `task.push` and `task.retire` exist only as user actions in the Publish panel; no tool proposes them. Commit stages every change except secret-named paths (index reset if one slips through), runs with hooks disabled and no signing, and uses the user's Git identity. Push targets a remote configured in the project repository, never forces or prompts, and is the only Git action that may use the user's credential helper. Retirement checks every worktree of the task (children included for coordinated roots) read-only first, refuses when any has uncommitted or untracked files, then removes them with `git worktree remove` without `--force`; the branch, commits, history and evidence remain and the task becomes `retired`. Each action records an intent first and marks it unknown on an ambiguous failure.
+- **Worktree creation race.** Concurrent `git worktree add` calls in one repository raced on Git's worktree metadata (observed as a pre-existing flake in `coding.test.ts`); creation is now serialized per repository.
+
+### Validation (owner-run)
+
+| Boundary | Evidence | Scope |
+| --- | --- | --- |
+| Types, lint, tests | `pnpm check`: **19 files, 171 tests passed (clean typecheck and lint)** | Prior suites plus compaction shapes/validation (unit), MCP JSON-RPC client bounds (unit), compaction integration with a real Chat-Completions-shaped continuation, MCP integration through the real Job Object host and fixture server (allowlist vs approval, rejection, redaction, truncation, timeout as unknown outcome, descendant termination on shutdown), commit/push/retire/diagnostics integration against a bare remote, and the creation-race regression. |
+| Desktop user paths | `pnpm test:e2e`: **7 passed** | Prior Chat, Coding and coordinated paths plus a Phase 04 flow: chat compaction with the summary rendered, MCP server configured from settings with the read-only allowlist, `/mcp-demo` stopping at the write_note approval ([screenshot](mcp-approval-screenshot.png)), diagnostics export scrubbed of a credential canary, explicit commit, and retirement of a clean worktree. |
+| Packaged runtime | `pnpm package:dir` and `pnpm smoke:package`: **passed** | Packaged Electron/SQLite runtime: prior coding and coordinated flows plus compaction, the MCP demo through the unpacked `mcp-host.ps1`, diagnostics export, and commit/retire. `resources/app.asar` SHA-256 `da53c60f1660708068e30cbf9899fb5dc9e46b03a6b38b241f0836cab109d243`. |
+| Independent review | Completed; one P1, two P2 and one P3 fixed and re-verified by the final gate run | Two read-only Sonnet reviewers (security/persistence/IPC and QA coverage), no author among them; findings and fixes listed below. |
+
+Logs are in `.local/validation/` of the implementation worktree (`phase04-check.log`, `phase04-e2e.log`, `phase04-package.log`, `phase04-smoke.log`).
+
+### Independent review findings
+
+Two bounded, read-only Sonnet reviewers (below the Fable owner; neither authored the code) reviewed the diff against `main` before the final validation cycle.
+
+Security, persistence and IPC review:
+
+- **P1 fixed.** `task.commit` ran `git add --all` without re-checking Git filter attributes, so a `.gitattributes` edit made through an ordinary reviewed file change could have run a clean filter with the user's privileges during the explicit commit. Commit now re-checks every tracked path and every path about to be staged and refuses when a `filter` attribute is present (regression test in `publish.test.ts`).
+- **P2 fixed.** The MCP host launched the server with `bInheritHandles` and no handle list, so any inheritable handle open in the PowerShell host could have reached the server. The host now uses `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` so exactly the three standard handles are inherited.
+- **P2 fixed.** Environment-name screening for MCP servers was a short substring list; segment names such as `AUTH`, `KEY`, `PASS`, `PAT`, `PWD`, `SESSION` and `SIGNING` plus `bearer`/`private`/`passwd` are now refused, and the settings copy states that values are stored in plain text and that screening is best-effort.
+- **P3 fixed.** The host's `cleanupVerified` result was discarded; an unverified stop is now surfaced as the server's status note (visible in settings and diagnostics).
+- **P3 accepted.** The retire dirty-check and removal are two steps; Git's own refusal to remove a dirty worktree without `--force` covers the window, and a race fails loudly rather than deleting files.
+- Verified sound: allowlist-only execution authority (annotations never used for policy), command/cwd/environment validation, parent verification and job termination paths in the host, JSON-RPC bounds and refusal of server-initiated requests, unknown-outcome classification, compaction validation and atomic persistence, diagnostics redaction and field selection, no-force push and app-owned-path checks for removal, and Zod validation of every new RPC in both main and runtime.
+
+QA and coverage review (added as regression tests): compaction refused while a mutation outcome is unknown; retirement/commit/push refused on a coordinated root with non-terminal runs; a pending MCP approval is revoked when the runtime stops and the interrupted call is answered with an error rather than replayed; the unknown-usage accounting path (`unknownRequests`, `reservedUnknown`); a specific assertion for a server that fails to start; the push confirmation token asserted as a schema rejection. Accepted without tests: idle/lifetime timers (time-based), push over HTTPS without a helper (network), and coordinator/child compaction beyond the fixed system-item guarantee.
+
+### Known limits of this increment
+
+- Summaries are deterministic excerpts, not model-written prose; a summarized turn loses detail, which is why the originals stay in the transcript. Compaction is manual; the runtime only warns automatically.
+- Coordinated roots and children can be compacted while idle, but their long-lived coordinator brief is a system item and therefore always retained; there is no separate compaction of orchestration records (assignments and results live in SQLite, not in context).
+- MCP tool schemas are passed to providers as supplied by the server (bounded, redacted, not validated as JSON Schema); argument validation against the schema is left to the server. Only stdio servers are supported; HTTP/SSE transports, sampling, roots and elicitation are refused. MCP tools are advertised to single-agent coding tasks only.
+- The MCP host inherits the same PowerShell/C#-compilation requirement as the command helper and adds roughly one second of startup per server launch.
+- Push relies on the user's credential helper or SSH agent; there is no in-app credential prompt. Commit uses `git add --all`, so intentionally untracked scratch files must be ignored or removed first.
+- `retired` is recorded in the task JSON; the additive Phase 04 tables are created with `IF NOT EXISTS` on open rather than through a numbered schema version, so an older build ignores them and a newer one reads them without migration.
+
+---
+
 ## Local task-branch integration — 17 September 2026
 
 Claude's completed `3a45143` branch was merged without conflicts into `agent/codex/foundation/foundry-agent-workspace` at `aa524c9bb62f26a709f5d791c9bab7fa0fdb9bcc`. Application source matches the independently reviewed final Claude branch; the extra change is the comprehensive HTML progress section. Subsequent documentation commits do not change application code.
@@ -108,10 +157,10 @@ Final SHA-256 fingerprints:
 | 01 — Desktop, state, isolation | Core local paths implemented and exercised. Large-history ergonomics and worktree-creation reconciliation remain. |
 | 02 — Single-agent coding | Reviewed edits/commands, native tools, provider continuation, durable decisions, cancellation and conservative recovery implemented. Live model-family qualification remains open. |
 | 03 — Coordinator/specialists | Implemented locally in the coordinated orchestration increment above (not merged to main). Live model qualification remains open. |
-| 04 — Context/external tools | Budgets implemented; compaction, MCP, publish grants and worktree retirement remain. |
+| 04 — Context/external tools | Implemented locally in the Phase 04 increment above: controlled compaction, MCP under the approval policy, usage/diagnostics, explicit commit/push and safe retirement. Live model qualification and remembered approvals remain open. |
 | 05 — Windows release | Local candidate build and tests are separate from full release acceptance, signing and clean-profile install/uninstall. |
 
-Next implementation: continue with compaction, MCP under the same approval policy, explicit commit/publish grants, diagnostics, and safe worktree retirement.
+Next implementation (historical note; superseded by the Phase 04 section above): compaction, MCP under the same approval policy, explicit commit/publish grants, diagnostics, and safe worktree retirement.
 
 Open qualification: actual user-selected Azure deployments, Entra/sovereign/custom-endpoint support, model-specific reasoning settings, full security/recovery matrix, clean Windows-profile installation/uninstallation, signing, and distribution/license notice review. Routine tests must not discover credentials or make paid probes.
 
