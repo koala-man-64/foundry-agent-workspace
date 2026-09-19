@@ -38,6 +38,8 @@ export class RepositoryError extends Error {
 /** Local, read-only repository access plus isolated task-worktree creation. */
 export class RepositoryService {
   private gitExecutable: Promise<string> | undefined;
+  /** Concurrent `worktree add` calls in one repository race on Git's worktree metadata; creation is serialized per repository. */
+  private readonly creating = new Map<string, Promise<unknown>>();
 
   public constructor(private readonly worktreeBase: string) {}
 
@@ -46,6 +48,17 @@ export class RepositoryService {
   }
 
   public async createTaskWorktree(
+    projectPath: string,
+    taskId: string,
+  ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
+    const key = process.platform === 'win32' ? path.resolve(projectPath).toLowerCase() : path.resolve(projectPath);
+    const previous = this.creating.get(key) ?? Promise.resolve();
+    const operation = previous.catch(() => undefined).then(() => this.createTaskWorktreeSerialized(projectPath, taskId));
+    this.creating.set(key, operation);
+    try { return await operation; } finally { if (this.creating.get(key) === operation) this.creating.delete(key); }
+  }
+
+  private async createTaskWorktreeSerialized(
     projectPath: string,
     taskId: string,
   ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
@@ -70,6 +83,135 @@ export class RepositoryService {
       if (error instanceof RepositoryError) throw error;
       const detail = error instanceof Error ? error.message : 'Repository operation failed.';
       throw new RepositoryError(detail, mutationStarted ? 'unknown' : 'none', { cause: error });
+    }
+  }
+
+  /** Tracked modifications plus untracked files (ignored files excluded), as Git reports them. Read-only. */
+  public async uncommittedPaths(root: string): Promise<string[]> {
+    const repositoryRoot = await this.requireRepository(root);
+    const output = (await this.git(repositoryRoot, ['status', '--porcelain=v1', '-z', '--untracked-files=all'])).stdout;
+    const paths: string[] = [];
+    const fields = output.split('\0');
+    for (let index = 0; index < fields.length; index++) {
+      const entry = fields[index];
+      if (!entry) continue;
+      const code = entry.slice(0, 2); const changedPath = entry.slice(3);
+      paths.push(changedPath);
+      if (code.startsWith('R') || code.startsWith('C')) index++;
+    }
+    return paths;
+  }
+
+  /**
+   * Explicit user commit of every change in the task worktree. Secret-named paths are never staged;
+   * hooks stay disabled; the commit identity comes from the user's Git configuration and is never invented.
+   */
+  public async commitAll(root: string, expectedBranch: string, message: string): Promise<{ commit: string; changedPaths: string[] }> {
+    const repositoryRoot = await this.requireRepository(root);
+    const branch = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+    if (branch !== expectedBranch) throw new RepositoryError(`The worktree is on ${branch}, not the task branch ${expectedBranch}.`, 'none');
+    const dirty = await this.uncommittedPaths(repositoryRoot);
+    if (!dirty.length) throw new RepositoryError('There are no changes to commit.', 'none');
+    const denied = dirty.filter(entry => this.isDeniedRelativePath(entry));
+    if (denied.length) throw new RepositoryError(`Refusing to commit secret-named paths: ${denied.slice(0, 5).join(', ')}. Remove or ignore them first.`, 'none');
+    // `git add` runs clean filters. Attributes may have changed since the worktree was created (a .gitattributes edit is an
+    // ordinary reviewed file change), so every tracked path and every path about to be staged is re-checked here.
+    try {
+      await this.rejectTrackedFilters(repositoryRoot);
+      await this.rejectFilters(repositoryRoot, dirty);
+    } catch (error) { throw new RepositoryError(error instanceof Error ? error.message : 'Filter check failed.', 'none', { cause: error }); }
+    let mutationStarted = false;
+    try {
+      mutationStarted = true;
+      await this.git(repositoryRoot, ['add', '--all', '--', '.']);
+      const staged = (await this.git(repositoryRoot, ['diff', '--cached', '--name-only', '-z'])).stdout.split('\0').filter(Boolean);
+      if (!staged.length) { await this.git(repositoryRoot, ['reset', '-q']); throw new Error('Nothing was staged.'); }
+      if (staged.some(entry => this.isDeniedRelativePath(entry))) { await this.git(repositoryRoot, ['reset', '-q']); throw new Error('A secret-named path was staged; the index was reset and nothing was committed.'); }
+      await this.git(repositoryRoot, ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '--no-verify', '-m', message]);
+      const commit = (await this.git(repositoryRoot, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
+      return { commit, changedPaths: staged };
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError(error instanceof Error ? error.message : 'Commit failed.', mutationStarted ? 'unknown' : 'none', { cause: error });
+    }
+  }
+
+  /** Explicit user push of the task branch. Never forces, never prompts; the user's credential helper may run for this action only. */
+  public async push(root: string, projectPath: string, remote: string, branch: string): Promise<string> {
+    const repositoryRoot = await this.requireRepository(root);
+    const projectRoot = await this.requireRepository(projectPath);
+    const url = await this.git(projectRoot, ['remote', 'get-url', '--', remote], false, true);
+    if (url.exitCode !== 0 || !url.stdout.trim()) throw new RepositoryError(`Remote ${remote} is not configured in the project repository.`, 'none');
+    const current = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+    if (current !== branch) throw new RepositoryError(`The worktree is on ${current}, not the task branch ${branch}.`, 'none');
+    try {
+      const result = await this.git(repositoryRoot, ['push', '--no-verify', '--porcelain', '--', remote, `refs/heads/${branch}:refs/heads/${branch}`], false, false, { timeoutMs: 120_000, allowCredentialHelper: true });
+      return result.stdout.trim();
+    } catch (error) {
+      throw new RepositoryError(error instanceof Error ? error.message : 'Push failed.', 'unknown', { cause: error });
+    }
+  }
+
+  public async headCommit(worktreePath: string): Promise<string> {
+    const repositoryRoot = await this.requireRepository(worktreePath);
+    return (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+  }
+
+  /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains the attempted commit (or HEAD). */
+  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string, expectedCommit?: string): Promise<boolean | undefined> {
+    try {
+      const projectRoot = await this.requireRepository(projectPath);
+      const commit = expectedCommit ?? (await this.headCommit(worktreePath));
+      const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true });
+      if (result.exitCode !== 0) return undefined;
+      const match = result.stdout.trim().match(/^([0-9a-f]{40})\s+/i);
+      if (!match) {
+        return result.stdout.trim() === '' ? false : undefined;
+      }
+      const remoteTip = match[1]!;
+      if (remoteTip.toLowerCase() === commit.toLowerCase()) return true;
+      const ancestor = await this.git(projectRoot, ['merge-base', '--is-ancestor', commit, remoteTip], false, true);
+      if (ancestor.exitCode === 0) return true;
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Reconcile whether an ambiguous commit succeeded by identifying the created commit against its base and expected message. */
+  public async verifyCommitOutcome(worktreePath: string, baseCommit?: string, expectedMessage?: string): Promise<boolean | undefined> {
+    if (!baseCommit) return undefined;
+    try {
+      const repositoryRoot = await this.requireRepository(worktreePath);
+      const currentHead = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+      if (currentHead === baseCommit) {
+        return false;
+      }
+      const parentResult = await this.git(repositoryRoot, ['rev-parse', 'HEAD^'], false, true);
+      const parentCommit = parentResult.exitCode === 0 ? parentResult.stdout.trim() : undefined;
+      const logResult = await this.git(repositoryRoot, ['log', '-1', '--format=%B', 'HEAD'], false, true);
+      const messageMatches = expectedMessage ? logResult.stdout.trim() === expectedMessage.trim() : true;
+      const dirty = await this.uncommittedPaths(repositoryRoot);
+      if (parentCommit === baseCommit && messageMatches && dirty.length === 0) {
+        return true;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** `git worktree remove` without --force: Git itself refuses when untracked or modified files exist. The branch is kept. */
+  public async removeWorktree(projectPath: string, worktreePath: string): Promise<void> {
+    const projectRoot = await this.requireRepository(projectPath);
+    const base = await fs.realpath(path.resolve(this.worktreeBase));
+    const target = await fs.realpath(worktreePath);
+    if (!this.isInside(base, target) || this.isInside(target, base)) throw new RepositoryError('Only app-owned task worktrees can be retired.', 'none');
+    try {
+      await this.git(projectRoot, ['worktree', 'remove', '--', target]);
+    } catch (error) {
+      const stillThere = await fs.stat(target).then(() => true).catch(() => false);
+      throw new RepositoryError(error instanceof Error ? error.message : 'Worktree removal failed.', stillThere ? 'none' : 'unknown', { cause: error });
     }
   }
 
@@ -294,11 +436,17 @@ export class RepositoryService {
   private async rejectTrackedFilters(repositoryRoot: string): Promise<void> {
     const tracked = (await this.git(repositoryRoot, ['ls-files', '-z'])).stdout.split('\0').filter(Boolean);
     if (tracked.length > MAX_PATHS) throw new Error('Repository has too many tracked paths to safely inspect filters.');
-    for (let index = 0; index < tracked.length; index += 100) {
-      const paths = tracked.slice(index, index + 100);
+    await this.rejectFilters(repositoryRoot, tracked);
+  }
+
+  /** Reject any path with a `filter` attribute: clean/smudge filters run arbitrary commands during add and checkout. */
+  private async rejectFilters(repositoryRoot: string, candidates: string[]): Promise<void> {
+    if (candidates.length > MAX_PATHS) throw new Error('Too many paths to safely inspect filters.');
+    for (let index = 0; index < candidates.length; index += 100) {
+      const paths = candidates.slice(index, index + 100);
       const values = (await this.git(repositoryRoot, ['check-attr', '-z', 'filter', '--', ...paths])).stdout.split('\0');
       if (values.some((value, position) => position % 3 === 2 && value && value !== 'unspecified')) {
-        throw new Error('Repository uses Git filters; refusing checkout because filters may execute code.');
+        throw new Error('Repository uses Git filters; refusing because filters may execute code.');
       }
     }
   }
@@ -344,15 +492,15 @@ export class RepositoryService {
     return false;
   }
 
-  private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false): Promise<GitOutput> {
+  private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false, options: { timeoutMs?: number; allowCredentialHelper?: boolean } = {}): Promise<GitOutput> {
     const hooksPath = path.join(path.resolve(this.worktreeBase), EMPTY_HOOKS_DIRECTORY);
     const env = gitEnvironment();
     try {
       const executable = await this.getGitExecutable(cwd);
-      const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', '-c', 'credential.helper=', ...args], {
+      const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', ...(options.allowCredentialHelper ? [] : ['-c', 'credential.helper=']), ...args], {
         cwd,
         env,
-        timeout: GIT_TIMEOUT_MS,
+        timeout: options.timeoutMs ?? GIT_TIMEOUT_MS,
         maxBuffer: GIT_MAX_OUTPUT_BYTES,
         windowsHide: true,
       });

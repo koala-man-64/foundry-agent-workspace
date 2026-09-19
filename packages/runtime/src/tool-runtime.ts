@@ -8,6 +8,7 @@ import { ToolArguments, type ToolName } from './tool-definitions';
 import { ExecutionSlots } from './execution-slots';
 import { agentRole, isOrchestrationTool, ROLE_TOOLS } from './orchestration-tools';
 import { covers, inScope, normalizeScopePath } from './scope';
+import { McpError, McpManager } from './mcp';
 
 export interface ApprovalBinding { rootTaskId: string; assignmentId: string | null; generation: number; targetLabel: string }
 /** Orchestration extension points. Only the runtime supplies them; nothing in model output does. */
@@ -28,9 +29,11 @@ export interface OrchestrationToolHooks {
 export class ToolRuntime {
   private readonly waiting = new Map<string, { taskId: string; resolve: (approved: boolean) => void }>();
   private orchestration?: OrchestrationToolHooks;
+  private mcp?: McpManager;
   constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly commands: CommandRunner, private readonly redactor: Redactor, private readonly publish: (type: string, data: unknown, taskId: string) => void, private readonly slots = new ExecutionSlots()) {}
 
   attachOrchestration(hooks: OrchestrationToolHooks): void { this.orchestration = hooks; }
+  attachMcp(manager: McpManager): void { this.mcp = manager; }
 
   decide(taskId: string, id: string, nonce: string, decision: 'approve' | 'reject'): { accepted: boolean } {
     const approval = this.store.approval(id);
@@ -77,6 +80,8 @@ export class ToolRuntime {
       } catch { approval.result = { content: 'The file could not be checked safely. Outcome remains unknown.', isError: true }; }
     } else if (approval.handoff || approval.integration) {
       approval.result = { content: 'Use the orchestration operation check for this Git action. Its outcome is reconciled from repository state, never replayed.', isError: true };
+    } else if (approval.mcp) {
+      approval.result = { content: 'An external MCP tool outcome cannot be reconstructed by the runtime. Inspect the server\'s own state; this call will not be replayed.', isError: true };
     } else approval.result = { content: 'Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.', isError: true, cleanupVerified: false };
     this.save(approval); return approval;
   }
@@ -101,6 +106,37 @@ export class ToolRuntime {
         if (role === 'coding' || !this.orchestration) throw new Error('Tool is not available.');
         this.assertNoSecrets(JSON.stringify(call.arguments));
         return await this.orchestration.execute(task, call, signal);
+      }
+      if (McpManager.isMcpToolName(call.name)) {
+        // External tools follow the same policy as repository tools: user-allowlisted read-only tools run within policy; everything else needs a one-shot decision.
+        const resolved = this.mcp?.resolve(call.name);
+        if (!resolved || role !== 'coding') throw new Error('Tool is not available.');
+        const serialized = JSON.stringify(call.arguments ?? {});
+        this.assertNoSecrets(serialized);
+        if (typeof call.arguments !== 'object' || call.arguments === null || Array.isArray(call.arguments)) throw new Error('MCP tool arguments must be a JSON object.');
+        const mcpCall = async (): Promise<ProviderToolResult> => {
+          const outcome = await this.mcp!.call(resolved.server, resolved.tool.name, call.arguments, signal);
+          return result(outcome.content, outcome.isError);
+        };
+        if (resolved.readOnly) return await this.slots.use(signal, mcpCall);
+        approval = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: call.name, state: 'awaiting-approval', createdAt: new Date().toISOString(), summary: `Call external MCP tool "${resolved.tool.name}" on server "${resolved.server.name}" with these exact arguments. External tools act outside this worktree with your Windows privileges.`, fingerprint: randomUUID(), mcp: { serverId: resolved.server.id, serverKey: resolved.server.key, serverName: resolved.server.name, tool: resolved.tool.name, arguments: serialized } };
+        if (!await this.requestApproval(approval, signal)) return result(signal.aborted ? 'Action cancelled before execution.' : 'User rejected this action. Do not repeat this proposal without new user instructions.', true);
+        signal.throwIfAborted();
+        const approvedMcp = approval;
+        await this.slots.use(signal, async () => {
+          approvedMcp.state = 'executing'; this.save(approvedMcp);
+          try {
+            const outcome = await this.mcp!.call(resolved.server, resolved.tool.name, call.arguments, signal);
+            approvedMcp.state = outcome.isError ? 'failed' : 'complete';
+            approvedMcp.result = { content: outcome.content, isError: outcome.isError };
+          } catch (error) {
+            // A timeout or broken transport after the request was sent leaves the external effect unknown.
+            approvedMcp.state = error instanceof McpError && !error.unknownOutcome ? 'failed' : 'unknown';
+            approvedMcp.result = { content: this.redactor.text(error instanceof Error ? error.message : 'MCP call failed.'), isError: true };
+          }
+        });
+        this.save(approval);
+        return result(approval.result!.content, approval.result!.isError);
       }
       if (!Object.hasOwn(ToolArguments, call.name)) throw new Error('Tool is not available.');
       this.assertNoSecrets(JSON.stringify(call.arguments));
@@ -183,7 +219,7 @@ export class ToolRuntime {
       const content = this.redactor.text(error instanceof Error ? error.message : 'Tool failed.');
       if (approval) {
         const knownUnstarted = error instanceof CommandPreflightError || (error instanceof RepositoryError && error.outcome === 'none');
-        approval.state = approval.state === 'executing' && !knownUnstarted ? 'unknown' : signal.aborted ? 'revoked' : approval.state === 'rejected' ? 'rejected' : 'failed';
+        approval.state = approval.state === 'executing' && !knownUnstarted ? 'unknown' : approval.state === 'complete' || approval.state === 'failed' || approval.state === 'unknown' ? approval.state : signal.aborted ? 'revoked' : approval.state === 'rejected' ? 'rejected' : 'failed';
         approval.result = { content, isError: true, ...(approval.command ? { cleanupVerified: false } : {}) }; this.save(approval);
       }
       return result(content, true);

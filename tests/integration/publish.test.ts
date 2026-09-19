@@ -1,0 +1,324 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { ZodError } from 'zod';
+import type { CommitResult, DiagnosticsExport, PushResult, RetireResult, Task } from '../../packages/protocol/src/index';
+import { RuntimeService } from '../../packages/runtime/src/service';
+import { RepositoryService } from '../../packages/runtime/src/repository';
+import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
+
+let directory: string; let store: Store; let runtime: RuntimeService; let project: string; let remote: string;
+const events: { type: string; taskId?: string; data: unknown }[] = [];
+function git(cwd: string, ...args: string[]): string { return execFileSync('git', ['-c', 'core.hooksPath=NUL', '-C', cwd, ...args], { encoding: 'utf8', windowsHide: true }).trim(); }
+
+beforeEach(async () => {
+  directory = await mkdtemp(join(tmpdir(), 'foundry-publish-')); project = join(directory, 'source'); remote = join(directory, 'remote.git'); await mkdir(project);
+  execFileSync('git', ['init', '-q', '--bare', remote], { windowsHide: true });
+  git(project, 'init', '-b', 'main'); git(project, 'config', 'user.name', 'Fixture'); git(project, 'config', 'user.email', 'fixture@example.invalid');
+  await writeFile(join(project, 'hello.txt'), 'original\n'); git(project, 'add', 'hello.txt'); git(project, 'commit', '-m', 'fixture'); git(project, 'remote', 'add', 'origin', remote);
+  store = new Store(join(directory, 'state', 'workspace.db'));
+  runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event));
+  events.length = 0;
+});
+afterEach(async () => { await runtime.shutdown(); await rm(directory, { recursive: true, force: true }); });
+const createTask = async (title = 'Publish'): Promise<Task> => await runtime.dispatch('task.create', { title, projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
+
+describe('explicit commit, push and worktree retirement', () => {
+  it('commits only on explicit request, refuses secret-named paths, and leaves the source checkout untouched', async () => {
+    const task = await createTask();
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'nothing' })).rejects.toThrow('no changes');
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'changed\n');
+    await writeFile(join(task.worktreePath, 'new.txt'), 'new file\n');
+    await writeFile(join(task.worktreePath, '.env'), 'API_KEY=should-never-be-committed\n');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'with secret' })).rejects.toThrow('secret-named');
+    expect(git(task.worktreePath, 'rev-list', '--count', 'HEAD')).toBe('1');
+    await rm(join(task.worktreePath, '.env'));
+    runtime.setCredential(FAKE_PROFILE_ID, 'commit-canary-value-1234');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'token commit-canary-value-1234' })).rejects.toThrow('secret-like');
+    const result = await runtime.dispatch('task.commit', { taskId: task.id, message: 'Task change' }) as CommitResult;
+    expect(result.branch).toBe(task.branch);
+    expect(result.changedPaths.sort()).toEqual(['hello.txt', 'new.txt']);
+    expect(git(task.worktreePath, 'rev-parse', 'HEAD')).toBe(result.commit);
+    expect(git(task.worktreePath, 'log', '-1', '--format=%s')).toBe('Task change');
+    expect(git(task.worktreePath, 'status', '--porcelain')).toBe('');
+    expect(git(project, 'rev-parse', 'HEAD')).toBe(task.baseCommit);
+    expect(git(project, 'status', '--porcelain')).toBe('');
+    expect(events.some(event => event.type === 'task.committed' && event.taskId === task.id)).toBe(true);
+  });
+
+  it('refuses to commit when a Git filter could run during staging', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'changed\n');
+    // A .gitattributes edit is an ordinary file change; `git add` would otherwise run the clean filter with the user's privileges.
+    await writeFile(join(task.worktreePath, '.gitattributes'), '*.txt filter=stamp\n');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'filtered' })).rejects.toThrow('filters');
+    expect(git(task.worktreePath, 'rev-list', '--count', 'HEAD')).toBe('1');
+    expect(git(task.worktreePath, 'diff', '--cached', '--name-only')).toBe('');
+  });
+
+  it('pushes the task branch to a configured remote without forcing and rejects unknown remotes', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'pushed\n');
+    const commit = await runtime.dispatch('task.commit', { taskId: task.id, message: 'Push me' }) as CommitResult;
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'upstream', confirm: 'push' })).rejects.toThrow('not configured');
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin' })).rejects.toBeInstanceOf(ZodError);
+    const pushed = await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' }) as PushResult;
+    expect(pushed).toMatchObject({ remote: 'origin', branch: task.branch });
+    expect(git(remote, 'rev-parse', `refs/heads/${task.branch}`)).toBe(commit.commit);
+    expect(git(remote, 'show-ref', '--heads')).not.toContain('refs/heads/main');
+    // A second push of the same branch is a no-op; a diverged remote would be rejected by Git, never forced.
+    await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' });
+    git(remote, 'update-ref', `refs/heads/${task.branch}`, task.baseCommit);
+    git(project, 'commit', '--allow-empty', '-m', 'diverge');
+    git(remote, 'fetch', project, `main:refs/heads/${task.branch}`, '--force');
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow();
+    expect(git(remote, 'rev-parse', `refs/heads/${task.branch}`)).toBe(git(project, 'rev-parse', 'main'));
+  });
+
+  it('retires only clean worktrees, keeps the branch and history, and blocks further sends', async () => {
+    const task = await createTask();
+    await runtime.dispatch('task.send', { taskId: task.id, content: 'hello' });
+    await expect.poll(() => store.task(task.id).status, { timeout: 5000 }).toBe('idle');
+    await writeFile(join(task.worktreePath, 'draft.txt'), 'uncommitted user file\n');
+    await expect(runtime.dispatch('task.retire', { taskId: task.id, confirm: 'retire' })).rejects.toThrow('draft.txt');
+    expect((await stat(task.worktreePath)).isDirectory()).toBe(true);
+    expect(await readFile(join(task.worktreePath, 'draft.txt'), 'utf8')).toBe('uncommitted user file\n');
+    expect(store.task(task.id).status).toBe('idle');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'Keep draft' });
+    const result = await runtime.dispatch('task.retire', { taskId: task.id, confirm: 'retire' }) as RetireResult;
+    expect(result.removedWorktrees).toEqual([task.worktreePath]);
+    await expect(stat(task.worktreePath)).rejects.toThrow();
+    expect(git(project, 'rev-parse', '--verify', task.branch)).toHaveLength(40);
+    expect(git(project, 'worktree', 'list')).not.toContain(task.worktreePath);
+    expect(store.task(task.id)).toMatchObject({ status: 'retired', retiredAt: expect.any(String) });
+    expect(store.detail(task.id).messages).toHaveLength(2);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'more' })).rejects.toThrow('retired');
+    await expect(runtime.dispatch('task.retire', { taskId: task.id, confirm: 'retire' })).rejects.toThrow('already retired');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'x' })).rejects.toThrow('retired');
+    expect(git(project, 'status', '--porcelain')).toBe('');
+    // The snapshot keeps the retired task in history and later tasks are unaffected.
+    expect((await createTask('Next')).id).toBeTruthy();
+  });
+
+  it('refuses to retire or publish a coordinated root while any run is non-terminal', async () => {
+    await runtime.shutdown(); store = new Store(join(directory, 'state', 'workspace.db'));
+    runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), undefined, undefined, { coordinatedMode: true });
+    const root = await runtime.dispatch('task.create', { title: 'Root', projectPath: project, profileId: FAKE_PROFILE_ID, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: { command: 'Write-Output ok', cwd: '', timeoutMs: 60000 } } }) as Task;
+    await expect(runtime.dispatch('task.retire', { taskId: root.id, confirm: 'retire' })).rejects.toThrow('terminal');
+    await expect(runtime.dispatch('task.commit', { taskId: root.id, message: 'x' })).rejects.toThrow('Coordinated');
+    await expect(runtime.dispatch('task.push', { taskId: root.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('Coordinated');
+    expect((await stat(root.worktreePath)).isDirectory()).toBe(true);
+    expect(store.task(root.id).status).toBe('idle');
+  });
+
+  it('refuses to retire a coordinated task when a member has an unknown mutation outcome', async () => {
+    await runtime.shutdown(); store = new Store(join(directory, 'state', 'workspace.db'));
+    runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), undefined, undefined, { coordinatedMode: true });
+    const root = await runtime.dispatch('task.create', { title: 'Root', projectPath: project, profileId: FAKE_PROFILE_ID, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: { command: 'Write-Output ok', cwd: '', timeoutMs: 60000 } } }) as Task;
+    (store as unknown as { db: { prepare: (sql: string) => { run: (...args: unknown[]) => void } } }).db.prepare("UPDATE agent_runs SET lifecycle = 'terminal', outcome = 'succeeded' WHERE root_task_id = ?").run(root.id);
+    const childId = 'child-task-unknown';
+    store.saveTask({
+      id: childId,
+      title: 'Child 1',
+      projectPath: project,
+      worktreePath: root.worktreePath,
+      branch: 'child-branch',
+      baseCommit: 'HEAD',
+      profileId: FAKE_PROFILE_ID,
+      status: 'idle',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tokenBudget: 100000,
+      usedTokens: 0,
+      mode: 'coding',
+      role: 'child',
+      parentTaskId: root.id,
+      rootTaskId: root.id,
+    });
+    store.saveApproval({
+      id: 'app-child-unknown',
+      taskId: childId,
+      toolCallId: 'call-1',
+      nonce: 'nonce-1',
+      tool: 'run_command',
+      state: 'unknown',
+      createdAt: new Date().toISOString(),
+      summary: 'cmd',
+      fingerprint: 'fp',
+    });
+    await expect(runtime.dispatch('task.retire', { taskId: root.id, confirm: 'retire' })).rejects.toThrow('unknown mutation outcome');
+  });
+
+  it('serializes concurrent worktree creation in one repository', async () => {
+    const tasks = await Promise.all(Array.from({ length: 6 }, (_, index) => createTask(`Parallel ${index}`)));
+    expect(new Set(tasks.map(task => task.worktreePath)).size).toBe(6);
+    expect(store.unknownIntents()).toBe(0);
+  });
+
+  it('exports sanitized diagnostics without credentials, canaries or private file contents', async () => {
+    const canary = 'diagnostic-canary-secret-5678';
+    const task = await createTask('Diag');
+    await writeFile(join(task.worktreePath, 'private.txt'), 'PRIVATE-FILE-CONTENT-XYZ\n');
+    runtime.setCredential(FAKE_PROFILE_ID, canary);
+    await runtime.dispatch('task.send', { taskId: task.id, content: `my key is ${canary} and PRIVATE-FILE-CONTENT-XYZ` });
+    await expect.poll(() => store.task(task.id).status, { timeout: 5000 }).toBe('idle');
+    const result = await runtime.dispatch('diagnostics.export', {}) as DiagnosticsExport;
+    const text = await readFile(result.path, 'utf8');
+    expect(result.path.startsWith(join(directory, 'state', 'diagnostics'))).toBe(true);
+    expect(Buffer.byteLength(text, 'utf8')).toBe(result.bytes);
+    const bundle = JSON.parse(text) as { tasks: { id: string; messageCount: number; usage: { requests: number } }[]; recentEvents: unknown[]; profiles: { endpointHost: string | null }[] };
+    expect(bundle.tasks.map(item => item.id)).toContain(task.id);
+    expect(bundle.tasks.find(item => item.id === task.id)).toMatchObject({ messageCount: 2, usage: { requests: 1 } });
+    expect(bundle.recentEvents.length).toBeGreaterThan(0);
+    expect(text).not.toContain(canary);
+    expect(text).not.toContain('PRIVATE-FILE-CONTENT-XYZ');
+    expect(text).not.toContain('my key is');
+  });
+
+  it('blocks repeated commit/push after an unknown publication outcome until reconciled', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'push\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 1' });
+    // Simulate an intent marked unknown due to an interrupted push operation
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin' });
+    store.finishIntent(intent, 'unknown');
+    const detailBefore = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
+    expect(detailBefore.hasUnknownPublication).toBe(true);
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown git.push outcome');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 2' })).rejects.toThrow('unknown git.push outcome');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    const detailAfter = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
+    expect(detailAfter.hasUnknownPublication).toBeUndefined();
+    const pushed = await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' }) as PushResult;
+    expect(pushed.branch).toBe(task.branch);
+  });
+
+  it('fences new turns while retirement is in progress', async () => {
+    const task = await createTask();
+    // Simulate runtime.operations marking the task as being retired
+    runtime.operations['retiring'].add(task.id);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'hello' })).rejects.toThrow('retired');
+    runtime.operations['retiring'].delete(task.id);
+  });
+
+  it('fences new turns while git publishing is in progress', async () => {
+    const task = await createTask();
+    runtime.operations['publishing'].add(task.id);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'hello' })).rejects.toThrow('Git operation');
+    runtime.operations['publishing'].delete(task.id);
+  });
+
+  it('blocks retirement and publishing after an unknown retirement outcome until reconciled', async () => {
+    const task = await createTask();
+    const intent = store.intent('worktree.retire', { taskId: task.id, worktrees: [task.worktreePath] });
+    store.finishIntent(intent, 'unknown');
+    await expect(runtime.dispatch('task.retire', { taskId: task.id, confirm: 'retire' })).rejects.toThrow('unknown mutation outcome');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'msg' })).rejects.toThrow('unknown worktree retirement outcome');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    expect(store.unknownRetireIntents(task.id)).toHaveLength(0);
+  });
+
+  it('leaves push intent unknown when remote outcome cannot be verified', async () => {
+    const task = await createTask();
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'nonexistent-remote' });
+    store.finishIntent(intent, 'unknown');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(false);
+    expect(reconciled.detail).toContain('could not be verified');
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(1);
+    store.clearPublicationIntent(intent, 'failed');
+  });
+
+  it('reconciles push intent against the attempted commit even if local HEAD advances', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'file1.txt'), 'content 1\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 1' });
+    await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' });
+    const commit1 = git(task.worktreePath, 'rev-parse', 'HEAD');
+    // Simulate an unknown push intent that was bound to commit1
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin', commit: commit1 });
+    store.finishIntent(intent, 'unknown');
+    // Advance local HEAD externally
+    await writeFile(join(task.worktreePath, 'file2.txt'), 'content 2\n');
+    git(task.worktreePath, 'add', 'file2.txt');
+    git(task.worktreePath, 'commit', '-m', 'commit 2');
+    const commit2 = git(task.worktreePath, 'rev-parse', 'HEAD');
+    expect(commit2).not.toBe(commit1);
+    // Reconcile: should verify commit1 on remote and mark complete, not fail against commit2
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(0);
+    const row = store['db'].prepare('SELECT state FROM intents WHERE id = ?').get(intent) as { state: string };
+    expect(row.state).toBe('complete');
+  });
+
+  it('blocks commit and push while tool approval outcomes remain unknown', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'staged\n');
+    // Simulate an approval ending in unknown state
+    store.saveApproval({
+      id: 'appr-unknown-1',
+      taskId: task.id,
+      toolCallId: 'call-1',
+      nonce: 'nonce-1',
+      tool: 'run_command',
+      state: 'unknown',
+      summary: 'run command',
+      fingerprint: 'fp-1',
+      command: 'powershell -File script.ps1',
+      cwd: task.worktreePath,
+      createdAt: new Date().toISOString()
+    });
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'try commit' })).rejects.toThrow('unknown mutation outcome');
+    await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown mutation outcome');
+  });
+
+  it('requires commit identity before declaring commit reconciliation successful', async () => {
+    const task = await createTask();
+    const baseCommit = git(task.worktreePath, 'rev-parse', 'HEAD');
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'attempted\n');
+    // Simulate an ambiguous commit intent where baseCommit is recorded
+    const intent = store.intent('git.commit', { taskId: task.id, branch: task.branch, baseCommit, message: 'ambiguous commit' });
+    store.finishIntent(intent, 'unknown');
+    // Discard the dirty changes externally without creating a commit (worktree is now clean, but no commit occurred)
+    git(task.worktreePath, 'checkout', 'HEAD', '--', 'hello.txt');
+    expect(git(task.worktreePath, 'status', '--porcelain')).toBe('');
+    expect(git(task.worktreePath, 'rev-parse', 'HEAD')).toBe(baseCommit);
+    // Reconcile: HEAD never moved from baseCommit, so the commit failed
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    const row = store['db'].prepare('SELECT state FROM intents WHERE id = ?').get(intent) as { state: string };
+    expect(row.state).toBe('failed');
+  });
+
+  it('treats a remote tip that moved to a non-ancestor as inconclusive during push reconciliation', async () => {
+    const task = await createTask();
+    await writeFile(join(task.worktreePath, 'hello.txt'), 'push target\n');
+    await runtime.dispatch('task.commit', { taskId: task.id, message: 'my commit' });
+    const myCommit = git(task.worktreePath, 'rev-parse', 'HEAD');
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin', commit: myCommit });
+    store.finishIntent(intent, 'unknown');
+    // Create an unrelated commit on project main and push it directly to the remote branch
+    git(project, 'commit', '--allow-empty', '-m', 'unrelated branch tip');
+    git(project, 'push', remote, `main:refs/heads/${task.branch}`);
+    const remoteTip = git(remote, 'rev-parse', `refs/heads/${task.branch}`);
+    expect(remoteTip).not.toBe(myCommit);
+    // Reconcile: remote tip is not myCommit and myCommit is not ancestor of remoteTip, so it is inconclusive
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(false);
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(1);
+    store.clearPublicationIntent(intent, 'failed');
+  });
+
+  it('blocks task.send while a worktree retirement outcome is unknown', async () => {
+    const task = await createTask();
+    const intent = store.intent('worktree.retire', { taskId: task.id, worktrees: [task.worktreePath] });
+    store.finishIntent(intent, 'unknown');
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'should be blocked' })).rejects.toThrow('unknown worktree retirement outcome');
+    store.clearRetireIntent(intent, 'failed');
+  });
+});

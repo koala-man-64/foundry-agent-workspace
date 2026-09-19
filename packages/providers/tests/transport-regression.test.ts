@@ -80,7 +80,7 @@ describe('provider transport regressions', () => {
       'event: message_stop\ndata: {}\n\n'
     )));
     const output = await collect(createProvider('anthropic', { fetch: usage }), request('anthropic'));
-    expect(output).toContainEqual({ type: 'usage', inputTokens: 11, outputTokens: 3 });
+    expect(output).toContainEqual({ type: 'usage', inputTokens: 11, outputTokens: 3, cacheReadTokens: 5, cacheCreationTokens: 4 });
   });
 
   it.each([

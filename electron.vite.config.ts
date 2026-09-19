@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { copyFileSync } from 'node:fs';
 export default defineConfig({
   main: {
-    plugins: [{ name: 'command-helper', closeBundle() { copyFileSync('packages/runtime/src/job-runner.ps1', 'out/main/job-runner.ps1'); } }],
+    plugins: [{ name: 'command-helper', closeBundle() { copyFileSync('packages/runtime/src/job-runner.ps1', 'out/main/job-runner.ps1'); copyFileSync('packages/runtime/src/mcp-host.ps1', 'out/main/mcp-host.ps1'); } }],
     build: { outDir: 'out/main', rollupOptions: { input: { index: resolve('apps/desktop/src/main/index.ts'), runtime: resolve('packages/runtime/src/entry.ts') }, external: ['better-sqlite3'] } }
   },
   preload: { build: { outDir: 'out/preload', rollupOptions: { input: resolve('apps/desktop/src/preload/index.ts') } } },

@@ -64,6 +64,16 @@ describe('runtime integration', () => {
     expect(store.detail(task.id).messages[0]?.status).toBe('interrupted'); expect(store.unknownIntents()).toBe(1);
     await expect(createTask()).rejects.toThrow('unknown outcome');
   });
+  it('recovers unstarted idle tasks with unmatched reservations as safely unstarted with zero tokens', async () => {
+    const task = await createTask();
+    // Simulate a crash immediately after reservation where usedTokens was incremented but no messages were saved
+    store.saveTask({ ...task, status: 'idle', usedTokens: 5000 });
+    expect(store.messagesWithOrdinals(task.id)).toHaveLength(0);
+    await runtime.shutdown();
+    store = new Store(join(directory, 'state', 'workspace.db'));
+    runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), () => {});
+    expect(store.task(task.id).usedTokens).toBe(0);
+  });
   it('does not leak a credential split across stream frames into persisted content or events', async () => {
     const task = await createTask(); await runtime.shutdown();
     store = new Store(join(directory, 'state', 'workspace.db'));

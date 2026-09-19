@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { CoordinationConfig, Message, ModelProfile, ProviderAdapter, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
-import { COORDINATED_MODE_ENABLED, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
+import type { CoordinationConfig, McpServerStatus, Message, ModelProfile, ProviderAdapter, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
+import { COORDINATED_MODE_ENABLED, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
 import { RepositoryService, RepositoryError } from './repository';
 import { Redactor } from './redaction';
@@ -8,14 +8,17 @@ import { Store, FAKE_PROFILE_ID } from './store';
 import { CommandRunner } from './command-runner';
 import { ToolRuntime } from './tool-runtime';
 import { ExecutionSlots } from './execution-slots';
-import { AgentLoop, legacyHooks, prepareRequest, type TurnHooks } from './agent-loop';
+import { AgentLoop, legacyHooks, prepareRequest, type ReservationHandle, type TurnHooks } from './agent-loop';
 import { GitOperations } from './git-operations';
 import { Orchestrator } from './orchestrator';
+import { McpManager } from './mcp';
+import { WorkspaceOperations } from './workspace-operations';
+import { dirname } from 'node:path';
 
 export function profileFingerprint(profile: ModelProfile): string {
   return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit })).digest('hex');
 }
-export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean }
+export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean; mcpHostPath?: string }
 export class RuntimeService {
   private readonly running = new Map<string, { abort: AbortController; done: Promise<void> }>();
   private readonly dispatches = new Set<Promise<unknown>>();
@@ -25,10 +28,13 @@ export class RuntimeService {
   readonly redactor = new Redactor();
   private closing = false;
   private upgrading = false;
+  private mcpBusy = false;
   private shutdownPromise?: Promise<void>;
   private readonly tools: ToolRuntime;
   private readonly loop: AgentLoop;
   readonly orchestrator: Orchestrator;
+  readonly mcp: McpManager;
+  readonly operations: WorkspaceOperations;
   private readonly coordinatedMode: boolean;
   constructor(readonly store: Store, private readonly repositories: RepositoryService, private readonly emit: (event: WorkspaceEvent) => void, providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter = createProvider, commands = new CommandRunner(), options: RuntimeOptions = {}) {
     this.providerFactory = providerFactory;
@@ -45,6 +51,13 @@ export class RuntimeService {
       profileFingerprint
     });
     this.tools.attachOrchestration(this.orchestrator);
+    this.mcp = new McpManager(() => this.store.mcpServers(), this.redactor, { hostPath: options.mcpHostPath, forbiddenRoots: () => [repositories.worktreeBaseDirectory] });
+    this.tools.attachMcp(this.mcp);
+    this.operations = new WorkspaceOperations(store, repositories, this.redactor, this.mcp, (type, data, taskId) => this.publish(type, data, taskId), {
+      isRunning: taskId => this.running.has(taskId),
+      profileFingerprint,
+      activeRuns: rootTaskId => this.store.orchestrationAvailable ? this.orchestrator.records.runs(rootTaskId).filter(run => run.lifecycle !== 'terminal').length : 0
+    }, dirname(store.path));
   }
   private readonly providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter;
   private publish(type: string, data: unknown, taskId?: string): void { this.emit(this.store.event(type, data, taskId)); }
@@ -203,13 +216,75 @@ export class RuntimeService {
       case 'orchestration.decide': return this.orchestrator.decide(params as Parameters<Orchestrator['decide']>[0]);
       case 'orchestration.reconcile': { const p = params as { rootTaskId: string; operationId: string }; return this.orchestrator.reconcile(p.rootTaskId, p.operationId); }
       case 'orchestration.prepareContinue': { const p = params as { rootTaskId: string; operationId: string }; return this.orchestrator.prepareContinue(p.rootTaskId, p.operationId); }
+      case 'task.compact': { const p = params as { taskId: string; keepRecent: number }; return this.operations.compact(p.taskId, p.keepRecent); }
+      case 'task.usage': return this.operations.usage((params as { taskId: string }).taskId);
+      case 'diagnostics.export': return this.operations.exportDiagnostics();
+      case 'task.commit': { const p = params as { taskId: string; message: string }; return this.operations.commit(p.taskId, p.message); }
+      case 'task.push': { const p = params as { taskId: string; remote: string }; return this.operations.push(p.taskId, p.remote); }
+      case 'task.reconcilePublication': return this.operations.reconcilePublication((params as { taskId: string }).taskId);
+      case 'task.retire': return this.operations.retire((params as { taskId: string }).taskId);
+      case 'mcp.list': return this.store.mcpServers().map(server => this.mcpStatus(server));
+      case 'mcp.save': {
+        const config = McpServerConfigSchema.parse(params);
+        const conflict = this.store.mcpServers().find(server => server.key === config.key && server.id !== config.id);
+        if (conflict) throw new Error(`Another MCP server already uses the key ${config.key}.`);
+        if (this.running.size || this.mcpBusy) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
+        this.mcpBusy = true;
+        try {
+          if (!config.enabled) {
+            await this.mcp.stopServer(config.id);
+            if (this.running.size) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
+            const saved = this.store.saveMcpServer(config, { tools: [], toolsListedAt: null, serverInfo: null, lastError: null });
+            this.publish('mcp.changed', { serverId: config.id });
+            return this.mcpStatus(saved);
+          }
+          const listing = await this.mcp.connect(config);
+          if (this.running.size) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
+          const saved = this.store.saveMcpServer(config, { tools: listing.tools, toolsListedAt: new Date().toISOString(), serverInfo: listing.serverInfo, lastError: listing.skipped.length ? `Skipped tools: ${listing.skipped.join('; ')}` : null });
+          this.publish('mcp.changed', { serverId: config.id }); return this.mcpStatus(saved);
+        } catch (error) {
+          if (!config.enabled) throw error;
+          const saved = this.store.saveMcpServer(config, { tools: [], toolsListedAt: null, serverInfo: null, lastError: this.redactor.text(error instanceof Error ? error.message : 'The server could not be started.') });
+          this.publish('mcp.changed', { serverId: config.id }); return { ...saved, running: false };
+        } finally {
+          this.mcpBusy = false;
+        }
+      }
+      case 'mcp.remove': {
+        const id = (params as { serverId: string }).serverId;
+        if (this.running.size || this.mcpBusy) throw new Error('Wait for active responses before removing MCP servers.');
+        this.mcpBusy = true;
+        try {
+          await this.mcp.stopServer(id);
+          if (this.running.size) throw new Error('Wait for active responses before removing MCP servers.');
+          const removed = this.store.removeMcpServer(id);
+          this.publish('mcp.changed', { serverId: id }); return { removed };
+        } finally {
+          this.mcpBusy = false;
+        }
+      }
     }
+  }
+  /** Stored listing plus live process state; a live failure is shown, otherwise the retained listing note (e.g. skipped tools). */
+  private mcpStatus(server: McpServerStatus): McpServerStatus {
+    const live = this.mcp.statusOf(server.id);
+    return { ...server, running: live.running, lastError: live.lastError ?? server.lastError };
   }
   private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
+    if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');
     if (this.running.has(taskId)) throw new Error('This task already has an active response.');
     if (this.running.size >= 16) throw new Error('Too many active tasks. Finish or cancel a task first.');
     const task = this.store.task(taskId);
+    if (task.status === 'retired' || this.operations.isRetiring(taskId)) throw new Error('This task worktree is retired. Create a new task to continue the work.');
+    const rootTaskId = task.parentTaskId ?? task.id;
+    if (this.store.unknownRetireIntents(task.id).length > 0 || this.store.unknownRetireIntents(rootTaskId).length > 0) {
+      throw new Error('This task has an unknown worktree retirement outcome. Reconcile state before starting a response.');
+    }
+    if (this.store.unknownPublicationIntents(task.id).length > 0) {
+      throw new Error('This task has an unknown publication outcome. Reconcile publication state before starting a response.');
+    }
+    if (this.operations.isPublishing(taskId)) throw new Error('Wait for the Git operation to finish before starting a response.');
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');
     if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');
@@ -217,11 +292,12 @@ export class RuntimeService {
     const cleanContent = this.redactor.text(content);
     const abort = new AbortController();
     const fingerprint = profileFingerprint(profile);
-    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks);
-    const handle = hooks.reserve(task, request);
+    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : []);
     const now = new Date().toISOString();
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
+    let handle!: ReservationHandle;
     this.store.transaction(() => {
+      handle = hooks.reserve(task, request);
       this.store.saveMessage({ id: randomUUID(), taskId, role: 'user', content: cleanContent, createdAt: now, status: 'complete' });
       this.store.saveMessage(answer);
       this.store.saveTask({ ...this.store.task(taskId), status: 'running', updatedAt: now });
@@ -245,7 +321,8 @@ export class RuntimeService {
       await Promise.allSettled([
         ...[...this.running.values()].map(entry => entry.done),
         ...this.dispatches,
-        this.orchestrator.close()
+        this.orchestrator.close(),
+        this.mcp.shutdown()
       ]);
       await Promise.allSettled([...this.running.values()].map(entry => entry.done));
       this.store.close();
