@@ -251,17 +251,26 @@ export class McpManager {
     if (!path.isAbsolute(config.command) || !/\.exe$/i.test(config.command)) throw new McpError('The server command must be an absolute path to an .exe file; pass scripts as arguments to their interpreter.');
     const command = await fs.realpath(config.command).catch(() => { throw new McpError('The server command was not found.'); });
     if (!(await fs.stat(command)).isFile()) throw new McpError('The server command must be a file.');
-    for (const root of this.options.forbiddenRoots?.() ?? []) if (isInside(root, command)) throw new McpError('The server command must not live inside app-owned worktrees.');
+    const forbidden = this.options.forbiddenRoots?.() ?? [];
+    for (const root of forbidden) if (isInside(root, command)) throw new McpError('The server command must not live inside app-owned worktrees.');
     if (config.cwd) {
       if (!path.isAbsolute(config.cwd)) throw new McpError('The server working directory must be an absolute path.');
       if (!(await fs.stat(config.cwd).catch(() => undefined))?.isDirectory()) throw new McpError('The server working directory was not found.');
+      const realCwd = await fs.realpath(config.cwd).catch(() => path.resolve(config.cwd));
+      for (const root of forbidden) if (isInside(root, realCwd)) throw new McpError('The server working directory must not live inside app-owned worktrees.');
     }
     for (const [key, value] of Object.entries(config.environment)) {
       if (RESERVED_ENVIRONMENT.test(key) || FORBIDDEN_ENVIRONMENT.test(key)) throw new McpError(`Environment variable ${key} is not permitted for MCP servers.`);
       if (value.includes('\0')) throw new McpError(`Environment variable ${key} has an invalid value.`);
       if (screenSecrets && this.redactor.text(value) !== value) throw new McpError(`Environment variable ${key} contains secret-like content and cannot be stored.`);
     }
-    for (const argument of config.arguments) if (argument.includes('\0') || (screenSecrets && this.redactor.text(argument) !== argument)) throw new McpError('Server arguments contain NUL or secret-like content.');
+    for (const argument of config.arguments) {
+      if (argument.includes('\0') || (screenSecrets && this.redactor.text(argument) !== argument)) throw new McpError('Server arguments contain NUL or secret-like content.');
+      if (path.isAbsolute(argument)) {
+        const resolved = await fs.realpath(argument).catch(() => path.resolve(argument));
+        for (const root of forbidden) if (isInside(root, resolved)) throw new McpError('Server arguments must not reference files inside app-owned worktrees.');
+      }
+    }
   }
 
   private environment(config: McpServerConfig): Record<string, string> {
@@ -317,7 +326,22 @@ export class McpManager {
     const tools: McpTool[] = []; const skipped: string[] = [];
     let cursor: string | undefined = undefined;
     let totalFetched = 0;
+    const seenCursors = new Set<string>();
+    let pages = 0;
+    const MAX_PAGES = 32;
     do {
+      if (cursor) {
+        if (seenCursors.has(cursor)) {
+          skipped.push('pagination loop detected in MCP tools/list');
+          break;
+        }
+        seenCursors.add(cursor);
+      }
+      pages++;
+      if (pages > MAX_PAGES) {
+        skipped.push('MCP tools/list exceeded page limit');
+        break;
+      }
       const params: Record<string, unknown> = cursor ? { cursor } : {};
       const result = await session.client.request('tools/list', params, START_TIMEOUT_MS);
       if (!isRecord(result) || !Array.isArray(result.tools)) throw new McpError('The MCP server returned an invalid tools/list result.');
@@ -339,7 +363,7 @@ export class McpManager {
   }
 
   private boundResult(raw: unknown): McpCallResult {
-    if (!isRecord(raw)) throw new McpError('The MCP server returned an invalid tools/call result.');
+    if (!isRecord(raw)) throw new McpError('The MCP server returned an invalid tools/call result.', true);
     const blocks = Array.isArray(raw.content) ? raw.content : [];
     const parts: string[] = [];
     for (const block of blocks) {

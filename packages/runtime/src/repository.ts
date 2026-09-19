@@ -153,12 +153,17 @@ export class RepositoryService {
   }
 
   /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains HEAD. */
-  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string): Promise<boolean> {
-    const repositoryRoot = await this.requireRepository(worktreePath);
-    const projectRoot = await this.requireRepository(projectPath);
-    const head = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
-    const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true);
-    return result.stdout.includes(head);
+  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string): Promise<boolean | undefined> {
+    try {
+      const repositoryRoot = await this.requireRepository(worktreePath);
+      const projectRoot = await this.requireRepository(projectPath);
+      const head = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+      const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true });
+      if (result.exitCode !== 0) return undefined;
+      return result.stdout.includes(head);
+    } catch {
+      return undefined;
+    }
   }
 
   /** Reconcile whether an ambiguous commit succeeded by checking if the worktree is clean. */

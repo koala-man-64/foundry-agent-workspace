@@ -181,9 +181,37 @@ export class Store {
   clearPublicationIntent(intentId: string, state: 'complete' | 'failed' = 'failed'): void {
     this.db.prepare("UPDATE intents SET state = ? WHERE id = ? AND kind IN ('git.push', 'git.commit')").run(state, intentId);
   }
+  unknownRetireIntents(taskId: string): Array<{ id: string; data: unknown }> {
+    const rows = this.db.prepare("SELECT id, data FROM intents WHERE kind = 'worktree.retire' AND state = 'unknown'").all() as { id: string; data: string }[];
+    return rows.filter(row => {
+      try { return (JSON.parse(row.data) as { taskId?: string }).taskId === taskId; } catch { return false; }
+    }).map(row => ({ id: row.id, data: JSON.parse(row.data) as unknown }));
+  }
+  clearRetireIntent(intentId: string, state: 'complete' | 'failed' = 'failed'): void {
+    this.db.prepare("UPDATE intents SET state = ? WHERE id = ? AND kind = 'worktree.retire'").run(state, intentId);
+  }
   private recoverOrchestration(): void {
     const now = new Date().toISOString();
     // Interrupted requests keep their full conservative reservation; nothing is refunded.
+    const interrupted = this.db.prepare("SELECT request_id, run_task_id, amount FROM budget_reservations WHERE state = 'reserved'").all() as { request_id: string; run_task_id: string; amount: number }[];
+    for (const row of interrupted) {
+      const exists = this.db.prepare("SELECT 1 FROM usage_records WHERE request_id = ?").get(row.request_id);
+      if (!exists) {
+        this.saveUsageRecord({
+          id: randomUUID(),
+          taskId: row.run_task_id,
+          requestId: row.request_id,
+          reservedTokens: row.amount,
+          promptTokens: null,
+          completionTokens: null,
+          cacheReadTokens: null,
+          cacheCreationTokens: null,
+          usageKnown: false,
+          reason: 'Runtime restarted before usage was recorded.',
+          createdAt: now
+        });
+      }
+    }
     this.db.prepare("UPDATE budget_reservations SET state = 'retained', charged = amount, reason = 'Runtime restarted before usage was recorded.', settled_at = ? WHERE state = 'reserved'").run(now);
     this.db.prepare("UPDATE handoff_operations SET state = 'revoked', updated_at = ? WHERE state = 'awaiting-approval'").run(now);
     this.db.prepare("UPDATE handoff_operations SET state = 'unknown', detail = 'Runtime restarted during the commit operation.', updated_at = ? WHERE state IN ('executing', 'staged', 'committed')").run(now);
@@ -203,6 +231,24 @@ export class Store {
         task.status = 'interrupted'; task.updatedAt = new Date().toISOString(); this.saveTask(task);
         for (const message of this.detail(task.id).messages) {
           if (message.status === 'streaming') this.saveMessage({ ...message, status: 'interrupted' });
+        }
+        const totals = this.usageTotals(task.id);
+        const recorded = totals.prompt + totals.completion + totals.reservedUnknown;
+        const unrecorded = task.usedTokens - recorded;
+        if (unrecorded > 0) {
+          this.saveUsageRecord({
+            id: randomUUID(),
+            taskId: task.id,
+            requestId: randomUUID(),
+            reservedTokens: unrecorded,
+            promptTokens: null,
+            completionTokens: null,
+            cacheReadTokens: null,
+            cacheCreationTokens: null,
+            usageKnown: false,
+            reason: 'Runtime restarted before usage was recorded.',
+            createdAt: new Date().toISOString()
+          });
         }
         this.event('task.interrupted', { reason: 'Runtime restarted; partial response retained. Reserved usage retained conservatively.' }, task.id);
       }

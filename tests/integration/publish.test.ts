@@ -203,4 +203,33 @@ describe('explicit commit, push and worktree retirement', () => {
     await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'hello' })).rejects.toThrow('retired');
     runtime.operations['retiring'].delete(task.id);
   });
+
+  it('fences new turns while git publishing is in progress', async () => {
+    const task = await createTask();
+    runtime.operations['publishing'].add(task.id);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'hello' })).rejects.toThrow('Git operation');
+    runtime.operations['publishing'].delete(task.id);
+  });
+
+  it('blocks retirement and publishing after an unknown retirement outcome until reconciled', async () => {
+    const task = await createTask();
+    const intent = store.intent('worktree.retire', { taskId: task.id, worktrees: [task.worktreePath] });
+    store.finishIntent(intent, 'unknown');
+    await expect(runtime.dispatch('task.retire', { taskId: task.id, confirm: 'retire' })).rejects.toThrow('unknown mutation outcome');
+    await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'msg' })).rejects.toThrow('unknown worktree retirement outcome');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(true);
+    expect(store.unknownRetireIntents(task.id)).toHaveLength(0);
+  });
+
+  it('leaves push intent unknown when remote outcome cannot be verified', async () => {
+    const task = await createTask();
+    const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'nonexistent-remote' });
+    store.finishIntent(intent, 'unknown');
+    const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
+    expect(reconciled.reconciled).toBe(false);
+    expect(reconciled.detail).toContain('could not be verified');
+    expect(store.unknownPublicationIntents(task.id)).toHaveLength(1);
+    store.clearPublicationIntent(intent, 'failed');
+  });
 });

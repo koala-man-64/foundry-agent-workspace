@@ -28,6 +28,7 @@ async function call(name, args) {
     case 'secret_echo': return text(`canary=${process.env.MCP_FIXTURE_CANARY ?? 'none'}`);
     case 'huge': return text('x'.repeat(Number(args.bytes)));
     case 'fail': return text('fixture failure', true);
+    case 'malformed': return 'not-an-object';
     default: throw Object.assign(new Error(`Unknown tool ${name}`), { code: -32602 });
   }
 }
@@ -41,9 +42,15 @@ rl.on('line', line => {
     if (method === 'initialize') return { protocolVersion: params?.protocolVersion ?? '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'foundry-fixture', version: '1.0.0' } };
     if (method === 'ping') return {};
     if (method === 'tools/list') {
+      if (process.env.MCP_FIXTURE_PAGINATE === 'loop') {
+        return { tools: [{ name: 'loop_tool', inputSchema: { type: 'object' } }], nextCursor: 'stuck-cursor' };
+      }
       if (process.env.MCP_FIXTURE_PAGINATE === '1') {
         if (params?.cursor === 'page-2') return { tools: [{ name: 'page2_tool', inputSchema: { type: 'object' } }] };
         return { tools: [{ name: 'page1_tool', inputSchema: { type: 'object' } }], nextCursor: 'page-2' };
+      }
+      if (process.env.MCP_FIXTURE_MALFORMED === '1') {
+        return { tools: [...tools, { name: 'malformed', description: 'Return a non-object call result.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }] };
       }
       return { tools };
     }

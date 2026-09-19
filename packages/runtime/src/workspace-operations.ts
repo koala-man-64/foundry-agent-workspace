@@ -23,9 +23,11 @@ export interface OperationPorts {
  */
 export class WorkspaceOperations {
   private readonly retiring = new Set<string>();
+  private readonly publishing = new Set<string>();
   constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly redactor: Redactor, private readonly mcp: McpManager, private readonly publish: (type: string, data: unknown, taskId?: string) => void, private readonly ports: OperationPorts, private readonly dataDirectory: string) {}
 
   isRetiring(taskId: string): boolean { return this.retiring.has(taskId); }
+  isPublishing(taskId: string): boolean { return this.publishing.has(taskId); }
 
   // ---------------------------------------------------------------- compaction
 
@@ -122,57 +124,104 @@ export class WorkspaceOperations {
     if (task.mode === 'coordinated') throw new Error('Coordinated task worktrees are integrated through reviewed operations; commit and push are available for chat and coding tasks.');
     const unknowns = this.store.unknownPublicationIntents(taskId);
     if (unknowns.length > 0) throw new Error(`This task has an unknown ${unknowns[0]!.kind} outcome. Reconcile publication state before attempting another operation.`);
+    const unknownRetires = this.store.unknownRetireIntents(taskId);
+    if (unknownRetires.length > 0) throw new Error('This task has an unknown worktree retirement outcome. Reconcile state before attempting another operation.');
     return task;
   }
 
   async reconcilePublication(taskId: string): Promise<{ reconciled: boolean; detail: string }> {
     const task = this.store.task(taskId);
-    const unknowns = this.store.unknownPublicationIntents(taskId);
-    if (!unknowns.length) return { reconciled: true, detail: 'No unknown publication intents.' };
-    let resolved = 0;
-    for (const item of unknowns) {
-      if (item.kind === 'git.push') {
-        const data = item.data as { remote: string; branch: string };
-        const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch);
-        this.store.clearPublicationIntent(item.id, succeeded ? 'complete' : 'failed');
-        resolved++;
-      } else if (item.kind === 'git.commit') {
-        const clean = await this.repositories.verifyCommitOutcome(task.worktreePath);
-        this.store.clearPublicationIntent(item.id, clean ? 'complete' : 'failed');
-        resolved++;
+    if (this.publishing.has(taskId)) throw new Error('A Git operation is already in progress for this task.');
+    this.publishing.add(taskId);
+    try {
+      const unknowns = this.store.unknownPublicationIntents(taskId);
+      const unknownRetires = this.store.unknownRetireIntents(taskId);
+      if (!unknowns.length && !unknownRetires.length) return { reconciled: true, detail: 'No unknown publication or retirement intents.' };
+      let resolved = 0;
+      let unresolved = 0;
+      for (const item of unknowns) {
+        if (item.kind === 'git.push') {
+          const data = item.data as { remote: string; branch: string };
+          const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch);
+          if (succeeded === undefined) {
+            unresolved++;
+            continue;
+          }
+          this.store.clearPublicationIntent(item.id, succeeded ? 'complete' : 'failed');
+          resolved++;
+        } else if (item.kind === 'git.commit') {
+          const clean = await this.repositories.verifyCommitOutcome(task.worktreePath);
+          this.store.clearPublicationIntent(item.id, clean ? 'complete' : 'failed');
+          resolved++;
+        }
       }
+      for (const item of unknownRetires) {
+        const data = item.data as { worktrees?: string[] };
+        const worktrees = Array.isArray(data.worktrees) ? data.worktrees : [task.worktreePath];
+        let anyRemaining = false;
+        for (const wt of worktrees) {
+          const exists = await fs.stat(wt).then(() => true).catch(() => false);
+          if (exists) anyRemaining = true;
+        }
+        if (!anyRemaining) {
+          this.store.clearRetireIntent(item.id, 'complete');
+          resolved++;
+        } else {
+          this.store.clearRetireIntent(item.id, 'failed');
+          resolved++;
+        }
+      }
+      return {
+        reconciled: unresolved === 0,
+        detail: unresolved > 0
+          ? `Reconciled ${resolved} intent(s); ${unresolved} push intent(s) could not be verified against the remote.`
+          : `Reconciled ${resolved} intent(s).`
+      };
+    } finally {
+      this.publishing.delete(taskId);
     }
-    return { reconciled: true, detail: `Reconciled ${resolved} publication intent(s).` };
   }
 
   async commit(taskId: string, message: string): Promise<CommitResult> {
     const task = this.publishable(taskId);
-    const clean = this.redactor.text(message);
-    if (clean !== message) throw new Error('The commit message contains secret-like content.');
-    const intent = this.store.intent('git.commit', { taskId, branch: task.branch });
+    if (this.publishing.has(taskId)) throw new Error('A Git operation is already in progress for this task.');
+    this.publishing.add(taskId);
     try {
-      const result = await this.repositories.commitAll(task.worktreePath, task.branch, clean);
-      this.store.finishIntent(intent, 'complete');
-      this.store.saveTask({ ...this.store.task(taskId), updatedAt: new Date().toISOString() });
-      this.publish('task.committed', { commit: result.commit, changedPaths: result.changedPaths.length }, taskId);
-      return { ...result, branch: task.branch };
-    } catch (error) {
-      this.store.finishIntent(intent, error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown');
-      throw error;
+      const clean = this.redactor.text(message);
+      if (clean !== message) throw new Error('The commit message contains secret-like content.');
+      const intent = this.store.intent('git.commit', { taskId, branch: task.branch });
+      try {
+        const result = await this.repositories.commitAll(task.worktreePath, task.branch, clean);
+        this.store.finishIntent(intent, 'complete');
+        this.store.saveTask({ ...this.store.task(taskId), updatedAt: new Date().toISOString() });
+        this.publish('task.committed', { commit: result.commit, changedPaths: result.changedPaths.length }, taskId);
+        return { ...result, branch: task.branch };
+      } catch (error) {
+        this.store.finishIntent(intent, error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown');
+        throw error;
+      }
+    } finally {
+      this.publishing.delete(taskId);
     }
   }
 
   async push(taskId: string, remote: string): Promise<PushResult> {
     const task = this.publishable(taskId);
-    const intent = this.store.intent('git.push', { taskId, branch: task.branch, remote });
+    if (this.publishing.has(taskId)) throw new Error('A Git operation is already in progress for this task.');
+    this.publishing.add(taskId);
     try {
-      const detail = await this.repositories.push(task.worktreePath, task.projectPath, remote, task.branch);
-      this.store.finishIntent(intent, 'complete');
-      this.publish('task.pushed', { remote, branch: task.branch }, taskId);
-      return { remote, branch: task.branch, detail: this.redactor.text(detail) };
-    } catch (error) {
-      this.store.finishIntent(intent, error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown');
-      throw error;
+      const intent = this.store.intent('git.push', { taskId, branch: task.branch, remote });
+      try {
+        const detail = await this.repositories.push(task.worktreePath, task.projectPath, remote, task.branch);
+        this.store.finishIntent(intent, 'complete');
+        this.publish('task.pushed', { remote, branch: task.branch }, taskId);
+        return { remote, branch: task.branch, detail: this.redactor.text(detail) };
+      } catch (error) {
+        this.store.finishIntent(intent, error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown');
+        throw error;
+      }
+    } finally {
+      this.publishing.delete(taskId);
     }
   }
 
@@ -188,7 +237,7 @@ export class WorkspaceOperations {
     try {
       if (task.mode === 'coordinated' && this.ports.activeRuns(task.id) > 0) throw new Error('Every coordinator and child run must be terminal before the worktrees are retired.');
       if (members.some(member => member.status === 'running' || this.ports.isRunning(member.id))) throw new Error('A child agent is still active.');
-      if (members.some(member => this.store.approvals(member.id).some(item => item.state === 'unknown') || this.store.unknownPublicationIntents(member.id).length > 0)) {
+      if (members.some(member => this.store.approvals(member.id).some(item => item.state === 'unknown') || this.store.unknownPublicationIntents(member.id).length > 0 || this.store.unknownRetireIntents(member.id).length > 0)) {
         throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
       }
       // Every worktree is checked read-only before any removal starts; one dirty worktree refuses the whole retirement.

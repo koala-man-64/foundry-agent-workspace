@@ -277,6 +277,7 @@ export class RuntimeService {
     if (this.running.size >= 16) throw new Error('Too many active tasks. Finish or cancel a task first.');
     const task = this.store.task(taskId);
     if (task.status === 'retired' || this.operations.isRetiring(taskId)) throw new Error('This task worktree is retired. Create a new task to continue the work.');
+    if (this.operations.isPublishing(taskId)) throw new Error('Wait for the Git operation to finish before starting a response.');
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');
     if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');

@@ -65,18 +65,30 @@ describe('MCP servers under runtime policy', () => {
     await expect(runtime.dispatch('mcp.save', config({ key: 'other', command: 'node' }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('absolute path') });
     await expect(runtime.dispatch('mcp.save', config({ key: 'fixture', id: randomUUID() }))).rejects.toThrow('already uses the key');
     await expect(runtime.dispatch('mcp.save', config({ key: 'env', environment: { API_KEY: 'x' } }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('not permitted') });
+    const worktreeRoot = join(directory, 'worktrees');
+    await mkdir(worktreeRoot, { recursive: true });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-cwd', cwd: worktreeRoot }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-arg', arguments: [join(worktreeRoot, 'script.js')] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference files inside app-owned worktrees') });
     const missing = await runtime.dispatch('mcp.save', config({ key: 'missing', arguments: [join(directory, 'nope.mjs')] })) as McpServerStatus;
     expect(missing.tools).toEqual([]); expect(missing.lastError).toContain('failed to start');
     expect((await runtime.dispatch('mcp.remove', { serverId: saved.id })) as { removed: boolean }).toEqual({ removed: true });
   });
 
-  it('follows tools/list pagination cursors up to MAX_TOOLS', async () => {
+  it('follows tools/list pagination cursors up to MAX_TOOLS and breaks on pagination loops', async () => {
     const paginated = await runtime.dispatch('mcp.save', config({
       key: 'paginated',
       environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY, MCP_FIXTURE_PAGINATE: '1' },
     })) as McpServerStatus;
     expect(paginated.tools.map(tool => tool.name).sort()).toEqual(['page1_tool', 'page2_tool']);
     expect((await runtime.dispatch('mcp.remove', { serverId: paginated.id })) as { removed: boolean }).toEqual({ removed: true });
+
+    const loopServer = await runtime.dispatch('mcp.save', config({
+      key: 'loop-server',
+      environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY, MCP_FIXTURE_PAGINATE: 'loop' },
+    })) as McpServerStatus;
+    expect(loopServer.tools.map(tool => tool.name)).toEqual(['loop_tool', 'loop_tool']);
+    expect(loopServer.lastError).toContain('pagination loop detected');
+    expect((await runtime.dispatch('mcp.remove', { serverId: loopServer.id })) as { removed: boolean }).toEqual({ removed: true });
   });
 
   it('does not launch a server when disabled and stops any existing session', async () => {
@@ -172,6 +184,22 @@ describe('MCP servers under runtime policy', () => {
     await runtime.dispatch('task.send', { taskId: next.id, content: 'go' }); await done(next.id);
     expect(provider.results.find(result => result.id === 'e1')).toMatchObject({ isError: false, content: 'echo: after' });
     expect(store.task(next.id).status).toBe('idle');
+  });
+
+  it('treats a malformed tool call result as an unknown outcome and stops the server', async () => {
+    const cfg = config({ environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY, MCP_FIXTURE_MALFORMED: '1' } });
+    await runtime.dispatch('mcp.save', cfg);
+    const provider = new ScriptProvider([[{ id: 'm1', name: 'mcp__fixture__malformed', arguments: {} }]]);
+    await withProvider(provider);
+    const task = await codingTask();
+    await runtime.dispatch('task.send', { taskId: task.id, content: 'go' });
+    const malformed = await proposal(task.id);
+    expect(malformed.tool).toBe('mcp__fixture__malformed');
+    await decide(malformed, 'approve');
+    await done(task.id);
+    expect(store.approval(malformed.id).state).toBe('unknown');
+    expect(store.task(task.id).status).toBe('failed');
+    expect(runtime.mcp['sessions'].has(cfg.id as string)).toBe(false);
   });
 
   it('revokes a pending MCP approval when the runtime stops and never executes it afterwards', async () => {

@@ -153,4 +153,34 @@ describe('controlled compaction and usage visibility', () => {
     await send(task.id, 'short 3');
     await expect(runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 1 })).rejects.toThrow('would not reduce context size');
   });
+
+  it('synthesizes unknown usage records during recovery when process restarts during an active request', async () => {
+    const task = await runtime.dispatch('task.create', { title: 'Crash', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
+    // Durably charge an in-flight request directly in SQLite as if a crash occurred while running
+    store.saveTask({ ...store.task(task.id), status: 'running', usedTokens: 5000 });
+    expect(store.usageRecords(task.id).records).toHaveLength(0);
+    // Shut down the active runtime so SQLite is unlocked
+    await runtime.shutdown();
+    // Simulate process recovery by opening a fresh Store
+    const freshStore = new Store(join(directory, 'state', 'workspace.db'));
+    try {
+      const recoveredTask = freshStore.task(task.id);
+      expect(recoveredTask.status).toBe('interrupted');
+      expect(recoveredTask.usedTokens).toBe(5000);
+      const totals = freshStore.usageTotals(task.id);
+      expect(totals.requests).toBe(1);
+      expect(totals.unknownRequests).toBe(1);
+      expect(totals.knownRequests).toBe(0);
+      expect(totals.reservedUnknown).toBe(5000);
+      const records = freshStore.usageRecords(task.id);
+      expect(records.records).toHaveLength(1);
+      expect(records.records[0]).toMatchObject({
+        usageKnown: false,
+        reservedTokens: 5000,
+        reason: expect.stringContaining('Runtime restarted before usage was recorded')
+      });
+    } finally {
+      freshStore.close();
+    }
+  });
 });
