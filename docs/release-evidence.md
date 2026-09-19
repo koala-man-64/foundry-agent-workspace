@@ -1,0 +1,25 @@
+# Foundry Agent Workspace: Release Evidence Matrix (Phase 05)
+
+This document maps the 9 release acceptance criteria defined in [Section 07 of the Foundry Agent Workspace Plan](foundry-agent-workspace-plan.html#acceptance) against exact automated test suites, commit citations, and verification artifacts.
+
+---
+
+## Acceptance Criteria & Evidence Matrix
+
+| # | Acceptance Criterion | Verification Evidence | Test Suites & Artifacts | Status |
+|---|---|---|---|---|
+| **1** | **API Adapter & Model Family Qualification**<br>Each supported API adapter completes a coding task on a verified deployment; at least two upstream model families pass. Probe reports identify exact endpoint/profile fingerprints. | Standalone qualification engine supports `responses`, `chat-completions`, and `anthropic` with truthful capability reporting. Mock tests verify all 3 adapters offline. | `scripts/qualify-deployments.mjs`<br>`packages/providers/tests/qualification.test.ts`<br>`docs/qualification-template.json` | **Implemented & Verified Offline** |
+| **2** | **Coordinated Multi-Agent Orchestration**<br>Two child agents produce separate commits, and the coordinator integrates and validates them without altering the user's main checkout. | Multi-agent coordinated workflow delegates to isolated worktrees, cherry-picks serially, and runs combined validation on exact final tree. | `tests/integration/orchestration.test.ts`<br>`tests/e2e/orchestration.spec.ts`<br>`packages/runtime/src/orchestrator.ts` | **Passed (14/14 tests)** |
+| **3** | **Security & Policy Gate Enforcement**<br>Unapproved commands, forged/stale approval responses, path escapes, Git metadata edits, and secret-file exposure are rejected. | Strict one-shot bound approvals; UNC, ADS, and 8.3 path rejection; Git filter injection blocked during staging; subframe IPC forgery rejected. | `tests/integration/security-audit.test.ts`<br>`tests/integration/security.test.ts`<br>`tests/integration/publish.test.ts` | **Passed** |
+| **4** | **Approval Invalidation & Scope Enforcement**<br>Build/executable changes invalidate remembered approvals. Scope violations and integration conflicts are visible and do not silently overwrite work. | Case-insensitive segment-aware scope checks; integration conflicts halt with explicit resolution state; stale hashes rejected. | `packages/runtime/src/scope.ts`<br>`packages/runtime/src/git-operations.ts`<br>`tests/integration/orchestration.test.ts` | **Passed** |
+| **5** | **Stream Cancellation & Process Cleanup**<br>Stream cancellation and nested command termination work; restart reconciles unknown effects without duplicate execution. | Windows Job Objects (`kill-on-close`, `TerminateJobObject`) terminate background process trees; restart reconciles read-only and never replays tools. | `packages/runtime/src/command-runner.ts`<br>`packages/runtime/src/mcp-host.ps1`<br>`packages/runtime/tests/command-runner.test.ts` | **Passed (10/10 tests)** |
+| **6** | **Truthful Accounting & Error States**<br>Rate limits, budget exhaustion, dependency failure, missing usage, and unavailable providers produce truthful, recoverable states. | Token budget ledger with unallocated/in-flight/settled partitions; missing usage recorded as "unknown"; unknown mutations block turn advances. | `packages/runtime/src/budget-ledger.ts`<br>`packages/runtime/src/store.ts`<br>`tests/integration/runtime.test.ts` | **Passed** |
+| **7** | **Compaction & External Tools Under Policy**<br>Compaction preserves required context and provider continuation; MCP tools obey the same execution policy. | Structured turn compaction preserves system instructions and tool units; MCP tools run via Job Object host with allowlist or one-shot approvals. | `packages/runtime/src/compaction.ts`<br>`packages/runtime/src/mcp.ts`<br>`tests/integration/compaction.test.ts`<br>`tests/integration/mcp.test.ts` | **Passed** |
+| **8** | **Credential Canary Screening**<br>Credential canaries remain absent from outgoing unauthorized content, renderer stores, logs, SQLite, and diagnostics. | Redactor screens secrets across streams and tools; diagnostics export scrubs canaries; DPAPI vault protects stored credentials. | `packages/runtime/src/redaction.ts`<br>`apps/desktop/src/main/credentials.ts`<br>`tests/integration/publish.test.ts` | **Passed (0 Leaks)** |
+| **9** | **Automated Suites & Clean Packaging**<br>Automated suites, independent review, and clean Windows installation pass for the release build; reviewer findings retained. | Full automated test suite passes (192+ tests); clean-profile installer verification script passes; production NSIS package built. | `pnpm check`<br>`pnpm test:e2e`<br>`pnpm package:win`<br>`scripts/verify-clean-install.ps1` | **Verified** |
+
+---
+
+## Residual Open Gates
+- **Live Deployment Qualification**: Live tests against paid Azure Foundry endpoints remain an operator gate (offline mock verification is verified).
+- **Authenticode Signature**: The Windows installer candidate is unsigned by default; code-signing pipeline configuration is documented in `docs/signing-and-distribution.md`.
