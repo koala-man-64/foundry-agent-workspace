@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { Message, ModelProfile, ProviderAdapter, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
-import { ModelProfileSchema, RpcMethods } from '../../protocol/src/index';
+import type { CoordinationConfig, Message, ModelProfile, ProviderAdapter, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
+import { COORDINATED_MODE_ENABLED, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
 import { RepositoryService, RepositoryError } from './repository';
 import { Redactor } from './redaction';
@@ -8,11 +8,14 @@ import { Store, FAKE_PROFILE_ID } from './store';
 import { CommandRunner } from './command-runner';
 import { ToolRuntime } from './tool-runtime';
 import { ExecutionSlots } from './execution-slots';
-import { AgentLoop, prepareRequest, reserveRequest } from './agent-loop';
+import { AgentLoop, legacyHooks, prepareRequest, type TurnHooks } from './agent-loop';
+import { GitOperations } from './git-operations';
+import { Orchestrator } from './orchestrator';
 
 export function profileFingerprint(profile: ModelProfile): string {
   return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit })).digest('hex');
 }
+export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean }
 export class RuntimeService {
   private readonly running = new Map<string, { abort: AbortController; done: Promise<void> }>();
   private readonly dispatches = new Set<Promise<unknown>>();
@@ -21,18 +24,33 @@ export class RuntimeService {
   private readonly probing = new Set<string>();
   readonly redactor = new Redactor();
   private closing = false;
+  private upgrading = false;
   private shutdownPromise?: Promise<void>;
   private readonly tools: ToolRuntime;
   private readonly loop: AgentLoop;
-  constructor(readonly store: Store, private readonly repositories: RepositoryService, private readonly emit: (event: WorkspaceEvent) => void, providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter = createProvider, commands = new CommandRunner()) {
+  readonly orchestrator: Orchestrator;
+  private readonly coordinatedMode: boolean;
+  constructor(readonly store: Store, private readonly repositories: RepositoryService, private readonly emit: (event: WorkspaceEvent) => void, providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter = createProvider, commands = new CommandRunner(), options: RuntimeOptions = {}) {
     this.providerFactory = providerFactory;
+    this.coordinatedMode = options.coordinatedMode ?? (COORDINATED_MODE_ENABLED || process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1');
     const slots = new ExecutionSlots();
     const publish = (type: string, data: unknown, taskId: string): void => this.publish(type, data, taskId);
     this.tools = new ToolRuntime(store, repositories, commands, this.redactor, publish, slots);
     this.loop = new AgentLoop(store, this.tools, slots, this.redactor, providerFactory, publish);
+    this.orchestrator = new Orchestrator(store, options.git ?? new GitOperations(repositories.worktreeBaseDirectory), this.tools, this.redactor, publish, {
+      startTurn: (taskId, content, hooks) => this.startTurn(taskId, content, hooks),
+      abort: taskId => { const entry = this.running.get(taskId); entry?.abort.abort(); return Boolean(entry); },
+      isRunning: taskId => this.running.has(taskId),
+      profileReady: profile => this.profileReady(profile),
+      profileFingerprint
+    });
+    this.tools.attachOrchestration(this.orchestrator);
   }
   private readonly providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter;
   private publish(type: string, data: unknown, taskId?: string): void { this.emit(this.store.event(type, data, taskId)); }
+  private profileReady(profile: ModelProfile): boolean {
+    return profile.apiKind === 'fake' || (profile.verificationFingerprint === profileFingerprint(profile) && Boolean(profile.capabilities?.tools && profile.capabilities?.continuation));
+  }
   setCredential(id: string, secret: string, binding?: string): void {
     const targetProfile = this.store.profile(id);
     if (binding !== undefined && (!targetProfile || JSON.stringify([targetProfile.apiKind, targetProfile.endpoint, targetProfile.deployment]) !== binding)) throw new Error('Profile changed while saving the credential; retry from model settings.');
@@ -50,11 +68,21 @@ export class RuntimeService {
     void operation.then(() => this.dispatches.delete(operation), () => this.dispatches.delete(operation));
     return operation;
   }
+  private coordinatedAvailable(): boolean { return this.coordinatedMode && this.store.orchestrationAvailable; }
   private async dispatchInternal(method: RpcMethod, input: unknown): Promise<unknown> {
     if (this.closing) throw new Error('Runtime is shutting down.');
     const params = RpcMethods[method].parse(input);
+    if (this.upgrading && method !== 'workspace.snapshot' && method !== 'workspace.schema') throw new Error('The database upgrade is in progress.');
+    if (method.startsWith('orchestration.') && !this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
     switch (method) {
       case 'workspace.snapshot': return this.store.snapshot();
+      case 'workspace.schema': return { version: this.store.schemaVersion, current: SCHEMA_VERSION, upgradeRequired: this.store.schemaVersion < SCHEMA_VERSION, coordinatedAvailable: this.coordinatedAvailable() };
+      case 'workspace.upgrade': {
+        // Stop admission and require idle work before the backed-up transactional upgrade.
+        if (this.running.size || this.dispatches.size > 1) throw new Error('Finish or cancel active work before upgrading the database.');
+        this.upgrading = true;
+        try { return await this.store.upgradeToV2(); } finally { this.upgrading = false; }
+      }
       case 'task.get': return this.store.detail((params as { taskId: string }).taskId);
       case 'profile.save': {
         const profile = ModelProfileSchema.parse(params);
@@ -102,17 +130,30 @@ export class RuntimeService {
         } finally { this.probing.delete(profile.id); }
       }
       case 'task.create': {
-        const p = params as { title: string; projectPath: string; profileId: string; tokenBudget: number; mode: 'chat' | 'coding' };
+        const p = params as { title: string; projectPath: string; profileId: string; tokenBudget: number; mode: 'chat' | 'coding' | 'coordinated'; coordination?: CoordinationConfig };
         const selected = this.store.profile(p.profileId);
         if (!selected) throw new Error('Select an existing model profile.');
-        if (p.mode === 'coding' && selected.apiKind !== 'fake' && (selected.verificationFingerprint !== profileFingerprint(selected) || !selected.capabilities?.tools || !selected.capabilities?.continuation)) throw new Error('Probe tool and continuation capabilities before creating a coding task.');
+        if (p.mode !== 'coordinated' && p.coordination) throw new Error('Coordination settings apply only to coordinated tasks.');
+        if (p.mode === 'coordinated') {
+          if (!this.coordinatedAvailable()) throw new Error(this.coordinatedMode ? 'Coordinated tasks require the backed-up database upgrade.' : 'Coordinated tasks are not available in this build.');
+          if (!p.coordination) throw new Error('Configure child profiles and the required combined validation command.');
+          for (const id of [p.profileId, ...p.coordination.childProfileIds]) {
+            const profile = this.store.profile(id);
+            if (!profile || !this.profileReady(profile)) throw new Error('Every coordinator and child profile must be verified for tools and continuation. No fallback profile is used.');
+          }
+        }
+        if (p.mode === 'coding' && !this.profileReady(selected)) throw new Error('Probe tool and continuation capabilities before creating a coding task.');
         if (this.store.unknownIntents()) throw new Error('An earlier worktree creation has an unknown outcome. Inspect the retained worktree and database intent before creating another task.');
         const id = randomUUID(); const intent = this.store.intent('worktree.create', { taskId: id, projectPath: p.projectPath });
         try {
           const worktree = await this.repositories.createTaskWorktree(p.projectPath, id);
           const now = new Date().toISOString();
-          const task: Task = { id, title: this.redactor.text(p.title), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode };
-          this.store.transaction(() => { this.store.saveTask(task); this.store.finishIntent(intent, 'complete'); });
+          const task: Task = { id, title: this.redactor.text(p.title), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) };
+          this.store.transaction(() => {
+            this.store.saveTask(task);
+            if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
+            this.store.finishIntent(intent, 'complete');
+          });
           this.publish('tasks.changed', {}, id); return task;
         } catch (error) { this.store.finishIntent(intent, error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown'); throw error; }
       }
@@ -124,10 +165,21 @@ export class RuntimeService {
         const p = params as { taskId: string; approvalId: string }; return this.tools.reconcile(p.taskId, p.approvalId);
       }
       case 'task.send': {
-        const p = params as { taskId: string; content: string }; this.startTurn(p.taskId, p.content); return { accepted: true };
+        const p = params as { taskId: string; content: string };
+        const task = this.store.task(p.taskId);
+        // Child input only enters through immutable assignments; reject before any provider or repository activity.
+        if (task.parentTaskId || task.role === 'child') throw new Error('Child agents receive input only through coordinator assignments. Revise the assignment from its coordinated task.');
+        if (task.mode === 'coordinated') {
+          if (!this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
+          return this.orchestrator.resume(task.id, p.content);
+        }
+        this.startTurn(p.taskId, p.content, legacyHooks(this.store)); return { accepted: true };
       }
       case 'task.cancel': {
-        const entry = this.running.get((params as { taskId: string }).taskId); entry?.abort.abort();
+        const task = this.store.task((params as { taskId: string }).taskId);
+        if (task.parentTaskId || task.role === 'child') throw new Error('Cancel a child from its coordinated task so the cancellation scope is explicit.');
+        if (task.mode === 'coordinated' && this.store.orchestrationAvailable) return this.orchestrator.cancelRoot(task.id);
+        const entry = this.running.get(task.id); entry?.abort.abort();
         return { accepted: Boolean(entry) };
       }
       case 'files.list': {
@@ -142,36 +194,49 @@ export class RuntimeService {
         const result = await this.repositories.diff(this.store.task((params as { taskId: string }).taskId).worktreePath);
         return { ...result, patch: this.redactor.text(result.patch), summary: this.redactor.text(result.summary) };
       }
+      case 'orchestration.get': { const p = params as { rootTaskId: string; runsCursor: number; eventsBefore?: number }; return this.orchestrator.view(p.rootTaskId, p.runsCursor, p.eventsBefore); }
+      case 'orchestration.child': { const p = params as { rootTaskId: string; childTaskId: string }; return this.orchestrator.childDetail(p.rootTaskId, p.childTaskId); }
+      case 'orchestration.cancelChild': { const p = params as { rootTaskId: string; childTaskId: string; generation: number }; return this.orchestrator.cancelChild(p.rootTaskId, p.childTaskId, p.generation); }
+      case 'orchestration.cancelRoot': return this.orchestrator.cancelRoot((params as { rootTaskId: string }).rootTaskId);
+      case 'orchestration.resume': { const p = params as { rootTaskId: string; content: string }; return this.orchestrator.resume(p.rootTaskId, this.redactor.text(p.content)); }
+      case 'orchestration.reviseAssignment': { const p = params as { rootTaskId: string; assignmentId: string; objective: string; acceptance: string[] }; return this.orchestrator.reviseAssignment(p.rootTaskId, p.assignmentId, p.objective, p.acceptance); }
+      case 'orchestration.decide': return this.orchestrator.decide(params as Parameters<Orchestrator['decide']>[0]);
+      case 'orchestration.reconcile': { const p = params as { rootTaskId: string; operationId: string }; return this.orchestrator.reconcile(p.rootTaskId, p.operationId); }
+      case 'orchestration.prepareContinue': { const p = params as { rootTaskId: string; operationId: string }; return this.orchestrator.prepareContinue(p.rootTaskId, p.operationId); }
     }
   }
-  private startTurn(taskId: string, content: string): void {
+  private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
+    if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.running.has(taskId)) throw new Error('This task already has an active response.');
     if (this.running.size >= 16) throw new Error('Too many active tasks. Finish or cancel a task first.');
     const task = this.store.task(taskId);
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');
     if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');
-    if (task.mode === 'coding' && profile.apiKind !== 'fake' && (!profile.capabilities?.tools || !profile.capabilities?.continuation)) throw new Error('Probe tool and continuation capabilities before starting a coding response.');
+    if ((task.mode === 'coding' || task.mode === 'coordinated') && !this.profileReady(profile)) throw new Error('Probe tool and continuation capabilities before starting a coding response.');
     const cleanContent = this.redactor.text(content);
     const abort = new AbortController();
     const fingerprint = profileFingerprint(profile);
-    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal);
-    const reservation = reserveRequest(task, request);
+    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks);
+    const handle = hooks.reserve(task, request);
     const now = new Date().toISOString();
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
     this.store.transaction(() => {
       this.store.saveMessage({ id: randomUUID(), taskId, role: 'user', content: cleanContent, createdAt: now, status: 'complete' });
       this.store.saveMessage(answer);
-      this.store.saveTask({ ...task, status: 'running', updatedAt: now, usedTokens: task.usedTokens + reservation });
+      this.store.saveTask({ ...this.store.task(taskId), status: 'running', updatedAt: now });
     });
-    const done = Promise.resolve().then(() => this.loop.run(task, request, answer, reservation, fingerprint, abort)).finally(() => this.running.delete(taskId));
+    if (this.store.orchestrationAvailable && task.rootTaskId) this.orchestrator.records.setLifecycle(taskId, 'running');
+    const started = this.store.task(taskId);
+    const done = Promise.resolve().then(() => this.loop.run(started, request, answer, handle, fingerprint, abort, hooks)).finally(() => this.running.delete(taskId));
     this.running.set(taskId, { abort, done });
     this.publish('task.started', {}, taskId);
-    if (task.usedTokens + reservation >= task.tokenBudget * 0.8) this.publish('task.budget-warning', { usedTokens: task.usedTokens + reservation, budget: task.tokenBudget }, taskId);
+    if (!task.rootTaskId && started.usedTokens >= task.tokenBudget * 0.8) this.publish('task.budget-warning', { usedTokens: started.usedTokens, budget: task.tokenBudget }, taskId);
   }
   async shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise;
     this.closing = true;
+    this.orchestrator.beginShutdown();
     this.shutdownPromise = (async () => {
       for (const { abort } of this.running.values()) abort.abort();
       // Worktree creation and profile probes are not model loops. Let them reach a
@@ -179,8 +244,10 @@ export class RuntimeService {
       // an overlong drain, in which case intent recovery remains conservative.
       await Promise.allSettled([
         ...[...this.running.values()].map(entry => entry.done),
-        ...this.dispatches
+        ...this.dispatches,
+        this.orchestrator.close()
       ]);
+      await Promise.allSettled([...this.running.values()].map(entry => entry.done));
       this.store.close();
     })();
     return this.shutdownPromise;
