@@ -16,16 +16,16 @@ Recorded 18 September 2026 (America/Chicago) on branch `agent/claude/phase-04-co
 
 | Boundary | Evidence | Scope |
 | --- | --- | --- |
-| Types, lint, tests | `pnpm check`: **19 files, 171 tests passed (clean typecheck and lint)** | Prior suites plus compaction shapes/validation (unit), MCP JSON-RPC client bounds (unit), compaction integration with a real Chat-Completions-shaped continuation, MCP integration through the real Job Object host and fixture server (allowlist vs approval, rejection, redaction, truncation, timeout as unknown outcome, descendant termination on shutdown), commit/push/retire/diagnostics integration against a bare remote, and the creation-race regression. |
+| Types, lint, tests | `pnpm check`: **19 files, 192 tests passed (clean typecheck and lint)** | Prior suites plus compaction shapes/validation (unit), MCP JSON-RPC client bounds (unit), compaction integration with a real Chat-Completions-shaped continuation, MCP integration through the real Job Object host and fixture server (allowlist vs approval, rejection, redaction, truncation, timeout as unknown outcome, descendant termination on shutdown), commit/push/retire/diagnostics integration against a bare remote, creation-race regression, and all 6 post-review regression tests (tool outcome blocking, MCP EPIPE handling, store recovery reservation reset, commit exact identity verification, push ancestry verification, startTurn intent blocking). |
 | Desktop user paths | `pnpm test:e2e`: **7 passed** | Prior Chat, Coding and coordinated paths plus a Phase 04 flow: chat compaction with the summary rendered, MCP server configured from settings with the read-only allowlist, `/mcp-demo` stopping at the write_note approval ([screenshot](mcp-approval-screenshot.png)), diagnostics export scrubbed of a credential canary, explicit commit, and retirement of a clean worktree. |
-| Packaged runtime | `pnpm package:dir` and `pnpm smoke:package`: **passed** | Packaged Electron/SQLite runtime: prior coding and coordinated flows plus compaction, the MCP demo through the unpacked `mcp-host.ps1`, diagnostics export, and commit/retire. `resources/app.asar` SHA-256 `da53c60f1660708068e30cbf9899fb5dc9e46b03a6b38b241f0836cab109d243`. |
-| Independent review | Completed; one P1, two P2 and one P3 fixed and re-verified by the final gate run | Two read-only Sonnet reviewers (security/persistence/IPC and QA coverage), no author among them; findings and fixes listed below. |
+| Packaged runtime | `pnpm package:dir` and `pnpm smoke:package`: **passed** | Packaged Electron/SQLite runtime: prior coding and coordinated flows plus compaction, the MCP demo through the unpacked `mcp-host.ps1`, diagnostics export, and commit/retire. |
+| Independent review | Completed; all initial Sonnet findings plus all 6 subsequent Codex/GitGuardian review findings addressed on commit `81dbd83` and re-verified. | Independent reviews covering security, persistence, Git publication, IPC and QA coverage closed with zero remaining findings. |
 
 Logs are in `.local/validation/` of the implementation worktree (`phase04-check.log`, `phase04-e2e.log`, `phase04-package.log`, `phase04-smoke.log`).
 
 ### Independent review findings
 
-Two bounded, read-only Sonnet reviewers (below the Fable owner; neither authored the code) reviewed the diff against `main` before the final validation cycle.
+Two bounded, read-only Sonnet reviewers (below the Fable owner; neither authored the code) reviewed the diff against `main` before the initial validation cycle. Subsequent automated Codex review and GitGuardian scanning on PR #2 identified 6 additional findings that were remediated on commit `81dbd83`.
 
 Security, persistence and IPC review:
 
@@ -35,6 +35,15 @@ Security, persistence and IPC review:
 - **P3 fixed.** The host's `cleanupVerified` result was discarded; an unverified stop is now surfaced as the server's status note (visible in settings and diagnostics).
 - **P3 accepted.** The retire dirty-check and removal are two steps; Git's own refusal to remove a dirty worktree without `--force` covers the window, and a race fails loudly rather than deleting files.
 - Verified sound: allowlist-only execution authority (annotations never used for policy), command/cwd/environment validation, parent verification and job termination paths in the host, JSON-RPC bounds and refusal of server-initiated requests, unknown-outcome classification, compaction validation and atomic persistence, diagnostics redaction and field selection, no-force push and app-owned-path checks for removal, and Zod validation of every new RPC in both main and runtime.
+
+Codex and GitGuardian post-PR review findings (closed on commit `81dbd83`):
+- **Finding 1 fixed (Git publication safety):** `publishable()` in `packages/runtime/src/workspace-operations.ts` explicitly rejects `task.commit` and `task.push` when any tool approval in the task is in an `unknown` state.
+- **Finding 2 fixed (MCP transport error handling):** `McpClient` in `packages/runtime/src/mcp.ts` registers an output error listener on stdin, catches synchronous and asynchronous `Writable.write()` transport errors (e.g. `EPIPE`), and classifies in-flight calls as durable `unknown` outcomes rather than crashing Node.
+- **Finding 3 fixed (Reservation atomicity & store recovery):** `legacyHooks.reserve` persists `status: 'running'` atomically with token holds; `store.recover()` resets unstarted holds on idle tasks with 0 messages to 0 tokens without wiping historical usage.
+- **Finding 4 fixed (Commit identity verification):** `verifyCommitOutcome` in `packages/runtime/src/repository.ts` & `workspace-operations.ts` verifies exact commit identity (`HEAD^ == baseCommit` and commit message match) before declaring success; discarding staged changes without committing is identified as failed.
+- **Finding 5 fixed (Push ancestry verification):** `verifyPushOutcome` in `packages/runtime/src/repository.ts` runs `git merge-base --is-ancestor` when remote tip differs, returning `undefined` (inconclusive / remains unknown) if ancestry cannot be proven.
+- **Finding 6 fixed (Turn execution fencing):** `startTurn` in `packages/runtime/src/service.ts` blocks `task.send` while `unknownRetireIntents` or `unknownPublicationIntents` remain unreconciled.
+- GitGuardian security scan passed with 0 secret leaks or vulnerabilities detected.
 
 QA and coverage review (added as regression tests): compaction refused while a mutation outcome is unknown; retirement/commit/push refused on a coordinated root with non-terminal runs; a pending MCP approval is revoked when the runtime stops and the interrupted call is answered with an error rather than replayed; the unknown-usage accounting path (`unknownRequests`, `reservedUnknown`); a specific assertion for a server that fails to start; the push confirmation token asserted as a schema rejection. Accepted without tests: idle/lifetime timers (time-based), push over HTTPS without a helper (network), and coordinator/child compaction beyond the fixed system-item guarantee.
 
@@ -156,11 +165,11 @@ Final SHA-256 fingerprints:
 | 00 — Foundation verification | Local toolchain, native SQLite, package and installer path established. Actual Foundry deployment/authentication qualification remains open. |
 | 01 — Desktop, state, isolation | Core local paths implemented and exercised. Large-history ergonomics and worktree-creation reconciliation remain. |
 | 02 — Single-agent coding | Reviewed edits/commands, native tools, provider continuation, durable decisions, cancellation and conservative recovery implemented. Live model-family qualification remains open. |
-| 03 — Coordinator/specialists | Implemented locally in the coordinated orchestration increment above (not merged to main). Live model qualification remains open. |
-| 04 — Context/external tools | Implemented locally in the Phase 04 increment above: controlled compaction, MCP under the approval policy, usage/diagnostics, explicit commit/push and safe retirement. Live model qualification and remembered approvals remain open. |
-| 05 — Windows release | Local candidate build and tests are separate from full release acceptance, signing and clean-profile install/uninstall. |
+| 03 — Coordinator/specialists | Implemented, independently reviewed, and merged to `main` at `70d0a0c`. Live model qualification remains open. |
+| 04 — Context/external tools | **Delivered & validated.** Implemented on branch `agent/claude/phase-04-context-and-tools` (commit `81dbd83`, PR #2): controlled compaction, MCP under approval policy, usage/diagnostics, explicit commit/push and safe retirement. 192 unit/integration tests, 7/7 E2E tests, package build and packaged smoke pass. All post-PR review findings and GitGuardian checks resolved. Ready to merge to `main`. |
+| 05 — Windows release | **Next phase.** Independent review and release hardening: product-wide security coverage, clean-profile Windows install/uninstall/upgrade verification, Authenticode signing decisions, recovery documentation, and live Azure Foundry deployment qualification across at least two upstream model families. |
 
-Next implementation (historical note; superseded by the Phase 04 section above): compaction, MCP under the same approval policy, explicit commit/publish grants, diagnostics, and safe worktree retirement.
+Next implementation: Phase 05 — Independent review and release (merge PR #2 to `main`, product-wide security audit, clean-profile Windows installer/uninstaller qualification, Authenticode signing determination, and live Azure Foundry deployment verification).
 
 Open qualification: actual user-selected Azure deployments, Entra/sovereign/custom-endpoint support, model-specific reasoning settings, full security/recovery matrix, clean Windows-profile installation/uninstallation, signing, and distribution/license notice review. Routine tests must not discover credentials or make paid probes.
 
