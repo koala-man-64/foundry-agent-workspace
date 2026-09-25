@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Foundry Agent Workspace — System Recreation &amp; Implementation Guide</title>
+<title>Foundry Agent Workspace — Enterprise Installation &amp; Recreation Guide</title>
 <style>
 :root {
   --paper: #f5f2e9;
@@ -120,15 +120,15 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
 <div class="shell">
 
 <aside>
-  <div class="brand">FOUND<span>R</span>Y<br>RECREATION GUIDE</div>
+  <div class="brand">FOUND<span>R</span>Y<br>ENTERPRISE INSTALL GUIDE</div>
   
   <div class="progress-card">
-    <div class="progress-title">Build Progress</div>
+    <div class="progress-title">Installation Progress</div>
     <div class="progress-bar-wrap">
       <div class="progress-bar" id="progressBar"></div>
     </div>
     <div class="progress-stats">
-      <span id="progressText">0 of 42 completed</span>
+      <span id="progressText">0 of 5 completed</span>
       <span id="progressPercent">0%</span>
     </div>
     <div class="progress-actions">
@@ -137,9 +137,12 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
     </div>
   </div>
 
-  <nav aria-label="Recreation steps">
-    <a href="#overview">00 / System Overview &amp; Invariants</a>
-    <a href="#substitutions">01 / Tooling &amp; Package Alternatives</a>
+  <nav aria-label="Installation and recreation steps">
+    <a href="#enterprise-scope">Start / Enterprise Inputs &amp; Boundaries</a>
+    <a href="#enterprise-install">Install / Artifactory to First Launch</a>
+    <a href="#enterprise-build">Build / Artifactory-Only Source Route</a>
+    <a href="#overview">Reference / System Invariants</a>
+    <a href="#substitutions">Reference / Package Alternatives</a>
     <a href="#phase-0">Phase 0 / Monorepo Bootstrap</a>
     <a href="#phase-1">Phase 1 / Protocol &amp; IPC Contracts</a>
     <a href="#phase-2">Phase 2 / Storage &amp; Recovery Engine</a>
@@ -150,28 +153,102 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
     <a href="#phase-7">Phase 7 / Sandboxed Desktop UI</a>
     <a href="#phase-8">Phase 8 / Packaging &amp; Verification</a>
   </nav>
-  <p class="small" style="margin-top: 24px;">Autonomous Agent Guide<br>Target: Independent Reconstruction<br>Published: September 2026</p>
+  <p class="small" style="margin-top: 24px;">Enterprise Windows Guide<br>Primary path: approved installer from Artifactory<br>Source build: conditional<br>Updated: September 2026</p>
 </aside>
 
 <main>
 
 <header>
-  <span class="tag">Autonomous Agent Reference · Implementation Blueprint</span>
-  <h1>Build It From Scratch.<br>Own the Architecture.<br>Every Invariant Intact.</h1>
-  <p class="lead">A rigorous, step-by-step engineering manual for an autonomous AI agent to reconstruct the Foundry Agent Workspace on another machine, with complete guidance on package substitutions, security boundaries, and testable milestones.</p>
-  <div class="meta">Target Architect: Autonomous AI Coding Agent · Target OS: Windows 10/11 x64 · Output: Clean, verifiable desktop workspace.</div>
+  <span class="tag">Enterprise Windows Installation · Artifactory-Sourced</span>
+  <h1>Install From Artifactory.<br>Verify the Machine.<br>Preserve the Boundaries.</h1>
+  <p class="lead">Install the approved Foundry Agent Workspace release on a managed Windows machine using Artifactory as the sole source of software artifacts. Existing Artifactory credentials are assumed. Build and reconstruction instructions follow only when an approved installer is unavailable or an engineering rebuild is required.</p>
+  <div class="meta">Target: managed Windows 10/11 x64 · Primary output: verified per-user desktop installation · No public artifact downloads.</div>
   
   <div class="toolbar">
     <button class="btn" onclick="window.print()">Print / Save PDF</button>
-    <button class="btn btn-secondary" id="expandToggle" onclick="toggleDetails()">Expand All Technical Details</button>
   </div>
 </header>
 
 <!-- ========================================================================= -->
+<section id="enterprise-scope">
+  <div class="eyebrow">Start / Enterprise Installation Contract</div>
+  <h2>Gather the Approved Release Inputs</h2>
+  <p>Use the installer path below for an ordinary installation. The Artifactory login is already available to the operator; do not paste its password or token into this document, a URL, a shell command, an npm config file, or application settings. Artifactory authenticates artifact retrieval. A Foundry model profile needs its own Azure credential later.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Input</th><th>What to obtain from the enterprise release owner</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Installer coordinate</td><td>Exact Artifactory repository, path, filename, version, and release identifier for the approved Windows x64 NSIS installer.</td><td>Do not select the newest file by timestamp or substitute a local build.</td></tr>
+        <tr><td>Integrity and publisher</td><td>Expected SHA-256 from the approved release record, plus the required Authenticode signer or documented internal exception.</td><td>The hash proves the downloaded bytes match the release record; the signature and enterprise policy establish publisher trust.</td></tr>
+        <tr><td>Host policy</td><td>Confirmation that the per-user installer, Electron app, Windows PowerShell, local C# compilation, Git, child processes, and Windows Job Objects are permitted for the intended workflows.</td><td>The application may open while command and MCP execution still fail closed under restrictive policy.</td></tr>
+        <tr><td>Network route</td><td>Artifactory URL and corporate trust/proxy settings for downloads; separately, an approved Azure Foundry endpoint and API key if live models are in scope.</td><td>The current app supports public Azure resource hosts with API keys; private proxy/custom domains and Entra authentication are not implemented.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="warn-box"><strong>Unverified / Needs confirmation for this machine:</strong> the Artifactory coordinate, approved SHA-256 and signer, enterprise execution policy, and Azure endpoint policy have not been provided. Obtain them from the release or endpoint owner before claiming an enterprise installation is approved. Never switch to a public download when a mirrored artifact is missing.</div>
+  <p class="small">Implementation evidence: <code>package.json</code> defines the per-user NSIS target; <code>apps/desktop/src/main/index.ts</code> sets the app data location; <code>README.md</code> describes the Offline demo, tool execution, and supported Foundry destinations. See <code>docs/signing-and-distribution.md</code> for signer and retention details.</p>
+</section>
+
+<!-- ========================================================================= -->
+<section id="enterprise-install">
+  <div class="eyebrow">Install / Preferred Path</div>
+  <h2>Install the Artifactory Release on Windows</h2>
+  <p>This path needs the approved installer and existing Artifactory access. Node.js, pnpm, Electron downloads, and a source checkout are not prerequisites for installing the packaged desktop app.</p>
+
+  <div class="task-group">
+    <div class="task-group-header"><span>Enterprise installation and first-use evidence</span><span class="badge">5 Steps</span></div>
+    <div class="checklist-item" id="item-install-1"><input type="checkbox" id="step-install-1" onchange="updateStep(this)"><div class="checklist-body"><div class="checklist-title"><label for="step-install-1">I.1 Retrieve the exact approved artifact</label></div><div class="checklist-desc">Sign in to the enterprise Artifactory UI using the credentials already provisioned for you. Download the release owner's exact installer coordinate and its release record or manifest. Save them in an ordinary local downloads folder. Record the Artifactory coordinate, version, and retrieval time; do not use a public release page, CDN, or personal cache.</div></div></div>
+    <div class="checklist-item" id="item-install-2"><input type="checkbox" id="step-install-2" onchange="updateStep(this)"><div class="checklist-body"><div class="checklist-title"><label for="step-install-2">I.2 Verify bytes and publisher</label></div><div class="checklist-desc">Compare the installer SHA-256 with the approved release record and inspect its Authenticode status and signer. Record both results. A matching hash alone does not make an unsigned candidate a signed enterprise release.</div>
+      <pre><code>$installer = 'C:\path\from\Artifactory\Foundry Agent Workspace Setup 0.2.0.exe'
+$expectedSha256 = '&lt;SHA256_FROM_APPROVED_RELEASE_RECORD&gt;'
+$actualSha256 = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
+if ($actualSha256 -ne $expectedSha256) { throw 'Installer SHA-256 differs from the approved release record.' }
+Get-AuthenticodeSignature -LiteralPath $installer | Select-Object Status, SignerCertificate</code></pre>
+      <div class="checklist-desc">The shown filename is the current package name, not an instruction to choose version 0.2.0 if the approved release differs. Follow the enterprise signer policy; if the candidate is unsigned or the signer is unexpected, record the state and obtain the release owner's decision before installation.</div></div></div>
+    <div class="checklist-item" id="item-install-3"><input type="checkbox" id="step-install-3" onchange="updateStep(this)"><div class="checklist-body"><div class="checklist-title"><label for="step-install-3">I.3 Run the per-user installer</label></div><div class="checklist-desc">Launch the verified NSIS installer interactively under your normal Windows account. Use the approved per-user location; the default is <code>%LOCALAPPDATA%\Programs\Foundry Agent Workspace</code>. Do not elevate or bypass endpoint protection to make the install succeed. Record the installed version and path.</div></div></div>
+    <div class="checklist-item" id="item-install-4"><input type="checkbox" id="step-install-4" onchange="updateStep(this)"><div class="checklist-body"><div class="checklist-title"><label for="step-install-4">I.4 Verify first launch without a paid model call</label></div><div class="checklist-desc">Open the desktop app and confirm the Offline demo profile is available. Use a disposable Git repository with at least one commit, create a Chat task, and send a short message; confirm the reply appears and the task persists after closing and reopening the app. Confirm application data is under <code>%LOCALAPPDATA%\FoundryAgentWorkspace</code>. If coding tools are needed, use the disposable repository and the Offline demo <code>/demo</code> workflow to verify an approval, file read, and reviewed command under the machine's PowerShell policy.</div></div></div>
+    <div class="checklist-item" id="item-install-5"><input type="checkbox" id="step-install-5" onchange="updateStep(this)"><div class="checklist-body"><div class="checklist-title"><label for="step-install-5">I.5 Record separate release and live-model gates</label></div><div class="checklist-desc">Keep the Artifactory coordinate, SHA-256, signer result, install path, first-launch result, and any endpoint-policy failure in the installation record. If live Foundry use is required, configure an approved Azure resource root, deployment, and separate API key in Model settings; the explicit Test connection makes paid calls. A successful install or Offline demo does not establish live model compatibility.</div></div></div>
+  </div>
+  <div class="gate-box">Installation gate: approved artifact bytes and publisher policy verified; per-user install and first-launch Offline demo observed on the target machine. Live Foundry qualification, signing, and wider distribution each retain their own evidence.</div>
+
+  <h3>When the installation stops</h3>
+  <ul>
+    <li><strong>Artifact or checksum unavailable:</strong> ask the release owner to publish the exact installer and approved manifest in Artifactory. Do not rebuild or download from the public internet as an implicit fallback.</li>
+    <li><strong>Signature warning or endpoint protection block:</strong> record the actual signer/status and route it through enterprise software approval. The checked-in build is unsigned unless a signing process is configured.</li>
+    <li><strong>App opens, but a command or MCP server cannot run:</strong> check enterprise PowerShell, local C# compilation, child-process, and Job Object policy with IT. The runner fails closed; changing a worktree or approval does not grant Windows privileges.</li>
+    <li><strong>Live model test fails:</strong> confirm the selected API kind, public Azure resource host, deployment, API key, and corporate egress policy. Artifactory credentials do not authenticate to Azure Foundry.</li>
+  </ul>
+</section>
+
+<!-- ========================================================================= -->
+<section id="enterprise-build">
+  <div class="eyebrow">Build / Conditional Engineering Route</div>
+  <h2>Build Only From Approved Artifactory Inputs</h2>
+  <p>Use this route when the release owner explicitly requires a local rebuild. Treat every executable, source archive, package, native binary, and packaging helper as an artifact. Existing Artifactory credentials authorize retrieval; they do not prove that every transitive build download is mirrored.</p>
+  <div class="table-wrap"><table><thead><tr><th>Artifact class</th><th>Required Artifactory supply</th><th>Check before running</th></tr></thead><tbody>
+    <tr><td>Source and toolchain</td><td>Approved source archive and revision, Git for Windows, Node.js 22.12+ (Node 24 tested), and pnpm 10.28.1.</td><td>Record exact paths, versions, hashes, and approved source revision. Do not let a bootstrapper fetch pnpm or Node from a public host.</td></tr>
+    <tr><td>JavaScript packages</td><td>An internal npm registry or prefilled pnpm store containing every package in <code>pnpm-lock.yaml</code>, including the native <code>better-sqlite3</code> Windows binary.</td><td>Confirm the active registry is Artifactory, the lockfile is unchanged, and install uses <code>--frozen-lockfile</code>. Never place an Artifactory token in the checked-in project.</td></tr>
+    <tr><td>Post-install and packaging downloads</td><td>Electron Windows distribution and checksums, plus any electron-builder/NSIS helper archives and signing inputs required by the selected build.</td><td>Configure approved internal mirrors or preloaded caches before install/build. Package-registry mirroring alone does not cover binaries downloaded by install scripts or electron-builder.</td></tr>
+    <tr><td>Test-only binaries</td><td>Playwright/Electron test binaries if the E2E suite needs a separate browser download on this machine.</td><td>Point test provisioning to Artifactory or use an approved preloaded cache. Routine tests still use offline fixture providers and no paid Azure calls.</td></tr>
+  </tbody></table></div>
+  <div class="warn-box"><strong>Unverified / Needs confirmation:</strong> this checkout has no enterprise Artifactory registry, binary mirror, or cache coordinates configured. The instructions below are a gate, not proof that <code>pnpm install</code> or packaging is Artifactory-only on the target machine. The release owner must provide and verify those internal locations before a source build.</div>
+  <ol>
+    <li>Retrieve the approved source archive and toolchain from Artifactory, verify their release hashes, and expand the source into a clean workspace. Keep the original <code>pnpm-lock.yaml</code>.</li>
+    <li>Configure the approved Artifactory npm registry and binary mirrors in the enterprise toolchain without saving credentials in the source tree. Verify <code>pnpm config get registry</code> names the internal registry. Check Electron and packaging helper mirror settings separately.</li>
+    <li>Run <code>pnpm install --frozen-lockfile</code> only after those mirrors and caches are ready. Stop and record any attempted public host or missing mirrored artifact; do not disable integrity checks, rewrite the lockfile to resolve around the gap, or silently use a personal cache.</li>
+    <li>Run <code>pnpm check</code>, <code>node scripts/qualify-deployments.mjs --mock</code>, <code>pnpm test:e2e</code>, <code>pnpm package:dir</code>, <code>pnpm smoke:package</code>, and <code>pnpm package:win</code> as applicable. Record exact results, package hash, and Artifactory request or network evidence showing where dependencies came from.</li>
+    <li>Publish the approved, verified installer and release record back to Artifactory through the enterprise release process. Installation then follows the preferred path above. A local successful build is not an approved published release.</li>
+  </ol>
+  <p class="small">Build evidence: <code>package.json</code> pins Node/pnpm dependencies and Electron Builder settings; <code>pnpm-lock.yaml</code> pins package integrity; <code>pnpm-workspace.yaml</code> controls native build scripts; <code>scripts/packaged-smoke.mjs</code> verifies the packaged runtime. The detailed phases below are an engineering reconstruction reference and do not replace this Artifactory gate.</p>
+</section>
+
+<!-- ========================================================================= -->
 <section id="overview">
-  <div class="eyebrow">00 / System Architecture</div>
+  <div class="eyebrow">Engineering Reference / System Architecture</div>
   <h2>The Non-Negotiable Invariants</h2>
-  <p>Before writing a line of code or installing a dependency, you must internalize the five structural boundaries that make this system durable. An agent rebuilding this codebase may swap specific libraries or tools, but <strong>violating these boundaries breaks the core safety and recovery model</strong>:</p>
+  <p class="info-box">The following sections describe how to reconstruct or assess the application. They are not prerequisites for installing an approved Artifactory release. Any engineering rebuild still follows the Artifactory-only supply gate above.</p>
+  <p>Before writing a line of code or installing a dependency, you must internalize the four structural boundaries below and the offline testing invariant that follows. An agent rebuilding this codebase may swap specific libraries or tools, but <strong>violating these boundaries breaks the core safety and recovery model</strong>:</p>
 
   <div class="grid">
     <div class="panel">
@@ -199,9 +276,9 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
 
 <!-- ========================================================================= -->
 <section id="substitutions">
-  <div class="eyebrow">01 / Package &amp; Tooling Alternatives</div>
+  <div class="eyebrow">Engineering Reference / Package &amp; Tooling Alternatives</div>
   <h2>Dependency Substitution Matrix</h2>
-  <p>Your target machine might have different Node versions, package managers, or native build tools. You are encouraged to adapt packages as needed, provided the functional contract is preserved:</p>
+  <p>The reference stack is pinned in <code>package.json</code> and <code>pnpm-lock.yaml</code>. Alternatives below are design options for an explicitly approved reconstruction, not installation fallbacks. Source every approved substitute and its transitive artifacts through Artifactory, record the change to the lockfile and build evidence, and preserve the functional contract:</p>
 
   <div class="table-wrap">
     <table>
@@ -263,9 +340,9 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
 
 <!-- ========================================================================= -->
 <section id="phase-0">
-  <div class="eyebrow">Phase 00</div>
+  <div class="eyebrow">Engineering Reconstruction / Phase 00</div>
   <h2>Monorepo Topology &amp; Bootstrap</h2>
-  <p>Set up the repository workspace with clean boundaries between runtime execution, shared contracts, and the desktop presentation layer.</p>
+  <p>For an approved rebuild from source, set up the workspace with clean boundaries between runtime execution, shared contracts, and the desktop presentation layer. Obtain the source and toolchain from Artifactory first; this phase is not part of ordinary installation.</p>
 
   <div class="task-group">
     <div class="task-group-header">
@@ -301,7 +378,7 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
       <input type="checkbox" id="step-0-3" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-0-3">0.3 Wire Native Module Strategy for Electron</label></div>
-        <div class="checklist-desc">If using <code>better-sqlite3</code>, configure your build tool (e.g. <code>electron-builder</code> with <code>npmRebuild: false</code>) to ensure native C++ addons match Electron's NODE_MODULE_VERSION, or execute the runtime via <code>ELECTRON_RUN_AS_NODE=1</code>.</div>
+        <div class="checklist-desc">The pinned <code>better-sqlite3</code> build uses Node-API, so its Windows binary does not require an Electron ABI rebuild. Preserve the compatible binary, disable an unnecessary rebuild (for example, <code>electron-builder</code> with <code>npmRebuild: false</code>), unpack <code>*.node</code> from ASAR, and verify SQLite in the packaged runtime smoke test. <code>ELECTRON_RUN_AS_NODE=1</code> starts the separate runtime process; it is not a substitute for native-module compatibility.</div>
       </div>
     </div>
 
@@ -393,7 +470,7 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
       <input type="checkbox" id="step-2-2" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-2-2">2.2 Implement Numbered Schema Migrations &amp; Backup</label></div>
-        <div class="checklist-desc">Version database schema with <code>PRAGMA user_version</code>. Before executing an upgrade migration, create a verified <code>.bak</code> file copy. If migration fails, restore the backup.</div>
+        <div class="checklist-desc">Version database schema with <code>PRAGMA user_version</code>. Stop admission and active work before upgrading. Create and verify a WAL-aware backup through SQLite's online backup API, then run the migration in one transaction. On migration failure, let the transaction roll back and retain the backup for deliberate recovery; do not overwrite a live database with a plain file copy.</div>
       </div>
     </div>
 
@@ -401,7 +478,7 @@ footer { padding: 40px 0 60px; font-size: 13px; color: var(--muted); border-top:
       <input type="checkbox" id="step-2-3" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-2-3">2.3 Implement Durable Execution Intents</label></div>
-        <div class="checklist-desc">Before executing edits, commands, commits, or retirement, insert a record into <code>execution_intents</code>. If a crash occurs, restart reconciles the state and marks unresolved operations as <code>unknown</code>.</div>
+        <div class="checklist-desc">Before executing edits, commands, commits, or retirement, insert a record into the <code>intents</code> table. If a crash occurs, restart reconciles the state and marks unresolved operations as <code>unknown</code>.</div>
       </div>
     </div>
 
@@ -515,7 +592,7 @@ $info.BasicLimitInformation.LimitFlags = 0x2000 # KILL_ON_JOB_CLOSE
       <input type="checkbox" id="step-4-2" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-4-2">4.2 Implement Azure Chat Completions Adapter</label></div>
-        <div class="checklist-desc">Target <code>/openai/v1/chat/completions</code> with streaming tool calls, delta assembly by tool call index, and usage reporting extraction from <code>choices[].finish_reason</code>.</div>
+        <div class="checklist-desc">Target <code>/openai/v1/chat/completions</code> with streaming tool calls and delta assembly by tool call index. Read token usage from the response's top-level <code>usage</code> data when provided; <code>choices[].finish_reason</code> reports the terminal state, not token counts. Retain a conservative reservation when usage is absent.</div>
       </div>
     </div>
 
@@ -728,7 +805,7 @@ const authorize = (event) =&gt; {
 <section id="phase-8">
   <div class="eyebrow">Phase 08</div>
   <h2>Packaging, Installer Audit &amp; Release Verification</h2>
-  <p>Produce the production NSIS package, verify clean-profile installation, and establish operational runbooks.</p>
+  <p>Build an NSIS installer candidate from Artifactory-sourced inputs, audit its package configuration, verify installation and uninstallation in a clean Windows profile, and establish operational runbooks. Publish an approved release through Artifactory. Keep signing and live deployment qualification as separate release gates.</p>
 
   <div class="task-group">
     <div class="task-group-header">
@@ -756,7 +833,7 @@ const authorize = (event) =&gt; {
       <input type="checkbox" id="step-8-3" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-8-3">8.3 Author Clean Installer Auditor (<code>scripts/verify-clean-install.ps1</code>)</label></div>
-        <div class="checklist-desc">Audit the NSIS package: verify executable presence and size, Authenticode signature check, unpack layout, per-user path containment (<code>%LOCALAPPDATA%\Programs</code>), and safe uninstallation.</div>
+        <div class="checklist-desc">Statically audit the NSIS candidate: verify executable presence and size, Authenticode signature status, unpack layout, per-user installation configuration (<code>%LOCALAPPDATA%\Programs</code>), and absence of unsafe uninstall hooks. This script does not install or uninstall the app; separately exercise both in a clean Windows profile and record the observed paths and retained user data.</div>
       </div>
     </div>
 
@@ -772,18 +849,18 @@ const authorize = (event) =&gt; {
       <input type="checkbox" id="step-8-5" onchange="updateStep(this)">
       <div class="checklist-body">
         <div class="checklist-title"><label for="step-8-5">8.5 Execute Final Master Release Validation Suite</label></div>
-        <div class="checklist-desc">Execute the complete suite: <code>pnpm check</code> (228+ unit/integration tests), <code>node scripts/qualify-deployments.mjs --mock</code>, <code>pnpm package:dir &amp;&amp; pnpm smoke:package</code>, <code>pnpm package:win</code>, and <code>pnpm test:e2e</code>.</div>
+        <div class="checklist-desc">Execute the complete suite: <code>pnpm check</code>, <code>node scripts/qualify-deployments.mjs --mock</code>, <code>pnpm package:dir &amp;&amp; pnpm smoke:package</code>, <code>pnpm package:win</code>, <code>powershell -File scripts/verify-clean-install.ps1</code>, and <code>pnpm test:e2e</code>. Record actual test counts and warnings. Separately verify clean-profile install/uninstall, live selected-deployment qualification, and signing before claiming those gates.</div>
       </div>
     </div>
   </div>
 
   <div class="gate-box">
-    Exit Gate 8: Production installer built (<code>Foundry Agent Workspace Setup 0.2.0.exe</code>), smoke test passes, clean-profile auditor passes 6/6 checks, and all tests pass with zero warnings.
+    Exit Gate 8: The installer candidate is built, automated tests and packaged smoke pass, the static installer audit has no failures, and a clean-profile installation and uninstallation have been observed. Record signature warnings explicitly; an unsigned candidate is not a signed distribution. Live selected-deployment qualification and signing require separate evidence before production release.
   </div>
 </section>
 
 <footer>
-  Foundry Agent Workspace · Complete System Recreation Blueprint · Standalone Reference Document · All rights reserved.
+  Foundry Agent Workspace · Enterprise Installation Guide with Engineering Reconstruction Reference · All rights reserved.
 </footer>
 
 </main>
@@ -833,7 +910,7 @@ function updateStep(checkbox) {
 }
 
 function updateProgress() {
-  const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+  const checkboxes = document.querySelectorAll('#enterprise-install .checklist-item input[type="checkbox"]');
   const total = checkboxes.length;
   let done = 0;
   checkboxes.forEach(cb => { if (cb.checked) done++; });
@@ -845,7 +922,7 @@ function updateProgress() {
 }
 
 function checkAll(state) {
-  document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(cb => {
+  document.querySelectorAll('#enterprise-install .checklist-item input[type="checkbox"]').forEach(cb => {
     cb.checked = state;
     const item = cb.closest('.checklist-item');
     if (item) {
@@ -855,15 +932,6 @@ function checkAll(state) {
   });
   saveChecklistState();
   updateProgress();
-}
-
-function toggleDetails() {
-  const details = document.querySelectorAll('details');
-  const toggleBtn = document.getElementById('expandToggle');
-  const willOpen = toggleBtn.getAttribute('data-open') !== 'true';
-  details.forEach(d => d.open = willOpen);
-  toggleBtn.setAttribute('data-open', willOpen ? 'true' : 'false');
-  toggleBtn.textContent = willOpen ? 'Collapse Technical Details' : 'Expand All Technical Details';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
