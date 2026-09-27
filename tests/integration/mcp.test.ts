@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { Approval, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, GitTask as Task, ToolCall } from '../../packages/protocol/src/index';
@@ -69,6 +69,13 @@ describe('MCP servers under runtime policy', () => {
     await mkdir(worktreeRoot, { recursive: true });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-cwd', cwd: worktreeRoot }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-arg', arguments: [join(worktreeRoot, 'script.js')] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference files inside app-owned worktrees') });
+    const externalBinaryAlias = join(worktreeRoot, 'external-bin');
+    await symlink(dirname(process.execPath), externalBinaryAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-command-alias', command: join(externalBinaryAlias, basename(process.execPath)) }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
+    const alias = join(directory, 'worktree-alias');
+    await symlink(worktreeRoot, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(runtime.dispatch('mcp.save', config({ key: 'aliased-worktree-cwd', cwd: alias }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'aliased-worktree-arg', arguments: [join(alias, 'nonexistent-script.js')] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference files inside app-owned worktrees') });
     const missing = await runtime.dispatch('mcp.save', config({ key: 'missing', arguments: [join(directory, 'nope.mjs')] })) as McpServerStatus;
     expect(missing.tools).toEqual([]); expect(missing.lastError).toContain('failed to start');
     expect((await runtime.dispatch('mcp.remove', { serverId: saved.id })) as { removed: boolean }).toEqual({ removed: true });

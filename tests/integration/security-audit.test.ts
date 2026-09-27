@@ -642,7 +642,7 @@ describe('credential canary screening and leak matrix', () => {
       id: randomUUID(), key: 'audit', name: 'Audit server', command: process.execPath, arguments: [serving],
       cwd: '', environment: {}, enabled: true, readOnlyTools: ['leak'], callTimeoutMs: 10_000
     }) as McpServerStatus;
-    expect(saved.running).toBe(true);
+    expect(saved.running, saved.lastError ?? 'MCP server did not start').toBe(true);
     expect(saved.tools.map(tool => tool.name)).toEqual(['leak']);
 
     const direct = await runtime.mcp.call(saved, 'leak', {}, new AbortController().signal);
@@ -699,10 +699,14 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     const grandchild = `[IO.File]::WriteAllText('${quote(join(root, 'child.pid'))}', $PID); Start-Sleep -Seconds 120`;
     return `[IO.File]::WriteAllText('${quote(join(root, 'root.pid'))}', $PID); Start-Process -WindowStyle Hidden -FilePath ${POWERSHELL} -ArgumentList '-NoProfile','-NonInteractive','-Command','${quote(grandchild)}'; Start-Sleep -Seconds ${lingerSeconds}`;
   };
-  const treePids = async (root: string): Promise<number[]> => {
+  const treePids = async (root: string, execution: Promise<unknown>): Promise<number[]> => {
+    let ended: { result?: unknown; error?: string } | undefined;
+    void execution.then(result => { ended = { result }; }, error => { ended = { error: error instanceof Error ? error.message : String(error) }; });
     await waitFor(async () => {
       const found = await Promise.all(['root.pid', 'child.pid'].map(name => fs.readFile(join(root, name), 'utf8').then(value => value.trim().length > 0, () => false)));
-      return found.every(Boolean);
+      if (found.every(Boolean)) return true;
+      if (ended) throw new Error(`Command ended before recording its process tree: ${JSON.stringify(ended)}`);
+      return false;
     }, 'the command process tree to report its pids');
     return Promise.all(['root.pid', 'child.pid'].map(async name => Number((await fs.readFile(join(root, name), 'utf8')).trim())));
   };
@@ -711,13 +715,18 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     const root = await gitRepository(join(await scratch('foundry-job-timeout-'), 'worktree'));
     const runner = new CommandRunner();
     const prepared = await runner.prepare(root, { command: treeCommand(root, 120), cwd: '', environment: {}, timeoutMs: 8_000 });
-    const executing = runner.execute(prepared, new AbortController().signal);
-    const pids = await treePids(root);
-    expect(pids.every(alive)).toBe(true);
-
-    const result = await executing;
-    expect(result).toMatchObject({ timedOut: true, cancelled: false, exitCode: null, cleanupVerified: true });
-    await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    const controller = new AbortController();
+    const executing = runner.execute(prepared, controller.signal);
+    try {
+      const pids = await treePids(root, executing);
+      expect(pids.every(alive)).toBe(true);
+      const result = await executing;
+      expect(result).toMatchObject({ timedOut: true, cancelled: false, exitCode: null, cleanupVerified: true });
+      await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    } finally {
+      controller.abort();
+      await executing.catch(() => undefined);
+    }
   }, 60_000);
 
   it('terminates a background descendant that outlives a command exiting normally', async () => {
@@ -726,13 +735,18 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     // The root exits on its own well before its timeout; only the Job Object can still reach the
     // detached grandchild, which holds the inherited output handles open behind it.
     const prepared = await runner.prepare(root, { command: treeCommand(root, 3), cwd: '', environment: {}, timeoutMs: 30_000 });
-    const executing = runner.execute(prepared, new AbortController().signal);
-    const pids = await treePids(root);
-
-    const result = await executing;
-    expect(result).toMatchObject({ exitCode: 0, timedOut: false, cancelled: false, cleanupVerified: true });
-    expect(result.stderr).toContain('[background job descendants terminated]');
-    await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    const controller = new AbortController();
+    const executing = runner.execute(prepared, controller.signal);
+    try {
+      const pids = await treePids(root, executing);
+      const result = await executing;
+      expect(result).toMatchObject({ exitCode: 0, timedOut: false, cancelled: false, cleanupVerified: true });
+      expect(result.stderr).toContain('[background job descendants terminated]');
+      await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    } finally {
+      controller.abort();
+      await executing.catch(() => undefined);
+    }
   }, 60_000);
 
   it('terminates every command descendant when the user cancels', async () => {
@@ -742,7 +756,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     const prepared = await runner.prepare(root, { command: treeCommand(root, 120), cwd: '', environment: {}, timeoutMs: 120_000 });
     const executing = runner.execute(prepared, controller.signal);
     try {
-      const pids = await treePids(root);
+      const pids = await treePids(root, executing);
       controller.abort();
       const result = await executing;
       expect(result).toMatchObject({ cancelled: true, timedOut: false, exitCode: null, cleanupVerified: true });

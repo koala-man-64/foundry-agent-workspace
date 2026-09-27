@@ -45,7 +45,7 @@ jobs:
         run: git config --global init.defaultBranch main
 
       - name: Run type checks, lint, and tests
-        run: pnpm check --maxWorkers=1
+        run: pnpm check --maxWorkers=1 --bail=1
 
       - name: Test Electron user workflows with offline fixtures
         run: pnpm test:e2e

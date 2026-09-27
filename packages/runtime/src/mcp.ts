@@ -262,13 +262,25 @@ export class McpManager {
     if (!path.isAbsolute(config.command) || !/\.exe$/i.test(config.command)) throw new McpError('The server command must be an absolute path to an .exe file; pass scripts as arguments to their interpreter.');
     const command = await fs.realpath(config.command).catch(() => { throw new McpError('The server command was not found.'); });
     if (!(await fs.stat(command)).isFile()) throw new McpError('The server command must be a file.');
-    const forbidden = this.options.forbiddenRoots?.() ?? [];
-    for (const root of forbidden) if (isInside(root, command)) throw new McpError('The server command must not live inside app-owned worktrees.');
+    const forbidden = await Promise.all((this.options.forbiddenRoots?.() ?? []).map(async root => {
+      if (!path.isAbsolute(root)) throw new McpError('An app-owned worktree root could not be verified.');
+      try { return { literal: path.resolve(root), canonical: await canonicalizeContainmentPath(root) }; }
+      catch { throw new McpError('An app-owned worktree root could not be verified.'); }
+    }));
+    const isForbidden = async (candidate: string): Promise<boolean> => {
+      if (forbidden.some(root => isInside(root.literal, candidate))) return true;
+      // Canonicalize the nearest existing ancestor, so a nonexistent script argument
+      // beneath a junction or short-name alias is still compared in the same namespace.
+      let canonical: string;
+      try { canonical = await canonicalizeContainmentPath(candidate); }
+      catch { throw new McpError('The server path could not be verified.'); }
+      return forbidden.some(root => isInside(root.canonical, canonical));
+    };
+    if (await isForbidden(config.command)) throw new McpError('The server command must not live inside app-owned worktrees.');
     if (config.cwd) {
       if (!path.isAbsolute(config.cwd)) throw new McpError('The server working directory must be an absolute path.');
       if (!(await fs.stat(config.cwd).catch(() => undefined))?.isDirectory()) throw new McpError('The server working directory was not found.');
-      const realCwd = await fs.realpath(config.cwd).catch(() => path.resolve(config.cwd));
-      for (const root of forbidden) if (isInside(root, realCwd)) throw new McpError('The server working directory must not live inside app-owned worktrees.');
+      if (await isForbidden(config.cwd)) throw new McpError('The server working directory must not live inside app-owned worktrees.');
     }
     for (const [key, value] of Object.entries(config.environment)) {
       if (RESERVED_ENVIRONMENT.test(key) || FORBIDDEN_ENVIRONMENT.test(key)) throw new McpError(`Environment variable ${key} is not permitted for MCP servers.`);
@@ -278,8 +290,7 @@ export class McpManager {
     for (const argument of config.arguments) {
       if (argument.includes('\0') || (screenSecrets && this.redactor.text(argument) !== argument)) throw new McpError('Server arguments contain NUL or secret-like content.');
       if (path.isAbsolute(argument)) {
-        const resolved = await fs.realpath(argument).catch(() => path.resolve(argument));
-        for (const root of forbidden) if (isInside(root, resolved)) throw new McpError('Server arguments must not reference files inside app-owned worktrees.');
+        if (await isForbidden(argument)) throw new McpError('Server arguments must not reference files inside app-owned worktrees.');
       }
     }
   }
@@ -419,6 +430,21 @@ function isInside(root: string, candidate: string): boolean {
   const normalize = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
   const relative = path.relative(normalize(root), normalize(candidate));
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+/** Resolve aliases even when a final script or worktree path does not exist yet. */
+export async function canonicalizeContainmentPath(value: string, realpath: (candidate: string) => Promise<string> = candidate => fs.realpath(candidate)): Promise<string> {
+  let current = path.resolve(value);
+  const missing: string[] = [];
+  for (;;) {
+    try { return path.resolve(await realpath(current), ...missing.reverse()); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      const parent = path.dirname(current);
+      if (parent === current) throw error;
+      missing.push(path.basename(current));
+      current = parent;
+    }
+  }
 }
 function unpackedHostPath(): string {
   const source = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mcp-host.ps1');

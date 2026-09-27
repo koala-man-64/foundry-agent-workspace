@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { PassThrough } from 'node:stream';
-import { McpClient, McpError, composeName } from '../src/mcp';
+import path from 'node:path';
+import { McpClient, McpError, canonicalizeContainmentPath, composeName } from '../src/mcp';
+
+describe('MCP path containment', () => {
+  it('canonicalizes an aliased ancestor when the final argument does not exist', async () => {
+    const alias = path.resolve('fixture', 'SHORT~1', 'worktrees');
+    const canonical = path.resolve('fixture', 'Long Profile', 'worktrees');
+    const missing = Object.assign(new Error('Missing path'), { code: 'ENOENT' });
+    const realpath = async (candidate: string): Promise<string> => candidate === alias ? canonical : Promise.reject(missing);
+    await expect(canonicalizeContainmentPath(path.join(alias, 'new', 'script.js'), realpath)).resolves.toBe(path.join(canonical, 'new', 'script.js'));
+  });
+  it('fails closed when an existing ancestor cannot be inspected', async () => {
+    const denied = Object.assign(new Error('Denied'), { code: 'EACCES' });
+    await expect(canonicalizeContainmentPath(path.resolve('fixture', 'private', 'script.js'), async () => { throw denied; })).rejects.toBe(denied);
+  });
+});
 
 function pair(): { client: McpClient; fromClient: PassThrough; toClient: PassThrough; errors: Error[] } {
   const fromClient = new PassThrough(); const toClient = new PassThrough(); const errors: Error[] = [];
