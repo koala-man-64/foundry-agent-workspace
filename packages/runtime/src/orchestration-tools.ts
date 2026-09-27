@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Assignment, CoordinationConfig, Task, ToolDefinition } from '../../protocol/src/index';
 import { CommandSpecSchema, ORCHESTRATION_LIMITS } from '../../protocol/src/index';
 import { TOOL_DEFINITIONS, type ToolName } from './tool-definitions';
+import { CHANNEL_TOOL_DEFINITIONS } from './channel-tools';
 
 const Key = z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/);
 const ScopePath = z.string().max(1024);
@@ -53,7 +54,7 @@ export function agentRole(task: Task): 'coding' | 'coordinator' | 'child' {
 export function usesTools(task: Task): boolean { return task.mode === 'coding' || task.mode === 'coordinated'; }
 export function toolsFor(task: Task): ToolDefinition[] {
   const allowed = new Set<string>(ROLE_TOOLS[agentRole(task)]);
-  return [...TOOL_DEFINITIONS.filter(tool => allowed.has(tool.name)), ...Object.values(ORCHESTRATION_TOOL_DEFINITIONS).filter(tool => allowed.has(tool.name))];
+  return [...TOOL_DEFINITIONS.filter(tool => allowed.has(tool.name)), ...Object.values(ORCHESTRATION_TOOL_DEFINITIONS).filter(tool => allowed.has(tool.name)), ...CHANNEL_TOOL_DEFINITIONS];
 }
 export function isOrchestrationTool(name: string): name is OrchestrationToolName { return Object.hasOwn(OrchestrationToolArguments, name); }
 

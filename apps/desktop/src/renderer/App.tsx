@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import type { Approval, CompactionRecord, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, ModelProfile, ProbeResult, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
 import { ORCHESTRATION_LIMITS } from '../../../../packages/protocol/src/index';
 import { CoordinatedTaskView } from './Orchestration';
+import { AgentChannelPanel } from './AgentChannel';
 import { McpSettings } from './McpSettings';
 
 declare global { interface Window { workspace: DesktopApi; } }
@@ -52,7 +53,7 @@ function App() {
   const [file, setFile] = useState<FileContent>();
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
-  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish'>('files');
+  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish' | 'channel'>('files');
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
@@ -336,7 +337,7 @@ function App() {
         <label>Task title <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What should this task do?" /></label>
         <label>Profile <select value={profileId} onChange={(e) => { const next = profiles.find((profile) => profile.id === e.target.value) ?? OFFLINE_PROFILE; setProfileId(next.id); if (taskMode !== 'chat' && !isProfileReady(next)) setTaskMode('chat'); }}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.apiKind}</option>)}</select></label>
         <label>Mode <select value={taskMode} onChange={(e) => setTaskMode(e.target.value as 'chat' | 'coding' | 'coordinated')}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding with reviewed tools</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated (coordinator + children)</option></select></label>
-        <p className="mode-note">{taskMode === 'coding' ? selectedProfile.apiKind === 'fake' ? 'Offline deterministic demo: type /demo to propose a bounded README edit and command, or /mcp-demo with a configured "fixture" MCP server.' : 'Tools require a reviewed approval before they run.' : taskMode === 'coordinated' ? 'The coordinator delegates bounded assignments to children; every commit, integration and command still needs your reviewed approval.' : 'Chat does not request tool execution.'}</p>
+        <p className="mode-note">{taskMode === 'coding' ? selectedProfile.apiKind === 'fake' ? 'Offline deterministic demo: type /demo to propose a bounded README edit and command, or /mcp-demo with a configured "fixture" MCP server.' : 'Tools require a reviewed approval before they run.' : taskMode === 'coordinated' ? 'The coordinator delegates bounded assignments to children; every commit, integration and command still needs your reviewed approval.' : selectedProfile.apiKind === 'fake' ? 'Chat can exchange project messages. Try /channel-demo followed by your message. File edits and commands are unavailable.' : 'Chat can exchange project messages when the profile supports tools. File edits and commands are unavailable.'}</p>
         {taskMode === 'coordinated' && <>
           <label>Required validation command <textarea value={requiredValidationCommand} onChange={(e) => setRequiredValidationCommand(e.target.value)} placeholder="Command run on the final integrated tree" maxLength={16384} /></label>
           <label>Token budget <input type="number" min={1024} max={10000000} value={coordinatedBudget} onChange={(e) => setCoordinatedBudget(Number(e.target.value))} /></label>
@@ -368,7 +369,8 @@ function App() {
     </section>
     <aside className="inspector">
       <div className="inspector-tabs"><button className={rightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button><button className={rightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button><button className={rightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button><button className={rightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button><button className={rightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button></div>
-      {!selectedId ? <p className="muted inspector-empty">Select a task to inspect its local worktree.</p> : rightTab === 'files' ? <>
+      <button type="button" className={`channel-tab ${rightTab === 'channel' ? 'active' : ''}`} onClick={() => setRightTab('channel')}>Project channel</button>
+      {!selectedId ? <p className="muted inspector-empty">Select a task to inspect its local worktree.</p> : rightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : rightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}

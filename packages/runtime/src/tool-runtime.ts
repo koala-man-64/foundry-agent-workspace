@@ -9,6 +9,8 @@ import { ExecutionSlots } from './execution-slots';
 import { agentRole, isOrchestrationTool, ROLE_TOOLS } from './orchestration-tools';
 import { covers, inScope, normalizeScopePath } from './scope';
 import { McpError, McpManager } from './mcp';
+import { AgentChannel } from './agent-channel';
+import { isChannelTool } from './channel-tools';
 
 export interface ApprovalBinding { rootTaskId: string; assignmentId: string | null; generation: number; targetLabel: string }
 /** Orchestration extension points. Only the runtime supplies them; nothing in model output does. */
@@ -30,7 +32,8 @@ export class ToolRuntime {
   private readonly waiting = new Map<string, { taskId: string; resolve: (approved: boolean) => void }>();
   private orchestration?: OrchestrationToolHooks;
   private mcp?: McpManager;
-  constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly commands: CommandRunner, private readonly redactor: Redactor, private readonly publish: (type: string, data: unknown, taskId: string) => void, private readonly slots = new ExecutionSlots()) {}
+  readonly channel: AgentChannel;
+  constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly commands: CommandRunner, private readonly redactor: Redactor, private readonly publish: (type: string, data: unknown, taskId: string) => void, private readonly slots = new ExecutionSlots()) { this.channel = new AgentChannel(store, redactor, publish); }
 
   attachOrchestration(hooks: OrchestrationToolHooks): void { this.orchestration = hooks; }
   attachMcp(manager: McpManager): void { this.mcp = manager; }
@@ -97,6 +100,12 @@ export class ToolRuntime {
     try {
       signal.throwIfAborted();
       const role = agentRole(task);
+      if (isChannelTool(call.name)) {
+        this.assertNoSecrets(JSON.stringify(call.arguments));
+        if (task.rootTaskId && !this.orchestration?.binding(task)) throw new Error('This agent is cancelled, fenced or finished.');
+        return result(JSON.stringify(this.channel.execute(task.id, call)));
+      }
+      if (!task.mode || task.mode === 'chat') throw new Error('Chat tasks can use only project communication tools.');
       if (role !== 'coding' && !(ROLE_TOOLS[role] as string[]).includes(call.name)) {
         // Policy boundary: a fabricated coordinator-only call from a child (or edit call from a coordinator) is denied here even if an adapter accepted it.
         this.orchestration?.denied(task, call.name, `Tool is not available to the ${role} role.`);
