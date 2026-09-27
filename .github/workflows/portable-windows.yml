@@ -56,6 +56,9 @@ jobs:
       - name: Smoke test the packaged runtime
         run: pnpm smoke:package
 
+      - name: Smoke test the portable executable
+        run: pnpm smoke:portable
+
       - name: Write portable executable checksum
         run: |
           $packages = @(Get-ChildItem -LiteralPath release -Filter 'Foundry-Agent-Workspace-Portable-*-x64.exe' -File)

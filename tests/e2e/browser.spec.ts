@@ -99,6 +99,11 @@ test('persistent browser storage, blank restart, manual navigation, popup and is
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.contentView.children.slice(1).every(view => !view.getVisible()))).toBe(true);
     await page.getByRole('button', { name: /Browser persistence/ }).click();
     await page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await page.setViewportSize({ width: 880, height: 720 });
+    await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
+    await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.contentView.children.slice(1).every(view => !view.getVisible()))).toBe(true);
+    await page.setViewportSize({ width: 1480, height: 940 });
+    await expect(page.getByLabel('Website address')).toBeVisible();
     const fixturePage = app.context().pages().find(candidate => candidate.url() === `${base}/seed`)!;
     await fixturePage.getByRole('button', { name: 'Open login popup' }).click();
     await expect.poll(async () => (await state(page)).tabs.length).toBe(2);
@@ -171,7 +176,7 @@ test('ordinary chat reads an attached page and executes only the approved browse
     expect(detail.approvals?.find(approval => approval.browser)?.state).toBe('complete');
     expect(detail.task.mode).toBe('chat');
     expect(detail.task.workspaceKind).toBe('none');
-    expect(detail.task.worktreePath).toBe('');
+    expect(detail.task.worktreePath).toBeUndefined();
     expect(JSON.stringify(detail)).not.toContain('private-password-canary');
     expect(JSON.stringify(detail)).not.toContain('hidden-canary');
     await page.getByRole('button', { name: 'Browser', exact: true }).click();

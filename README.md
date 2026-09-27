@@ -80,15 +80,16 @@ pnpm package:dir           # Unpacked Windows app
 pnpm smoke:package         # Packaged SQLite + approved edit/Windows command fixture
 pnpm package:win           # Per-user NSIS installer; unsigned unless configured
 pnpm package:portable      # Windows x64 portable EXE; no installer
+pnpm smoke:portable        # Launch the portable EXE and verify bundled Electron + SQLite
 ```
 
 Dependencies and the lockfile are pinned. `better-sqlite3` 13 ships a Node-API Windows binary, tested in both Node and Electron; it does not need an Electron ABI rebuild. Its inferred source-build hook is deliberately disabled, and packaging retains `.node` files outside the ASAR archive. Install the pinned Electron binary with `node node_modules/electron/install.js` after dependency installation; repeat that command if the download is interrupted. Do not disable package checksums or use an untrusted mirror.
 
 ## Download a portable Windows build
 
-The [Portable Windows build workflow](.github/workflows/portable-windows.yml) runs on every push to `main`, including documentation changes, and supports manual **Run workflow** runs. It uses Windows x64, the pinned pnpm version and lockfile, offline checks and Electron user-path tests, then builds and smoke-tests the packaged runtime. No provider credentials or paid probes are needed.
+The [Portable Windows build workflow](.github/workflows/portable-windows.yml) runs on every push to `main`, including documentation changes, and supports manual **Run workflow** runs. It uses Windows x64, the pinned pnpm version and lockfile, offline checks and Electron user-path tests, then builds and smoke-tests the packaged runtime and portable launcher. No provider credentials or paid probes are needed.
 
-Once the workflow is merged, sign in to GitHub, open the repository's **Actions** tab, select a successful **Portable Windows build** run, and download its `foundry-portable-windows-x64-<commit>` artifact. Extract the ZIP and run `Foundry-Agent-Workspace-Portable-<version>-x64.exe`. The artifact also contains an SHA-256 checksum and is retained for 30 days. The target machine does not need Node.js, pnpm, or a source build; Git is still required for repository tasks.
+Sign in to GitHub, open the repository's **Actions** tab, select a successful **Portable Windows build** run, and download its `foundry-portable-windows-x64-<commit>` artifact. Extract the ZIP and run `Foundry-Agent-Workspace-Portable-<version>-x64.exe`. The artifact also contains an SHA-256 checksum and is retained for 30 days. The target machine does not need Node.js, pnpm, or a source build; Git is still required for repository tasks.
 
 The portable EXE is unsigned, so Windows may display a reputation warning. It needs no installer, but application data and browser sessions still live in the current Windows user's application-data directory; they do not travel with the EXE. Updates are manual: close the app and replace the EXE with a newer build. This workflow uploads Actions artifacts; signing, GitHub Releases, and automatic updates are not configured.
 

@@ -21,7 +21,8 @@
     "package:dir": "pnpm build && electron-builder --dir",
     "package:win": "pnpm build && electron-builder --win nsis",
     "package:portable": "pnpm build && electron-builder --win portable --x64 --publish never",
-    "smoke:package": "node scripts/packaged-smoke.mjs"
+    "smoke:package": "node scripts/packaged-smoke.mjs",
+    "smoke:portable": "node scripts/portable-smoke.mjs"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
