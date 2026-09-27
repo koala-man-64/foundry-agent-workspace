@@ -158,10 +158,12 @@ describe('controlled compaction and usage visibility', () => {
     await expect(runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 1 })).rejects.toThrow('would not reduce context size');
   });
 
-  it('synthesizes unknown usage records during recovery when process restarts during an active request', async () => {
+  it('recovers unknown usage with its original request identity after a runtime restart', async () => {
     const task = await runtime.dispatch('task.create', { title: 'Crash', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
-    // Durably charge an in-flight request directly in SQLite as if a crash occurred while running
+    // Admission persists the request identity with its reservation before dispatch.
     store.saveTask({ ...store.task(task.id), status: 'running', usedTokens: 5000 });
+    store.beginUsage('interrupted-fixture', task, store.profile(task.profileId)!, 5000, 'conversation');
+    store.attemptUsage('interrupted-fixture');
     expect(store.usageRecords(task.id).records).toHaveLength(0);
     // Shut down the active runtime so SQLite is unlocked
     await runtime.shutdown();
@@ -179,9 +181,10 @@ describe('controlled compaction and usage visibility', () => {
       const records = freshStore.usageRecords(task.id);
       expect(records.records).toHaveLength(1);
       expect(records.records[0]).toMatchObject({
+        requestId: 'interrupted-fixture',
         usageKnown: false,
         reservedTokens: 5000,
-        reason: expect.stringContaining('Runtime restarted before usage was recorded')
+        reason: expect.stringContaining('Runtime restarted')
       });
     } finally {
       freshStore.close();

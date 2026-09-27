@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { CoordinationConfig, McpServerStatus, Message, ModelProfile, ProviderAdapter, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
+import type { CoordinationConfig, McpServerStatus, Message, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
 import { COORDINATED_MODE_ENABLED, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
 import { RepositoryService, RepositoryError } from './repository';
@@ -14,14 +14,23 @@ import { Orchestrator } from './orchestrator';
 import { McpManager } from './mcp';
 import { WorkspaceOperations } from './workspace-operations';
 import { dirname } from 'node:path';
+import { admitRequest, measuredUsage, type MeasuredUsage, type ResponseMetadata } from './usage-accounting';
 
 export function profileFingerprint(profile: ModelProfile): string {
-  return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit })).digest('hex');
+  return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit, effort: profile.effort })).digest('hex');
 }
 export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean; mcpHostPath?: string }
+// These operations never write runtime state, even while awaiting filesystem reads.
+// Unknown/new operations conservatively block a schema upgrade until they settle.
+const READ_ONLY_RPC = new Set<RpcMethod>([
+  'workspace.snapshot', 'workspace.schema', 'task.get', 'task.usage', 'task.diff',
+  'files.list', 'files.read', 'usage.summary', 'usage.breakdown', 'usage.requests',
+  'orchestration.get', 'orchestration.child', 'channel.get', 'mcp.list'
+]);
 export class RuntimeService {
   private readonly running = new Map<string, { abort: AbortController; done: Promise<void> }>();
   private readonly dispatches = new Set<Promise<unknown>>();
+  private readonly mutatingDispatches = new Set<Promise<unknown>>();
   private readonly credentials = new Map<string, string>();
   private readonly generations = new Map<string, number>();
   private readonly probing = new Set<string>();
@@ -78,27 +87,34 @@ export class RuntimeService {
     if (this.closing) return Promise.reject(new Error('Runtime is shutting down.'));
     const operation = this.dispatchInternal(method, input);
     this.dispatches.add(operation);
-    void operation.then(() => this.dispatches.delete(operation), () => this.dispatches.delete(operation));
+    if (!READ_ONLY_RPC.has(method)) this.mutatingDispatches.add(operation);
+    const settled = (): void => { this.dispatches.delete(operation); this.mutatingDispatches.delete(operation); };
+    void operation.then(settled, settled);
     return operation;
   }
   private coordinatedAvailable(): boolean { return this.coordinatedMode && this.store.orchestrationAvailable; }
   private async dispatchInternal(method: RpcMethod, input: unknown): Promise<unknown> {
     if (this.closing) throw new Error('Runtime is shutting down.');
     const params = RpcMethods[method].parse(input);
-    if (this.upgrading && method !== 'workspace.snapshot' && method !== 'workspace.schema') throw new Error('The database upgrade is in progress.');
+    if (this.upgrading && !READ_ONLY_RPC.has(method)) throw new Error('The database upgrade is in progress.');
     if (method.startsWith('orchestration.') && !this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
     switch (method) {
       case 'workspace.snapshot': return this.store.snapshot();
       case 'workspace.schema': return { version: this.store.schemaVersion, current: SCHEMA_VERSION, upgradeRequired: this.store.schemaVersion < SCHEMA_VERSION, coordinatedAvailable: this.coordinatedAvailable() };
       case 'workspace.upgrade': {
         // Stop admission and require idle work before the backed-up transactional upgrade.
-        if (this.running.size || this.dispatches.size > 1) throw new Error('Finish or cancel active work before upgrading the database.');
+        // dispatchInternal starts before dispatch() adds this operation to the set.
+        if (this.running.size || this.mutatingDispatches.size > 0 || this.probing.size) throw new Error('Finish or cancel active work before upgrading the database.');
         this.upgrading = true;
-        try { return await this.store.upgradeToV2(); } finally { this.upgrading = false; }
+        try { return await this.store.upgradeToCurrent(); } finally { this.upgrading = false; }
       }
       case 'task.get': return this.store.detail((params as { taskId: string }).taskId);
+      case 'usage.summary': return this.store.usageSummary(params as Parameters<Store['usageSummary']>[0]);
+      case 'usage.breakdown': return this.store.usageBreakdown(params as Parameters<Store['usageBreakdown']>[0]);
+      case 'usage.requests': return this.store.usageRequests(params as Parameters<Store['usageRequests']>[0]);
       case 'profile.save': {
         const profile = ModelProfileSchema.parse(params);
+        if (profile.effort && this.store.schemaVersion < 3) throw new Error('Upgrade the database before configuring effort presets.');
         if (profile.id === FAKE_PROFILE_ID && profile.apiKind !== 'fake') throw new Error('Create a new profile to configure Foundry; the offline profile is reserved.');
         if ([...this.running.keys()].some(id => this.store.task(id).profileId === profile.id)) throw new Error('Cancel active responses before editing this profile.');
         if (profile.outputLimit >= profile.contextLimit) throw new Error('Output budget must be below the context limit.');
@@ -125,7 +141,7 @@ export class RuntimeService {
         const fingerprint = profileFingerprint(profile);
         const generation = this.generations.get(profile.id) ?? 0;
         try {
-        const result = await this.providerFactory(profile.apiKind).probe(profile, this.credentials.get(profile.id));
+        const result = await this.providerFactory(profile.apiKind).probe(profile, this.credentials.get(profile.id), (request, stream) => this.observeProbe(request, stream));
         if (this.closing) throw new Error('Runtime is shutting down.');
         if (result.ok && result.capabilities.streaming && result.capabilities.cancellation) {
           const current = this.store.profile(profile.id);
@@ -272,6 +288,31 @@ export class RuntimeService {
     const live = this.mcp.statusOf(server.id);
     return { ...server, running: live.running, lastError: live.lastError ?? server.lastError };
   }
+  private async *observeProbe(request: ProviderRequest, stream: () => AsyncIterable<ProviderEvent>): AsyncIterable<ProviderEvent> {
+    if (this.store.schemaVersion < 3) { yield* stream(); return; }
+    const requestId = randomUUID();
+    this.store.beginUsage(requestId, undefined, request.profile, 0, 'probe');
+    this.store.attemptUsage(requestId);
+    let usage: MeasuredUsage | undefined; const metadata: ResponseMetadata = {};
+    let complete = false; let failed = false;
+    try {
+      for await (const event of stream()) {
+        if (event.type === 'usage') usage = measuredUsage(event) ?? usage;
+        if (event.type === 'metadata') {
+          if (typeof event.reportedModel === 'string' && event.reportedModel.length <= 200) metadata.reportedModel = this.redactor.text(event.reportedModel);
+          if (typeof event.responseId === 'string' && event.responseId.length <= 200) metadata.responseId = this.redactor.text(event.responseId);
+        }
+        if (event.type === 'done') complete = true;
+        yield event;
+      }
+    } catch (error) { failed = true; throw error; }
+    finally {
+      const outcome = request.signal.aborted ? 'cancelled' : complete && !failed ? 'completed' : 'failed';
+      this.store.finishUsage(requestId, usage, outcome, usage ? undefined : 'Profile check ended without final usage.', metadata);
+      this.publish('usage.changed', { requestId });
+    }
+  }
+
   private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');
@@ -299,7 +340,7 @@ export class RuntimeService {
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
     let handle!: ReservationHandle;
     this.store.transaction(() => {
-      handle = hooks.reserve(task, request);
+      handle = admitRequest(this.store, task, request, hooks);
       this.store.saveMessage({ id: randomUUID(), taskId, role: 'user', content: cleanContent, createdAt: now, status: 'complete' });
       this.store.saveMessage(answer);
       this.store.saveTask({ ...this.store.task(taskId), status: 'running', updatedAt: now });

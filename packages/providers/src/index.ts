@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { ApiKind, ModelProfile, ProbeResult, ProviderAdapter, ProviderContinuation, ProviderEvent, ProviderMessage, ProviderRequest, ProviderToolResult, ToolCall, ToolDefinition } from "../../protocol/src/index.js";
+import { supportedEfforts, type ApiKind, type ModelProfile, type ProbeObserver, type ProbeResult, type ProviderAdapter, type ProviderContinuation, type ProviderEvent, type ProviderMessage, type ProviderRequest, type ProviderToolResult, type ToolCall, type ToolDefinition } from "../../protocol/src/index.js";
 import { isOrchestrationRequest, orchestrationFixture } from "./orchestration-fixture.js";
 /** A definite HTTP rejection before any response stream was accepted. Retry-After is bounded and advisory only; nothing retries automatically. */
 export class ProviderHttpError extends Error {
@@ -17,7 +17,7 @@ interface SseFrame {
     data: string;
 }
 export function createProvider(apiKind: ApiKind, options: ProviderOptions = {}): ProviderAdapter { return apiKind === "fake" ? new FakeProvider() : new AzureProvider(apiKind, options.fetch ?? globalThis.fetch); }
-export function profileFingerprint(profile: ModelProfile): string { return createHash("sha256").update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.apiKind === "fake" ? profile.endpoint : normalizeEndpoint(profile.endpoint).toString(), deployment: profile.deployment, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit })).digest("hex"); }
+export function profileFingerprint(profile: ModelProfile): string { return createHash("sha256").update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.apiKind === "fake" ? profile.endpoint : normalizeEndpoint(profile.endpoint).toString(), deployment: profile.deployment, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit, ...(profile.effort === undefined ? {} : { effort: profile.effort }) })).digest("hex"); }
 class FakeProvider implements ProviderAdapter {
     async *streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent> {
         if (isOrchestrationRequest(request)) { yield* orchestrationFixture(request); return; }
@@ -111,6 +111,7 @@ class AzureProvider implements ProviderAdapter {
             throw new Error("Fetch is unavailable.");
         if (request.profile.apiKind !== this.apiKind)
             throw new Error("Profile API kind does not match this provider.");
+        validateEffort(request.profile);
         if (!request.credential?.trim())
             throw new Error("A credential is required for this provider.");
         throwIfAborted(request.signal);
@@ -127,20 +128,22 @@ class AzureProvider implements ProviderAdapter {
         else
             yield* streamAnthropic(response.body, request.signal, prepared);
     }
-    async probe(profile: ModelProfile, credential?: string): Promise<ProbeResult> {
+    async probe(profile: ModelProfile, credential?: string, observer?: ProbeObserver): Promise<ProbeResult> {
         try {
             if (profile.apiKind !== this.apiKind || !credential?.trim())
                 throw new Error("A matching profile and credential are required to probe this provider.");
+            validateEffort(profile);
             normalizeEndpoint(profile.endpoint);
-            const small = { ...profile, outputLimit: 256 };
+            const small = { ...profile, outputLimit: profile.effort === undefined ? 256 : profile.outputLimit };
             const base = { profile: small, credential, messages: [{ role: "user" as const, content: "Reply with exactly: OK" }] };
-            const text = await withDeadline("Probe text stream timed out.", signal => this.streamTurn({ ...base, signal }));
+            const observe = (request: ProviderRequest): AsyncIterable<ProviderEvent> => observer ? observer(request, () => this.streamTurn(request)) : this.streamTurn(request);
+            const text = await withDeadline("Probe text stream timed out.", signal => observe({ ...base, signal }));
             if (!text.some(e => e.type === "text") || !text.some(e => e.type === "usage") || !text.some(e => e.type === "done"))
                 throw new Error("Probe text stream was incomplete.");
-            await verifyCancellation(signal => this.streamTurn({ ...base, signal }));
+            await verifyCancellation(signal => observe({ ...base, signal }));
             const token = randomUUID();
             const fixture: ToolDefinition = { name: "fixture_tool", description: "Probe-only fixture.", inputSchema: { type: "object", properties: {}, additionalProperties: false } };
-            const toolStart = await withDeadline("Probe tool stream timed out.", signal => this.streamTurn({ ...base, signal, tools: [fixture], messages: [{ role: "user", content: "Call fixture_tool with an empty object, then reply exactly with the token it returns." }] }));
+            const toolStart = await withDeadline("Probe tool stream timed out.", signal => observe({ ...base, signal, tools: [fixture], messages: [{ role: "user", content: "Call fixture_tool with an empty object, then reply exactly with the token it returns." }] }));
             const call = toolStart.find((e): e is Extract<ProviderEvent, {
                 type: "tool_call";
             }> => e.type === "tool_call")?.call;
@@ -149,7 +152,7 @@ class AzureProvider implements ProviderAdapter {
             }> => e.type === "done")?.continuation;
             if (!call || !continuation || call.name !== fixture.name)
                 throw new Error("Probe tool stream did not return a completed tool call.");
-            const end = await withDeadline("Probe continuation stream timed out.", signal => this.streamTurn({ profile: small, credential, signal, messages: [], tools: [fixture], continuation, toolResults: [{ id: call.id, name: call.name, content: JSON.stringify({ ok: true, token }), isError: false }] }));
+            const end = await withDeadline("Probe continuation stream timed out.", signal => observe({ profile: small, credential, signal, messages: [], tools: [fixture], continuation, toolResults: [{ id: call.id, name: call.name, content: JSON.stringify({ ok: true, token }), isError: false }] }));
             if (!end.some(e => e.type === "done") || end.some(e => e.type === "tool_call") || !end.filter((e): e is Extract<ProviderEvent, { type: "text" }> => e.type === "text").map(e => e.text).join("").includes(token))
                 throw new Error("Probe tool continuation was incomplete.");
             return { ok: true, capabilities: { streaming: true, tools: true, continuation: true, cancellation: true, usage: true }, detail: "Text, usage, tool continuation, and local client cancellation were verified. Server cancellation and billing are not guaranteed.", fingerprint: profileFingerprint(profile) };
@@ -173,14 +176,14 @@ function nativeRequest(kind: Exclude<ApiKind, "fake">, request: ProviderRequest)
         const calls = data ? callsFrom(data.calls) : [];
         if (data)
             input.push(...responseResults(request, calls), ...request.messages.map(message => ({ role: message.role, content: message.content })));
-        return { body: { model: request.profile.deployment, input, stream: true, store: false, include: ["reasoning.encrypted_content"], max_output_tokens: request.profile.outputLimit, ...(tools.length ? { tools: tools.map(responseTool) } : {}) }, state: { input }, calls, tools };
+        return { body: { model: request.profile.deployment, input, stream: true, store: false, include: ["reasoning.encrypted_content"], max_output_tokens: request.profile.outputLimit, ...(request.profile.effort === undefined ? {} : { reasoning: { effort: request.profile.effort } }), ...(tools.length ? { tools: tools.map(responseTool) } : {}) }, state: { input }, calls, tools };
     }
     if (kind === "chat-completions") {
         const messages = data ? array(data.messages).slice() : request.messages.map(message => ({ role: message.role, content: message.content }));
         const calls = data ? callsFrom(data.calls) : [];
         if (data)
             messages.push(...chatResults(request, calls), ...request.messages.map(message => ({ role: message.role, content: message.content })));
-        return { body: { model: request.profile.deployment, messages, stream: true, stream_options: { include_usage: true }, max_completion_tokens: request.profile.outputLimit, ...(tools.length ? { tools: tools.map(chatTool) } : {}) }, state: { messages }, calls, tools };
+        return { body: { model: request.profile.deployment, messages, stream: true, stream_options: { include_usage: true }, max_completion_tokens: request.profile.outputLimit, ...(request.profile.effort === undefined ? {} : { reasoning_effort: request.profile.effort }), ...(tools.length ? { tools: tools.map(chatTool) } : {}) }, state: { messages }, calls, tools };
     }
     const state = data ?? { messages: request.messages.filter(message => message.role !== "system").map(message => ({ role: message.role, content: message.content })), system: request.messages.filter(message => message.role === "system").map(message => message.content).join("\n\n"), calls: [] };
     const messages = array(state.messages).slice();
@@ -194,7 +197,11 @@ function nativeRequest(kind: Exclude<ApiKind, "fake">, request: ProviderRequest)
             }
             else messages.push(...results, ...nextMessages.map(message => ({ role: message.role, content: message.content })));
         }
-    return { body: { model: request.profile.deployment, messages, stream: true, max_tokens: request.profile.outputLimit, ...(typeof state.system === "string" && state.system ? { system: state.system } : {}), ...(tools.length ? { tools: tools.map(anthropicTool) } : {}) }, state: { messages, system: state.system }, calls, tools };
+    return { body: { model: request.profile.deployment, messages, stream: true, max_tokens: request.profile.outputLimit, ...(request.profile.effort === undefined ? {} : { output_config: { effort: request.profile.effort } }), ...(typeof state.system === "string" && state.system ? { system: state.system } : {}), ...(tools.length ? { tools: tools.map(anthropicTool) } : {}) }, state: { messages, system: state.system }, calls, tools };
+}
+function validateEffort(profile: ModelProfile): void {
+    if (profile.effort !== undefined && !supportedEfforts(profile.apiKind).includes(profile.effort))
+        throw new Error("Effort is not supported by this API type.");
 }
 async function* streamResponses(body: ReadableStream<Uint8Array>, signal: AbortSignal, prepared: Prepared): AsyncIterable<ProviderEvent> {
     const streamedItems: Record<string, unknown>[] = [];
@@ -221,6 +228,10 @@ async function* streamResponses(body: ReadableStream<Uint8Array>, signal: AbortS
         }
         else if (type === "response.completed") {
             const response = isRecord(payload.response) ? payload.response : {};
+            const metadata = metadataFrom(response);
+            if (metadata) yield metadata;
+            const usage = usageFrom(response);
+            if (usage) yield usage;
             if (response.status !== "completed" || response.incomplete_details)
                 throw new Error("Responses completion was incomplete.");
             if (containsUnsupported(response))
@@ -235,13 +246,24 @@ async function* streamResponses(body: ReadableStream<Uint8Array>, signal: AbortS
                 if (sawText || !streamedItems.length)
                     throw new Error("Responses completion omitted authoritative output items.");
             }
-            const usage = usageFrom(response);
-            if (usage)
-                yield usage;
             completed = true;
         }
-        else if (type === "response.failed" || type === "error" || type?.includes("refusal") || containsUnsupported(payload))
+        else if (type === "response.failed" || type === "response.incomplete") {
+            const response = isRecord(payload.response) ? payload.response : {};
+            const metadata = metadataFrom(response);
+            if (metadata) yield metadata;
+            const usage = usageFrom(response);
+            if (usage) yield usage;
             throw new Error("Responses provider returned unsupported or failed content.");
+        }
+        else if (type === "error" || type?.includes("refusal") || containsUnsupported(payload)) {
+            const response = isRecord(payload.response) ? payload.response : payload;
+            const metadata = metadataFrom(response);
+            if (metadata) yield metadata;
+            const usage = usageFrom(response);
+            if (usage) yield usage;
+            throw new Error("Responses provider returned unsupported or failed content.");
+        }
     }
     if (!completed)
         throw new Error("Provider stream ended before a completion signal.");
@@ -260,7 +282,7 @@ async function* streamChat(body: ReadableStream<Uint8Array>, signal: AbortSignal
         name?: string;
         arguments: string;
     }>();
-    let content = "", done = false, terminal: "stop" | "tool_calls" | undefined;
+    let content = "", done = false, terminal: "stop" | "tool_calls" | undefined, terminalFailure: string | undefined;
     let usage: Extract<ProviderEvent, {
         type: "usage";
     }> | undefined;
@@ -275,21 +297,30 @@ async function* streamChat(body: ReadableStream<Uint8Array>, signal: AbortSignal
             throw new Error("Chat Completions provider sent data after [DONE].");
         const payload = json(frame);
         eventType(frame, payload);
-        if (payload.error)
+        const metadata = metadataFrom(payload);
+        if (metadata) yield metadata;
+        usage = usageFrom(payload) ?? usage;
+        if (payload.error) {
+            if (usage) yield usage;
             throw new Error("Chat Completions provider reported an error.");
+        }
         const choices = Array.isArray(payload.choices) ? payload.choices : [];
         for (const choice of choices) {
             if (!isRecord(choice))
                 continue;
             const delta = isRecord(choice.delta) ? choice.delta : {};
-            if (terminal && (typeof delta.content === "string" || Array.isArray(delta.tool_calls) || choice.finish_reason !== null && choice.finish_reason !== undefined))
+            if (terminal && (typeof delta.content === "string" || Array.isArray(delta.tool_calls) || choice.finish_reason !== null && choice.finish_reason !== undefined)) {
+                if (usage) yield usage;
                 throw new Error("Chat Completions provider sent content after its terminal finish reason.");
+            }
             if (typeof delta.content === "string") {
                 content += delta.content;
                 yield { type: "text", text: delta.content };
             }
-            if (delta.refusal || delta.function_call)
+            if (delta.refusal || delta.function_call) {
+                if (usage) yield usage;
                 throw new Error("Chat Completions returned unsupported content.");
+            }
             if (Array.isArray(delta.tool_calls))
                 for (const part of delta.tool_calls)
                     addChatPart(parts, part);
@@ -299,10 +330,11 @@ async function* streamChat(body: ReadableStream<Uint8Array>, signal: AbortSignal
                 terminal = choice.finish_reason;
             }
             else if (choice.finish_reason)
-                throw new Error(`Chat completion ended with ${String(choice.finish_reason)}.`);
+                terminalFailure = `Chat completion ended with ${String(choice.finish_reason)}.`;
         }
-        usage = usageFrom(payload) ?? usage;
     }
+    if (usage) yield usage;
+    if (terminalFailure) throw new Error(terminalFailure);
     if (!done)
         throw new Error("Provider stream ended before [DONE].");
     if (!terminal)
@@ -310,8 +342,6 @@ async function* streamChat(body: ReadableStream<Uint8Array>, signal: AbortSignal
     const calls = [...parts.entries()].sort(([a], [b]) => a - b).map(([, part]) => chatCall(part));
     if ((terminal === "tool_calls") !== Boolean(calls.length))
         throw new Error("Chat completion tool-call finish state was inconsistent.");
-    if (usage)
-        yield usage;
     validateCalls(calls, prepared);
     for (const call of calls)
         yield { type: "tool_call", call };
@@ -324,11 +354,11 @@ async function* streamAnthropic(body: ReadableStream<Uint8Array>, signal: AbortS
     const blocks = new Map<number, Record<string, unknown>>();
     const stopped = new Set<number>();
     let input: number | undefined;
-    let cacheCreation = 0;
-    let cacheRead = 0;
+    let cacheCreation: number | undefined;
+    let cacheRead: number | undefined;
     let usage: Extract<ProviderEvent, {
         type: "usage";
-    }> | undefined, done = false, stopReason: "end_turn" | "tool_use" | undefined;
+    }> | undefined, done = false, stopReason: "end_turn" | "tool_use" | undefined, failedStopReason: string | undefined;
     for await (const frame of readSse(body, signal)) {
         const payload = json(frame);
         const type = eventType(frame, payload);
@@ -336,6 +366,8 @@ async function* streamAnthropic(body: ReadableStream<Uint8Array>, signal: AbortS
             throw new Error("Anthropic provider sent content after message_stop.");
         if (type === "message_start") {
             const msg = isRecord(payload.message) ? payload.message : {};
+            const metadata = metadataFrom(msg);
+            if (metadata) yield metadata;
             const messageUsage = isRecord(msg.usage) ? msg.usage : undefined;
             const value = messageUsage?.input_tokens;
             if (validUsageInteger(value))
@@ -360,18 +392,17 @@ async function* streamAnthropic(body: ReadableStream<Uint8Array>, signal: AbortS
         }
         else if (type === "message_delta") {
             const delta = isRecord(payload.delta) ? payload.delta : {};
-            if (delta.stop_reason !== "end_turn" && delta.stop_reason !== "tool_use")
-                throw new Error(`Anthropic completion ended with ${String(delta.stop_reason)}.`);
-            stopReason = delta.stop_reason;
+            if (delta.stop_reason === "end_turn" || delta.stop_reason === "tool_use") stopReason = delta.stop_reason;
+            else failedStopReason = `Anthropic completion ended with ${String(delta.stop_reason)}.`;
             const messageUsage = isRecord(payload.usage) ? payload.usage : undefined;
             const out = messageUsage?.output_tokens;
             const outputCacheCreation = messageUsage?.cache_creation_input_tokens ?? cacheCreation;
             const outputCacheRead = messageUsage?.cache_read_input_tokens ?? cacheRead;
-            if (validUsageInteger(input) && validUsageInteger(out) && validUsageInteger(outputCacheCreation) && validUsageInteger(outputCacheRead)) {
-                const totalInput = input + outputCacheCreation + outputCacheRead;
+            if (validUsageInteger(input) && validUsageInteger(out) && (outputCacheCreation === undefined || validUsageInteger(outputCacheCreation)) && (outputCacheRead === undefined || validUsageInteger(outputCacheRead))) {
+                const totalInput = input + (outputCacheCreation ?? 0) + (outputCacheRead ?? 0);
                 if (!Number.isSafeInteger(totalInput))
                     throw new Error("Anthropic usage exceeded the supported range.");
-                usage = { type: "usage", inputTokens: totalInput, outputTokens: out, cacheReadTokens: outputCacheRead, cacheCreationTokens: outputCacheCreation };
+                usage = { type: "usage", inputTokens: totalInput, outputTokens: out, ...(outputCacheRead === undefined ? {} : { cacheReadTokens: outputCacheRead }), ...(outputCacheCreation === undefined ? {} : { cacheCreationTokens: outputCacheCreation }) };
             }
         }
         else if (type === "content_block_stop") {
@@ -381,17 +412,19 @@ async function* streamAnthropic(body: ReadableStream<Uint8Array>, signal: AbortS
         }
         else if (type === "message_stop")
             done = true;
-        else if (type === "error")
+        else if (type === "error") {
+            if (usage) yield usage;
             throw new Error("Anthropic provider reported an error.");
+        }
     }
+    if (usage) yield usage;
+    if (failedStopReason) throw new Error(failedStopReason);
     if (!done)
         throw new Error("Provider stream ended before message_stop.");
     if (!stopReason)
         throw new Error("Anthropic completion ended without a stop reason.");
     if (stopped.size !== blocks.size)
         throw new Error("Anthropic completion ended before all content blocks stopped.");
-    if (usage)
-        yield usage;
     const content = [...blocks.entries()].sort(([a], [b]) => a - b).map(([, block]) => finalizeAnthropic(block));
     const calls = content.filter(block => block.type === "tool_use").map(block => ({ id: String(block.id), name: String(block.name), arguments: block.input }));
     if ((stopReason === "tool_use") !== Boolean(calls.length))
@@ -538,6 +571,11 @@ function eventType(frame: SseFrame, payload: Record<string, unknown>): string | 
 function validUsageInteger(value: unknown): value is number {
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
+function metadataFrom(value: Record<string, unknown>): Extract<ProviderEvent, { type: "metadata" }> | undefined {
+    const reportedModel = typeof value.model === "string" && value.model.length > 0 && value.model.length <= 200 ? value.model : undefined;
+    const responseId = typeof value.id === "string" && value.id.length > 0 && value.id.length <= 200 ? value.id : undefined;
+    return reportedModel || responseId ? { type: "metadata", ...(reportedModel ? { reportedModel } : {}), ...(responseId ? { responseId } : {}) } : undefined;
+}
 function usageFrom(value: unknown): Extract<ProviderEvent, {
     type: "usage";
 }> | undefined {
@@ -546,15 +584,21 @@ function usageFrom(value: unknown): Extract<ProviderEvent, {
     const usage = isRecord(value.usage) ? value.usage : value;
     const input = usage.input_tokens ?? usage.prompt_tokens;
     const output = usage.output_tokens ?? usage.completion_tokens;
-    const cacheCreation = usage.cache_creation_input_tokens ?? 0;
-    const cacheRead = usage.cache_read_input_tokens ?? 0;
-    if (!validUsageInteger(input) || !validUsageInteger(output) || !validUsageInteger(cacheCreation) || !validUsageInteger(cacheRead))
+    if (!validUsageInteger(input) || !validUsageInteger(output))
         return undefined;
-    // OpenAI-style cached prompt tokens are a subset of the prompt count and are reported separately for visibility only.
     const details = isRecord(usage.prompt_tokens_details) ? usage.prompt_tokens_details : isRecord(usage.input_tokens_details) ? usage.input_tokens_details : undefined;
-    const cachedSubset = validUsageInteger(details?.cached_tokens) ? details.cached_tokens : 0;
-    const totalInput = input + cacheCreation + cacheRead;
-    return Number.isSafeInteger(totalInput) ? { type: "usage", inputTokens: totalInput, outputTokens: output, cacheReadTokens: cacheRead + cachedSubset, cacheCreationTokens: cacheCreation } : undefined;
+    const outputDetails = isRecord(usage.output_tokens_details) ? usage.output_tokens_details : isRecord(usage.completion_tokens_details) ? usage.completion_tokens_details : undefined;
+    const cacheRead = details?.cached_tokens ?? usage.cache_read_input_tokens;
+    const cacheCreation = usage.cache_creation_input_tokens;
+    const reasoning = outputDetails?.reasoning_tokens;
+    if ((cacheRead !== undefined && (!validUsageInteger(cacheRead) || cacheRead > input)) ||
+        (cacheCreation !== undefined && (!validUsageInteger(cacheCreation) || cacheCreation > input)) ||
+        (cacheRead !== undefined && cacheCreation !== undefined && cacheRead + cacheCreation > input) ||
+        (reasoning !== undefined && (!validUsageInteger(reasoning) || reasoning > output))) return undefined;
+    return { type: "usage", inputTokens: input, outputTokens: output,
+        ...(cacheRead === undefined ? {} : { cacheReadTokens: cacheRead }),
+        ...(cacheCreation === undefined ? {} : { cacheCreationTokens: cacheCreation }),
+        ...(reasoning === undefined ? {} : { reasoningTokens: reasoning }) };
 }
 async function* readSse(body: ReadableStream<Uint8Array>, signal: AbortSignal): AsyncIterable<SseFrame> {
     const reader = body.getReader();

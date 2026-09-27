@@ -91,7 +91,14 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await page.getByRole('button', { name: /^Send/ }).click();
 
     await approveUntilSettled(page, 40);
-    await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 });
+    try { await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 }); }
+    catch (error) {
+      await test.info().attach('coordinated-failure-state', { body: JSON.stringify({
+        rendered: await page.locator('body').innerText(),
+        state: await page.evaluate(rootTaskId => window.workspace.invoke('orchestration.get', { rootTaskId }), created.id)
+      }, null, 2), contentType: 'application/json' });
+      throw error;
+    }
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);
 
     await page.screenshot({ path: 'test-results/orchestration-complete.png', fullPage: true });
@@ -222,7 +229,10 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
 
     await page.locator('.upgrade-banner').getByRole('button', { name: 'Review upgrade' }).click();
     await page.getByRole('button', { name: 'Create backup and upgrade', exact: true }).click();
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.schema', {})), { timeout: 20000 }).toMatchObject({ version: 2, coordinatedAvailable: true });
+    await expect.poll(async () => ({
+      schema: await page.evaluate(() => window.workspace.invoke('workspace.schema', {})),
+      error: await page.locator('.notice').filter({ hasText: 'Could not upgrade' }).allTextContents()
+    }), { timeout: 20000 }).toMatchObject({ schema: { version: 3, coordinatedAvailable: true }, error: [] });
     const backups = await readdir(join(stateDirectory, 'backups'));
     expect(backups.some((name) => name.endsWith('.db'))).toBe(true);
 

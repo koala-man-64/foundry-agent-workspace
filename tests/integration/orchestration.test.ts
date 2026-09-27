@@ -401,7 +401,7 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     const gated = new RuntimeService(harness.store, new RepositoryService(join(harness.directory, 'gated')), () => {}, undefined, undefined, { coordinatedMode: false });
     await expect(gated.dispatch('task.create', { title: 'x', projectPath: harness.project, profileId: FAKE_PROFILE_ID, mode: 'coordinated', coordination: { childProfileIds: [], requiredValidation: { command: 'exit 0' } } })).rejects.toThrow('not available in this build');
     await expect(gated.dispatch('orchestration.cancelRoot', { rootTaskId: FAKE_PROFILE_ID })).rejects.toThrow('not available');
-    expect(await gated.dispatch('workspace.schema', {})).toMatchObject({ version: 2, coordinatedAvailable: false });
+    expect(await gated.dispatch('workspace.schema', {})).toMatchObject({ version: 3, coordinatedAvailable: false });
     const legacy = await harness.runtime.dispatch('task.create', { title: 'Legacy chat', projectPath: harness.project, profileId: FAKE_PROFILE_ID }) as Task;
     expect(legacy.mode).toBe('chat'); expect(legacy.rootTaskId).toBeUndefined();
     await harness.runtime.dispatch('task.send', { taskId: legacy.id, content: 'hello' });

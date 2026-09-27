@@ -1,9 +1,10 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Approval, CompactionRecord, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, ModelProfile, ProbeResult, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
-import { ORCHESTRATION_LIMITS } from '../../../../packages/protocol/src/index';
+import { ORCHESTRATION_LIMITS, supportedEfforts } from '../../../../packages/protocol/src/index';
 import { CoordinatedTaskView } from './Orchestration';
 import { AgentChannelPanel } from './AgentChannel';
 import { McpSettings } from './McpSettings';
+import { UsageView } from './Usage';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -36,6 +37,8 @@ function App() {
   const api = window.workspace;
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [selectedId, setSelectedId] = useState<string>();
+  const [page, setPage] = useState<'conversation' | 'usage'>('conversation');
+  const [usageRefreshKey, setUsageRefreshKey] = useState(0);
   const [detail, setDetail] = useState<TaskDetail>();
   const [usage, setUsage] = useState<UsageReport>();
   const [projectPath, setProjectPath] = useState('');
@@ -158,6 +161,7 @@ function App() {
   useEffect(() => { void refresh(); void loadMcp(); }, [refresh, loadMcp]);
   useEffect(() => api.onEvent((event) => {
     eventSequenceRef.current = Math.max(eventSequenceRef.current, event.sequence);
+    if (event.type === 'usage.changed' || event.type === 'task.completed' || event.type === 'task.stopped' || event.type === 'profiles.changed') setUsageRefreshKey(value => value + 1);
     if (event.type === 'runtime.stopped') {
       setNotice('The local runtime stopped. Restart the desktop app to continue.');
     } else if (event.taskId === selectedRef.current && event.type === 'task.stopped') {
@@ -205,7 +209,7 @@ function App() {
         tokenBudget: taskMode === 'coordinated' ? coordinatedBudget : 100000, mode: taskMode,
         ...(taskMode === 'coordinated' ? { coordination: { childProfileIds, requiredValidation: { command: requiredValidationCommand.trim(), cwd: '', timeoutMs: 600000 } } } : {})
       });
-      setTitle(''); setRequiredValidationCommand(''); setChildProfileIds([]); setSelectedId(task.id); await refresh(task.id);
+      setTitle(''); setRequiredValidationCommand(''); setChildProfileIds([]); setSelectedId(task.id); setPage('conversation'); await refresh(task.id);
     } catch (error) { setNotice(`Could not create task: ${error instanceof Error ? error.message : String(error)}`); } finally { setCreating(false); }
   };
   const send = async (event: FormEvent) => {
@@ -326,7 +330,7 @@ function App() {
 
   return <>
     {schema?.upgradeRequired && <div className="upgrade-banner" role="status">
-      This database needs a verified, backed-up upgrade before coordinated tasks are available.
+      This database needs a verified, backed-up upgrade for detailed usage tracking{!schema.coordinatedAvailable ? ' and coordinated tasks' : ''}.
       <button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.showModal()}>Review upgrade</button>
     </div>}
     <main className="workspace">
@@ -348,12 +352,13 @@ function App() {
         </>}
         <button className="primary" disabled={creating}>{creating ? 'Creating…' : 'Create task'}</button>
       </form>
+      <nav className="workspace-nav" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span>↗</span></button></nav>
       <div className="history-head"><h2>Task history</h2><button className="quiet" type="button" onClick={() => void refresh()}>Refresh</button></div>
-      <nav className="task-list" aria-label="Task history">{sortedTasks.map((task) => <button key={task.id} className={`task-row ${task.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(task.id)}><span className={`status-dot ${task.status}`} /><span><strong>{task.title}</strong><small>{statusLabel[task.status]} · {relativeTime(task.updatedAt)}</small></span></button>)}{!sortedTasks.length && <p className="muted">Your local tasks will appear here.</p>}</nav>
+      <nav className="task-list" aria-label="Task history">{sortedTasks.map((task) => <button key={task.id} className={`task-row ${page === 'conversation' && task.id === selectedId ? 'selected' : ''}`} onClick={() => { setSelectedId(task.id); setPage('conversation'); }}><span className={`status-dot ${task.status}`} /><span><strong>{task.title}</strong><small>{statusLabel[task.status]} · {relativeTime(task.updatedAt)}</small></span></button>)}{!sortedTasks.length && <p className="muted">Your local tasks will appear here.</p>}</nav>
       <button className="settings-link" type="button" onClick={() => void exportDiagnostics()} disabled={exporting}>{exporting ? 'Exporting diagnostics…' : 'Export diagnostics'} <span>↓</span></button>
       <button className="settings-link" type="button" onClick={openSettings}>Model settings <span>↗</span></button>
     </aside>
-    {coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} /> : <>
+    {page === 'usage' ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={taskId => { setSelectedId(taskId); setPage('conversation'); }} /> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} /> : <>
     <section className="conversation">
       <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions">{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
@@ -383,18 +388,19 @@ function App() {
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>
             <div><dt>Next request estimate</dt><dd className={usage.contextPercent >= usage.warningPercent ? 'warning' : ''}>{usage.estimatedContextTokens.toLocaleString()} / {usage.contextLimit.toLocaleString()} ({usage.contextPercent}%)</dd></div>
-            <div><dt>Requests</dt><dd>{usage.totals.requests} ({usage.totals.knownRequests} with reported usage, {usage.totals.unknownRequests} retained)</dd></div>
-            <div><dt>Prompt tokens</dt><dd>{usage.totals.prompt.toLocaleString()}</dd></div>
-            <div><dt>Completion tokens</dt><dd>{usage.totals.completion.toLocaleString()}</dd></div>
-            <div><dt>Cache read / creation</dt><dd>{usage.totals.cacheRead.toLocaleString()} / {usage.totals.cacheCreation.toLocaleString()}</dd></div>
-            <div><dt>Retained unknown reservations</dt><dd>{usage.totals.reservedUnknown.toLocaleString()}</dd></div>
+            <div><dt>Requests</dt><dd>{usage.metrics ? `${usage.metrics.attemptedRequests} attempts (${usage.metrics.knownRequests} measured, ${usage.metrics.unknownRequests} unknown, ${usage.metrics.pendingRequests} pending, ${usage.metrics.notSentRequests} not dispatched)` : `${usage.totals.requests} (${usage.totals.knownRequests} measured, ${usage.totals.unknownRequests} unknown)`}</dd></div>
+            <div><dt>Measured input tokens</dt><dd>{(usage.metrics?.input ?? usage.totals.prompt).toLocaleString()}</dd></div>
+            <div><dt>Measured output tokens</dt><dd>{(usage.metrics?.output ?? usage.totals.completion).toLocaleString()}</dd></div>
+            <div><dt>Cache read / creation</dt><dd>{usage.metrics ? `${usage.metrics.cacheRead === null ? 'Unavailable' : `${usage.metrics.cacheRead.toLocaleString()} (${usage.metrics.cacheReadKnownRequests}/${usage.metrics.knownRequests} reported)`} / ${usage.metrics.cacheCreation === null ? 'Unavailable' : `${usage.metrics.cacheCreation.toLocaleString()} (${usage.metrics.cacheCreationKnownRequests}/${usage.metrics.knownRequests} reported)`}` : 'Unavailable / Unavailable'}</dd></div>
+            <div><dt>Reasoning output</dt><dd>{usage.metrics?.reasoning === null || !usage.metrics ? 'Unavailable' : `${usage.metrics.reasoning.toLocaleString()} (${usage.metrics.reasoningKnownRequests}/${usage.metrics.knownRequests} reported)`}</dd></div>
+            <div><dt>Conservative reservations</dt><dd>{usage.metrics ? `${usage.metrics.reservedUnknown.toLocaleString()} unknown · ${usage.metrics.reservedPending.toLocaleString()} pending · ${usage.metrics.reservedNotSent.toLocaleString()} not dispatched` : `${usage.totals.reservedUnknown.toLocaleString()} unknown`}</dd></div>
           </div>
           <p className="muted">Estimates are conservative byte counts of the next request (history or native continuation plus tool schemas and the output reservation). A warning appears at {usage.warningPercent}% of the context limit; compaction summarizes older turns and keeps the originals in local history.</p>
           <div className="usage-actions"><button type="button" className="secondary" disabled={compacting || taskBusy || taskRetired} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button></div>
           <h3>Compactions</h3>
           {usage.compactions.length ? usage.compactions.map((record) => <div className="usage-row" key={record.id}><strong>{record.messageIds.length} messages</strong><span>{record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()} · {relativeTime(record.createdAt)}</span></div>) : <p className="muted">No compactions yet.</p>}
           <h3>Recent requests</h3>
-          {usage.records.slice(-20).reverse().map((record) => <div className="usage-row" key={record.id}><strong>{record.usageKnown ? `${(record.promptTokens ?? 0).toLocaleString()} in · ${(record.completionTokens ?? 0).toLocaleString()} out` : `reserved ${record.reservedTokens.toLocaleString()}`}</strong><span>{record.usageKnown ? `cache ${(record.cacheReadTokens ?? 0).toLocaleString()} · reserved ${record.reservedTokens.toLocaleString()}` : record.reason ?? 'usage unknown'} · {relativeTime(record.createdAt)}</span></div>)}
+          {usage.records.slice(-20).reverse().map((record) => <div className="usage-row" key={record.id}><strong>{record.usageKnown ? `${(record.promptTokens ?? 0).toLocaleString()} in · ${(record.completionTokens ?? 0).toLocaleString()} out` : `reserved ${record.reservedTokens.toLocaleString()}`}</strong><span>{record.usageKnown ? `cache ${record.cacheReadTokens === null ? 'unavailable' : record.cacheReadTokens.toLocaleString()} · reservation ${record.reservedTokens.toLocaleString()}` : record.reason ?? 'usage unknown'} · {relativeTime(record.createdAt)}</span></div>)}
           {!usage.records.length && <p className="muted">No provider requests recorded yet.</p>}
         </> : <p className="muted inspector-empty">Loading usage…</p>}
       </div> : rightTab === 'publish' ? <div className="publish-panel" data-testid="publish-panel">
@@ -445,12 +451,13 @@ function App() {
       </form>
       <form onSubmit={saveProfile} className="profile-form">
         <label>Name <input value={profileDraft.name} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} required maxLength={100} /></label>
-        <label>API kind <select value={profileDraft.apiKind} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, apiKind: e.target.value as ModelProfile['apiKind'] })}><option value="fake">Offline fake</option><option value="responses">Responses API</option><option value="chat-completions">Chat completions</option><option value="anthropic">Anthropic</option></select></label>
+        <label>API kind <select value={profileDraft.apiKind} disabled={isBuiltinProfile} onChange={(e) => { const apiKind = e.target.value as ModelProfile['apiKind']; setProfileDraft({ ...profileDraft, apiKind, effort: profileDraft.effort && supportedEfforts(apiKind).includes(profileDraft.effort) ? profileDraft.effort : undefined }); }}><option value="fake">Offline fake</option><option value="responses">Responses API</option><option value="chat-completions">Chat completions</option><option value="anthropic">Anthropic</option></select></label>
         <label>Endpoint <input value={profileDraft.endpoint} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, endpoint: e.target.value })} placeholder="https://…" /></label>
         <label>Deployment <input value={profileDraft.deployment} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, deployment: e.target.value })} /></label>
+        {!isBuiltinProfile && profileDraft.apiKind !== 'fake' && <label>Reasoning effort <select value={profileDraft.effort ?? ''} onChange={(e) => setProfileDraft({ ...profileDraft, effort: e.target.value ? e.target.value as ModelProfile['effort'] : undefined })}><option value="">Provider default</option>{supportedEfforts(profileDraft.apiKind).map(effort => <option key={effort} value={effort}>{effort}</option>)}</select><small>Applied to requests sent with this profile. Changing it requires a new profile check; native tool conversations must start a new task.</small></label>}
         <div className="limits"><label>Context limit <input type="number" disabled={isBuiltinProfile} min="1024" max="2000000" value={profileDraft.contextLimit} onChange={(e) => setProfileDraft({ ...profileDraft, contextLimit: Number(e.target.value) })} /></label><label>Output limit <input type="number" disabled={isBuiltinProfile} min="16" max="128000" value={profileDraft.outputLimit} onChange={(e) => setProfileDraft({ ...profileDraft, outputLimit: Number(e.target.value) })} /></label></div>
         <label>Credential <input type="password" disabled={isBuiltinProfile} value={credential} onChange={(e) => setCredential(e.target.value)} placeholder="Stored by the local credential service" autoComplete="off" /><small>Cleared from this form after it is saved or tested.</small></label>
-        {isBuiltinProfile ? <p className="probe-note">Offline demo is built in and tests local readiness only; it sends no remote request. Create a new profile to configure an Azure provider.</p> : <p className="probe-note">{profileDraft.apiKind === 'fake' ? 'Offline demo checks local readiness and sends no remote request.' : 'Testing may send up to four small requests to the selected endpoint. It records connection and supported capabilities; re-probe after changing a profile.'}</p>}
+        {isBuiltinProfile ? <p className="probe-note">Offline demo is built in and tests local readiness only; it sends no remote request. Create a new profile to configure an Azure provider.</p> : <p className="probe-note">{profileDraft.apiKind === 'fake' ? 'Offline demo checks local readiness and sends no remote request.' : `Testing may send up to four requests to the selected endpoint${profileDraft.effort ? ` at ${profileDraft.effort} effort with the configured ${profileDraft.outputLimit}-token output cap` : ' with a 256-token output cap'}. Re-probe after changing a profile; start a new task for an existing native tool conversation.`}</p>}
         {probe && <div className={`probe ${probe.ok ? 'success' : 'failure'}`} role="status"><strong>{probe.ok ? 'Connection ready' : 'Connection unavailable'}</strong><p>{probe.detail}</p><small>Streaming {probe.capabilities.streaming ? 'available' : 'unavailable'} · tools {probe.capabilities.tools ? 'available' : 'unavailable'} · cancellation {probe.capabilities.cancellation ? 'available' : 'unavailable'}</small></div>}
         <div className="dialog-actions"><button type="button" className="secondary" onClick={() => void probeProfile()}>Test connection</button><button className="primary" disabled={isBuiltinProfile}>Save profile</button></div>
       </form>
@@ -459,7 +466,7 @@ function App() {
     <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog">
       <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2>Back up and upgrade</h2></div></div>
       <div className="profile-form">
-        <p>This creates a verified SQLite backup of your current database, then upgrades it in place to enable coordinated tasks. The current build can only open the upgraded database; if you keep the current database, retain the backup and open it with the older application to roll back.</p>
+        <p>This creates a verified SQLite backup of your current database, then upgrades it in place to version {schema?.current ?? 3} for detailed usage tracking{!schema?.coordinatedAvailable ? ' and coordinated tasks' : ''}. Keep the backup if you need to open the previous database with an older application.</p>
         <div className="dialog-actions">
           <button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.close()}>Keep current database</button>
           <button type="button" className="primary" disabled={upgrading} onClick={() => void confirmUpgrade()}>{upgrading ? 'Upgrading…' : 'Create backup and upgrade'}</button>

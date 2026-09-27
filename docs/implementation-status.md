@@ -21,6 +21,32 @@ Validation completed locally against isolated fixtures:
 
 Exact logs and the final channel screenshot are retained locally under `.local/verification/agent-channel/`: `check-serial.log`, `e2e.log`, `channel-ui-final.log`, `package.log`, `smoke.log`, and `agent-channel.png`. Earlier failed diagnostics are also retained; their results do not replace the passing evidence above. The package smoke verifies runtime compatibility; the dedicated channel tests supply messaging behavior evidence. Live paid-provider messaging, installer installation and external publication are unverified. No dependency or database schema change was required.
 
+## Built-in usage analytics — 27 September 2026
+
+Implemented locally: a Usage overview with local-calendar date ranges, daily measured tokens, conversation/model/effort/profile/API comparisons, request drilldowns, child attribution, and separately labelled profile checks. Offline demo requests are excluded by default. Cached input and reported reasoning are subsets of input/output; missing breakdowns remain unavailable. Reservations and unreported consumption are distinct from measured tokens.
+
+Model profiles now support optional requested-effort presets. The native provider parameter is sent on each request and included in verification identity. Existing default profiles keep their fingerprints. Explicit-effort connection checks use the configured output allowance and disclose up to four requests; routine tests use injected providers.
+
+Schema v3 adds one canonical request ledger. Admission and budget reservation are transactional, as are terminal accounting and budget settlement. Final provider usage can be retained for failed/cancelled requests without executing their tools. Restart recovery retains original request identities and never retries inference. Existing v1/v2 data is upgraded only through the explicit verified-backup action; historical attribution/outcome remains unknown where it was not recorded, and original usage rows are retained. Existing v2 orchestration remains available before upgrading.
+
+Initial validation completed on Windows on 27 September 2026, before integration with the project-channel increment, using isolated application data and injected/offline providers:
+
+| Gate | Result | Local evidence |
+| --- | --- | --- |
+| `pnpm check --maxWorkers=2` | Type checking, lint, and **266 tests in 25 files passed** | `usage-check-final.log` |
+| `pnpm test:e2e` | **10 tests passed**, including v1 upgrade, Usage filters, partial metrics, pagination, child navigation, and effort choices | `usage-e2e-final.log`; `test-results/usage-seeded-overview.png` |
+| `pnpm package:dir` | Windows application directory built successfully | `usage-package-dir.log`; `release/win-unpacked` |
+| `pnpm smoke:package` | Packaged schema v3, usage RPCs/pagination, coding, orchestration, MCP, compaction, publication, and retirement checks passed | `usage-smoke-final.log` |
+| Independent implementation review | Provider, accounting/persistence, IPC/runtime integration, and UI reviews completed; findings resolved and rechecked | Specialists `usage_provider_impl`, `usage_ledger_impl`, and `usage_accounting_review`: GPT-6 Sol, medium, selected under the AGENTS.md Critical lane |
+
+The first unconstrained check was interrupted after widespread timing failures; the final run used two workers. Effort choices were checked against current [Azure reasoning guidance](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/reasoning) and [Anthropic effort guidance](https://platform.claude.com/docs/en/build-with-claude/effort); Azure `max` is offered only for Responses, and deployment-specific support still requires connection verification. Test-generated documentation screenshots are retained. Local evidence logs and test-result images are ignored build artifacts, not external publication evidence.
+
+Delivery integration preserves the project-channel changes from [the current base](https://github.com/koala-man-64/foundry-agent-workspace/commit/2b42bb7c5ac99d8a520df8fa9bbd310e83a0acbd). Channel acknowledgement and usage settlement remain transactional; each channel-tool continuation has a separate request identity. The upgrade guard allows read-only channel queries and blocks channel sends. Independent GPT-6 Sol/medium review confirmed these boundaries after the integration fix.
+
+Integrated validation: 12 focused usage tests, 9 channel unit tests, type checking, affected-file lint, all 11 desktop tests, the Windows package build, and packaged smoke passed. The full integrated check is being rerun before merge. Delivery logs are `usage-delivery-check.log`, `usage-delivery-e2e.log`, `usage-delivery-package.log`, and `usage-delivery-smoke.log`.
+
+Live provider qualification and application installation have not been performed for this increment. No existing user database was upgraded. Durable coordination registration was unavailable (`session_token_unavailable` / installation mismatch); implementation used disjoint file ownership in a private task worktree and has no registered claims to release.
+
 ## Phase 05 — Independent review and Windows release
 
 Recorded 19 September 2026 (America/Chicago) on branch `main`. Delivered via parallel multi-agent workstreams:

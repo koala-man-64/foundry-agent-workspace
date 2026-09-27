@@ -81,11 +81,20 @@ export class WorkspaceOperations {
     } catch {
       estimated = estimateContinuationTokens(this.store.providerState(taskId)?.continuation) + profile.outputLimit;
     }
-    const { records } = this.store.usageRecords(taskId, 100);
+    const includeChildren = task.mode === 'coordinated' && !task.parentTaskId;
+    const filters = { taskId, includeDemo: true, includeChildren };
+    const metrics = this.store.schemaVersion >= 3 ? this.store.usageSummary({ filters }).totals : undefined;
+    const records = includeChildren && metrics ? this.store.usageRequests({ filters, limit: 100 }).records.filter(row => row.outcome !== 'pending').reverse().map(row => ({
+      id: row.requestId, taskId: row.taskId!, requestId: row.requestId, reservedTokens: row.reservedTokens,
+      promptTokens: row.inputTokens, completionTokens: row.outputTokens, cacheReadTokens: row.cacheReadTokens,
+      cacheCreationTokens: row.cacheCreationTokens, usageKnown: row.usageKnown, reason: row.reason, createdAt: row.createdAt
+    })) : this.store.usageRecords(taskId, 100).records;
     return {
       taskId, tokenBudget: task.tokenBudget, usedTokens: task.usedTokens, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit,
       estimatedContextTokens: estimated, contextPercent: Math.round(estimated / profile.contextLimit * 100), warningPercent: CONTEXT_WARNING_PERCENT,
-      totals: this.store.usageTotals(taskId), records, compactions: this.store.compactions(taskId)
+      totals: metrics ? { requests: metrics.knownRequests + metrics.unknownRequests + metrics.notSentRequests, knownRequests: metrics.knownRequests, unknownRequests: metrics.unknownRequests,
+        prompt: metrics.input, completion: metrics.output, cacheRead: metrics.cacheRead ?? 0, cacheCreation: metrics.cacheCreation ?? 0, reservedUnknown: metrics.reservedUnknown } : this.store.usageTotals(taskId),
+      records, compactions: this.store.compactions(taskId), metrics
     };
   }
 
