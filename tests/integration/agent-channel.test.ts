@@ -80,7 +80,7 @@ describe('project-channel provider delivery', () => {
     }));
     const chat = await create('Chat only'); const source = h.sourceSnapshot();
     await h.runtime.dispatch('task.send', { taskId: chat.id, content: 'Hello' }); await done(chat);
-    expect(result?.[0]).toMatchObject({ isError: true }); expect(result?.[0]?.content).toContain('only project communication tools');
+    expect(result?.[0]).toMatchObject({ isError: true }); expect(result?.[0]?.content).toContain('only project communication and attached browser tools');
     expect(h.sourceSnapshot()).toEqual(source);
     await expect(h.runtime.dispatch('channel.send', { taskId: chat.id, requestId: randomUUID(), content: 'x', senderTaskId: chat.id })).rejects.toThrow();
   });

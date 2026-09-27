@@ -11,6 +11,8 @@ import { covers, inScope, normalizeScopePath } from './scope';
 import { McpError, McpManager } from './mcp';
 import { AgentChannel } from './agent-channel';
 import { isChannelTool } from './channel-tools';
+import { BrowserTools, isBrowserTool } from './browser-tools';
+import type { BrowserHost } from '../../protocol/src/index';
 
 export interface ApprovalBinding { rootTaskId: string; assignmentId: string | null; generation: number; targetLabel: string }
 /** Orchestration extension points. Only the runtime supplies them; nothing in model output does. */
@@ -33,10 +35,21 @@ export class ToolRuntime {
   private orchestration?: OrchestrationToolHooks;
   private mcp?: McpManager;
   readonly channel: AgentChannel;
+  private browser?: BrowserTools;
   constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly commands: CommandRunner, private readonly redactor: Redactor, private readonly publish: (type: string, data: unknown, taskId: string) => void, private readonly slots = new ExecutionSlots()) { this.channel = new AgentChannel(store, redactor, publish); }
 
   attachOrchestration(hooks: OrchestrationToolHooks): void { this.orchestration = hooks; }
   attachMcp(manager: McpManager): void { this.mcp = manager; }
+  attachBrowser(host: BrowserHost): void { this.browser = new BrowserTools(this.store, host, this.redactor, this); }
+  browserTools(): BrowserTools | undefined { return this.browser; }
+  invalidateBrowser(taskId: string, tabId: string): void {
+    for (const approval of this.store.approvals(taskId)) {
+      if (approval.browser?.prepared.tabId !== tabId || approval.state !== 'awaiting-approval') continue;
+      const waiter = this.waiting.get(approval.id);
+      approval.state = 'revoked'; this.save(approval);
+      if (waiter) { this.waiting.delete(approval.id); waiter.resolve(false); }
+    }
+  }
 
   decide(taskId: string, id: string, nonce: string, decision: 'approve' | 'reject'): { accepted: boolean } {
     const approval = this.store.approval(id);
@@ -85,6 +98,8 @@ export class ToolRuntime {
       approval.result = { content: 'Use the orchestration operation check for this Git action. Its outcome is reconciled from repository state, never replayed.', isError: true };
     } else if (approval.mcp) {
       approval.result = { content: 'An external MCP tool outcome cannot be reconstructed by the runtime. Inspect the server\'s own state; this call will not be replayed.', isError: true };
+    } else if (approval.browser) {
+      approval.result = { content: 'Browser action outcome is unknown. Inspect the tab manually, then acknowledge it to permit newly reviewed actions. This action will not be replayed.', isError: true };
     } else approval.result = { content: 'Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.', isError: true, cleanupVerified: false };
     this.save(approval); return approval;
   }
@@ -99,14 +114,18 @@ export class ToolRuntime {
     let command: PreparedCommand | undefined;
     try {
       signal.throwIfAborted();
-      if (!isGitTask(task)) throw new Error('Repository tools require a Git worktree.');
       const role = agentRole(task);
+      if (isBrowserTool(call.name)) {
+        if (!this.browser) throw new Error('Browser tools are unavailable.');
+        return await this.browser.execute(task, call, signal);
+      }
+      if (!isGitTask(task)) throw new Error('Repository tools require a Git worktree.');
       if (isChannelTool(call.name)) {
         this.assertNoSecrets(JSON.stringify(call.arguments));
         if (task.rootTaskId && !this.orchestration?.binding(task)) throw new Error('This agent is cancelled, fenced or finished.');
         return result(JSON.stringify(this.channel.execute(task.id, call)));
       }
-      if (!task.mode || task.mode === 'chat') throw new Error('Chat tasks can use only project communication tools.');
+      if (!task.mode || task.mode === 'chat') throw new Error('Chat tasks can use only project communication and attached browser tools.');
       if (role !== 'coding' && !(ROLE_TOOLS[role] as string[]).includes(call.name)) {
         // Policy boundary: a fabricated coordinator-only call from a child (or edit call from a coordinator) is denied here even if an adapter accepted it.
         this.orchestration?.denied(task, call.name, `Tool is not available to the ${role} role.`);

@@ -10,6 +10,7 @@ Use Windows, Git, Node.js 22.12+ (Node 24 tested), and pnpm 10.28.1.
 
 ```powershell
 pnpm install
+node node_modules/electron/install.js
 pnpm dev
 ```
 
@@ -30,6 +31,18 @@ Tool-capable profiles receive `list_project_agents`, `send_agent_message` and `r
 Messages are delivered between model requests, including native tool continuations. An idle agent receives pending messages on its next user-started turn; a message does not wake, interrupt, or spend tokens on an idle task. Stopped coordinated runs and retired tasks cannot send. Direct messages are visible to their sender and recipient task; project broadcasts are shared. The desktop user can inspect each task's transcript.
 
 Messages remain in the existing event store across restarts. Each message is limited to 2,048 UTF-8 bytes and each task to 1,000 sends; history and participant lists are paginated. Automatic delivery bounds serialized context and explicitly marks truncated content while retaining the full message for history tools. A failed provider request leaves delivery pending, so a retry may show it again. A successful send proves storage, not recipient action. Peer text never grants permission, changes assignments, or approves edits, commands, integration or publication. No database upgrade is required.
+
+## Integrated browser
+
+Open **Browser** in the right inspector to browse alongside a chat. Resize the inspector or expand the browser. Tabs share a dedicated application profile: persistent cookies and website storage survive restart, while each launch starts with a blank tab. This profile does not import Chrome or Edge data. Websites may expire sessions or require sign-in again.
+
+Use **Attach to chat** to share a tab's visible page content with the selected chat's configured model. A verified tool-capable profile (or the offline demo) is required. Reading needs no repeated approval; navigation and page interactions stop for a one-shot decision in **Approvals**. Navigation approval explicitly includes sharing the destination origin; unexpected cross-origin redirects pause sharing. **Take control**, physical input, reassignment, and navigation invalidate stale decisions. Children do not inherit browser access.
+
+Sign in and select files in manual control. Agent tools cannot read cookies, browser storage, passwords, or local files, and cannot open file choosers or choose download paths. Manual downloads require a destination. Clear site data or clear the browser profile through the confirmation controls; application tasks and provider credentials are separate. Browser-native keyboard shortcuts and inaccessible embedded/canvas controls require manual control.
+
+If a dispatched action loses its result, its state remains **unknown**. Inspect the website and explicitly acknowledge the uncertainty before proposing a new action. Acknowledgment does not mark the original action successful and never replays it. Browser attachments and execution authority do not survive restart; approval records remain in the chat.
+
+The offline `/browser-demo` flow exercises the normal approval path on an attached fixture page with a button named **Browser demo action**. It never uses a live model endpoint.
 
 ## Context, usage and compaction
 
@@ -66,9 +79,19 @@ pnpm test:e2e              # Built Electron user workflow, offline only
 pnpm package:dir           # Unpacked Windows app
 pnpm smoke:package         # Packaged SQLite + approved edit/Windows command fixture
 pnpm package:win           # Per-user NSIS installer; unsigned unless configured
+pnpm package:portable      # Windows x64 portable EXE; no installer
+pnpm smoke:portable        # Launch the portable EXE and verify bundled Electron + SQLite
 ```
 
-Dependencies and the lockfile are pinned. `better-sqlite3` 13 ships a Node-API Windows binary, tested in both Node and Electron; it does not need an Electron ABI rebuild. Its inferred source-build hook is deliberately disabled, and packaging retains `.node` files outside the ASAR archive. Electron's official download can be slow on first install; if interrupted, run `pnpm rebuild electron` and retry. Do not disable package checksums or use an untrusted mirror.
+Dependencies and the lockfile are pinned. `better-sqlite3` 13 ships a Node-API Windows binary, tested in both Node and Electron; it does not need an Electron ABI rebuild. Its inferred source-build hook is deliberately disabled, and packaging retains `.node` files outside the ASAR archive. Install the pinned Electron binary with `node node_modules/electron/install.js` after dependency installation; repeat that command if the download is interrupted. Do not disable package checksums or use an untrusted mirror.
+
+## Download a portable Windows build
+
+The [Portable Windows build workflow](.github/workflows/portable-windows.yml) runs on every push to `main`, including documentation changes, and supports manual **Run workflow** runs. It uses Windows x64, the pinned pnpm version and lockfile, offline checks and Electron user-path tests, then builds and smoke-tests the packaged runtime and portable launcher. No provider credentials or paid probes are needed.
+
+Sign in to GitHub, open the repository's **Actions** tab, select a successful **Portable Windows build** run, and download its `foundry-portable-windows-x64-<commit>` artifact. Extract the ZIP and run `Foundry-Agent-Workspace-Portable-<version>-x64.exe`. The artifact also contains an SHA-256 checksum and is retained for 30 days. The target machine does not need Node.js, pnpm, or a source build; Git is still required for repository tasks.
+
+The portable EXE is unsigned, so Windows may display a reputation warning. It needs no installer, but application data and browser sessions still live in the current Windows user's application-data directory; they do not travel with the EXE. Updates are manual: close the app and replace the EXE with a newer build. This workflow uploads Actions artifacts; signing, GitHub Releases, and automatic updates are not configured.
 
 ## Recovery and limits
 

@@ -36,6 +36,12 @@ try {
     for (;;) {
       const index = buffer.indexOf('\n'); if (index < 0) break;
       const response = JSON.parse(buffer.slice(0, index)); buffer = buffer.slice(index + 1);
+      // This smoke runs the runtime without a desktop window or attached browser tabs.
+      if (response.method === 'browser.host') {
+        const reply = response.params.kind === 'tabs' ? { result: [] } : response.params.kind === 'revoke' ? { result: null } : { error: { code: 'stale', message: 'No browser window exists in this runtime fixture.' } };
+        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: response.id, method: 'browser.host.result', ...reply }) + '\n');
+        continue;
+      }
       const waiter = pending.get(response.id);
       if (waiter) { pending.delete(response.id); if (response.error) waiter.reject(new Error(response.error.message)); else waiter.resolve(response.result); }
     }

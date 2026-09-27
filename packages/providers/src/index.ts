@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { supportedEfforts, type ApiKind, type ModelProfile, type ProbeObserver, type ProbeResult, type ProviderAdapter, type ProviderContinuation, type ProviderEvent, type ProviderMessage, type ProviderRequest, type ProviderToolResult, type ToolCall, type ToolDefinition } from "../../protocol/src/index.js";
 import { isOrchestrationRequest, orchestrationFixture } from "./orchestration-fixture.js";
+import { isBrowserFixtureRequest, browserFixture } from "./browser-fixture.js";
 /** A definite HTTP rejection before any response stream was accepted. Retry-After is bounded and advisory only; nothing retries automatically. */
 export class ProviderHttpError extends Error {
     constructor(readonly status: number, readonly retryAfterSeconds: number | undefined) { super(`Provider request failed with HTTP ${status}.`); this.name = "ProviderHttpError"; }
@@ -21,6 +22,7 @@ export function profileFingerprint(profile: ModelProfile): string { return creat
 class FakeProvider implements ProviderAdapter {
     async *streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent> {
         if (isOrchestrationRequest(request)) { yield* orchestrationFixture(request); return; }
+        if (isBrowserFixtureRequest(request)) { yield* browserFixture(request); return; }
         const state = fakeState(request.continuation);
         throwIfAborted(request.signal);
         if (request.tools?.some(tool => tool.name === 'send_agent_message') && lastUser(request.messages).startsWith('/channel-demo')) {

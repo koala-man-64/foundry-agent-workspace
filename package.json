@@ -20,7 +20,9 @@
     "test:e2e": "pnpm build && playwright test",
     "package:dir": "pnpm build && electron-builder --dir",
     "package:win": "pnpm build && electron-builder --win nsis",
-    "smoke:package": "node scripts/packaged-smoke.mjs"
+    "package:portable": "pnpm build && electron-builder --win portable --x64 --publish never",
+    "smoke:package": "node scripts/packaged-smoke.mjs",
+    "smoke:portable": "node scripts/portable-smoke.mjs"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
@@ -54,6 +56,7 @@
     "asarUnpack": ["**/*.node", "out/main/job-runner.ps1", "out/main/mcp-host.ps1"],
     "win": { "target": "nsis" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
+    "portable": { "artifactName": "Foundry-Agent-Workspace-Portable-${version}-${arch}.${ext}" },
     "publish": null
   }
 }

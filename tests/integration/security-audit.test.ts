@@ -143,7 +143,7 @@ afterEach(async () => {
 // ================================================================ 1. IPC sender origin
 
 describe('IPC sender origin and subframe rejection', () => {
-  const PRIVILEGED = ['workspace:invoke', 'workspace:save-credential', 'workspace:pick-project'] as const;
+  const PRIVILEGED = ['workspace:invoke', 'workspace:save-credential', 'workspace:pick-project', 'workspace:browser'] as const;
 
   beforeAll(async () => {
     await import('../../apps/desktop/src/main/index');
@@ -154,6 +154,7 @@ describe('IPC sender origin and subframe rejection', () => {
   const argumentsFor = (channel: string): unknown[] =>
     channel === 'workspace:invoke' ? ['workspace.snapshot', {}]
       : channel === 'workspace:save-credential' ? [randomUUID(), 'a-credential-value']
+        : channel === 'workspace:browser' ? [{ kind: 'state' }]
         : [];
   const call = (channel: string, sender: unknown, senderFrame: unknown): Promise<unknown> =>
     Promise.resolve().then(() => desktop.handlers.get(channel)!({ sender, senderFrame }, ...argumentsFor(channel)));

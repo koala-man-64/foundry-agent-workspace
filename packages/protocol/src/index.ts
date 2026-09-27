@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { BrowserRecoveryRpc, type BrowserCommand, type BrowserState, type BrowserApprovalData } from './browser';
+export * from './browser';
 import { CoordinationConfigSchema, OrchestrationRpc, type AgentRole, type ChildDetail, type CoordinationConfig, type OrchestrationView, type SchemaStatus, type UpgradeResult } from './orchestration';
 import { EffortSchema, supportedEfforts, UsageRpc, type UsageSummary, type UsageBreakdown, type UsageRequests, type UsageTotals } from './usage';
 export * from './usage';
@@ -72,6 +74,7 @@ export interface ProbeResult { ok: boolean; capabilities: { streaming: boolean; 
 
 const Id = z.string().uuid();
 export const RpcMethods = {
+  ...BrowserRecoveryRpc,
   'workspace.snapshot': z.object({}).strict(),
   'project.add': z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   'project.update': z.object({ projectId: Id, name: z.string().trim().min(1).max(100).optional(), hidden: z.boolean().optional() }).strict(),
@@ -116,6 +119,10 @@ export interface DesktopApi {
   invoke(method: 'usage.summary', params: z.input<typeof UsageRpc['usage.summary']>): Promise<UsageSummary>;
   invoke(method: 'usage.breakdown', params: z.input<typeof UsageRpc['usage.breakdown']>): Promise<UsageBreakdown>;
   invoke(method: 'usage.requests', params: z.input<typeof UsageRpc['usage.requests']>): Promise<UsageRequests>;
+
+  browser(command: BrowserCommand): Promise<BrowserState>;
+  onBrowserState(listener: (state: BrowserState) => void): () => void;
+  invoke(method: 'browser.acknowledgeUnknown', params: { taskId: string; approvalId: string; confirm: 'inspected-unknown-result' }): Promise<Approval>;
   invoke(method: 'workspace.snapshot', params: Record<string, never>): Promise<Snapshot>;
   invoke(method: 'project.add', params: { path: string }): Promise<Project>;
   invoke(method: 'project.update', params: { projectId: string; name?: string; hidden?: boolean }): Promise<Project>;
@@ -170,6 +177,7 @@ export interface ProviderAdapter { streamTurn(request: ProviderRequest): AsyncIt
 
 export type ApprovalState = 'awaiting-approval' | 'approved' | 'executing' | 'complete' | 'rejected' | 'revoked' | 'unknown' | 'failed';
 export interface Approval {
+  browser?: BrowserApprovalData;
   id: string; taskId: string; toolCallId: string; nonce: string; tool: string; state: ApprovalState;
   createdAt: string; summary: string; path?: string; before?: string; after?: string;
   expectedHash?: string | null; resultingHash?: string;

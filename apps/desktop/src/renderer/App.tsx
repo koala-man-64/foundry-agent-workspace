@@ -7,6 +7,8 @@ import { McpSettings } from './McpSettings';
 import { UsageView } from './Usage';
 import { ProjectSidebar } from './ProjectSidebar';
 
+import { BrowserPanel } from './BrowserPanel';
+
 declare global { interface Window { workspace: DesktopApi; } }
 
 const OFFLINE_PROFILE: ModelProfile = {
@@ -63,11 +65,14 @@ function App() {
   const [file, setFile] = useState<FileContent>();
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
-  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish' | 'channel'>('files');
+  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish' | 'channel' | 'browser'>('files');
+  const [inspectorWidth, setInspectorWidth] = useState(360);
+  const [browserExpanded, setBrowserExpanded] = useState(false);
+  const [appDialogOpen, setAppDialogOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
-  const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
+  const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile' | 'acknowledge'>>({});
   const [upgrading, setUpgrading] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
@@ -103,7 +108,7 @@ function App() {
   const draftDisplayMode = draft.unknown && draft.startPayload ? draft.startPayload.mode : activeProject?.kind === 'git' ? taskMode : 'chat';
   const selectedTask = detail && detail.task.id === selectedId ? detail.task : snapshot.tasks.find((task) => task.id === selectedId);
   const workspaceKind = selectedTask?.workspaceKind ?? 'git';
-  const effectiveRightTab = (workspaceKind === 'git' || rightTab === 'usage' || (workspaceKind === 'folder' && rightTab === 'files')) ? rightTab : 'usage';
+  const effectiveRightTab = (workspaceKind === 'git' || ['usage', 'browser', 'approvals'].includes(rightTab) || (workspaceKind === 'folder' && rightTab === 'files')) ? rightTab : 'usage';
   const configuredProfile = profiles.find((profile) => profile.id === profileId);
   const taskProfile = selectedTask ? profiles.find((profile) => profile.id === selectedTask.profileId) : undefined;
   const isProfileReady = (profile: ModelProfile): boolean => profile.apiKind === 'fake' || Boolean(profile.verifiedAt && profile.capabilities?.tools && profile.capabilities?.continuation);
@@ -370,7 +375,25 @@ function App() {
     } catch (error) { setNotice(`Could not check this approval outcome: ${error instanceof Error ? error.message : String(error)}`); }
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
-  const openSettings = () => { const profile = profiles.find((item) => item.id === profileId) ?? OFFLINE_PROFILE; setProfileDraft(profile); setCredential(''); setProbe(undefined); void loadMcp(); dialogRef.current?.showModal(); };
+  const acknowledgeBrowserUnknown = async (approval: Approval) => {
+    if (!selectedId || !approval.browser || approvalInFlight[approval.id]) return;
+    setApprovalInFlight((current) => ({ ...current, [approval.id]: 'acknowledge' }));
+    try {
+      await api.invoke('browser.acknowledgeUnknown', { taskId: selectedId, approvalId: approval.id, confirm: 'inspected-unknown-result' });
+      await refresh(selectedId); await loadTaskDetail(selectedId);
+    } catch (error) { setNotice(`Could not acknowledge this browser outcome: ${error instanceof Error ? error.message : String(error)}`); }
+    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
+  };
+  const beginInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = inspectorWidth;
+    const move = (next: PointerEvent) => setInspectorWidth(Math.max(300, Math.min(window.innerWidth - 650, startWidth + startX - next.clientX)));
+    const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop, { once: true });
+  };
+  const openSettings = () => { const profile = profiles.find((item) => item.id === profileId) ?? OFFLINE_PROFILE; setProfileDraft(profile); setCredential(''); setProbe(undefined); void loadMcp(); setAppDialogOpen(true); dialogRef.current?.showModal(); };
   const newProfile = () => { setProfileDraft({ id: crypto.randomUUID(), name: 'New Azure profile', apiKind: 'responses', endpoint: '', deployment: '', contextLimit: 128000, outputLimit: 8192 }); setCredential(''); setProbe(undefined); };
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault(); setNotice('');
@@ -382,16 +405,18 @@ function App() {
   };
   const probeProfile = async () => { try { const saved = await api.invoke('profile.save', profileDraft); if (credential) await api.saveCredential(saved.id, credential); setCredential(''); setProbe(await api.invoke('profile.probe', { profileId: saved.id })); } catch (error) { setCredential(''); setProbe({ ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: error instanceof Error ? error.message : String(error), fingerprint: '' }); } };
   const coordinatedTask = selectedTask?.mode === 'coordinated' ? selectedTask : undefined;
+  const browserVisible = page === 'conversation' && !isDraft && !coordinatedTask && effectiveRightTab === 'browser';
+  const updateDialogVisibility = () => setAppDialogOpen(Boolean(dialogRef.current?.open || upgradeDialogRef.current?.open || manageDialogRef.current?.open));
   const contextLine = usage ? ` · context ≈ ${usage.contextPercent}% of ${usage.contextLimit.toLocaleString()}` : '';
 
   return <>
     {schema?.upgradeRequired && <div className="upgrade-banner" role="status">
       This database needs a verified, backed-up upgrade to v{schema.current} for {schema.version < 3 ? 'saved projects, new chats, and detailed usage tracking' : 'detailed usage tracking'}{!schema.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain accessible.
-      <button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.showModal()}>Review upgrade</button>
+      <button type="button" className="secondary" onClick={() => { setAppDialogOpen(true); upgradeDialogRef.current?.showModal(); }}>Review upgrade</button>
     </div>}
-    <main className="workspace">
-    <div className="sidebar-shell"><ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => manageDialogRef.current?.showModal()} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={openSettings} onExport={() => void exportDiagnostics()} /><nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button></nav></div>
-    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} /> : <section className="usage-gate"><h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.showModal()}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation">
+    <main className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
+    <div className="sidebar-shell"><ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => { setAppDialogOpen(true); manageDialogRef.current?.showModal(); }} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={openSettings} onExport={() => void exportDiagnostics()} /><nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button></nav></div>
+    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} /> : <section className="usage-gate"><h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => { setAppDialogOpen(true); upgradeDialogRef.current?.showModal(); }}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation">
       <header className="task-header"><div><p className="eyebrow">{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
       {notice && <div className="notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
       <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
@@ -418,10 +443,11 @@ function App() {
       })}{!selectedTask && <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div>}{selectedTask && !detail?.messages.length && <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>}</div>
       <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
     </section>
+    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" onPointerDown={beginInspectorResize} />
     <aside className="inspector">
-      <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button>}<button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}</div>
+      <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}<button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button><button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}<button className={effectiveRightTab === 'browser' ? 'active' : ''} onClick={() => setRightTab('browser')}>Browser</button></div>
       {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} onClick={() => setRightTab('channel')}>Project channel</button>}
-      {!selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'files' ? <>
+      {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
@@ -472,6 +498,7 @@ function App() {
         {(detail?.approvals ?? []).map((approval) => <article className={`approval-card ${approval.state}`} key={approval.id}>
           <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
           <p>{approval.summary}</p>
+          {approval.browser && <div className="command-evidence"><strong>Browser action</strong><dl><dt>Origin</dt><dd>{approval.browser.prepared.origin}</dd></dl><dl><dt>Target tab</dt><dd>{approval.browser.prepared.tabId}</dd></dl><dl><dt>Action</dt><dd>{approval.browser.prepared.action.kind}</dd></dl><dl><dt>Exact request</dt><dd><pre>{JSON.stringify(approval.browser.prepared.action, null, 2)}</pre></dd></dl><small>One approval permits this exact action only. The page may have changed; stale actions are rejected.</small></div>}
           {approval.mcp && <div className="command-evidence"><strong>External MCP tool</strong><dl><dt>Server</dt><dd>{approval.mcp.serverName} ({approval.mcp.serverKey})</dd></dl><dl><dt>Tool</dt><dd>{approval.mcp.tool}</dd></dl><dl><dt>Arguments</dt><dd><pre>{approval.mcp.arguments}</pre></dd></dl><small>External tools act outside the worktree with your Windows privileges; the server's own annotations grant nothing.</small></div>}
           {approval.path && <dl><dt>File</dt><dd>{approval.path}</dd></dl>}
           {approval.before !== undefined && <dl><dt>Before</dt><dd><pre>{approval.before}</pre></dd></dl>}
@@ -484,17 +511,17 @@ function App() {
           {approval.timeoutMs !== undefined && <dl><dt>Timeout</dt><dd>{approval.timeoutMs.toLocaleString()} ms</dd></dl>}
           {approval.result && <div className="approval-result"><strong>{approval.result.isError ? 'Redacted error result' : 'Redacted result'}</strong><pre>{approval.result.content}</pre>{approval.result.exitCode !== undefined && <small>Exit code {approval.result.exitCode}</small>}{approval.result.cleanupVerified !== undefined && <small>Cleanup {approval.result.cleanupVerified ? 'verified' : 'not verified'}</small>}</div>}
           {approval.state === 'awaiting-approval' && <div className="approval-actions"><button type="button" className="primary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void decideApproval(approval, 'approve')}>{approvalInFlight[approval.id] === 'approve' ? 'Approving…' : 'Approve'}</button><button type="button" className="danger" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void decideApproval(approval, 'reject')}>{approvalInFlight[approval.id] === 'reject' ? 'Rejecting…' : 'Reject'}</button></div>}
-          {approval.state === 'unknown' && <div className="approval-actions"><button type="button" className="secondary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void reconcileApproval(approval)}>{approvalInFlight[approval.id] === 'reconcile' ? 'Checking…' : 'Check outcome'}</button><small>Read-only reconciliation; this never retries or discards the action.</small></div>}
+          {approval.state === 'unknown' && (approval.browser ? <div className="approval-actions"><p>The browser action was dispatched, but its result is unknown. Inspect the tab manually before allowing newly reviewed actions. This action remains unknown and will not be retried.</p>{approval.browser.acknowledgment ? <small>Inspected {approval.browser.acknowledgment.inspectedAt}. New actions may be reviewed.</small> : <button type="button" className="secondary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void acknowledgeBrowserUnknown(approval)}>{approvalInFlight[approval.id] === 'acknowledge' ? 'Recording inspection…' : 'I inspected the tab · allow new actions'}</button>}</div> : <div className="approval-actions"><button type="button" className="secondary" disabled={Boolean(approvalInFlight[approval.id])} onClick={() => void reconcileApproval(approval)}>{approvalInFlight[approval.id] === 'reconcile' ? 'Checking…' : 'Check outcome'}</button><small>Read-only reconciliation; this never retries or discards the action.</small></div>)}
         </article>)}
         {!detail?.approvals?.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
       </div>}
     </aside>
     </>}
-    <dialog ref={manageDialogRef} className="settings-dialog manage-dialog" aria-labelledby="manage-projects-title">
+    <dialog ref={manageDialogRef} className="settings-dialog manage-dialog" aria-labelledby="manage-projects-title" onToggle={updateDialogVisibility}>
       <div className="dialog-head"><div><p className="eyebrow">SAVED FOLDERS</p><h2 id="manage-projects-title">Manage projects</h2></div><button type="button" className="secondary" onClick={() => manageDialogRef.current?.close()}>Close</button></div>
       <div className="manage-list">{projects.map((project) => <form key={`${project.id}:${project.updatedAt}`} className="manage-project" onSubmit={(event) => { event.preventDefault(); const name = new FormData(event.currentTarget).get('name'); if (typeof name === 'string' && name.trim() && name.trim() !== project.name) void updateProject(project, { name: name.trim() }); }}><div><label>Name for {project.name}<input name="name" aria-label={`Name for ${project.name}`} defaultValue={project.name} maxLength={100} required /></label><small title={project.path}>{project.path}</small>{project.kind === 'unavailable' && <span className="project-unavailable-note">Folder unavailable</span>}</div><div className="manage-actions"><button type="submit" className="secondary">Save name</button><button type="button" className="secondary" onClick={() => void updateProject(project, { hidden: !project.hidden })}>{project.hidden ? `Restore ${project.name}` : `Hide ${project.name}`}</button></div></form>)}{!projects.length && <p className="muted">No saved projects yet.</p>}</div>
     </dialog>
-    <dialog ref={dialogRef} className="settings-dialog" onClose={() => setCredential('')}>
+    <dialog ref={dialogRef} className="settings-dialog" onToggle={updateDialogVisibility} onClose={() => setCredential('')}>
       <form method="dialog" className="dialog-head">
         <div><p className="eyebrow">CONNECTIONS</p><h2>Model profile</h2></div>
         <div className="dialog-actions"><button type="button" className="secondary" onClick={newProfile}>New profile</button><button type="submit" className="secondary">Close settings</button></div>
@@ -513,7 +540,7 @@ function App() {
       </form>
       <McpSettings api={api} servers={mcpServers} onChanged={() => void loadMcp()} setNotice={setNotice} />
     </dialog>
-    <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog">
+    <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog" onToggle={updateDialogVisibility}>
       <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2>Back up and upgrade</h2></div></div>
       <div className="profile-form">
         <p>This creates a verified SQLite backup, then upgrades the database to v{schema?.current ?? 4} for {schema && schema.version < 3 ? 'saved projects, new chats, and detailed usage tracking' : 'detailed usage tracking'}{!schema?.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain available during the upgrade decision. Keep the backup to open the previous database with an older application.</p>
