@@ -20,11 +20,14 @@ test('usage overview filters offline requests and opens their conversation', asy
   const app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
   try {
     const page = await app.firstWindow();
-    await page.getByLabel('Project path').fill(project);
-    await page.getByLabel('Task title').fill('Usage fixture task');
-    await page.getByRole('button', { name: 'Create task', exact: true }).click();
-    await page.getByLabel('Task message').fill('Usage fixture response');
-    await page.getByRole('button', { name: 'Send' }).click();
+    await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, project);
+    await page.getByRole('button', { name: 'Add project', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'New chat in repository', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'New chat in repository', exact: true }).click();
+    await page.getByRole('button', { name: /More options/ }).click();
+    await page.getByLabel('Title (optional)').fill('Usage fixture task');
+    await page.getByLabel('Chat message', { exact: true }).fill('Usage fixture response');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.getByText('Fake response: Usage fixture response', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Usage overview' }).click();
@@ -84,7 +87,7 @@ test('seeded usage shows sparse days, partial metrics, pagination, and child dri
   const store = new Store(join(stateDirectory, 'workspace.db'));
   const now = new Date();
   const noon = (offset: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset, 12);
-  const base: Task = { id: randomUUID(), title: 'Seeded root task', projectPath: project, worktreePath: project, branch: 'main', baseCommit: git('rev-parse', 'HEAD'), profileId: randomUUID(), status: 'idle', createdAt: noon(-3).toISOString(), updatedAt: noon(0).toISOString(), tokenBudget: 100000, usedTokens: 0, mode: 'chat', role: 'coordinator' };
+  const base: Task = { id: randomUUID(), title: 'Seeded root task', projectPath: project, worktreePath: project, workspaceKind: 'git', branch: 'main', baseCommit: git('rev-parse', 'HEAD'), profileId: randomUUID(), status: 'idle', createdAt: noon(-3).toISOString(), updatedAt: noon(0).toISOString(), tokenBudget: 100000, usedTokens: 0, mode: 'chat', role: 'coordinator' };
   const child: Task = { ...base, id: randomUUID(), title: 'Seeded child task', rootTaskId: base.id, parentTaskId: base.id, role: 'child' };
   store.saveTask(base); store.saveTask(child);
   store.saveProfile({ id: base.profileId, name: 'Seeded profile', apiKind: 'responses', endpoint: 'https://example.invalid', deployment: 'fixture-deployment', contextLimit: 32000, outputLimit: 1024 });

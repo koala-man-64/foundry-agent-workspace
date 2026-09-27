@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ModelProfile, ProviderAdapter, Task } from '../../packages/protocol/src/index';
+import type { ModelProfile, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store } from '../../packages/runtime/src/store';

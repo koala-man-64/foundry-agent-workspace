@@ -55,12 +55,15 @@ else {
         if (!previous || binding(previous) !== binding(next)) credentialsLoaded.delete(next.id);
       }
       // Credentials never enter a renderer request or response, history, or logs.
-      if (method === 'task.send' || method === 'profile.probe' || method === 'orchestration.resume') {
+      if (method === 'task.start' || method === 'task.send' || method === 'profile.probe' || method === 'orchestration.resume') {
         const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
         const taskId = method === 'orchestration.resume' ? (validated as { rootTaskId: string }).rootTaskId : (validated as { taskId?: string }).taskId;
         const task = snapshot.tasks.find(item => item.id === taskId);
         // A coordinated root schedules children with its explicitly configured child profiles.
-        const profileIds = method === 'profile.probe' ? [(validated as { profileId: string }).profileId] : task ? [task.profileId, ...(task.coordination?.childProfileIds ?? [])] : [];
+        const start = method === 'task.start' ? validated as { profileId: string; coordination?: { childProfileIds: string[] } } : undefined;
+        const profileIds = start ? [start.profileId, ...(start.coordination?.childProfileIds ?? [])]
+          : method === 'profile.probe' ? [(validated as { profileId: string }).profileId]
+          : task ? [task.profileId, ...(task.coordination?.childProfileIds ?? [])] : [];
         for (const profileId of new Set(profileIds)) {
           if (credentialsLoaded.has(profileId)) continue;
           const profile = snapshot.profiles.find(value => value.id === profileId);
@@ -73,7 +76,7 @@ else {
     });
     ipcMain.handle('workspace:pick-project', async event => {
       authorize(event);
-      const result = await dialog.showOpenDialog(window!, { title: 'Select a Git repository', properties: ['openDirectory'] });
+      const result = await dialog.showOpenDialog(window!, { title: 'Add a project folder', properties: ['openDirectory'] });
       return result.canceled ? null : result.filePaths[0] ?? null;
     });
     ipcMain.handle('workspace:save-credential', async (event, profileId: unknown, value: unknown) => {

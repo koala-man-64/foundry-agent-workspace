@@ -1,10 +1,10 @@
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION } from './schema';
+import { mkdirSync, realpathSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION, V4_MIGRATION } from './schema';
 import { UsageLedger } from './usage-ledger';
-import type { Approval, CompactionRecord, McpServerConfig, McpServerStatus, McpTool, Message, ModelProfile, ProviderContinuation, ProviderToolResult, Snapshot, Task, TaskDetail, ToolCall, UsageRecord, WorkspaceEvent, UsageFilters, UsageGroup } from '../../protocol/src/index';
+import { isGitTask, type Approval, type CompactionRecord, type GitTask, type McpServerConfig, type McpServerStatus, type McpTool, type Message, type ModelProfile, type Project, type ProviderContinuation, type ProviderToolResult, type Snapshot, type Task, type TaskDetail, type ToolCall, type UsageRecord, type UsageFilters, type UsageGroup, type WorkspaceEvent, type WorkspacePreferences } from '../../protocol/src/index';
 
 export interface ProviderState { fingerprint: string; continuation: ProviderContinuation; pending: ToolCall[]; results: ProviderToolResult[]; seenToolCallIds?: string[]; }
 
@@ -13,7 +13,9 @@ interface UsageRow { id: string; task_id: string; request_id: string; reserved: 
 interface McpRow { id: string; key: string; data: string; tools: string; tools_listed_at: string | null; server_info: string | null; last_error: string | null; updated_at: string }
 
 export const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
+export const canonicalPath = (path: string): string => { const absolute = resolve(path); try { return realpathSync.native(absolute); } catch { return absolute; } };
+export const pathKey = (path: string): string => process.platform === 'win32' ? canonicalPath(path).toLocaleLowerCase('en-US') : canonicalPath(path);
 /** Test-only fault injection for migration and backup failure paths. */
 export interface StoreOptions { migrationFault?: 'after-ddl'; backupFault?: 'copy' | 'verify' }
 export class Store {
@@ -26,15 +28,15 @@ export class Store {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('busy_timeout = 5000');
-    this.usage = new UsageLedger(this.db, () => this.schema >= 3);
+    this.usage = new UsageLedger(this.db, () => this.schema >= 4);
     const version = Number(this.db.pragma('user_version', { simple: true }));
     if (version > CURRENT_SCHEMA_VERSION) { this.db.close(); throw new Error('This database requires a newer application.'); }
     const fresh = version === 0 && !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get();
     this.db.transaction(() => {
       this.db.exec(V1_SCHEMA);
-      // Only a brand-new database is created at v2. An existing v1 database keeps its
+      // Only a brand-new database is created at v4. Existing databases keep their
       // schema until the user confirms a verified, backed-up upgrade.
-      if (fresh) { this.db.exec(V2_MIGRATION); this.db.exec(PHASE4_SCHEMA); this.db.exec(V3_MIGRATION); this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`); }
+      if (fresh) { this.db.exec(V2_MIGRATION); this.db.exec(V3_MIGRATION); this.db.exec(PHASE4_SCHEMA); this.db.exec(V4_MIGRATION); this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`); }
       else if (version === 0) this.db.pragma('user_version = 1');
       this.db.exec(PHASE4_SCHEMA);
       if (!this.profile(FAKE_PROFILE_ID)) this.saveProfile({ id: FAKE_PROFILE_ID, name: 'Offline demo', apiKind: 'fake', endpoint: '', deployment: 'deterministic-fixture', contextLimit: 32000, outputLimit: 2048 });
@@ -47,20 +49,16 @@ export class Store {
   beginUsage(...args: Parameters<UsageLedger['beginUsage']>): void { this.usage.beginUsage(...args); }
   attemptUsage(...args: Parameters<UsageLedger['attemptUsage']>): void { this.usage.attemptUsage(...args); }
   finishUsage(...args: Parameters<UsageLedger['finishUsage']>): boolean { return this.usage.finishUsage(...args); }
-  hasUsage(...args: Parameters<UsageLedger['hasUsage']>): boolean { return this.schema >= 3 ? this.usage.hasUsage(...args) : !!this.db.prepare('SELECT 1 FROM usage_records WHERE request_id=?').get(args[0]); }
+  hasUsage(...args: Parameters<UsageLedger['hasUsage']>): boolean { return this.schema >= 4 ? this.usage.hasUsage(...args) : !!this.db.prepare('SELECT 1 FROM usage_records WHERE request_id=?').get(args[0]); }
   usageSummary(params: { filters?: UsageFilters; timeZone?: string }) { return this.usage.summary(params); }
   usageBreakdown(params: { filters?: UsageFilters; groupBy: UsageGroup; sort?: 'tokens' | 'requests' | 'name'; cursor?: string; limit?: number }) { return this.usage.breakdown(params); }
   usageRequests(params: { filters?: UsageFilters; cursor?: string; limit?: number }) { return this.usage.requests(params); }
   close(): void { this.db.close(); }
-  /**
-   * v1 -> v2. The caller must already have stopped admission and active work. Uses SQLite's
-   * online backup (WAL-aware), verifies the copy opens read-only with integrity `ok` and the
-   * same v1 rows, then applies the additive migration in one transaction. The backup is kept.
-   */
-  async upgradeToV2(backupDirectory = join(dirname(this.path), 'backups')): Promise<{ version: number; backupPath: string }> {
-    if (this.schema !== 1) throw new Error(this.schema >= 2 ? 'The database is already current for v2.' : 'Unsupported database version for upgrade.');
+  /** Compatibility for callers that explicitly need the published saved-projects v3 schema. */
+  async upgradeToV3(backupDirectory = join(dirname(this.path), 'backups')): Promise<{ version: number; backupPath: string }> {
+    if (this.schema !== 1 && this.schema !== 2) throw new Error(this.schema >= 3 ? 'The database is already current for v3.' : 'Unsupported database version for upgrade.');
     mkdirSync(backupDirectory, { recursive: true });
-    const backupPath = join(backupDirectory, `workspace-v1-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.db`);
+    const backupPath = join(backupDirectory, `workspace-v${this.schema}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.db`);
     if (this.options.backupFault === 'copy') throw new Error('Backup failed before the upgrade; the database was not changed.');
     await this.db.backup(backupPath);
     const expected = this.rowCounts(this.db);
@@ -68,21 +66,30 @@ export class Store {
     try {
       const integrity = copy.pragma('integrity_check', { simple: true });
       const copyVersion = Number(copy.pragma('user_version', { simple: true }));
-      if (this.options.backupFault === 'verify' || integrity !== 'ok' || copyVersion !== 1 || JSON.stringify(this.rowCounts(copy)) !== JSON.stringify(expected)) throw new Error('Backup verification failed; the database was not changed.');
+      if (this.options.backupFault === 'verify' || integrity !== 'ok' || copyVersion !== this.schema || JSON.stringify(this.rowCounts(copy)) !== JSON.stringify(expected)) throw new Error('Backup verification failed; the database was not changed.');
     } finally { copy.close(); }
     this.db.transaction(() => {
-      this.db.exec(V2_MIGRATION);
+      if (this.schema === 1) this.db.exec(V2_MIGRATION);
+      this.db.exec(V3_MIGRATION);
+      for (const task of this.allTasks()) {
+        if (!isGitTask(task)) continue;
+        const existing = this.projectByPath(task.projectPath);
+        const project = existing ?? this.insertProject(canonicalPath(task.projectPath), 'git');
+        if (project.kind !== 'git') this.saveProject({ ...project, kind: 'git' });
+        this.saveTask({ ...task, workspaceKind: 'git', projectId: project.id });
+      }
       if (this.options.migrationFault === 'after-ddl') throw new Error('Injected migration failure.');
-      this.db.pragma('user_version = 2');
+      if ((this.db.pragma('foreign_key_check') as unknown[]).length) throw new Error('Foreign key verification failed; migration rolled back.');
+      this.db.pragma('user_version = 3');
     })();
     this.schema = Number(this.db.pragma('user_version', { simple: true }));
     const check = this.db.pragma('foreign_key_check') as unknown[];
     if (check.length) throw new Error('Foreign key verification failed after upgrade; retain the verified backup.');
     return { version: this.schema, backupPath };
   }
-  /** Explicit, verified-backup upgrade from either supported legacy schema to v3. */
+  /** Explicit, verified-backup upgrade from v1, v2 or the published projects v3 to v4. */
   async upgradeToCurrent(backupDirectory = join(dirname(this.path), 'backups')): Promise<{ version: number; backupPath: string }> {
-    if (this.schema >= 3) throw new Error('The database is already current.');
+    if (this.schema >= 4) throw new Error('The database is already current.');
     mkdirSync(backupDirectory, { recursive: true });
     const from = this.schema;
     const backupPath = join(backupDirectory, `workspace-v${from}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.db`);
@@ -95,7 +102,17 @@ export class Store {
     } finally { copy.close(); }
     this.db.transaction(() => {
       if (from === 1) this.db.exec(V2_MIGRATION);
-      this.db.exec(V3_MIGRATION);
+      if (from < 3) {
+        this.db.exec(V3_MIGRATION);
+        for (const task of this.allTasks()) {
+          if (!isGitTask(task)) continue;
+          const existing = this.projectByPath(task.projectPath);
+          const project = existing ?? this.insertProject(canonicalPath(task.projectPath), 'git');
+          if (project.kind !== 'git') this.saveProject({ ...project, kind: 'git' });
+          this.saveTask({ ...task, workspaceKind: 'git', projectId: project.id });
+        }
+      }
+      this.db.exec(V4_MIGRATION);
       const old = this.db.prepare('SELECT * FROM usage_records ORDER BY rowid').all() as UsageRow[];
       const insert = this.db.prepare(`INSERT INTO provider_requests(request_id,task_id,root_task_id,parent_task_id,task_title,root_task_title,role,purpose,attribution_known,created_at,attempted_at,finished_at,outcome,reserved,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens,usage_known,reason)
         VALUES(?,?,?,?,?,?,?,'legacy',0,?,?,?,'unknown',?,?,?,?,?,?,?)`);
@@ -108,18 +125,19 @@ export class Store {
       const original = this.db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(reserved),0) AS reserved, COALESCE(SUM(prompt_tokens),0) AS input, COALESCE(SUM(completion_tokens),0) AS output FROM usage_records').get();
       if (JSON.stringify(copied) !== JSON.stringify(original)) throw new Error('Historical usage verification failed; migration rolled back.');
       if (this.options.migrationFault === 'after-ddl') throw new Error('Injected migration failure.');
-      this.db.pragma('user_version = 3');
+      if ((this.db.pragma('foreign_key_check') as unknown[]).length) throw new Error('Foreign key verification failed; migration rolled back.');
+      this.db.pragma('user_version = 4');
     })();
-    this.schema = 3;
+    this.schema = 4;
     if ((this.db.pragma('foreign_key_check') as unknown[]).length) throw new Error('Foreign key verification failed after upgrade; retain the verified backup.');
-    return { version: 3, backupPath };
+    return { version: 4, backupPath };
   }
+  async upgradeToV2(backupDirectory?: string): Promise<{ version: number; backupPath: string }> { return this.upgradeToCurrent(backupDirectory); }
   private rowCounts(db: Database.Database): Record<string, number> {
-    const tables = ['tasks', 'messages', 'profiles', 'events', 'intents', 'compactions', 'usage_records', 'assignments', 'agent_runs', 'budget_holds', 'budget_reservations'];
+    const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(row => row.name);
     const counts: Record<string, number> = {};
     for (const table of tables) {
-      if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) continue;
-      counts[table] = (db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number }).count;
+      counts[table] = (db.prepare(`SELECT COUNT(*) AS count FROM "${table.replace(/"/g, '""')}"`).get() as { count: number }).count;
     }
     if (counts.usage_records !== undefined) {
       const sums = db.prepare('SELECT COALESCE(SUM(reserved),0) AS reserved, COALESCE(SUM(prompt_tokens),0) AS input, COALESCE(SUM(completion_tokens),0) AS output FROM usage_records').get() as { reserved: number; input: number; output: number };
@@ -128,6 +146,7 @@ export class Store {
     return counts;
   }
   requireOrchestration(): void { if (!this.orchestrationAvailable) throw new Error('Coordinated tasks require the backed-up database upgrade. Upgrade from the workspace banner first.'); }
+  requireProjects(): void { if (this.schema < 3) throw new Error('Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.'); }
   transaction<T>(fn: () => T): T { return this.db.transaction(fn)(); }
   private parse<T>(row: unknown): T | undefined { return row ? JSON.parse((row as { data: string }).data) as T : undefined; }
   profile(id: string): ModelProfile | undefined { return this.parse<ModelProfile>(this.db.prepare('SELECT data FROM profiles WHERE id = ?').get(id)); }
@@ -137,7 +156,29 @@ export class Store {
     if (!task) throw new Error('Task not found.');
     return task;
   }
+  gitTask(id: string): GitTask { const task = this.task(id); if (!isGitTask(task)) throw new Error('This action requires a Git worktree.'); return task; }
   saveTask(task: Task): Task { this.db.prepare('INSERT OR REPLACE INTO tasks(id, data) VALUES (?, ?)').run(task.id, JSON.stringify(task)); return task; }
+  projects(): Project[] { return this.schema < 3 ? [] : this.db.prepare('SELECT data FROM projects').all().map(row => this.parse<Project>(row)!); }
+  project(id: string): Project | undefined { this.requireProjects(); return this.parse<Project>(this.db.prepare('SELECT data FROM projects WHERE id = ?').get(id)); }
+  projectByPath(path: string): Project | undefined { return this.parse<Project>(this.db.prepare('SELECT data FROM projects WHERE path_key = ?').get(pathKey(path))); }
+  insertProject(path: string, kind: Project['kind'] = 'folder'): Project {
+    const now = new Date().toISOString();
+    const project: Project = { id: randomUUID(), path, name: basename(path) || path, hidden: false, kind, createdAt: now, updatedAt: now };
+    this.db.prepare('INSERT INTO projects(id, path_key, data) VALUES (?, ?, ?)').run(project.id, pathKey(path), JSON.stringify(project)); return project;
+  }
+  saveProject(project: Project): Project { this.requireProjects(); this.db.prepare('UPDATE projects SET data = ? WHERE id = ?').run(JSON.stringify(project), project.id); return project; }
+  preferences(): WorkspacePreferences {
+    if (this.schema < 3) return { profileId: FAKE_PROFILE_ID, mode: 'chat', collapsedProjectIds: [] };
+    return this.parse<WorkspacePreferences>(this.db.prepare('SELECT data FROM workspace_preferences WHERE id = 1').get()) ?? { profileId: FAKE_PROFILE_ID, mode: 'chat', collapsedProjectIds: [] };
+  }
+  savePreferences(preferences: WorkspacePreferences): WorkspacePreferences { this.requireProjects(); this.db.prepare('INSERT OR REPLACE INTO workspace_preferences(id, data) VALUES (1, ?)').run(JSON.stringify(preferences)); return preferences; }
+  taskStart(requestId: string): { inputHash: string; taskId: string; state: 'pending' | 'unknown' | 'failed' | 'complete' } | undefined {
+    this.requireProjects(); const row = this.db.prepare('SELECT input_hash, task_id, state FROM task_starts WHERE request_id = ?').get(requestId) as { input_hash: string; task_id: string; state: 'pending' | 'unknown' | 'failed' | 'complete' } | undefined;
+    return row && { inputHash: row.input_hash, taskId: row.task_id, state: row.state };
+  }
+  reserveTaskStart(requestId: string, inputHash: string, taskId: string): void { this.db.prepare("INSERT INTO task_starts(request_id, input_hash, task_id, state, created_at) VALUES (?, ?, ?, 'pending', ?)").run(requestId, inputHash, taskId, new Date().toISOString()); }
+  finishTaskStart(requestId: string, state: 'pending' | 'unknown' | 'failed' | 'complete'): void { this.db.prepare('UPDATE task_starts SET state = ? WHERE request_id = ?').run(state, requestId); }
+  clearTaskStart(requestId: string): void { this.db.prepare('DELETE FROM task_starts WHERE request_id = ? AND state = ?').run(requestId, 'pending'); }
   saveMessage(message: Message): void {
     const existing = this.db.prepare('SELECT id FROM messages WHERE id = ?').get(message.id);
     if (existing) this.db.prepare('UPDATE messages SET data = ? WHERE id = ?').run(JSON.stringify(message), message.id);
@@ -172,7 +213,7 @@ export class Store {
       .run(record.id, record.taskId, record.requestId, record.reservedTokens, record.promptTokens, record.completionTokens, record.cacheReadTokens, record.cacheCreationTokens, record.usageKnown ? 1 : 0, record.reason, record.createdAt);
   }
   usageRecords(taskId: string, limit = 100): { records: UsageRecord[]; total: number } {
-    if (this.schema >= 3) {
+    if (this.schema >= 4) {
       const total = (this.db.prepare('SELECT COUNT(*) AS n FROM provider_requests WHERE task_id=? AND finished_at IS NOT NULL').get(taskId) as { n: number }).n;
       const rows = this.db.prepare('SELECT * FROM provider_requests WHERE task_id=? AND finished_at IS NOT NULL ORDER BY created_at DESC, request_id DESC LIMIT ?').all(taskId, limit) as Array<{ request_id: string; reserved: number; input_tokens: number | null; output_tokens: number | null; cache_read_tokens: number | null; cache_creation_tokens: number | null; usage_known: number; reason: string | null; created_at: string }>;
       return { total, records: rows.reverse().map(row => ({ id: row.request_id, taskId, requestId: row.request_id, reservedTokens: row.reserved, promptTokens: row.input_tokens, completionTokens: row.output_tokens, cacheReadTokens: row.cache_read_tokens, cacheCreationTokens: row.cache_creation_tokens, usageKnown: row.usage_known === 1, reason: row.reason, createdAt: row.created_at })) };
@@ -182,7 +223,7 @@ export class Store {
     return { total, records: rows.reverse().map(row => ({ id: row.id, taskId: row.task_id, requestId: row.request_id, reservedTokens: row.reserved, promptTokens: row.prompt_tokens, completionTokens: row.completion_tokens, cacheReadTokens: row.cache_read_tokens, cacheCreationTokens: row.cache_creation_tokens, usageKnown: row.usage_known === 1, reason: row.reason, createdAt: row.created_at })) };
   }
   usageTotals(taskId: string): { requests: number; knownRequests: number; unknownRequests: number; prompt: number; completion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number } {
-    if (this.schema >= 3) {
+    if (this.schema >= 4) {
       const t = this.usage.summary({ filters: { taskId, includeChildren: false, includeDemo: true } }).totals;
       return { requests: t.requests, knownRequests: t.knownRequests, unknownRequests: t.unknownRequests + t.pendingRequests + t.notSentRequests, prompt: t.input, completion: t.output, cacheRead: t.cacheRead ?? 0, cacheCreation: t.cacheCreation ?? 0, reservedUnknown: t.reservedUnknown + t.reservedPending + t.reservedNotSent };
     }
@@ -217,6 +258,8 @@ export class Store {
       // Child agents appear under their coordinator, never as unrelated top-level tasks.
       tasks: this.allTasks().filter(task => !task.parentTaskId).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)),
       profiles: this.db.prepare('SELECT data FROM profiles ORDER BY id').all().map(row => this.parse<ModelProfile>(row)!),
+      projects: this.projects().sort((a,b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path)),
+      preferences: this.preferences(),
       lastSequence: (this.db.prepare('SELECT COALESCE(MAX(sequence), 0) AS value FROM events').get() as { value: number }).value,
       runtime: 'ready'
     };
@@ -258,7 +301,7 @@ export class Store {
     // Interrupted requests keep their full conservative reservation; nothing is refunded.
     const interrupted = this.db.prepare("SELECT request_id, run_task_id, amount FROM budget_reservations WHERE state = 'reserved'").all() as { request_id: string; run_task_id: string; amount: number }[];
     for (const row of interrupted) {
-      if (this.schema >= 3) continue;
+      if (this.schema >= 4) continue;
       const exists = this.db.prepare("SELECT 1 FROM usage_records WHERE request_id = ?").get(row.request_id);
       if (!exists) {
         this.saveUsageRecord({
@@ -286,10 +329,11 @@ export class Store {
   }
   private recover(): void {
     this.transaction(() => {
-      if (this.schema >= 3) this.usage.recover();
+      if (this.schema >= 4) this.usage.recover();
       this.db.prepare("UPDATE intents SET state = 'unknown' WHERE state = 'pending'").run();
       this.db.prepare("UPDATE intents SET state = 'revoked' WHERE kind = 'tool.approval' AND state IN ('awaiting-approval', 'approved')").run();
       this.db.prepare("UPDATE intents SET state = 'unknown' WHERE kind = 'tool.approval' AND state = 'executing'").run();
+      if (this.schema >= 3) this.db.prepare("UPDATE task_starts SET state = 'unknown' WHERE state = 'pending'").run();
       if (this.schema >= 2) this.recoverOrchestration();
       for (const task of this.allTasks()) {
         if (task.status === 'running') {
@@ -300,7 +344,7 @@ export class Store {
           const totals = this.usageTotals(task.id);
           const recorded = totals.prompt + totals.completion + totals.reservedUnknown;
           const unrecorded = task.usedTokens - recorded;
-          if (this.schema < 3 && unrecorded > 0) {
+          if (this.schema < 4 && unrecorded > 0) {
             this.saveUsageRecord({
               id: randomUUID(),
               taskId: task.id,

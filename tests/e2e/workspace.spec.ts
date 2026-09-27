@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile, readdir, readFile } from 'node:fs/promis
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { createFixtureTask } from './fixtures';
 
 test('isolated task, offline conversation, file inspection and restart history', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-e2e-'));
@@ -19,13 +20,10 @@ test('isolated task, offline conversation, file inspection and restart history',
   try {
     let page = await app.firstWindow();
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-    await expect(page.getByRole('heading', { name: 'A considered local workspace.' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
     expect(await page.evaluate(() => 'require' in window)).toBe(false);
-    await page.getByLabel('Project path').fill(project);
-    await page.getByLabel('Task title').fill('Offline acceptance task');
-    await page.getByRole('button', { name: 'Create task', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Offline acceptance task' })).toBeVisible();
+    const createdTask = await createFixtureTask(page, project, 'Offline acceptance task', 'chat');
     await page.getByLabel('Task message').fill('Explain the project briefly.');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.getByText('Fake response: Explain the project briefly.', { exact: true })).toBeVisible();
@@ -36,7 +34,7 @@ test('isolated task, offline conversation, file inspection and restart history',
     await expect(page.getByText('export const answer = 42;', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: 'Root', exact: true }).click();
     await page.getByRole('button', { name: /hello.txt$/ }).click();
-    const worktree = await page.evaluate(async () => (await window.workspace.invoke('workspace.snapshot', {})).tasks[0]!.worktreePath);
+    const worktree = createdTask.worktreePath;
     await writeFile(join(worktree, 'hello.txt'), 'Changed in the task worktree.\n');
     await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
     await page.getByRole('button', { name: 'Changes', exact: true }).click();
@@ -101,15 +99,11 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     let page = await app.firstWindow();
     await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
     const createCodingTask = async (title: string): Promise<{ id: string; worktreePath: string }> => {
-      await page.getByLabel('Project path').fill(project);
-      await page.getByLabel('Task title').fill(title);
-      await page.getByLabel('Mode').selectOption('coding');
-      await page.getByRole('button', { name: 'Create task', exact: true }).click();
-      await expect(page.getByRole('heading', { name: title })).toBeVisible();
+      await createFixtureTask(page, project, title, 'coding');
       return page.evaluate(async (taskTitle) => {
         const snapshot = await window.workspace.invoke('workspace.snapshot', {});
         const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
-        if (!task) throw new Error('Coding task was not created.');
+        if (!task?.worktreePath) throw new Error('Coding task was not created.');
         return { id: task.id, worktreePath: task.worktreePath };
       }, title);
     };
@@ -138,7 +132,7 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).approvals?.find((approval) => approval.command)?.state, accepted.id)).toBe('awaiting-approval');
     const commandApproval = page.locator('article.approval-card').filter({ has: page.locator('.command-evidence') }).first();
     await expect(commandApproval).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
-    await page.screenshot({ path: 'docs/coding-approval-screenshot.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/coding-approval-screenshot.png', fullPage: true });
     await commandApproval.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, accepted.id)).toBe('idle');
     await expect(readFile(join(accepted.worktreePath, 'README.md'), 'utf8')).resolves.toBe(reviewedAfter);

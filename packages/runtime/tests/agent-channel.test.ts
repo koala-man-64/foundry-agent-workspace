@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ChannelMessageInput, ChannelRpc, type ProviderRequest, type Task } from '../../protocol/src/index';
+import { ChannelMessageInput, ChannelRpc, type GitTask, type ProviderRequest } from '../../protocol/src/index';
 import { AgentChannel } from '../src/agent-channel';
 import { Store, FAKE_PROFILE_ID } from '../src/store';
 import { Redactor } from '../src/redaction';
@@ -11,8 +11,8 @@ import { OrchestrationRecords } from '../src/orchestration-records';
 
 describe('runtime-owned project channel', () => {
   let directory: string, project: string, store: Store, channel: AgentChannel, redactor: Redactor;
-  let sender: Task, recipient: Task, teammate: Task, outsider: Task;
-  const task = (projectPath: string, title: string): Task => store.saveTask({ id: randomUUID(), title, projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'running', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', tokenBudget: 100000, usedTokens: 0, mode: 'coding' });
+  let sender: GitTask, recipient: GitTask, teammate: GitTask, outsider: GitTask;
+  const task = (projectPath: string, title: string): GitTask => store.saveTask({ id: randomUUID(), title, projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'running', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', tokenBudget: 100000, usedTokens: 0, mode: 'coding' }) as GitTask;
   const request = (): ProviderRequest => ({ profile: store.profile(FAKE_PROFILE_ID)!, signal: new AbortController().signal, messages: [{ role: 'system', content: 'Trusted system instructions' }, { role: 'user', content: 'Continue my task' }] });
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'foundry-channel-')); project = join(directory, 'project');
@@ -109,6 +109,6 @@ describe('runtime-owned project channel', () => {
     expect(channel.enrich(teammate, request()).channelCursor).toBe(enriched.channelCursor); // independent recipient
     store.close(); store = new Store(join(directory, 'state.db')); channel = new AgentChannel(store, redactor, () => {});
     expect(channel.enrich(recipient, request()).channelCursor).toBe(next.channelCursor);
-    expect(store.schemaVersion).toBe(3);
+    expect(store.schemaVersion).toBe(4);
   });
 });

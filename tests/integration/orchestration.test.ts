@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { OrchestrationView, ProviderAdapter, Task } from '../../packages/protocol/src/index';
+import type { OrchestrationView, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import { GitOperationError, GitOperations } from '../../packages/runtime/src/git-operations';
@@ -102,7 +102,7 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     for (const attempt of attempts) await expect(harness.runtime.dispatch('orchestration.decide', { ...attempt, decision: 'approve' })).rejects.toThrow(/stale|does not belong|not match/);
     await expect(harness.runtime.dispatch('approval.decide', { taskId: first!.taskId, approvalId: first!.id, nonce: first!.nonce, decision: 'approve' })).rejects.toThrow('bound decision');
     expect(harness.store.approval(first!.id).state).toBe('awaiting-approval');
-    expect(await readFile(join(harness.store.task(first!.taskId).worktreePath, first!.path!), 'utf8')).toBe(first!.before);
+    expect(await readFile(join(harness.store.gitTask(first!.taskId).worktreePath, first!.path!), 'utf8')).toBe(first!.before);
     await harness.runtime.dispatch('orchestration.cancelRoot', { rootTaskId: root.id });
     await waitFor(() => records().runs(root.id).every(run => run.lifecycle === 'terminal'));
     await expect(decide(harness, first!)).rejects.toThrow();
@@ -332,7 +332,7 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     expect(records().run(blocked.taskId)).toMatchObject({ lifecycle: 'waiting', waitReason: 'reconciliation' });
     await writeFile(join(worktree, 'alpha.txt'), 'alpha fixture\n');
     expect(await harness.runtime.dispatch('orchestration.reconcile', { rootTaskId: root.id, operationId: blocked.taskId })).toMatchObject({ kind: 'complete' });
-    expect(harness.store.task(blocked.taskId).worktreePath.toLowerCase()).toContain(blocked.taskId);
+    expect(harness.store.gitTask(blocked.taskId).worktreePath.toLowerCase()).toContain(blocked.taskId);
     await approveUntil(harness, root.id, () => records().run(root.id)?.lifecycle === 'terminal');
     expect(records().run(root.id)?.outcome).toBe('succeeded');
     expect(harness.store.db.prepare("SELECT COUNT(*) AS count FROM intents WHERE kind = 'child.worktree.create' AND state <> 'complete'").get()).toEqual({ count: 0 });
@@ -401,7 +401,7 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     const gated = new RuntimeService(harness.store, new RepositoryService(join(harness.directory, 'gated')), () => {}, undefined, undefined, { coordinatedMode: false });
     await expect(gated.dispatch('task.create', { title: 'x', projectPath: harness.project, profileId: FAKE_PROFILE_ID, mode: 'coordinated', coordination: { childProfileIds: [], requiredValidation: { command: 'exit 0' } } })).rejects.toThrow('not available in this build');
     await expect(gated.dispatch('orchestration.cancelRoot', { rootTaskId: FAKE_PROFILE_ID })).rejects.toThrow('not available');
-    expect(await gated.dispatch('workspace.schema', {})).toMatchObject({ version: 3, coordinatedAvailable: false });
+    expect(await gated.dispatch('workspace.schema', {})).toMatchObject({ version: 4, coordinatedAvailable: false });
     const legacy = await harness.runtime.dispatch('task.create', { title: 'Legacy chat', projectPath: harness.project, profileId: FAKE_PROFILE_ID }) as Task;
     expect(legacy.mode).toBe('chat'); expect(legacy.rootTaskId).toBeUndefined();
     await harness.runtime.dispatch('task.send', { taskId: legacy.id, content: 'hello' });

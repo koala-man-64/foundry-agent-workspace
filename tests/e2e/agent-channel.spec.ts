@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { createFixtureTask } from './fixtures';
 
 test('independent agents share a project channel with direct messages and a retained visible transcript', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-channel-e2e-'));
@@ -17,9 +18,7 @@ test('independent agents share a project channel with direct messages and a reta
     const page = await app.firstWindow(); const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     const create = async (title: string): Promise<void> => {
-      await page.getByLabel('Project path').fill(project); await page.getByLabel('Task title').fill(title);
-      await page.getByLabel('Mode').selectOption('chat'); await page.getByRole('button', { name: 'Create task', exact: true }).click();
-      await expect(page.getByRole('heading', { name: title })).toBeVisible();
+      await createFixtureTask(page, project, title, 'chat');
     };
     await create('Recipient'); await create('Sender');
     await page.getByLabel('Task message').fill('/channel-demo Agent finding for the project');
@@ -34,7 +33,7 @@ test('independent agents share a project channel with direct messages and a reta
     await channel.getByRole('button', { name: 'Send to channel' }).click();
     await expect(channel.getByText('Private handoff to recipient', { exact: true })).toBeVisible();
     await expect(channel.getByText('You via Sender', { exact: true })).toBeVisible();
-    await page.getByRole('navigation', { name: 'Task history' }).getByRole('button', { name: /Recipient/ }).click();
+    await page.getByRole('navigation', { name: 'Chats by project' }).getByRole('button', { name: /Recipient/ }).click();
     await expect(channel.getByText('Private handoff to recipient', { exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(async (id) => (await window.workspace.invoke('task.get', { taskId: id })).task.status, recipientId)).toBe('idle');
     await create('Third agent');

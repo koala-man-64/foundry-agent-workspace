@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, vi } from 'vitest';
-import type { Approval, ModelProfile, ProviderAdapter, ProviderRequest, Task, WorkspaceEvent } from '../../packages/protocol/src/index';
+import { isGitTask, type Approval, type ModelProfile, type ProviderAdapter, type ProviderRequest, type GitTask as Task, type WorkspaceEvent } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { CommandRunner } from '../../packages/runtime/src/command-runner';
 import type { GitOperations } from '../../packages/runtime/src/git-operations';
@@ -66,7 +66,10 @@ export async function createCoordinated(harness: Harness, tokenBudget = 600_000)
 }
 
 export function rootTasks(harness: Harness, rootId: string): Task[] {
-  return harness.store.allTasks().filter(task => task.id === rootId || task.rootTaskId === rootId);
+  return harness.store.allTasks().filter(task => task.id === rootId || task.rootTaskId === rootId).map(task => {
+    if (!isGitTask(task)) throw new Error('Expected a Git task in the orchestration fixture.');
+    return task;
+  });
 }
 export function pendingApprovals(harness: Harness, rootId: string): Approval[] {
   return rootTasks(harness, rootId).flatMap(task => harness.store.approvals(task.id)).filter(item => item.state === 'awaiting-approval');

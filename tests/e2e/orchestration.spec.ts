@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
+import { createFixtureTask } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 const VALIDATION_COMMAND = "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)";
@@ -42,20 +43,16 @@ async function initFixtureRepo(project: string): Promise<void> {
 }
 
 async function createCoordinatedTask(page: Page, project: string, title: string): Promise<void> {
-  await page.getByLabel('Project path').fill(project);
-  await page.getByLabel('Task title').fill(title);
-  await page.getByLabel('Mode').selectOption('coordinated');
-  await page.getByLabel('Required validation command').fill(VALIDATION_COMMAND);
-  await page.getByLabel('Token budget').fill('600000');
-  await page.getByRole('button', { name: 'Create task', exact: true }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await createFixtureTask(page, project, title, 'coordinated', {
+    childProfileIds: [], requiredValidation: { command: VALIDATION_COMMAND, cwd: '', timeoutMs: 600000 }
+  });
 }
 
 async function snapshotTaskByTitle(page: Page, title: string): Promise<{ id: string; worktreePath: string }> {
   return page.evaluate(async (taskTitle) => {
     const snapshot = await window.workspace.invoke('workspace.snapshot', {});
     const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
-    if (!task) throw new Error('Coordinated task was not created.');
+    if (!task?.worktreePath) throw new Error('Coordinated task was not created.');
     return { id: task.id, worktreePath: task.worktreePath };
   }, title);
 }
@@ -63,12 +60,16 @@ async function snapshotTaskByTitle(page: Page, title: string): Promise<{ id: str
 async function approveUntilSettled(page: Page, maxApprovals: number): Promise<void> {
   await page.getByRole('button', { name: /^Approvals/ }).click();
   for (let i = 0; i < maxApprovals; i++) {
-    const card = page.locator('article.approval-card.awaiting-approval').first();
-    try { await expect(card).toBeVisible({ timeout: 8000 }); } catch { return; }
+    await expect.poll(async () => (await page.getByText(/^Completed on /).isVisible()) || (await page.locator('article.approval-card.awaiting-approval').count()) > 0, { timeout: 60000 }).toBe(true);
+    if (await page.getByText(/^Completed on /).isVisible()) return;
+    const approvalId = await page.locator('article.approval-card.awaiting-approval').first().getAttribute('data-approval-id');
+    expect(approvalId).toBeTruthy();
+    const card = page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`);
     await expect(card.locator('.approval-target')).toBeVisible();
     await card.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect(card).not.toHaveClass(/awaiting-approval/, { timeout: 8000 }).catch(() => undefined);
+    await expect(page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`)).toHaveCount(0, { timeout: 30000 });
   }
+  throw new Error(`Coordinated fixture exceeded ${maxApprovals} approvals without completing.`);
 }
 
 test('coordinated workflow: delegation, review, serial integration and restart evidence', async () => {
@@ -84,11 +85,16 @@ test('coordinated workflow: delegation, review, serial integration and restart e
 
   let { app, page, errors } = await launch(join(fixture, 'state'));
   try {
-    await createCoordinatedTask(page, project, 'Coordinated demo task');
-    const created = await snapshotTaskByTitle(page, 'Coordinated demo task');
-
-    await page.getByLabel('Message coordinator').fill('/orchestrate-demo');
+    const savedProject = await page.evaluate((path) => window.workspace.invoke('project.add', { path }), project);
+    await page.getByRole('button', { name: `New chat in ${savedProject.name}`, exact: true }).click();
+    await page.getByLabel('Mode', { exact: true }).selectOption('coordinated');
+    await page.getByRole('button', { name: /More options/ }).click();
+    await page.getByLabel('Title (optional)', { exact: true }).fill('Coordinated demo task');
+    await page.getByLabel('Required validation command').fill(VALIDATION_COMMAND);
+    await page.getByLabel('Chat message', { exact: true }).fill('/orchestrate-demo');
     await page.getByRole('button', { name: /^Send/ }).click();
+    await expect(page.getByRole('heading', { name: 'Coordinated demo task', exact: true })).toBeVisible();
+    const created = await snapshotTaskByTitle(page, 'Coordinated demo task');
 
     await approveUntilSettled(page, 40);
     try { await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 }); }
@@ -104,7 +110,7 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await page.screenshot({ path: 'test-results/orchestration-complete.png', fullPage: true });
     await page.getByRole('button', { name: 'Orchestration', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Assignments', level: 3 })).toBeVisible();
-    await page.screenshot({ path: 'docs/coordinated-workflow-screenshot.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/coordinated-workflow-screenshot.png', fullPage: true });
 
     // Git evidence on the coordinated root worktree: three new single-parent commits.
     const worktree = created.worktreePath;
@@ -219,7 +225,7 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
     await expect(page.getByRole('button', { name: /Legacy chat task/ })).toBeVisible();
     await page.getByRole('button', { name: /Legacy chat task/ }).click();
     await expect(page.getByText('Fake response: Legacy fixture message.', { exact: true })).toBeVisible();
-    expect(await page.getByLabel('Mode').locator('option[value="coordinated"]').evaluate((element) => (element as HTMLOptionElement).disabled)).toBe(true);
+    await expect(page.getByRole('button', { name: 'Add project', exact: true })).toBeDisabled();
     await expect(page.locator('.upgrade-banner')).toBeVisible();
 
     await page.locator('.upgrade-banner').getByRole('button', { name: 'Review upgrade' }).click();
@@ -232,7 +238,7 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
     await expect.poll(async () => ({
       schema: await page.evaluate(() => window.workspace.invoke('workspace.schema', {})),
       error: await page.locator('.notice').filter({ hasText: 'Could not upgrade' }).allTextContents()
-    }), { timeout: 20000 }).toMatchObject({ schema: { version: 3, coordinatedAvailable: true }, error: [] });
+    }), { timeout: 20000 }).toMatchObject({ schema: { version: 4, coordinatedAvailable: true }, error: [] });
     const backups = await readdir(join(stateDirectory, 'backups'));
     expect(backups.some((name) => name.endsWith('.db'))).toBe(true);
 

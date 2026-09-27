@@ -1,10 +1,10 @@
 import { randomUUID, createHash } from 'node:crypto';
-import type { CoordinationConfig, McpServerStatus, Message, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent } from '../../protocol/src/index';
-import { COORDINATED_MODE_ENABLED, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
+import type { CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
+import { COORDINATED_MODE_ENABLED, isGitTask, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
 import { RepositoryService, RepositoryError } from './repository';
 import { Redactor } from './redaction';
-import { Store, FAKE_PROFILE_ID } from './store';
+import { Store, FAKE_PROFILE_ID, canonicalPath } from './store';
 import { CommandRunner } from './command-runner';
 import { ToolRuntime } from './tool-runtime';
 import { ExecutionSlots } from './execution-slots';
@@ -13,8 +13,9 @@ import { GitOperations } from './git-operations';
 import { Orchestrator } from './orchestrator';
 import { McpManager } from './mcp';
 import { WorkspaceOperations } from './workspace-operations';
-import { dirname } from 'node:path';
 import { admitRequest, measuredUsage, type MeasuredUsage, type ResponseMetadata } from './usage-accounting';
+import { dirname, isAbsolute } from 'node:path';
+import { statSync } from 'node:fs';
 
 export function profileFingerprint(profile: ModelProfile): string {
   return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit, effort: profile.effort })).digest('hex');
@@ -34,6 +35,7 @@ export class RuntimeService {
   private readonly credentials = new Map<string, string>();
   private readonly generations = new Map<string, number>();
   private readonly probing = new Set<string>();
+  private readonly starts = new Map<string, { hash: string; promise: Promise<Task> }>();
   readonly redactor = new Redactor();
   private closing = false;
   private upgrading = false;
@@ -99,7 +101,19 @@ export class RuntimeService {
     if (this.upgrading && !READ_ONLY_RPC.has(method)) throw new Error('The database upgrade is in progress.');
     if (method.startsWith('orchestration.') && !this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
     switch (method) {
-      case 'workspace.snapshot': return this.store.snapshot();
+      case 'workspace.snapshot': {
+        const snapshot = this.store.snapshot();
+        snapshot.projects = snapshot.projects.map(project => {
+          try {
+            if (!statSync(project.path).isDirectory()) throw new Error('Folder unavailable.');
+            const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
+            if (!same) throw new Error('Folder now resolves to a different location.');
+            return project;
+          }
+          catch { return { ...project, kind: 'unavailable', unavailableReason: 'Folder is unavailable.' }; }
+        });
+        return snapshot;
+      }
       case 'workspace.schema': return { version: this.store.schemaVersion, current: SCHEMA_VERSION, upgradeRequired: this.store.schemaVersion < SCHEMA_VERSION, coordinatedAvailable: this.coordinatedAvailable() };
       case 'workspace.upgrade': {
         // Stop admission and require idle work before the backed-up transactional upgrade.
@@ -108,13 +122,40 @@ export class RuntimeService {
         this.upgrading = true;
         try { return await this.store.upgradeToCurrent(); } finally { this.upgrading = false; }
       }
+      case 'project.add': {
+        this.store.requireProjects();
+        const raw = (params as { path: string }).path;
+        if (!isAbsolute(raw)) throw new Error('Select an absolute folder path.');
+        const path = canonicalPath(raw);
+        if (!statSync(path).isDirectory()) throw new Error('Select a folder.');
+        const previous = this.store.projectByPath(path);
+        if (previous) return previous;
+        const kind = await this.repositories.isGitWorkingTree(path) ? 'git' : 'folder';
+        const project = this.store.projectByPath(path) ?? this.store.insertProject(path, kind);
+        this.publish('projects.changed', { projectId: project.id }); return project;
+      }
+      case 'project.update': {
+        this.store.requireProjects(); const p = params as { projectId: string; name?: string; hidden?: boolean };
+        const project = this.store.project(p.projectId); if (!project) throw new Error('Project not found.');
+        if (p.name === undefined && p.hidden === undefined) throw new Error('Choose a name or visibility change.');
+        const updated: Project = { ...project, ...(p.name !== undefined ? { name: p.name } : {}), ...(p.hidden !== undefined ? { hidden: p.hidden } : {}), updatedAt: new Date().toISOString() };
+        this.store.saveProject(updated); this.publish('projects.changed', { projectId: updated.id }); return updated;
+      }
+      case 'workspace.preferences.save': {
+        this.store.requireProjects(); const p = params as Partial<WorkspacePreferences>;
+        if (p.profileId && !this.store.profile(p.profileId)) throw new Error('Select an existing model profile.');
+        for (const id of p.collapsedProjectIds ?? []) if (id !== 'none' && !this.store.project(id)) throw new Error('A collapsed project no longer exists.');
+        const saved = this.store.savePreferences({ ...this.store.preferences(), ...p, ...(p.collapsedProjectIds ? { collapsedProjectIds: [...new Set(p.collapsedProjectIds)] } : {}) });
+        this.publish('preferences.changed', {}); return saved;
+      }
+      case 'task.start': return this.startTaskCoalesced(params as { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig });
       case 'task.get': return this.store.detail((params as { taskId: string }).taskId);
       case 'usage.summary': return this.store.usageSummary(params as Parameters<Store['usageSummary']>[0]);
       case 'usage.breakdown': return this.store.usageBreakdown(params as Parameters<Store['usageBreakdown']>[0]);
       case 'usage.requests': return this.store.usageRequests(params as Parameters<Store['usageRequests']>[0]);
       case 'profile.save': {
         const profile = ModelProfileSchema.parse(params);
-        if (profile.effort && this.store.schemaVersion < 3) throw new Error('Upgrade the database before configuring effort presets.');
+        if (profile.effort && this.store.schemaVersion < 4) throw new Error('Upgrade the database before configuring effort presets.');
         if (profile.id === FAKE_PROFILE_ID && profile.apiKind !== 'fake') throw new Error('Create a new profile to configure Foundry; the offline profile is reserved.');
         if ([...this.running.keys()].some(id => this.store.task(id).profileId === profile.id)) throw new Error('Cancel active responses before editing this profile.');
         if (profile.outputLimit >= profile.contextLimit) throw new Error('Output budget must be below the context limit.');
@@ -177,7 +218,13 @@ export class RuntimeService {
         try {
           const worktree = await this.repositories.createTaskWorktree(p.projectPath, id);
           const now = new Date().toISOString();
-          const task: Task = { id, title: this.redactor.text(p.title), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) };
+          let projectId: string | undefined;
+          if (this.store.schemaVersion >= 3) {
+            const project = this.store.projectByPath(p.projectPath) ?? this.store.insertProject(canonicalPath(p.projectPath), 'git');
+            if (project.kind !== 'git') this.store.saveProject({ ...project, kind: 'git' });
+            projectId = project.id;
+          }
+          const task: GitTask = { id, title: this.redactor.text(p.title), workspaceKind: 'git', ...(projectId ? { projectId } : {}), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) };
           this.store.transaction(() => {
             this.store.saveTask(task);
             if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
@@ -212,15 +259,15 @@ export class RuntimeService {
         return { accepted: Boolean(entry) };
       }
       case 'files.list': {
-        const p = params as { taskId: string; path: string }; return this.repositories.listFiles(this.store.task(p.taskId).worktreePath, p.path);
+        const p = params as { taskId: string; path: string }; return this.repositories.listFiles(this.fileRoot(this.store.task(p.taskId)), p.path);
       }
       case 'files.read': {
         const p = params as { taskId: string; path: string };
-        const result = await this.repositories.readFile(this.store.task(p.taskId).worktreePath, p.path);
+        const result = await this.repositories.readFile(this.fileRoot(this.store.task(p.taskId)), p.path);
         return { ...result, content: this.redactor.text(result.content) };
       }
       case 'task.diff': {
-        const result = await this.repositories.diff(this.store.task((params as { taskId: string }).taskId).worktreePath);
+        const result = await this.repositories.diff(this.store.gitTask((params as { taskId: string }).taskId).worktreePath);
         return { ...result, patch: this.redactor.text(result.patch), summary: this.redactor.text(result.summary) };
       }
       case 'channel.get': { const p = params as { taskId: string; before?: number; afterTaskId?: string }; return this.tools.channel.view(p.taskId, p.before, p.afterTaskId); }
@@ -289,7 +336,7 @@ export class RuntimeService {
     return { ...server, running: live.running, lastError: live.lastError ?? server.lastError };
   }
   private async *observeProbe(request: ProviderRequest, stream: () => AsyncIterable<ProviderEvent>): AsyncIterable<ProviderEvent> {
-    if (this.store.schemaVersion < 3) { yield* stream(); return; }
+    if (this.store.schemaVersion < 4) { yield* stream(); return; }
     const requestId = randomUUID();
     this.store.beginUsage(requestId, undefined, request.profile, 0, 'probe');
     this.store.attemptUsage(requestId);
@@ -313,6 +360,118 @@ export class RuntimeService {
     }
   }
 
+  private fileRoot(task: Task): string {
+    if (isGitTask(task)) return task.worktreePath;
+    if (task.workspaceKind === 'folder') {
+      const same = process.platform === 'win32'
+        ? canonicalPath(task.projectPath).toLowerCase() === task.projectPath.toLowerCase()
+        : canonicalPath(task.projectPath) === task.projectPath;
+      if (!same) throw new Error('The saved folder now resolves to a different location. Restore the original folder before browsing files.');
+      return task.projectPath;
+    }
+    throw new Error('This chat has no folder access.');
+  }
+  private startTaskCoalesced(p: { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig }): Promise<Task> {
+    const hash = createHash('sha256').update(JSON.stringify(p)).digest('hex');
+    const inflight = this.starts.get(p.requestId);
+    if (inflight) return inflight.hash === hash ? inflight.promise : Promise.reject(new Error('This request ID belongs to different chat settings.'));
+    const promise = Promise.resolve().then(() => this.startTask(p)).finally(() => {
+      if (this.starts.get(p.requestId)?.promise === promise) this.starts.delete(p.requestId);
+    });
+    this.starts.set(p.requestId, { hash, promise });
+    return promise;
+  }
+  private async startTask(p: { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig }): Promise<Task> {
+    this.store.requireProjects();
+    const inputHash = createHash('sha256').update(JSON.stringify(p)).digest('hex');
+    const prior = this.store.taskStart(p.requestId);
+    if (prior) {
+      if (prior.inputHash !== inputHash) throw new Error('This request ID belongs to different chat settings.');
+      if (prior.state === 'complete') return this.store.task(prior.taskId);
+      if (prior.state === 'failed') {
+        const task = this.store.task(prior.taskId);
+        if (this.store.detail(task.id).messages.some(message => message.role === 'user')) { this.store.finishTaskStart(p.requestId, 'complete'); return task; }
+        this.store.finishTaskStart(p.requestId, 'pending');
+        try {
+          if (task.mode === 'coordinated') await this.orchestrator.resume(task.id, p.content);
+          else this.startTurn(task.id, p.content, legacyHooks(this.store));
+          this.store.finishTaskStart(p.requestId, 'complete'); return this.store.task(task.id);
+        }
+        catch (error) { this.store.finishTaskStart(p.requestId, 'failed'); throw error; }
+      }
+      throw new Error('Chat creation has an unknown outcome. Inspect the saved chat and retained intent before trying again with a new request.');
+    }
+    const project = p.projectId ? this.store.project(p.projectId) : undefined;
+    if (p.projectId && !project) throw new Error('Project not found.');
+    if (project?.hidden) throw new Error('Restore this project before starting a chat.');
+    if (project) {
+      try {
+        if (!statSync(project.path).isDirectory()) throw new Error();
+        const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
+        if (!same) throw new Error();
+      } catch { throw new Error('Project folder is unavailable or resolves to a different location.'); }
+    }
+    const kind = project ? await this.repositories.isGitWorkingTree(project.path) ? 'git' : 'folder' : 'none';
+    if (kind !== 'git' && p.mode !== 'chat') throw new Error('Coding and coordination require a Git project.');
+    if (p.mode !== 'coordinated' && p.coordination) throw new Error('Coordination settings apply only to coordinated tasks.');
+    if (p.mode === 'coordinated') {
+      if (!this.coordinatedAvailable() || !p.coordination) throw new Error('Configure coordination and its required validation command for a Git project.');
+      for (const id of [p.profileId, ...p.coordination.childProfileIds]) {
+        const profile = this.store.profile(id); if (!profile || !this.profileReady(profile)) throw new Error('Every coordinator and child profile must be verified for tools and continuation. No fallback profile is used.');
+      }
+    }
+    const profile = this.store.profile(p.profileId);
+    if (!profile) throw new Error('Select an existing model profile.');
+    if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');
+    if (p.mode === 'coding' && !this.profileReady(profile)) throw new Error('Probe tool and continuation capabilities before starting a coding task.');
+    if (kind === 'git' && this.store.unknownIntents()) throw new Error('An earlier worktree creation has an unknown outcome. Inspect it before creating another task.');
+    const id = randomUUID();
+    const title = this.redactor.text(p.title ?? p.content.trim().split(/\r?\n/, 1)[0]!.slice(0, 80));
+    // Durable reservation precedes any worktree creation or first-message dispatch. A retry
+    // can return only a completed task; pending and unknown outcomes are never replayed.
+    this.store.reserveTaskStart(p.requestId, inputHash, id);
+    let intent: string | undefined;
+    let worktreeCreated = false;
+    let taskSaved = false;
+    let sending = false;
+    try {
+      const worktree = kind === 'git' ? await (async () => {
+        intent = this.store.intent('worktree.create', { taskId: id, projectPath: project!.path, requestId: p.requestId });
+        return this.repositories.createTaskWorktree(project!.path, id);
+      })() : undefined;
+      if (worktree) worktreeCreated = true;
+      const now = new Date().toISOString();
+      const base = { id, title, ...(project ? { projectId: project.id } : {}), profileId: p.profileId, status: 'idle' as const, createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode };
+      const task: Task = kind === 'git'
+        ? { ...base, workspaceKind: 'git', projectPath: project!.path, ...worktree!, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) }
+        : kind === 'folder' ? { ...base, mode: 'chat', workspaceKind: 'folder', projectPath: project!.path }
+          : { ...base, mode: 'chat', workspaceKind: 'none' };
+      this.store.transaction(() => {
+        this.store.saveTask(task);
+        if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
+        if (intent) this.store.finishIntent(intent, 'complete');
+      });
+      taskSaved = true;
+      this.publish('tasks.changed', {}, id);
+      sending = true;
+      if (task.mode === 'coordinated') await this.orchestrator.resume(id, p.content);
+      else this.startTurn(id, p.content, legacyHooks(this.store));
+      this.store.finishTaskStart(p.requestId, 'complete');
+      return this.store.task(id);
+    } catch (error) {
+      if (intent && !taskSaved) this.store.finishIntent(intent, worktreeCreated ? 'unknown' : error instanceof RepositoryError && error.outcome === 'none' ? 'complete' : 'unknown');
+      if (!taskSaved && !worktreeCreated && error instanceof RepositoryError && error.outcome === 'none') {
+        this.store.clearTaskStart(p.requestId);
+        throw error;
+      }
+      if (taskSaved && sending && p.mode !== 'coordinated' && !this.store.detail(id).messages.some(message => message.role === 'user')) {
+        this.store.finishTaskStart(p.requestId, 'failed');
+        throw error;
+      }
+      this.store.finishTaskStart(p.requestId, 'unknown');
+      throw new Error(`Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying. ${this.redactor.text(error instanceof Error ? error.message : 'Operation failed.')}`, { cause: error });
+    }
+  }
   private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');

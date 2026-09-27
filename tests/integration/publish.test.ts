@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ZodError } from 'zod';
-import type { CommitResult, DiagnosticsExport, PushResult, RetireResult, Task } from '../../packages/protocol/src/index';
+import type { CommitResult, DiagnosticsExport, PushResult, RetireResult, GitTask as Task } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';

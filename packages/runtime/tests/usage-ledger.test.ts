@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModelProfile, Task } from '../../protocol/src/index';
 import { Store } from '../src/store';
-import { V1_SCHEMA } from '../src/schema';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION } from '../src/schema';
 
 let dir: string; const stores: Store[] = [];
 const open = (name: string, options?: ConstructorParameters<typeof Store>[1]) => { const s = new Store(join(dir, name), options); stores.push(s); return s; };
@@ -14,6 +14,7 @@ beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'foundry-usage-')); 
 afterEach(async () => { vi.useRealTimers(); for (const s of stores.splice(0)) try { s.close(); } catch { /* closed */ } await rm(dir, { recursive: true, force: true }); });
 const profile = (id = randomUUID()): ModelProfile => ({ id, name: 'Original', apiKind: 'responses', endpoint: 'https://example.invalid', deployment: 'configured', effort: 'medium', contextLimit: 100000, outputLimit: 4000 });
 const task = (id = randomUUID(), rootTaskId?: string): Task => ({ id, title: 'Original task', projectPath: 'fixture', worktreePath: 'fixture', branch: 'codex/test', baseCommit: 'a'.repeat(40), profileId: randomUUID(), status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tokenBudget: 100000, usedTokens: 0, rootTaskId, parentTaskId: rootTaskId });
+function createV2(name: string): void { const db = new Database(join(dir, name)); db.exec(V1_SCHEMA); db.exec(V2_MIGRATION); db.exec(PHASE4_SCHEMA); db.pragma('user_version = 2'); db.close(); }
 
 describe('canonical usage ledger', () => {
   it('snapshots attribution, distinguishes admission and attempt, and settles once with subset metrics', () => {
@@ -71,40 +72,64 @@ describe('canonical usage ledger', () => {
     expect(s.usageRequests({ filters: { model: `r:${reported}` } }).records.map(r => r.requestId)).toEqual([reportedId]);
     expect(() => s.usageRequests({ filters: { model: 'u:garbage' } })).toThrow('Invalid model filter');
   });
-  it('upgrades v2 with verified backup while preserving original immutable history and exact totals', async () => {
-    const path = join(dir, 'old.db');
-    // Construct a v2 fixture by downgrading a fresh empty v3 database after dropping the new table.
-    const seed = open('old.db'); seed.close(); stores.splice(stores.indexOf(seed), 1);
-    const fixture = new Database(path); fixture.exec('DROP TRIGGER provider_requests_no_delete; DROP TRIGGER provider_requests_terminal; DROP TRIGGER provider_requests_identity; DROP TABLE provider_requests'); fixture.pragma('user_version = 2'); fixture.close();
+  it('upgrades genuine v2 with verified backup while preserving original immutable history and exact totals', async () => {
+    createV2('old.db');
     const legacy = open('old.db'); const t = task(); legacy.saveTask(t); const id = randomUUID();
     legacy.saveUsageRecord({ id: randomUUID(), taskId: t.id, requestId: id, reservedTokens: 300, promptTokens: 100, completionTokens: 20, cacheReadTokens: null, cacheCreationTokens: null, usageKnown: true, reason: null, createdAt: new Date().toISOString() });
-    const upgraded = await legacy.upgradeToCurrent(); expect(upgraded.version).toBe(3);
+    const upgraded = await legacy.upgradeToCurrent(); expect(upgraded.version).toBe(4);
     expect(legacy.usageSummary({}).totals).toMatchObject({ requests: 1, input: 100, output: 20, total: 120 });
     expect(legacy.usageRequests({}).records[0]).toMatchObject({ requestId: id, outcome: 'unknown', attributionKnown: false, profileId: null });
     expect((legacy.db.prepare('SELECT COUNT(*) AS n FROM usage_records').get() as { n: number }).n).toBe(1);
     const backup = new Database(upgraded.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(2); backup.close();
   });
-  it('keeps v2 untouched after failed v3 backup or migration', async () => {
-    const original = open('older.db'); original.close(); stores.splice(stores.indexOf(original), 1);
-    const path = join(dir, 'older.db'); const db = new Database(path);
-    db.exec('DROP TRIGGER provider_requests_no_delete; DROP TRIGGER provider_requests_terminal; DROP TRIGGER provider_requests_identity; DROP TABLE provider_requests'); db.pragma('user_version = 2'); db.close();
+  it('keeps v2 untouched after failed v4 backup or migration', async () => {
+    createV2('older.db');
     for (const options of [{ backupFault: 'verify' as const }, { migrationFault: 'after-ddl' as const }]) {
       const s = open('older.db', options); await expect(s.upgradeToCurrent()).rejects.toThrow();
       expect(s.schemaVersion).toBe(2); expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='provider_requests'").get()).toBeUndefined();
       s.close(); stores.splice(stores.indexOf(s), 1);
     }
   });
-  it('upgrades a v1 database directly to v3 after backing it up', async () => {
+  it('upgrades published saved-projects v3 to v4 without rewriting projects or old usage', async () => {
+    const path = join(dir, 'projects-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
+    const s = open('projects-v3.db'); const t = task(); s.saveTask(t);
+    const saved = await s.upgradeToV3(); expect(saved.version).toBe(3);
+    const project = s.insertProject(join(dir, 'saved-folder'), 'folder');
+    const preferences = s.savePreferences({ ...s.preferences(), collapsedProjectIds: [project.id] });
+    const startId = randomUUID(); s.reserveTaskStart(startId, 'input-hash', t.id);
+    const requestId = randomUUID(); s.saveUsageRecord({ id: randomUUID(), taskId: t.id, requestId, reservedTokens: 600, promptTokens: 250, completionTokens: 50, cacheReadTokens: null, cacheCreationTokens: null, usageKnown: true, reason: null, createdAt: new Date().toISOString() });
+    s.close(); stores.splice(stores.indexOf(s), 1);
+    const reopened = open('projects-v3.db'); expect(reopened.schemaVersion).toBe(3); expect(reopened.project(project.id)).toEqual(project);
+    expect(reopened.usageSummary({}).detailedTracking).toBe(false);
+    const upgraded = await reopened.upgradeToCurrent(); expect(upgraded.version).toBe(4);
+    expect(reopened.project(project.id)).toEqual(project);
+    expect(reopened.preferences()).toEqual(preferences);
+    expect((reopened.db.prepare('SELECT state FROM task_starts WHERE request_id=?').get(startId) as { state: string }).state).toBe('unknown');
+    expect(reopened.usageSummary({}).totals).toMatchObject({ requests: 1, input: 250, output: 50, total: 300 });
+    expect(reopened.usageRequests({}).records[0]).toMatchObject({ requestId, purpose: 'legacy', attributionKnown: false });
+    const backup = new Database(upgraded.backupPath, { readonly: true });
+    expect(backup.pragma('user_version', { simple: true })).toBe(3);
+    expect((backup.prepare('SELECT COUNT(*) AS n FROM projects').get() as { n: number }).n).toBe(2);
+    backup.close();
+  });
+  it('rolls v3 back completely when v4 migration fails', async () => {
+    const path = join(dir, 'rollback-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
+    const initial = open('rollback-v3.db'); await initial.upgradeToV3(); initial.close(); stores.splice(stores.indexOf(initial), 1);
+    const s = open('rollback-v3.db', { migrationFault: 'after-ddl' });
+    await expect(s.upgradeToCurrent()).rejects.toThrow('Injected migration failure');
+    expect(s.schemaVersion).toBe(3);
+    expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='provider_requests'").get()).toBeUndefined();
+    expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='projects'").get()).toBeTruthy();
+  });
+  it('upgrades a v1 database directly to v4 after backing it up', async () => {
     const path = join(dir, 'v1.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const s = open('v1.db'); expect(s.schemaVersion).toBe(1); const t = task(); s.saveTask(t);
-    const result = await s.upgradeToCurrent(); expect(result.version).toBe(3); expect(s.orchestrationAvailable).toBe(true);
+    const result = await s.upgradeToCurrent(); expect(result.version).toBe(4); expect(s.orchestrationAvailable).toBe(true);
     expect(s.task(t.id).title).toBe(t.title);
     const backup = new Database(result.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(1); backup.close();
   });
   it('reads existing v2 usage without changing schema or treating unavailable attribution as zero', () => {
-    const fresh = open('legacy-read.db'); fresh.close(); stores.splice(stores.indexOf(fresh), 1);
-    const path = join(dir, 'legacy-read.db'); const raw = new Database(path);
-    raw.exec('DROP TRIGGER provider_requests_no_delete; DROP TRIGGER provider_requests_terminal; DROP TRIGGER provider_requests_identity; DROP TABLE provider_requests'); raw.pragma('user_version = 2'); raw.close();
+    createV2('legacy-read.db');
     const s = open('legacy-read.db'); const t = task(); s.saveTask(t); const id = randomUUID();
     s.saveUsageRecord({ id: randomUUID(), taskId: t.id, requestId: id, reservedTokens: 50, promptTokens: 20, completionTokens: 10, cacheReadTokens: null, cacheCreationTokens: null, usageKnown: true, reason: null, createdAt: new Date().toISOString() });
     expect(s.hasUsage(id)).toBe(true);

@@ -37,7 +37,7 @@ The task header shows the task budget and a conservative estimate of the next re
 
 The sidebar **Usage overview** compares this app's requests by conversation, model, requested effort, model × effort, profile, or API. It defaults to the last 30 local calendar days and supports custom dates, daily totals, sorted breakdowns, and paginated request drilldowns. Coordinated conversations include their children once; connection tests appear under **Profile checks**. Offline demo activity is excluded unless enabled. Cached input and reported reasoning are subsets of input/output, and missing breakdowns stay unavailable. Measured consumption, pending reservations, attempted requests with unknown usage, and requests never dispatched are displayed separately. Costs, subscription quotas, and external activity imports are not included.
 
-New databases use schema v3. Existing databases retain their current behavior until you confirm the verified-backup upgrade in the banner; existing v2 coordinated tasks remain available. The upgrade preserves original usage records and labels unavailable historical attribution as legacy/unknown.
+New databases use schema v4. Existing databases retain their current behavior until you confirm the verified-backup upgrade in the banner; existing v2 coordinated tasks and v3 saved projects remain available. The upgrade preserves saved projects and original usage records and labels unavailable historical attribution as legacy/unknown.
 
 ## External tools (MCP)
 

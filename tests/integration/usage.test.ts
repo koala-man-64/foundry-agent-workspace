@@ -1,22 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import type { ProviderAdapter, ProviderEvent, Task, UsageReport, UsageRequests, UsageSummary } from '../../packages/protocol/src/index';
+import type { GitTask, Project, ProviderAdapter, ProviderEvent, Task, UsageReport, UsageRequests, UsageSummary } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 
-let directory: string; let store: Store; let runtime: RuntimeService; let task: Task; let repositories: RepositoryService;
+let directory: string; let store: Store; let runtime: RuntimeService; let task: GitTask; let repositories: RepositoryService;
 let stream: ProviderAdapter['streamTurn']; let probe: ProviderAdapter['probe'];
 const events: string[] = [];
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), 'foundry-usage-runtime-'));
   execFileSync('git', ['init', '--quiet', directory], { windowsHide: true });
   store = new Store(join(directory, 'workspace.db'));
-  task = { id: randomUUID(), title: 'Measured conversation', projectPath: directory, worktreePath: directory, branch: 'fixture', baseCommit: '0'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tokenBudget: 100000, usedTokens: 0, mode: 'chat' };
+  task = { id: randomUUID(), title: 'Measured conversation', workspaceKind: 'git', projectPath: directory, worktreePath: directory, branch: 'fixture', baseCommit: '0'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tokenBudget: 100000, usedTokens: 0, mode: 'chat' };
   store.saveTask(task); events.length = 0;
   stream = async function* () { yield { type: 'usage', inputTokens: 100, outputTokens: 20 }; yield { type: 'done', continuation: { apiKind: 'fake', data: {} } }; };
   probe = async () => { throw new Error('unused probe'); };
@@ -32,6 +32,30 @@ async function records(): Promise<UsageRequests> { return await runtime.dispatch
 async function summary(): Promise<UsageSummary> { return await runtime.dispatch('usage.summary', { filters: { includeDemo: true } }) as UsageSummary; }
 
 describe('runtime usage accounting', () => {
+  it.each(['folder', 'none'] as const)('accounts once for an idempotent first-send %s chat', async workspaceKind => {
+    let projectId: string | null = null;
+    if (workspaceKind === 'folder') {
+      const folder = join(directory, 'plain-folder'); await mkdir(folder);
+      projectId = (await runtime.dispatch('project.add', { path: folder }) as Project).id;
+    }
+    let attempts = 0;
+    stream = async function* (request) {
+      attempts++;
+      expect(request.tools).toBeUndefined();
+      yield { type: 'metadata', reportedModel: 'measured-chat-model' };
+      yield { type: 'usage', inputTokens: 11, outputTokens: 3 };
+      yield { type: 'done' };
+    };
+    const input = { requestId: randomUUID(), projectId, content: 'First measured message', profileId: FAKE_PROFILE_ID, mode: 'chat', tokenBudget: 100000 };
+    const created = await runtime.dispatch('task.start', input) as Task;
+    await expect.poll(() => store.task(created.id).status).toBe('idle');
+    expect((await runtime.dispatch('task.start', input) as Task).id).toBe(created.id);
+    expect(attempts).toBe(1);
+    expect(store.task(created.id)).toMatchObject({ workspaceKind, usedTokens: 14 });
+    expect((await records()).records).toMatchObject([{ taskId: created.id, outcome: 'completed', usageKnown: true, reportedModel: 'measured-chat-model' }]);
+    expect((await summary()).totals).toMatchObject({ total: 14, attemptedRequests: 1, knownRequests: 1, reservedUnknown: 0 });
+  });
+
   it('accounts for each project-channel tool continuation with a distinct request identity', async () => {
     stream = async function* (request) {
       if (!request.toolResults?.length) {
@@ -144,16 +168,16 @@ describe('runtime usage accounting', () => {
       await pending; return { path: 'fixture.txt', content: 'fixture', hash: '0'.repeat(64) };
     });
     // Exercise admission without migrating the already-current fixture database.
-    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 3, backupPath: join(directory, 'fixture-backup.db') });
+    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 4, backupPath: join(directory, 'fixture-backup.db') });
     const operation = runtime.dispatch('files.read', { taskId: task.id, path: 'fixture.txt' });
-    try { await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 3 }); }
+    try { await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 4 }); }
     finally { release(); await operation; }
   });
 
   it('allows pending channel reads during upgrade admission but blocks channel sends', async () => {
-    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 3, backupPath: join(directory, 'fixture-backup.db') });
+    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 4, backupPath: join(directory, 'fixture-backup.db') });
     const read = runtime.dispatch('channel.get', { taskId: task.id });
-    await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 3 });
+    await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 4 });
     await read;
     const write = runtime.dispatch('channel.send', { taskId: task.id, requestId: randomUUID(), content: 'Fixture broadcast' });
     await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).rejects.toThrow('active work');

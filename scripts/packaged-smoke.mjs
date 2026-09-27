@@ -1,4 +1,5 @@
 import { spawn, execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, stat, writeFile, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -67,7 +68,7 @@ try {
   assert.equal(final.approvals.find(value => value.command).result.cleanupVerified, true);
 
   // 2. Coordinated two-child workflow plus a dependent child, serial integration and combined validation.
-  assert.deepEqual(await invoke('workspace.schema', {}), { version: 3, current: 3, upgradeRequired: false, coordinatedAvailable: true });
+  assert.deepEqual(await invoke('workspace.schema', {}), { version: 4, current: 4, upgradeRequired: false, coordinatedAvailable: true });
   const root = await invoke('task.create', { title: 'Packaged coordinated smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: VALIDATION } });
   const baseHead = git(root.worktreePath, 'rev-parse', 'HEAD');
   await invoke('task.send', { taskId: root.id, content: '/orchestrate-demo' });
@@ -144,7 +145,31 @@ try {
   assert.equal(mcpFinal.approvals.length, 1); assert.equal(mcpFinal.approvals[0].state, 'complete');
   assert.equal(await readFile(notes, 'utf8'), 'echo said: echo: ping from the offline demo\n');
 
-  // 5. Sanitized diagnostics export.
+  // 5. Saved ordinary folders and projectless first-send requests in the packaged runtime.
+  const plain = await mkdtemp(join(directory, 'plain-'));
+  await writeFile(join(plain, 'notes.txt'), 'Packaged read-only folder fixture.\n');
+  const savedProject = await invoke('project.add', { path: plain });
+  assert.equal(savedProject.kind, 'folder');
+  for (const projectId of [savedProject.id, null]) {
+    const draft = { requestId: randomUUID(), projectId, content: 'Packaged draft first message', profileId: snapshot.profiles[0].id, mode: 'chat', tokenBudget: 100000 };
+    const started = await invoke('task.start', draft);
+    for (let i = 0; i < 200 && (await invoke('task.get', { taskId: started.id })).task.status === 'running'; i++) await delay(50);
+    const replay = await invoke('task.start', draft);
+    assert.equal(replay.id, started.id);
+    const detail = await invoke('task.get', { taskId: started.id });
+    assert.equal(detail.task.status, 'idle');
+    assert.equal(detail.messages.filter(message => message.role === 'user').length, 1);
+    assert.equal(detail.task.workspaceKind, projectId ? 'folder' : 'none');
+    assert.equal(Object.hasOwn(detail.task, 'worktreePath'), false);
+    if (projectId) assert.equal((await invoke('files.read', { taskId: started.id, path: 'notes.txt' })).content, 'Packaged read-only folder fixture.\n');
+    else await assert.rejects(invoke('files.list', { taskId: started.id }));
+    await assert.rejects(invoke('task.commit', { taskId: started.id, message: 'Must remain unavailable' }));
+  }
+  const renamed = await invoke('project.update', { projectId: savedProject.id, name: 'Packaged notes', hidden: true });
+  assert.equal(renamed.hidden, true);
+  assert.equal((await invoke('project.update', { projectId: savedProject.id, hidden: false })).name, 'Packaged notes');
+
+  // 6. Sanitized diagnostics export.
   const diagnostics = await invoke('diagnostics.export', {});
   const bundle = JSON.parse(await readFile(diagnostics.path, 'utf8'));
   assert.equal(bundle.mcpServers[0].key, 'fixture'); assert.ok(bundle.tasks.some(item => item.id === mcpTask.id));
@@ -166,7 +191,7 @@ try {
   assert.equal(git(source, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
   child.stdin.end(); assert.equal(await exit, 0, errors);
   assert.ok((await stat(join(directory, 'data', 'workspace.db'))).size > 0);
-  console.log(`PASS: packaged runtime loads schema v3, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
+  console.log(`PASS: packaged runtime loads schema v4, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
 } finally {
   clearTimeout(watchdog);
   if (child && child.exitCode === null) { child.kill(); await new Promise(resolve => child.once('exit', resolve)); }
