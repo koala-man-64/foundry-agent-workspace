@@ -154,45 +154,59 @@ describe('runtime usage accounting', () => {
 
   it('blocks an upgrade while even one profile check remains active', async () => {
     let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>(resolve => { started = resolve; });
     const pending = new Promise<void>(resolve => { release = resolve; });
-    probe = async () => { await pending; return { ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: 'fixture', fingerprint: '' }; };
+    probe = async () => { started(); await pending; return { ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: 'fixture', fingerprint: '' }; };
     const operation = runtime.dispatch('profile.probe', { profileId: FAKE_PROFILE_ID });
+    await entered;
     try { await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).rejects.toThrow('active work'); }
     finally { release(); await operation; }
   });
 
-  it('allows an upgrade while the inspector is awaiting a read-only file operation', async () => {
+  it('drains an accepted inspector read before beginning the upgrade', async () => {
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
     vi.spyOn(repositories, 'readFile').mockImplementation(async () => {
       await pending; return { path: 'fixture.txt', content: 'fixture', hash: '0'.repeat(64) };
     });
     // Exercise admission without migrating the already-current fixture database.
-    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 4, backupPath: join(directory, 'fixture-backup.db') });
+    const migrate = vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 5, backupPath: join(directory, 'fixture-backup.db') });
     const operation = runtime.dispatch('files.read', { taskId: task.id, path: 'fixture.txt' });
-    try { await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 4 }); }
-    finally { release(); await operation; }
+    const upgrade = runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' });
+    try {
+      await expect(runtime.dispatch('workspace.summary', {})).rejects.toThrow('upgrade is in progress');
+      expect(migrate).not.toHaveBeenCalled();
+    } finally { release(); await operation; }
+    await expect(upgrade).resolves.toMatchObject({ version: 5 });
   });
 
-  it('allows pending channel reads during upgrade admission but blocks channel sends', async () => {
-    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 4, backupPath: join(directory, 'fixture-backup.db') });
+  it('drains accepted channel reads and sends before upgrade and rejects new sends', async () => {
+    vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 5, backupPath: join(directory, 'fixture-backup.db') });
     const read = runtime.dispatch('channel.get', { taskId: task.id });
-    await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 4 });
+    await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 5 });
     await read;
     const write = runtime.dispatch('channel.send', { taskId: task.id, requestId: randomUUID(), content: 'Fixture broadcast' });
-    await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).rejects.toThrow('active work');
+    const upgrade = runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' });
+    await expect(runtime.dispatch('channel.send', { taskId: task.id, requestId: randomUUID(), content: 'Too late' })).rejects.toThrow('upgrade is in progress');
     await write;
+    await expect(upgrade).resolves.toMatchObject({ version: 5 });
   });
 
-  it('blocks an upgrade while an asynchronous task creation still owns a mutation intent', async () => {
+  it('waits for accepted task creation to settle before backing up', async () => {
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
     vi.spyOn(repositories, 'createTaskWorktree').mockImplementation(async () => {
       await pending; return { worktreePath: directory, branch: 'fixture-child', baseCommit: '0'.repeat(40) };
     });
     const operation = runtime.dispatch('task.create', { title: 'Pending creation', projectPath: directory, profileId: FAKE_PROFILE_ID });
-    try { await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).rejects.toThrow('active work'); }
-    finally { release(); await operation; }
+    const migrate = vi.spyOn(store, 'upgradeToCurrent').mockResolvedValue({ version: 5, backupPath: join(directory, 'fixture-backup.db') });
+    const upgrade = runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' });
+    try {
+      await expect(runtime.dispatch('workspace.summary', {})).rejects.toThrow('upgrade is in progress');
+      expect(migrate).not.toHaveBeenCalled();
+    } finally { release(); await operation; }
+    await expect(upgrade).resolves.toMatchObject({ version: 5 });
   });
 
   it('includes child requests exactly once in the coordinated conversation panel', async () => {
@@ -207,6 +221,8 @@ describe('runtime usage accounting', () => {
     const childReport = await runtime.dispatch('task.usage', { taskId: child.id }) as UsageReport;
     expect(rootReport.metrics?.total).toBe(50); expect(rootReport.totals.requests).toBe(2);
     expect(new Set(rootReport.records.map(record => record.taskId))).toEqual(new Set([root.id, child.id]));
+    const rootRecords = await runtime.dispatch('usage.requests', { filters: { taskId: root.id, includeChildren: true, includeDemo: true } }) as UsageRequests;
+    expect(new Set(rootRecords.records.map(record => record.taskId))).toEqual(new Set([root.id, child.id]));
     expect(childReport.metrics?.total).toBe(25); expect(childReport.totals.requests).toBe(1);
   });
 });

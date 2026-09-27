@@ -2,7 +2,7 @@
 
 ## Personal workspace expansion — local implementation
 
-Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented and validated locally on `codex/personal-workspace-expansion`. Expansion is committed locally; integration with the latest main and combined validation are in progress. No external publication or installation is implied.
+Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
 
 | Stage | Delivered behavior | Principal evidence |
 | --- | --- | --- |
@@ -14,6 +14,8 @@ Recorded 27 September 2026. The [six-stage expansion contract](personal-workspac
 | 5 | App-open one-time/daily/weekly reminders and prompt drafts, editable task/zone/date/weekday settings, archived-task reminders | DST gap/fold, activation boundary, UTC occurrence retention, timezone revisions, missed-occurrence coalescing and no automatic model turn |
 
 The runtime remains the sole application-data writer and execution authority; Chromium owns its isolated browser-profile databases. Integrated schema v5 follows the saved-projects v3 and usage v4 migrations. Existing v1–v4 databases require explicit confirmation and a verified WAL-aware backup. Migration/index/FK failure rolls back inside the transaction. Existing unsafe MCP configuration is logically quarantined; retained backups and historical filesystem bytes are not claimed to be erased.
+
+Integration preserves draft-first task creation and exact profile credential binding. Browser cancellation and retirement invalidate attachments even while eligibility reads are pending; stale transport callbacks cannot tear down a replacement runtime. Paged usage and trend queries now use the canonical provider-request ledger, count migrated records once, include coordinator children, and distinguish observed tokens, pending reservations, unknown usage and requests not sent. Independent security review found no remaining blocker in these boundaries.
 
 Archive, hook and scheduling admission can be paused persistently while retaining history and recovery. The reusable script grant is an explicit new permission class: scripts run with Windows user privileges, and a pinned entry file does not pin imported code or external effects. Script-produced application actions still require a new review and one-shot approval. Schedules only produce reminders/drafts; the user presses Send.
 
@@ -43,6 +45,16 @@ The same directory retains `script-grant-200-percent.png` (native Electron captu
 Live Azure model qualification, clean Windows installation, publisher signing and external distribution remain separate gates. `Get-AuthenticodeSignature` reports the unpacked executable as **NotSigned**. Native Windows toast delivery was not manually qualified; automated coverage verifies preference, sender and safe notification-content behavior. No production/user data was migrated by this implementation task. Tests use isolated repositories, databases and injected providers.
 
 One failed-smoke fixture remains at `C:\Users\rdpro\AppData\Local\Temp\foundry-package-smoke-TIjYKj`. Its runtime was terminated; a later explicit cleanup was rejected by the command policy with "blocked by policy," so no alternate deletion route was attempted. This directory contains isolated test data, not application/user data.
+### Integrated validation after main synchronization
+
+The final integrated source passed `pnpm check --maxWorkers=2 --hookTimeout=60000`: **43 files, 423 tests**, clean typecheck and lint (404.66 seconds). `pnpm test:e2e` passed **21 tests (3.6 minutes)**, including saved projects, browser actions, canonical usage, coordinator restart, archived approvals and keyboard operation at 200% zoom. Independent review cleared the canonical usage queries and cancellation/transport race fixes.
+
+Logs: `.local/verification/personal-workspace/integration-check-final.log` and `integration-e2e-qualified.log`. The screenshots prefixed `integration-` in that directory preserve the grant, coordinator and usage views. Later smoke-harness-only edits update two schema-version assertions from v3 to v5 and wait for the queued-to-cancelled revocation transition while rejecting any dispatch. Scoped ESLint passed; independent review confirmed the timing boundary, and the packaged smoke run directly validates those assertions.
+
+`pnpm package:dir` and `pnpm smoke:package` passed against the integrated application. Packaged evidence covers schema v5, saved projects, idempotent draft starts, canonical usage, 14 bound coordinator approvals, 3 integrations, MCP, continuation/export, archived reminders, script limits/revocation/process cleanup and crash recovery without replay. Logs: `integration-package.log` and `integration-smoke-package-final.log`. Earlier diagnostic failures are retained separately and superseded by this passing run.
+
+`pnpm package:portable` and `pnpm smoke:portable` also passed; the portable executable extracts and starts bundled Electron 44.4.1 with functioning SQLite. Logs: `integration-portable-build.log` and `integration-portable-smoke.log`. Portable SHA-256: `805906f7e35e758a77786ee417e021aa358b5b9f5a225345d788f92b588ae1b4`; packaged `app.asar` SHA-256: `3956803d55a98b9f4ff86eaa1db2283a830421cce4e9f1fb1449a2196c645aef`. The portable executable is **NotSigned**. These local results do not assert a published release, clean installation or live Azure qualification.
+
 ## Saved projects and draft-first chat creation — 27 September 2026
 
 Local implementation on `codex/saved-projects-sidebar` in the [Foundry Agent Workspace source](https://github.com/koala-man-64/foundry-agent-workspace). Publication, installed application upgrades, and live provider qualification are separate gates.

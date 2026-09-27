@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { GitTask, Message, Task } from '../../protocol/src/index';
 import type { TaskCursor } from '../../protocol/src/workspace';
 import { Redactor } from '../src/redaction';
-import { V1_SCHEMA } from '../src/schema';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION } from '../src/schema';
 import { FAKE_PROFILE_ID, Store } from '../src/store';
 import { WorkspaceQueries } from '../src/workspace-queries';
 
@@ -191,10 +191,10 @@ describe('workspace read projections', () => {
   it('bounds control-heavy usage and compaction marker pages without losing records', () => {
     const store = open('escaped-pages.db'), queries = new WorkspaceQueries(store, new Redactor());
     const root = task(1); store.saveTask(root);
+    const profile = store.profile(FAKE_PROFILE_ID)!;
     for (let i = 0; i < 60; i++) {
-      store.saveUsageRecord({ id: randomUUID(), taskId: root.id, requestId: randomUUID(), reservedTokens: 1,
-        promptTokens: null, completionTokens: null, cacheReadTokens: null, cacheCreationTokens: null,
-        usageKnown: false, reason: '\u0000'.repeat(1000), createdAt: root.createdAt });
+      const requestId = randomUUID(); store.usage.beginUsage(requestId, root, profile, 1, 'conversation');
+      store.usage.attemptUsage(requestId); store.usage.finishUsage(requestId, undefined, 'failed', '\u0000'.repeat(1000));
       store.saveCompaction({ id: randomUUID(), taskId: root.id, fromOrdinal: i, toOrdinal: i + 1,
         messageIds: [], summary: '\u0000'.repeat(3000), estimatedTokensBefore: 1, estimatedTokensAfter: 1, createdAt: root.createdAt }, undefined, undefined);
     }
@@ -211,14 +211,63 @@ describe('workspace read projections', () => {
     }
   });
 
+  it('reads canonical requests with coordinated children, probes, and distinct reservation states', () => {
+    const store = open('canonical-usage.db'), queries = new WorkspaceQueries(store, new Redactor());
+    const root = task(1, { mode: 'coordinated', role: 'coordinator' }); root.rootTaskId = root.id;
+    const child = task(2, { mode: 'coding', role: 'child', parentTaskId: root.id, rootTaskId: root.id });
+    store.saveTask(root); store.saveTask(child);
+    const profile = store.profile(FAKE_PROFILE_ID)!;
+    const known = randomUUID(); store.usage.beginUsage(known, root, profile, 50, 'conversation'); store.usage.attemptUsage(known);
+    store.usage.finishUsage(known, { type: 'usage', inputTokens: 10, outputTokens: 5, cacheReadTokens: 2 }, 'completed');
+    const unknown = randomUUID(); store.usage.beginUsage(unknown, child, profile, 40, 'conversation'); store.usage.attemptUsage(unknown);
+    store.usage.finishUsage(unknown, undefined, 'failed', 'Provider did not report usage.');
+    const notSent = randomUUID(); store.usage.beginUsage(notSent, child, profile, 30, 'conversation'); store.usage.finishUsage(notSent, undefined, 'cancelled');
+    const pending = randomUUID(); store.usage.beginUsage(pending, child, profile, 20, 'conversation');
+    const probe = randomUUID(); store.usage.beginUsage(probe, undefined, profile, 10, 'probe'); store.usage.attemptUsage(probe);
+    store.usage.finishUsage(probe, { type: 'usage', inputTokens: 3, outputTokens: 1 }, 'completed');
+    const page = queries.dispatch('task.usageRecords', { taskId: root.id, limit: 2 }) as { records: { id: string; outcome: string; attemptedAt: string | null }[]; nextBefore: number | null };
+    const older = queries.dispatch('task.usageRecords', { taskId: root.id, before: page.nextBefore, limit: 2 }) as typeof page;
+    expect([...page.records, ...older.records].map(record => record.id).sort()).toEqual([known, unknown, notSent].sort());
+    expect([...page.records, ...older.records].find(record => record.id === notSent)).toMatchObject({ outcome: 'cancelled', attemptedAt: null });
+    expect((queries.dispatch('task.usageRecords', { taskId: child.id }) as typeof page).records.map(record => record.id).sort()).toEqual([unknown, notSent].sort());
+    const taskTrend = queries.dispatch('workspace.usageTrend', { groupBy: 'task', taskId: root.id }) as { buckets: unknown[] };
+    expect(taskTrend.buckets).toEqual([expect.objectContaining({ key: root.id, requests: 4, knownRequests: 1, unknownRequests: 1,
+      pendingRequests: 1, notSentRequests: 1, observedPrompt: 10, observedCompletion: 5, cacheRead: 2,
+      reservedUnknown: 40, reservedPending: 20, reservedNotSent: 30 })]);
+    const day = queries.dispatch('workspace.usageTrend', { groupBy: 'day' }) as { buckets: { requests: number; knownRequests: number }[] };
+    expect(day.buckets[0]).toMatchObject({ requests: 5, knownRequests: 2 });
+    const profileTrend = queries.dispatch('workspace.usageTrend', { groupBy: 'profile', profileId: profile.id }) as { buckets: { key: string; requests: number }[] };
+    expect(profileTrend.buckets).toEqual([expect.objectContaining({ key: profile.id, requests: 5 })]);
+  });
+
+  it('shows migrated legacy usage once alongside new canonical requests', async () => {
+    const path = join(directory, 'migrated-usage.db'), db = new Database(path);
+    db.exec(V1_SCHEMA); db.exec(V2_MIGRATION); db.exec(V3_MIGRATION); db.exec(PHASE4_SCHEMA); db.pragma('user_version = 3'); db.close();
+    const store = open('migrated-usage.db'); const root = task(1); store.saveTask(root);
+    const legacyId = randomUUID(); store.saveUsageRecord({ id: randomUUID(), taskId: root.id, requestId: legacyId, reservedTokens: 40,
+      promptTokens: null, completionTokens: null, cacheReadTokens: null, cacheCreationTokens: null,
+      usageKnown: false, reason: 'Legacy unknown', createdAt: new Date().toISOString() });
+    await store.upgradeToCurrent();
+    const nextId = randomUUID(), profile = store.profile(FAKE_PROFILE_ID)!;
+    store.usage.beginUsage(nextId, root, profile, 50, 'conversation'); store.usage.attemptUsage(nextId);
+    store.usage.finishUsage(nextId, { type: 'usage', inputTokens: 10, outputTokens: 5 }, 'completed');
+    const queries = new WorkspaceQueries(store, new Redactor());
+    const records = queries.dispatch('task.usageRecords', { taskId: root.id }) as { records: { requestId: string }[] };
+    expect(records.records).toHaveLength(2);
+    expect(records.records.map(record => record.requestId).sort()).toEqual([legacyId, nextId].sort());
+    const trend = queries.dispatch('workspace.usageTrend', { groupBy: 'task' }) as { buckets: { key: string; requests: number; knownRequests: number; unknownRequests: number }[] };
+    expect(trend.buckets).toEqual([expect.objectContaining({ key: root.id, requests: 2, knownRequests: 1, unknownRequests: 1 })]);
+  });
+
   it('pages usage and compaction markers while preserving full summaries by chunk', () => {
     const store = open('usage.db'), queries = new WorkspaceQueries(store, new Redactor());
     const root = task(1); store.saveTask(root);
+    const profile = store.profile(FAKE_PROFILE_ID)!;
     for (let i = 0; i < 25; i++) {
-      store.saveUsageRecord({ id: randomUUID(), taskId: root.id, requestId: randomUUID(), reservedTokens: 50,
-        promptTokens: i % 2 ? 10 : null, completionTokens: i % 2 ? 5 : null, cacheReadTokens: i % 2 ? 2 : null,
-        cacheCreationTokens: 0, usageKnown: Boolean(i % 2), reason: i % 2 ? null : 'Unknown',
-        createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString() });
+      const requestId = randomUUID(); store.usage.beginUsage(requestId, root, profile, 50, 'conversation');
+      store.usage.attemptUsage(requestId);
+      store.usage.finishUsage(requestId, i % 2 ? { type: 'usage', inputTokens: 10, outputTokens: 5, cacheReadTokens: 2, cacheCreationTokens: 0 } : undefined,
+        i % 2 ? 'completed' : 'failed', i % 2 ? undefined : 'Unknown');
       store.saveCompaction({ id: randomUUID(), taskId: root.id, fromOrdinal: i, toOrdinal: i + 1,
         messageIds: [randomUUID()], summary: '🧪'.repeat(70_000), estimatedTokensBefore: 100, estimatedTokensAfter: 20,
         createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString() }, undefined, undefined);
@@ -236,8 +285,8 @@ describe('workspace read projections', () => {
       restored += chunk.content; offset = chunk.nextOffset ?? -1;
     } while (offset >= 0);
     expect(restored).toBe('🧪'.repeat(70_000));
-    const day = queries.dispatch('workspace.usageTrend', { groupBy: 'day' }) as { buckets: { requests: number; knownRequests: number; unknownRequests: number; reservedUnknown: number; cacheRead: number }[] };
-    expect(day.buckets[0]).toMatchObject({ requests: 25, knownRequests: 12, unknownRequests: 13, reservedUnknown: 650, cacheRead: 24 });
+    const day = queries.dispatch('workspace.usageTrend', { groupBy: 'day' }) as { buckets: { requests: number; knownRequests: number; unknownRequests: number; pendingRequests: number; notSentRequests: number; reservedUnknown: number; cacheRead: number }[] };
+    expect(day.buckets[0]).toMatchObject({ requests: 25, knownRequests: 12, unknownRequests: 13, pendingRequests: 0, notSentRequests: 0, reservedUnknown: 650, cacheRead: 24 });
   });
 
   it('pages 1000 task headers and a 100000-message history by stable keys', () => {

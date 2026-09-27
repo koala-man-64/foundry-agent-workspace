@@ -10,7 +10,7 @@ describe('persistent feature admission', () => {
   beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), 'foundry-feature-test-')); store = new Store(join(directory, 'state.db')); });
   afterEach(async () => { store.close(); await rm(directory, { recursive: true, force: true }); });
 
-  it('defaults verified v3 features on, persists disable reason and history across reopen, and requires explicit reenable', () => {
+  it('defaults verified v5 features on, persists disable reason and history across reopen, and requires explicit reenable', () => {
     const admission = newFeatureAdmission(store);
     expect(admission.snapshot().features).toMatchObject([{ feature: 'archive', enabled: true }, { feature: 'hooks', enabled: true }, { feature: 'scheduling', enabled: true }]);
     admission.set({ feature: 'hooks', enabled: false, reason: 'runtime-fault' });
@@ -27,7 +27,7 @@ describe('persistent feature admission', () => {
     const legacy = { schemaVersion: 2 } as Store;
     const admission = newFeatureAdmission(legacy);
     expect(admission.snapshot().features.every(item => !item.enabled && item.reason === 'migration-required')).toBe(true);
-    expect(() => admission.set({ feature: 'hooks', enabled: true })).toThrow('verified v3');
+    expect(() => admission.set({ feature: 'hooks', enabled: true })).toThrow('verified v5');
     expect(() => newFeatureAdmission(store).set({ feature: 'hooks', enabled: false, reason: 'password=secret' as 'runtime-fault' })).toThrow();
   });
 });

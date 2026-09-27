@@ -44,8 +44,8 @@ it('closes upgrade admission, drains an accepted bounded read, then upgrades the
     expect(store.schemaVersion).toBe(1);
   } finally { finish(); }
   await expect(read).resolves.toMatchObject({ runtime: 'ready' });
-  await expect(upgrade).resolves.toMatchObject({ version: 3 });
-  expect(store.schemaVersion).toBe(3);
+  await expect(upgrade).resolves.toMatchObject({ version: 5 });
+  expect(store.schemaVersion).toBe(5);
 });
 
 it('rejects an upgrade promptly during active work while cancellation remains admitted', async () => {
@@ -73,7 +73,7 @@ it('rejects an upgrade promptly during active work while cancellation remains ad
     expect(store.schemaVersion).toBe(1);
   } finally { finish(); }
   await probe;
-  await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 3 });
+  await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 5 });
 });
 
 it('does not back up a v2 workspace while orchestrator background root work is active', async () => {
@@ -100,5 +100,5 @@ it('does not back up a v2 workspace while orchestrator background root work is a
   } finally { finish(); }
   await background;
   expect(runtime.orchestrator.isBusy()).toBe(false);
-  await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 3 });
+  await expect(runtime.dispatch('workspace.upgrade', { confirm: 'backup-and-upgrade' })).resolves.toMatchObject({ version: 5 });
 });

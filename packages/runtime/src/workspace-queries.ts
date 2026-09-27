@@ -198,15 +198,21 @@ export class WorkspaceQueries {
   }
 
   private usageRecords(p: { taskId: string; before?: number; limit: number }): UsageRecordPage {
-    this.store.task(p.taskId);
-    const rows = this.store.db.prepare('SELECT rowid, * FROM usage_records WHERE task_id = ? AND rowid < ? ORDER BY rowid DESC LIMIT ?')
-      .all(p.taskId, p.before ?? Number.MAX_SAFE_INTEGER, p.limit + 1) as ({ rowid: number; id: string; task_id: string; request_id: string; reserved: number; prompt_tokens: number | null; completion_tokens: number | null; cache_read_tokens: number | null; cache_creation_tokens: number | null; usage_known: number; reason: string | null; created_at: string })[];
+    const task = this.store.task(p.taskId);
+    type Row = { rowid: number; id?: string; task_id: string; request_id: string; reserved: number; prompt_tokens?: number | null; completion_tokens?: number | null; input_tokens?: number | null; output_tokens?: number | null; cache_read_tokens: number | null; cache_creation_tokens: number | null; usage_known: number; reason: string | null; created_at: string; outcome?: UsageRecord['outcome']; attempted_at?: string | null };
+    const current = this.store.schemaVersion >= 4;
+    const includeChildren = current && task.mode === 'coordinated' && !task.parentTaskId;
+    const rows = (current
+      ? this.store.db.prepare(`SELECT rowid, * FROM provider_requests WHERE ${includeChildren ? 'root_task_id' : 'task_id'} = ? AND finished_at IS NOT NULL AND rowid < ? ORDER BY rowid DESC LIMIT ?`)
+      : this.store.db.prepare('SELECT rowid, * FROM usage_records WHERE task_id = ? AND rowid < ? ORDER BY rowid DESC LIMIT ?'))
+      .all(p.taskId, p.before ?? Number.MAX_SAFE_INTEGER, p.limit + 1) as Row[];
     const selected: UsageRecord[] = [];
     for (const row of rows.slice(0, p.limit)) {
-      const record = { id: row.id, taskId: row.task_id, requestId: row.request_id, reservedTokens: row.reserved,
-        promptTokens: row.prompt_tokens, completionTokens: row.completion_tokens, cacheReadTokens: row.cache_read_tokens,
+      const record = { id: current ? row.request_id : row.id!, taskId: row.task_id, requestId: row.request_id, reservedTokens: row.reserved,
+        promptTokens: current ? row.input_tokens ?? null : row.prompt_tokens ?? null, completionTokens: current ? row.output_tokens ?? null : row.completion_tokens ?? null, cacheReadTokens: row.cache_read_tokens,
         cacheCreationTokens: row.cache_creation_tokens, usageKnown: row.usage_known === 1,
-        reason: row.reason ? clipped(this.redactor.text(row.reason), 1000).content : null, createdAt: row.created_at } satisfies UsageRecord;
+        reason: row.reason ? clipped(this.redactor.text(row.reason), 1000).content : null, createdAt: row.created_at,
+        ...(current ? { outcome: row.outcome, attemptedAt: row.attempted_at ?? null } : {}) } satisfies UsageRecord;
       if (bytes({ records: [...selected, record] }) > PAGE_ITEMS_BYTES) {
         if (!selected.length) throw new Error('Stored usage record is too large to page safely.');
         break;
@@ -247,21 +253,41 @@ export class WorkspaceQueries {
   private usageTrend(p: { groupBy: 'day' | 'profile' | 'task'; from?: string; to?: string; profileId?: string; taskId?: string; after?: string; limit: number }): UsageTrendPage {
     const from = p.from ?? '1970-01-01T00:00:00.000Z', to = p.to ?? new Date().toISOString();
     if (from > to) throw new Error('Usage trend start must be before end.');
-    const group = p.groupBy === 'day' ? "substr(u.created_at, 1, 10)" : p.groupBy === 'profile' ? "json_extract(t.data, '$.profileId')" : 'u.task_id';
-    const rows = this.store.db.prepare(`SELECT ${group} AS key, COUNT(*) AS requests, SUM(u.usage_known) AS known,
-      SUM(CASE WHEN u.usage_known = 1 THEN COALESCE(u.prompt_tokens, 0) ELSE 0 END) AS prompt,
-      SUM(CASE WHEN u.usage_known = 1 THEN COALESCE(u.completion_tokens, 0) ELSE 0 END) AS completion,
-      SUM(CASE WHEN u.usage_known = 1 THEN COALESCE(u.cache_read_tokens, 0) ELSE 0 END) AS cache_read,
-      SUM(CASE WHEN u.usage_known = 1 THEN COALESCE(u.cache_creation_tokens, 0) ELSE 0 END) AS cache_creation,
-      SUM(CASE WHEN u.usage_known = 0 THEN u.reserved ELSE 0 END) AS reserved_unknown
-      FROM usage_records u JOIN tasks t ON t.id = u.task_id
-      WHERE u.created_at >= ? AND u.created_at <= ? AND (? IS NULL OR u.task_id = ?)
-        AND (? IS NULL OR json_extract(t.data, '$.profileId') = ?)
+    const current = this.store.schemaVersion >= 4;
+    const group = p.groupBy === 'day' ? 'substr(u.created_at, 1, 10)' : p.groupBy === 'profile'
+      ? current ? "COALESCE(u.profile_id, 'unknown')" : "COALESCE(json_extract(t.data, '$.profileId'), 'unknown')" : current ? 'COALESCE(u.root_task_id, u.task_id)' : 'u.task_id';
+    const known = current ? "u.outcome != 'pending' AND u.usage_known = 1" : 'u.usage_known = 1';
+    const pending = current ? "u.outcome = 'pending'" : '0';
+    const notSent = current ? "u.outcome != 'pending' AND u.usage_known = 0 AND u.attribution_known = 1 AND u.attempted_at IS NULL" : '0';
+    const unknown = current ? `u.outcome != 'pending' AND u.usage_known = 0 AND NOT (${notSent})` : 'u.usage_known = 0';
+    const profile = current ? 'u.profile_id' : "json_extract(t.data, '$.profileId')";
+    const selected = p.taskId ? this.store.task(p.taskId) : undefined;
+    const includeChildren = current && selected?.mode === 'coordinated' && !selected.parentTaskId;
+    const taskFilter = includeChildren ? 'u.root_task_id' : 'u.task_id';
+    const table = current ? 'provider_requests' : 'usage_records';
+    const join = current ? '' : 'JOIN tasks t ON t.id = u.task_id';
+    const rows = this.store.db.prepare(`SELECT ${group} AS key, COUNT(*) AS requests,
+      SUM(CASE WHEN ${known} THEN 1 ELSE 0 END) AS known,
+      SUM(CASE WHEN ${pending} THEN 1 ELSE 0 END) AS pending,
+      SUM(CASE WHEN ${notSent} THEN 1 ELSE 0 END) AS not_sent,
+      SUM(CASE WHEN ${unknown} THEN 1 ELSE 0 END) AS unknown,
+      SUM(CASE WHEN ${known} THEN COALESCE(u.${current ? 'input_tokens' : 'prompt_tokens'}, 0) ELSE 0 END) AS prompt,
+      SUM(CASE WHEN ${known} THEN COALESCE(u.${current ? 'output_tokens' : 'completion_tokens'}, 0) ELSE 0 END) AS completion,
+      SUM(COALESCE(u.cache_read_tokens, 0)) AS cache_read,
+      SUM(COALESCE(u.cache_creation_tokens, 0)) AS cache_creation,
+      SUM(CASE WHEN ${unknown} THEN u.reserved ELSE 0 END) AS reserved_unknown,
+      SUM(CASE WHEN ${pending} THEN u.reserved ELSE 0 END) AS reserved_pending,
+      SUM(CASE WHEN ${notSent} THEN u.reserved ELSE 0 END) AS reserved_not_sent
+      FROM ${table} u ${join}
+      WHERE u.created_at >= ? AND u.created_at <= ? AND (? IS NULL OR ${taskFilter} = ?)
+        AND (? IS NULL OR ${profile} = ?) ${p.groupBy === 'task' ? 'AND u.task_id IS NOT NULL' : ''}
       GROUP BY key HAVING key > ? ORDER BY key LIMIT ?`)
-      .all(from, to, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number }[];
+      .all(from, to, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; pending: number; not_sent: number; unknown: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number; reserved_pending: number; reserved_not_sent: number }[];
     const buckets = rows.slice(0, p.limit).map(row => ({ key: row.key, requests: row.requests, knownRequests: row.known,
-      unknownRequests: row.requests - row.known, observedPrompt: row.prompt, observedCompletion: row.completion,
-      cacheRead: row.cache_read, cacheCreation: row.cache_creation, reservedUnknown: row.reserved_unknown }));
+      unknownRequests: row.unknown, pendingRequests: row.pending, notSentRequests: row.not_sent,
+      observedPrompt: row.prompt, observedCompletion: row.completion, cacheRead: row.cache_read,
+      cacheCreation: row.cache_creation, reservedUnknown: row.reserved_unknown,
+      reservedPending: row.reserved_pending, reservedNotSent: row.reserved_not_sent }));
     return { groupBy: p.groupBy, buckets, nextAfter: rows.length > p.limit ? buckets.at(-1)!.key : null, timeZone: 'UTC' };
   }
 

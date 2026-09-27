@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { BrowserHost, CompactionRecord, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, GitTask as Task, UsageReport } from '../../packages/protocol/src/index';
+import type { CompactionPage, UsageRecordPage } from '../../packages/protocol/src/workspace';
 import { RuntimeService, profileFingerprint } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
@@ -95,8 +96,9 @@ describe('controlled compaction and usage visibility', () => {
     const before = await runtime.dispatch('task.usage', { taskId: task.id }) as UsageReport;
     expect(before.contextPercent).toBeGreaterThanOrEqual(80);
     expect(before.totals).toMatchObject({ requests: 5, knownRequests: 5, unknownRequests: 0, prompt: 150, completion: 35, cacheRead: 60, cacheCreation: 15, reservedUnknown: 0 });
-    expect(before.records).toHaveLength(5);
-    expect(before.records[0]).toMatchObject({ usageKnown: true, promptTokens: 30, completionTokens: 7, cacheReadTokens: 12, cacheCreationTokens: 3 });
+    const beforeRecords = await runtime.dispatch('task.usageRecords', { taskId: task.id }) as UsageRecordPage;
+    expect(beforeRecords.records).toHaveLength(5);
+    expect(beforeRecords.records[0]).toMatchObject({ usageKnown: true, promptTokens: 30, completionTokens: 7, cacheReadTokens: 12, cacheCreationTokens: 3 });
 
     const record = await runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 2 }) as CompactionRecord;
     expect(record.messageIds).toHaveLength(8);
@@ -109,7 +111,7 @@ describe('controlled compaction and usage visibility', () => {
     expect(store.detail(task.id).compactions?.[0]?.id).toBe(record.id);
     const after = await runtime.dispatch('task.usage', { taskId: task.id }) as UsageReport;
     expect(after.estimatedContextTokens).toBeLessThan(before.estimatedContextTokens);
-    expect(after.compactions).toHaveLength(1);
+    expect((await runtime.dispatch('task.compactions', { taskId: task.id }) as CompactionPage).compactions).toHaveLength(1);
 
     await send(task.id, 'After compaction');
     const request = requests[requests.length - 1]!;
@@ -162,7 +164,7 @@ describe('controlled compaction and usage visibility', () => {
     const usage = await runtime.dispatch('task.usage', { taskId: task.id }) as UsageReport;
     expect(usage.totals).toMatchObject({ requests: 1, knownRequests: 0, unknownRequests: 1, prompt: 0, completion: 0 });
     expect(usage.totals.reservedUnknown).toBeGreaterThan(0);
-    expect(usage.records[0]).toMatchObject({ usageKnown: false, reason: expect.stringContaining('without reporting usage') });
+    expect((await runtime.dispatch('task.usageRecords', { taskId: task.id }) as UsageRecordPage).records[0]).toMatchObject({ usageKnown: false, reason: expect.stringContaining('without reporting usage') });
     // A corrupted native state (pending call without its assistant turn) fails validation and leaves the record untouched.
     const profile = store.profile(FAKE_PROFILE_ID)!;
     const coding = await runtime.dispatch('task.create', { title: 'Corrupt', projectPath: project, profileId: FAKE_PROFILE_ID, mode: 'coding', tokenBudget: 100000 }) as Task;

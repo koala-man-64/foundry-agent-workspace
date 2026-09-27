@@ -48,7 +48,7 @@ export interface WorkspaceEvent { sequence: number; type: string; taskId?: strin
 export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; projects: Project[]; preferences: WorkspacePreferences; lastSequence: number; runtime: 'ready'; }
 export interface TaskDetail { task: Task; messages: Message[]; approvals?: Approval[]; compactions?: CompactionRecord[]; hasUnknownPublication?: boolean; }
 /** One provider request's accounting. Unknown usage keeps its full conservative reservation. */
-export interface UsageRecord { id: string; taskId: string; requestId: string; reservedTokens: number; promptTokens: number | null; completionTokens: number | null; cacheReadTokens: number | null; cacheCreationTokens: number | null; usageKnown: boolean; reason: string | null; createdAt: string; }
+export interface UsageRecord { id: string; taskId: string; requestId: string; reservedTokens: number; promptTokens: number | null; completionTokens: number | null; cacheReadTokens: number | null; cacheCreationTokens: number | null; usageKnown: boolean; reason: string | null; createdAt: string; outcome?: 'pending' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'unknown'; attemptedAt?: string | null; }
 /** A retained compaction: the summarized message range and the context estimate before and after. Originals are never deleted. */
 export interface CompactionRecord { id: string; taskId: string; fromOrdinal: number; toOrdinal: number; messageIds: string[]; summary: string; estimatedTokensBefore: number; estimatedTokensAfter: number; createdAt: string; }
 export const CONTEXT_WARNING_PERCENT = 80;

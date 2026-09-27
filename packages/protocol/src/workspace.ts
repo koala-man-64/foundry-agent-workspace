@@ -79,7 +79,7 @@ export interface UsageRecordPage { records: UsageRecord[]; nextBefore: number | 
 export interface CompactionSummary { id: string; taskId: string; fromOrdinal: number; toOrdinal: number; messageCount: number; summaryExcerpt: string; summaryTruncated: boolean; estimatedTokensBefore: number; estimatedTokensAfter: number; createdAt: string }
 export interface CompactionPage { compactions: CompactionSummary[]; nextBefore: number | null }
 export interface CompactionContentChunk { compactionId: string; content: string; offset: number; nextOffset: number | null; totalBytes: number }
-export interface UsageTrendBucket { key: string; requests: number; knownRequests: number; unknownRequests: number; observedPrompt: number; observedCompletion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number }
+export interface UsageTrendBucket { key: string; requests: number; knownRequests: number; unknownRequests: number; pendingRequests: number; notSentRequests: number; observedPrompt: number; observedCompletion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number; reservedPending: number; reservedNotSent: number }
 export interface UsageTrendPage { groupBy: 'day' | 'profile' | 'task'; buckets: UsageTrendBucket[]; nextAfter: string | null; timeZone: 'UTC' }
 
 export interface WorkspaceApi {

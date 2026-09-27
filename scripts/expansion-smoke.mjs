@@ -19,7 +19,7 @@ async function until(label, probe, attempts = 300) {
 /** Exercise expansion paths through a packaged runtime's JSON-RPC connection and isolated fixture. */
 export async function verifyExpansion({ invoke, crashAndRestart, source, directory, profileId }) {
   const schema = await invoke('workspace.schema', {});
-  assert.equal(schema.version, 3, 'Packaged expansion smoke requires the verified v3 runtime.');
+  assert.equal(schema.version, 5, 'Packaged expansion smoke requires the verified v5 runtime.');
   const marker = `expansionsmoke${randomUUID().replaceAll('-', '')}`;
   const coding = await invoke('task.create', { title: marker, projectPath: source, profileId, mode: 'coding', tokenBudget: 200000 });
   await invoke('task.send', { taskId: coding.id, content: '/demo' });
@@ -169,7 +169,10 @@ $e=[Console]::In.ReadToEnd() | ConvertFrom-Json; if($e.type -ne 'task.completed'
   const previousRuleRuns = beforeRevoke.runs.filter(item => item.ruleId === ruleId).length;
   const postRevoke = await until('post-revoke event processing', async () => {
     const state = await invoke('automation.list', {});
-    return state.runs.filter(item => item.ruleId === ruleId).length > previousRuleRuns && state;
+    const later = state.runs.filter(item => activeIds.includes(item.ruleId) && !beforeRevoke.runs.some(prior => prior.id === item.id));
+    assert.ok(later.every(item => ['queued', 'cancelled'].includes(item.state)), `Revoked script dispatched again: ${JSON.stringify(later)}`);
+    // Built-in rules complete during event ingestion; queued scripts are cancelled by the subsequent pump.
+    return state.runs.filter(item => item.ruleId === ruleId).length > previousRuleRuns && later.every(item => item.state === 'cancelled') && state;
   });
   for (const revisionId of activeIds) {
     const priorIds = new Set(beforeRevoke.runs.filter(item => item.ruleId === revisionId).map(item => item.id));
@@ -216,7 +219,7 @@ $e=[Console]::In.ReadToEnd() | ConvertFrom-Json; if($e.type -ne 'task.completed'
   });
   assert.ok(launched.grantSnapshot && launched.pin, 'The running hook must persist its grant and pin before process launch.');
   await crashAndRestart();
-  assert.equal((await invoke('workspace.schema', {})).version, 3, 'Restart must reopen the same v3 profile.');
+  assert.equal((await invoke('workspace.schema', {})).version, 5, 'Restart must reopen the same v5 profile.');
   const recovered = await until('durable unknown hook after real packaged runtime crash', async () => {
     const state = await invoke('automation.list', {});
     return state.runs.find(item => item.id === launched.id && item.state === 'unknown') && state;
