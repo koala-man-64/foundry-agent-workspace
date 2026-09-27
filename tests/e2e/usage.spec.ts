@@ -21,6 +21,7 @@ test('usage overview filters offline requests and opens their conversation', asy
   try {
     const page = await app.firstWindow();
     await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, project);
+    await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await page.getByRole('button', { name: 'Add project', exact: true }).click();
     await expect(page.getByRole('button', { name: 'New chat in repository', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'New chat in repository', exact: true }).click();

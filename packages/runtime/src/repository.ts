@@ -4,12 +4,15 @@ import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { gitEnvironment } from './git-environment';
 import { promisify } from 'node:util';
-import type { DiffResult, FileContent, FileEntry } from '../../protocol/src/index';
+import type { DiffResult, FileContent, FileEntry, GitTask } from '../../protocol/src/index';
 
 const execFile = promisify(execFileCallback);
 const GIT_TIMEOUT_MS = 15_000;
 const GIT_MAX_OUTPUT_BYTES = 256 * 1024;
 const MAX_FILE_BYTES = 64 * 1024;
+const MAX_ARTIFACT_TEXT_BYTES = 256 * 1024;
+const MAX_ARTIFACT_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_ARTIFACT_PIXELS = 16_000_000;
 const MAX_PATHS = 5_000;
 const EMPTY_HOOKS_DIRECTORY = '.empty-git-hooks';
 const SECRET_NAME = /^(?:\.env(?:\..*)?|\.envrc|\.npmrc|\.pypirc|\.netrc|\.pgpass|\.terraformrc|\.(?:ssh|aws|azure|kube|docker|gnupg)|id_(?:rsa|dsa|ecdsa|ed25519)|credentials?(?:\..*)?|secrets?(?:\..*)?|.*\.(?:pem|key|p12|pfx))$/i;
@@ -19,6 +22,7 @@ type GitOutput = { stdout: string; truncated: boolean; exitCode: number };
 export interface PreparedEdit {
   root: string; path: string; before: string; after: string; expectedHash: string | null; resultingHash: string; fingerprint: string;
 }
+export interface ArtifactBytes { bytes: Buffer; mimeType: string; width?: number; height?: number }
 
 /** Distinguishes a preflight rejection from a Git operation whose effects need reconciliation. */
 export class RepositoryError extends Error {
@@ -61,10 +65,11 @@ export class RepositoryService {
   public async createTaskWorktree(
     projectPath: string,
     taskId: string,
+    baseCommit?: string,
   ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
     const key = process.platform === 'win32' ? path.resolve(projectPath).toLowerCase() : path.resolve(projectPath);
     const previous = this.creating.get(key) ?? Promise.resolve();
-    const operation = previous.catch(() => undefined).then(() => this.createTaskWorktreeSerialized(projectPath, taskId));
+    const operation = previous.catch(() => undefined).then(() => this.createTaskWorktreeSerialized(projectPath, taskId, baseCommit));
     this.creating.set(key, operation);
     try { return await operation; } finally { if (this.creating.get(key) === operation) this.creating.delete(key); }
   }
@@ -72,14 +77,15 @@ export class RepositoryService {
   private async createTaskWorktreeSerialized(
     projectPath: string,
     taskId: string,
+    requestedBase?: string,
   ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
     let mutationStarted = false;
 
     try {
       const projectRoot = await this.requireRepository(projectPath);
-      const baseCommit = (await this.git(projectRoot, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
+      const baseCommit = requestedBase ? await this.requireLocalCommit(projectRoot, requestedBase) : (await this.git(projectRoot, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
       if (!baseCommit) throw new Error('Repository does not have a valid HEAD commit.');
-      await this.rejectTrackedFilters(projectRoot);
+      await this.rejectTrackedFiltersAtRevision(projectRoot, baseCommit);
       const id = this.requireTaskId(taskId);
       const branch = `codex/task/${id}`;
       const base = await this.prepareWorktreeBase();
@@ -94,6 +100,47 @@ export class RepositoryService {
       if (error instanceof RepositoryError) throw error;
       const detail = error instanceof Error ? error.message : 'Repository operation failed.';
       throw new RepositoryError(detail, mutationStarted ? 'unknown' : 'none', { cause: error });
+    }
+  }
+
+  /** A continuation can use a clean live task HEAD or an explicitly selected retained local commit. */
+  public async continuationSource(task: GitTask, selectedCommit?: string): Promise<{ projectPath: string; commit: string }> {
+    const projectPath = await this.requireRepository(task.projectPath);
+    if (task.status === 'retired') {
+      if (!selectedCommit) throw new Error('A retired task requires an explicit retained commit.');
+      return { projectPath, commit: await this.requireLocalCommit(projectPath, selectedCommit) };
+    }
+    const worktreePath = await this.requireRepository(task.worktreePath);
+    const projectGit = await fs.realpath(path.resolve(projectPath, (await this.git(projectPath, ['rev-parse', '--git-common-dir'])).stdout.trim()));
+    const worktreeGit = await fs.realpath(path.resolve(worktreePath, (await this.git(worktreePath, ['rev-parse', '--git-common-dir'])).stdout.trim()));
+    if (process.platform === 'win32' ? projectGit.toLowerCase() !== worktreeGit.toLowerCase() : projectGit !== worktreeGit)
+      throw new Error('Source worktree does not belong to the selected project repository.');
+    if ((await this.uncommittedPaths(worktreePath)).length) throw new Error('Continuation requires a clean source worktree.');
+    const head = (await this.git(worktreePath, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
+    if (selectedCommit) {
+      const selected = await this.requireLocalCommit(projectPath, selectedCommit);
+      if (selected !== head) throw new Error('Selected commit differs from the clean source HEAD.');
+    }
+    return { projectPath, commit: head };
+  }
+
+  private async requireLocalCommit(repositoryRoot: string, candidate: string): Promise<string> {
+    if (!/^[0-9a-f]{40}$/i.test(candidate)) throw new Error('A full local 40-character commit SHA is required.');
+    const commit = (await this.git(repositoryRoot, ['rev-parse', '--verify', `${candidate}^{commit}`])).stdout.trim();
+    if (commit.toLowerCase() !== candidate.toLowerCase()) throw new Error('Selected commit is not an exact local commit.');
+    return commit;
+  }
+
+  /** Filter attributes must be inspected from the selected tree, which may differ from the current checkout. */
+  private async rejectTrackedFiltersAtRevision(repositoryRoot: string, commit: string): Promise<void> {
+    const tracked = (await this.git(repositoryRoot, ['ls-tree', '-r', '-z', '--name-only', commit])).stdout.split('\0').filter(Boolean);
+    if (tracked.length > MAX_PATHS) throw new Error('Repository has too many tracked paths to safely inspect filters.');
+    for (let index = 0; index < tracked.length; index += 100) {
+      const paths = tracked.slice(index, index + 100);
+      const values = (await this.git(repositoryRoot, ['check-attr', `--source=${commit}`, '-z', 'filter', '--', ...paths])).stdout.split('\0');
+      if (values.some((value, position) => position % 3 === 2 && value && value !== 'unspecified')) {
+        throw new Error('Selected revision uses Git filters; refusing because checkout may execute code.');
+      }
     }
   }
 
@@ -260,6 +307,44 @@ export class RepositoryService {
       content,
       hash: createHash('sha256').update(bytes).digest('hex'),
     };
+  }
+
+  /** Bounded local preview bytes; the caller renders text safely and never loads file URLs. */
+  public async readArtifact(task: GitTask, relativePath: string): Promise<ArtifactBytes> {
+    if (task.status === 'retired') throw new Error('A retired task has no preview worktree.');
+    const root = await this.requireRepository(task.worktreePath);
+    this.validateRelativePath(relativePath, false);
+    const extension = path.extname(relativePath).toLowerCase();
+    const text = ['.md', '.markdown', '.txt', '.log', '.out', '.tap'].includes(extension);
+    const image = ['.png', '.jpg', '.jpeg', '.webp'].includes(extension);
+    if (!text && !image) throw new Error('This artifact type cannot be previewed.');
+    const segments = relativePath.replaceAll('\\', '/').split('/');
+    let candidate = root;
+    for (const segment of segments) {
+      candidate = path.join(candidate, segment);
+      const stat = await fs.lstat(candidate);
+      if (stat.isSymbolicLink()) throw new Error('Symbolic links cannot be previewed.');
+    }
+    const resolved = await fs.realpath(candidate);
+    if (!this.isInside(root, resolved) || this.isDeniedRelativePath(this.toPortableRelativePath(root, resolved))) throw new Error('Artifact path is unavailable.');
+    const handle = await fs.open(resolved, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+    try {
+      const stat = await handle.stat();
+      const max = text ? MAX_ARTIFACT_TEXT_BYTES : MAX_ARTIFACT_IMAGE_BYTES;
+      if (!stat.isFile() || stat.size > max) throw new Error('Artifact exceeds its preview limit or is not a regular file.');
+      const bytes = await handle.readFile();
+      if (bytes.length > max) throw new Error('Artifact changed beyond its preview limit.');
+      const finalPath = await fs.realpath(candidate);
+      if (!this.isInside(root, finalPath) || finalPath !== resolved) throw new Error('Artifact path changed during preview.');
+      if (text) {
+        if (bytes.includes(0)) throw new Error('Binary data cannot be previewed as text.');
+        try { new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { throw new Error('Artifact must be UTF-8 text.'); }
+        return { bytes, mimeType: extension === '.md' || extension === '.markdown' ? 'text/markdown' : 'text/plain' };
+      }
+      const dimensions = imageDimensions(bytes, extension);
+      if (!dimensions || dimensions.width < 1 || dimensions.height < 1 || dimensions.width * dimensions.height > MAX_ARTIFACT_PIXELS) throw new Error('Image signature or dimensions are invalid.');
+      return { bytes, mimeType: extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg', ...dimensions };
+    } finally { await handle.close(); }
   }
 
   public async prepareEdit(root: string, relativePath: string, expectedHash: string | null, after: string): Promise<PreparedEdit> {
@@ -565,4 +650,43 @@ export class RepositoryService {
 
 export function createRepositoryService(worktreeBase: string): RepositoryService {
   return new RepositoryService(worktreeBase);
+}
+
+function imageDimensions(bytes: Buffer, extension: string): { width: number; height: number } | undefined {
+  if (extension === '.png') {
+    if (bytes.length < 33 || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || bytes.readUInt32BE(8) !== 13 || bytes.toString('ascii', 12, 16) !== 'IHDR') return undefined;
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (extension === '.webp') {
+    if (bytes.length < 30 || bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WEBP' || bytes.readUInt32LE(4) + 8 !== bytes.length) return undefined;
+    const kind = bytes.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return { width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
+    if (kind === 'VP8L' && bytes[20] === 0x2f) {
+      return { width: 1 + (bytes[21]! | ((bytes[22]! & 0x3f) << 8)), height: 1 + ((bytes[22]! >> 6) | (bytes[23]! << 2) | ((bytes[24]! & 0x0f) << 10)) };
+    }
+    if (kind === 'VP8 ' && bytes.length >= 30 && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+      return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+    }
+    return undefined;
+  }
+  if (extension === '.jpg' || extension === '.jpeg') {
+    if (bytes.length < 10 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes.at(-2) !== 0xff || bytes.at(-1) !== 0xd9) return undefined;
+    let offset = 2;
+    while (offset + 8 <= bytes.length) {
+      if (bytes[offset] !== 0xff) return undefined;
+      while (bytes[offset] === 0xff) offset++;
+      const marker = bytes[offset++];
+      if (marker === undefined || marker === 0xd9 || marker === 0xda) break;
+      if (marker >= 0xd0 && marker <= 0xd7 || marker === 0x01) continue;
+      if (offset + 2 > bytes.length) return undefined;
+      const length = bytes.readUInt16BE(offset);
+      if (length < 2 || offset + length > bytes.length) return undefined;
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        if (length < 7) return undefined;
+        return { width: bytes.readUInt16BE(offset + 5), height: bytes.readUInt16BE(offset + 3) };
+      }
+      offset += length;
+    }
+  }
+  return undefined;
 }

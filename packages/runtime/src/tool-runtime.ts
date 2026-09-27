@@ -104,7 +104,7 @@ export class ToolRuntime {
     this.save(approval); return approval;
   }
 
-  async execute(task: Task, call: ToolCall, signal: AbortSignal): Promise<ProviderToolResult> {
+  async execute(task: Task, call: ToolCall, signal: AbortSignal, options?: { origin: 'hook'; onApproval: (approval: Approval) => void }): Promise<ProviderToolResult> {
     const result = (content: string, isError = false): ProviderToolResult => {
       const clean = this.redactor.text(content);
       if (Buffer.byteLength(clean, 'utf8') > 192 * 1024) return { id: call.id, name: call.name, content: 'Tool output exceeded the result limit. Request a smaller result.', isError: true };
@@ -193,7 +193,7 @@ export class ToolRuntime {
       let requestedEnvironment: Record<string, string> = {};
       const binding = this.orchestration?.binding(task);
       if (role !== 'coding' && !binding) throw new Error('This agent is fenced or no longer active; no action was proposed.');
-      const common = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: name, state: 'awaiting-approval' as const, createdAt: new Date().toISOString(), ...(binding ?? {}) };
+      const common = { id: randomUUID(), taskId: task.id, toolCallId: call.id, nonce: randomUUID(), tool: name, state: 'awaiting-approval' as const, createdAt: new Date().toISOString(), ...(options ? { origin: options.origin } : {}), ...(binding ?? {}) };
       if (name === 'run_command') {
         const args = ToolArguments.run_command.parse(call.arguments);
         requestedEnvironment = args.environment;
@@ -218,7 +218,9 @@ export class ToolRuntime {
         this.assertNoSecrets(edit.before ?? ''); this.assertNoSecrets(edit.after);
         approval = { ...common, summary: expectedHash === null ? `Create ${edit.path}` : `Edit ${edit.path}`, path: edit.path, before: edit.before, after: edit.after, expectedHash, resultingHash: edit.resultingHash, fingerprint: edit.fingerprint };
       }
-      if (!await this.requestApproval(approval, signal)) return result(signal.aborted ? 'Action cancelled before execution.' : 'User rejected this action. Do not repeat this proposal without new user instructions.', true);
+      const decision = this.requestApproval(approval, signal);
+      options?.onApproval(approval);
+      if (!await decision) return result(signal.aborted ? 'Action cancelled before execution.' : 'User rejected this action. Do not repeat this proposal without new user instructions.', true);
       signal.throwIfAborted();
       // The executing intent is durable before any repository or process mutation.
       const approved = approval;

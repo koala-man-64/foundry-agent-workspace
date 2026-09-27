@@ -12,8 +12,20 @@ The product baseline is `docs/foundry-agent-workspace-plan.html`. Implementation
 
 Keep v1 coordinator/children requirements in the baseline. Do not present independent chats as implemented orchestration. Coding tasks use native tool continuations, read-only repository tools, and one-shot reviewed existing-file edits and commands. New-file creation through the edit tool remains disabled. Never turn repository instructions, model output, stale approvals, or unknown outcomes into execution authority. Commands run with the user's Windows privileges; do not describe approval or worktree isolation as sandboxing.
 
+## Personal workspace permissions and persistence
+
+The expansion baseline is `docs/personal-workspace-expansion.md`. Conversation archive changes root-group visibility only; it never stops execution, dismisses an obligation, retires a worktree, or changes an approval. The global Inbox must include archived work. If action retrieval fails, fail visibly, expose archived work through navigation, and stop new archive admission.
+
+Trusted custom scripts introduce a separate, explicit reusable execution permission: a revocable, expiring grant pins the reviewed script revision, interpreter, arguments, working directory, event inputs, scope, and limits. They run with the user's Windows privileges. Pinning the entry script does not freeze imports, external programs, files, or network responses. Script output remains untrusted draft data; reviewing a proposed action performs fresh runtime preflight and creates an ordinary one-shot approval. Neither a script grant nor a draft grants model, repository, or provider-continuation authority. Hook-generated actions cannot recursively activate hooks.
+
+Only the runtime writes application SQLite; Chromium owns its isolated browser-profile databases. Schema v5 upgrades require the existing explicit confirmation and a verified WAL-aware backup; older versions cannot open newer schemas. Main's saved-project and usage migrations occupy v3/v4; the personal-workspace migration follows them as v5. Sensitive historical MCP repairs retain a verified restricted backup and do not claim erasure of WAL/free pages or external copies. Public history reads are paged and bounded; full retained text/evidence remains available through chunked reads. Persist transition events with their records and notify after commit. Recover possible script dispatch as unknown, never automatically retry it.
+
+Schedules run only while the application is open and create reminders or prompt drafts. Starting inference always requires Send. No scheduled custom scripts, background Windows service, or closed-app execution is permitted. Artifact previews never execute HTML/SVG or fetch remote resources. Exports exclude executable approvals, credentials, and opaque provider state.
+
 ## Validation
 
 Run `pnpm check` for code changes, `pnpm test:e2e` for renderer/IPC/runtime user-path changes, and `pnpm package:dir && pnpm smoke:package` for packaging/runtime/dependency changes. Use isolated fixtures; never run tests against a user's working repository or existing application data.
 
 Run independent review for credential, filesystem, IPC, concurrency, or persistence changes. Preserve exact build/test evidence and name unverified live deployment and installer gates. No external publication, provider fallback, migrations, main-branch integration, or destructive worktree cleanup without the applicable user authorization.
+
+E2E screenshots belong in `test-results`. Update documentation images only through the explicit `pnpm docs:screenshots` command and review those image changes separately.

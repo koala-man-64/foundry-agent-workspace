@@ -1,13 +1,15 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Notification, session } from 'electron';
 import { join, resolve } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
-import { RpcMethods, BrowserCommandSchema, BrowserStateSchema, BrowserHostError, type BrowserState, type RpcMethod, type Snapshot, type ModelProfile } from '../../../../packages/protocol/src/index';
+import { RpcMethods, BrowserCommandSchema, BrowserStateSchema, BrowserHostError, type BrowserState, type RpcMethod, type TaskRead, type ModelProfile } from '../../../../packages/protocol/src/index';
 import { profileFingerprint } from '../../../../packages/runtime/src/profile-fingerprint';
 import { BrowserManager } from './browser-manager';
+import { createHash } from 'node:crypto';
 import { CredentialVault } from './credentials';
 import { RuntimeSupervisor } from './supervisor';
+import { NotificationPreferences, notificationTitle } from './notification-preferences';
 
 let window: BrowserWindow | undefined;
 let runtime: RuntimeSupervisor | undefined;
@@ -35,6 +37,9 @@ else {
     window.webContents.on('will-attach-webview', event => event.preventDefault());
     const dataDirectory = app.getPath('userData');
     const vault = new CredentialVault(join(dataDirectory, 'credentials'));
+    const notifications = new NotificationPreferences(join(dataDirectory, 'notification-preferences.json')); await notifications.load();
+    const notified = new Map<string, string>();
+    const attachments = new Set<{ taskId: string; cancelled: boolean }>();
     // Coordinated mode can be enabled before release qualification only for unpackaged development/test runs.
     const runtimeEnvironment: Record<string, string> = !app.isPackaged && process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1' ? { FOUNDRY_WORKSPACE_ENABLE_COORDINATED: '1' } : {};
     const publishBrowser = (state: BrowserState): void => {
@@ -47,8 +52,19 @@ else {
       if (!window?.isDestroyed()) window?.webContents.send('workspace:browser-state', next);
     };
     const ensureBrowser = (): BrowserManager => browser ??= new BrowserManager(window!, publishBrowser);
-    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event); }, () => {
-      for (const tab of browserState.tabs) if (tab.attachedTaskId) void browser?.command({ kind: 'takeControl', tabId: tab.id }).catch(() => undefined);
+    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => {
+      if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event);
+      const title = notificationTitle(event); const key = `${event.type}:${event.taskId ?? ''}`;
+      const fields = event.data && typeof event.data === 'object' ? event.data as Record<string, unknown> : {};
+      const value = createHash('sha256').update(['approvalId', 'state', 'assignmentId', 'reason'].map(name => typeof fields[name] === 'string' ? fields[name].slice(0, 512) : '').join('\0')).digest('hex');
+      if (!notifications.enabled || !title || notified.get(key) === value || !Notification.isSupported()) return;
+      notified.set(key, value); if (notified.size > 500) notified.delete(notified.keys().next().value!);
+      const toast = new Notification({ title: `Foundry · ${title}`, body: 'Open the workspace to review the recorded evidence. Pending work remains in Inbox.' });
+      toast.on('click', () => { if (window && !window.isDestroyed()) { window.show(); window.focus(); window.webContents.send('workspace:event', { sequence: 0, type: 'notification.open', taskId: event.rootTaskId ?? event.taskId, data: {}, createdAt: new Date().toISOString() }); } });
+      try { toast.show(); } catch { /* OS delivery is optional; durable Inbox remains available. */ }
+    }, () => {
+      for (const guard of attachments) guard.cancelled = true;
+      for (const tab of browserState.tabs) void browser?.command({ kind: 'takeControl', tabId: tab.id }).catch(() => undefined);
       if (!window?.isDestroyed()) window?.webContents.send('workspace:event', { sequence: 0, type: 'runtime.stopped', data: {}, createdAt: new Date().toISOString() });
     }, runtimeEnvironment, { request: async input => {
       if (!browser) {
@@ -77,30 +93,44 @@ else {
       authorize(event);
       const command = BrowserCommandSchema.parse(input);
       if (command.kind === 'attach') {
-        const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
-        const task = snapshot.tasks.find(item => item.id === command.taskId);
-        const profile = snapshot.profiles.find(item => item.id === task?.profileId);
-        if (!task || task.retiredAt || task.status === 'retired' || task.mode === 'coordinated' || task.rootTaskId || task.parentTaskId) throw new Error('Attach the tab to an active ordinary chat or coding task.');
-        if (!profile || (profile.apiKind !== 'fake' && (!profile.capabilities?.tools || !profile.capabilities.continuation || profile.verificationFingerprint !== profileFingerprint(profile)))) throw new Error('Probe this chat’s model for tools and continuation before attaching a browser tab.');
+        const guard = { taskId: command.taskId, cancelled: false };
+        attachments.add(guard);
+        try {
+          const { task } = await runtime!.request('task.read', { taskId: command.taskId }) as TaskRead;
+          if (!task || task.retiredAt || task.status === 'retired' || task.mode === 'coordinated' || task.rootTaskId || task.parentTaskId) throw new Error('Attach the tab to an active ordinary chat or coding task.');
+          const profile = await runtime!.request('profile.read', { profileId: task.profileId }) as ModelProfile | null;
+          if (!profile || (profile.apiKind !== 'fake' && (!profile.capabilities?.tools || !profile.capabilities.continuation || profile.verificationFingerprint !== profileFingerprint(profile)))) throw new Error('Probe this chat’s model for tools and continuation before attaching a browser tab.');
+          if (guard.cancelled) throw new Error('Task execution changed during attachment. Review the task before attaching again.');
+          const state = await ensureBrowser().command(command);
+          if (guard.cancelled) {
+            await browser?.request({ kind: 'revoke', taskId: command.taskId });
+            throw new Error('Task execution changed during attachment. Review the task before attaching again.');
+          }
+          return BrowserStateSchema.parse(state);
+        } finally { attachments.delete(guard); }
       }
       return BrowserStateSchema.parse(await ensureBrowser().command(command));
     });
+    ipcMain.handle('workspace:notification-preferences', event => { authorize(event); return { enabled: notifications.enabled }; });
+    ipcMain.handle('workspace:set-notifications', async (event, value: unknown) => { authorize(event); return notifications.set(z.boolean().parse(value)); });
     ipcMain.handle('workspace:invoke', async (event, method: unknown, params: unknown) => {
       authorize(event);
       if (typeof method !== 'string' || !Object.prototype.hasOwnProperty.call(RpcMethods, method)) throw new Error('Unsupported operation.');
       const validated = RpcMethods[method as RpcMethod].parse(params);
-      if (method === 'task.cancel' || method === 'task.retire') await browser?.request({ kind: 'revoke', taskId: (validated as { taskId: string }).taskId });
+      if (method === 'task.cancel' || method === 'task.retire') {
+        const taskId = (validated as { taskId: string }).taskId;
+        for (const guard of attachments) if (guard.taskId === taskId) guard.cancelled = true;
+        await browser?.request({ kind: 'revoke', taskId });
+      }
       if (method === 'profile.save') {
         const next = validated as ModelProfile;
-        const before = await runtime!.request('workspace.snapshot', {}) as Snapshot;
-        const previous = before.profiles.find(profile => profile.id === next.id);
+        const previous = await runtime!.request('profile.read', { profileId: next.id }) as ModelProfile | null;
         if (!previous || binding(previous) !== binding(next)) credentialsLoaded.delete(next.id);
       }
       // Credentials never enter a renderer request or response, history, or logs.
       if (method === 'task.start' || method === 'task.send' || method === 'profile.probe' || method === 'orchestration.resume') {
-        const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
         const taskId = method === 'orchestration.resume' ? (validated as { rootTaskId: string }).rootTaskId : (validated as { taskId?: string }).taskId;
-        const task = snapshot.tasks.find(item => item.id === taskId);
+        const task = taskId ? (await runtime!.request('task.read', { taskId }) as TaskRead).task : undefined;
         // A coordinated root schedules children with its explicitly configured child profiles.
         const start = method === 'task.start' ? validated as { profileId: string; coordination?: { childProfileIds: string[] } } : undefined;
         const profileIds = start ? [start.profileId, ...(start.coordination?.childProfileIds ?? [])]
@@ -108,7 +138,7 @@ else {
           : task ? [task.profileId, ...(task.coordination?.childProfileIds ?? [])] : [];
         for (const profileId of new Set(profileIds)) {
           if (credentialsLoaded.has(profileId)) continue;
-          const profile = snapshot.profiles.find(value => value.id === profileId);
+          const profile = await runtime!.request('profile.read', { profileId }) as ModelProfile | null;
           const credential = profile ? await vault.load(profileId, binding(profile)) : undefined;
           if (credential && profile) await runtime!.request('runtime.credential', { id: profileId, value: credential, binding: binding(profile) });
           credentialsLoaded.add(profileId);
@@ -127,8 +157,7 @@ else {
     ipcMain.handle('workspace:save-credential', async (event, profileId: unknown, value: unknown) => {
       authorize(event);
       const id = z.string().uuid().parse(profileId); const secret = z.string().min(4).max(8192).parse(value);
-      const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
-      const profile = snapshot.profiles.find(profile => profile.id === id);
+      const profile = await runtime!.request('profile.read', { profileId: id }) as ModelProfile | null;
       if (!profile) throw new Error('Save the profile before its credential.');
       await runtime!.request('runtime.credential', { id, value: secret, binding: binding(profile) });
       await vault.save(id, secret, binding(profile)); credentialsLoaded.add(id);

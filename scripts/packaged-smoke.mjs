@@ -8,6 +8,7 @@ import process from 'node:process';
 import { setTimeout, clearTimeout } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
 import console from 'node:console';
+import { verifyExpansion } from './expansion-smoke.mjs';
 
 const directory = await mkdtemp(join(tmpdir(), 'foundry-package-smoke-'));
 const executable = resolve('release/win-unpacked/Foundry Agent Workspace.exe');
@@ -16,8 +17,46 @@ const runtime = resolve('release/win-unpacked/resources/app.asar/out/main/runtim
 const environment = { ELECTRON_RUN_AS_NODE: '1', FOUNDRY_WORKSPACE_DATA: join(directory, 'data'), FOUNDRY_WORKSPACE_ENABLE_COORDINATED: '1' };
 for (const key of ['SystemRoot', 'PATH', 'TEMP', 'TMP', 'LOCALAPPDATA', 'USERPROFILE']) if (process.env[key]) environment[key] = process.env[key];
 const VALIDATION = { command: "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)", cwd: '', timeoutMs: 60000 };
-let child; let errors = ''; let sequence = 0; let watchdog;
+let child; let exit; let errors = ''; let sequence = 0; let watchdog; let failure;
 const pending = new Map();
+const launchRuntime = () => {
+  const launched = spawn(executable, [runtime], { env: environment, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  child = launched;
+  let buffer = '';
+  launched.stdout.setEncoding('utf8'); launched.stderr.setEncoding('utf8');
+  launched.stdin.on('error', error => { errors += `Runtime stdin failed: ${error.message}\n`; });
+  launched.stderr.on('data', chunk => { errors += chunk; });
+  launched.stdout.on('data', chunk => {
+    buffer += chunk;
+    for (;;) {
+      const index = buffer.indexOf('\n'); if (index < 0) break;
+      const response = JSON.parse(buffer.slice(0, index)); buffer = buffer.slice(index + 1);
+      // This smoke runs the runtime without a desktop window or attached browser tabs.
+      if (response.method === 'browser.host') {
+        const reply = response.params.kind === 'tabs' ? { result: [] } : response.params.kind === 'revoke' ? { result: null } : { error: { code: 'stale', message: 'No browser window exists in this runtime fixture.' } };
+        launched.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: response.id, method: 'browser.host.result', ...reply }) + '\n');
+        continue;
+      }
+      const waiter = pending.get(response.id);
+      if (waiter) { pending.delete(response.id); if (response.error) waiter.reject(new Error(response.error.message)); else waiter.resolve(response.result); }
+    }
+  });
+  exit = new Promise((accept, reject) => {
+    launched.once('error', reject);
+    launched.once('close', code => { for (const waiter of pending.values()) waiter.reject(new Error(`Runtime exited: ${code}; ${errors}`)); pending.clear(); accept(code); });
+  });
+};
+const invoke = (method, params) => new Promise((resolve, reject) => {
+  const id = String(++sequence); pending.set(id, { resolve, reject }); child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+});
+const crashAndRestart = async () => {
+  assert.ok(child && child.exitCode === null, 'Packaged runtime must be active before the crash test.');
+  assert.equal(child.kill('SIGKILL'), true, 'The packaged runtime could not be terminated for the crash test.');
+  await exit;
+  launchRuntime();
+  const ready = await invoke('workspace.summary', {});
+  assert.equal(ready.runtime, 'ready', 'The same isolated packaged profile must reopen after the crash.');
+};
 try {
   await stat(executable);
   const source = join(directory, 'source');
@@ -27,34 +66,16 @@ try {
   await writeFile(join(source, 'README.md'), '# Package fixture\n');
   for (const name of ['alpha', 'beta', 'gamma']) await writeFile(join(source, `${name}.txt`), `${name} fixture\n`);
   git(source, 'add', '.'); git(source, 'commit', '-qm', 'fixture');
-  child = spawn(executable, [runtime], { env: environment, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-  let buffer = '';
-  child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
-  child.stderr.on('data', chunk => { errors += chunk; });
-  child.stdout.on('data', chunk => {
-    buffer += chunk;
-    for (;;) {
-      const index = buffer.indexOf('\n'); if (index < 0) break;
-      const response = JSON.parse(buffer.slice(0, index)); buffer = buffer.slice(index + 1);
-      // This smoke runs the runtime without a desktop window or attached browser tabs.
-      if (response.method === 'browser.host') {
-        const reply = response.params.kind === 'tabs' ? { result: [] } : response.params.kind === 'revoke' ? { result: null } : { error: { code: 'stale', message: 'No browser window exists in this runtime fixture.' } };
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: response.id, method: 'browser.host.result', ...reply }) + '\n');
-        continue;
-      }
-      const waiter = pending.get(response.id);
-      if (waiter) { pending.delete(response.id); if (response.error) waiter.reject(new Error(response.error.message)); else waiter.resolve(response.result); }
-    }
-  });
-  const exit = new Promise((accept, reject) => {
-    child.once('error', reject);
-    child.once('exit', code => { for (const waiter of pending.values()) waiter.reject(new Error(`Runtime exited: ${code}; ${errors}`)); accept(code); });
-  });
+  launchRuntime();
   watchdog = setTimeout(() => { child.kill(); }, 300000);
-  const invoke = (method, params) => new Promise((resolve, reject) => {
-    const id = String(++sequence); pending.set(id, { resolve, reject }); child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
-  });
-  const snapshot = await invoke('workspace.snapshot', {});
+  const snapshot = await invoke('workspace.summary', {});
+  const taskDetail = async taskId => {
+    const read = await invoke('task.read', { taskId });
+    const messages = await invoke('task.messages', { taskId });
+    const summaries = await invoke('task.approvals', { taskId });
+    const approvals = await Promise.all(summaries.approvals.map(async approval => (await invoke('approval.get', { taskId, approvalId: approval.id })).approval));
+    return { ...read, messages: messages.items.map(item => item.message), approvals };
+  };
   assert.equal(snapshot.runtime, 'ready'); assert.equal(snapshot.profiles[0]?.apiKind, 'fake');
 
   // 1. Existing single-agent coding path.
@@ -62,7 +83,7 @@ try {
   await invoke('task.send', { taskId: task.id, content: '/demo' });
   let final;
   for (let i = 0; i < 400; i++) {
-    const detail = await invoke('task.get', { taskId: task.id });
+    const detail = await taskDetail(task.id);
     const approval = detail.approvals.find(value => value.state === 'awaiting-approval');
     if (approval) await invoke('approval.decide', { taskId: task.id, approvalId: approval.id, nonce: approval.nonce, decision: 'approve' });
     if (detail.task.status !== 'running') { final = detail; break; }
@@ -74,7 +95,7 @@ try {
   assert.equal(final.approvals.find(value => value.command).result.cleanupVerified, true);
 
   // 2. Coordinated two-child workflow plus a dependent child, serial integration and combined validation.
-  assert.deepEqual(await invoke('workspace.schema', {}), { version: 4, current: 4, upgradeRequired: false, coordinatedAvailable: true });
+  assert.deepEqual(await invoke('workspace.schema', {}), { version: 5, current: 5, upgradeRequired: false, coordinatedAvailable: true });
   const root = await invoke('task.create', { title: 'Packaged coordinated smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: VALIDATION } });
   const baseHead = git(root.worktreePath, 'rev-parse', 'HEAD');
   await invoke('task.send', { taskId: root.id, content: '/orchestrate-demo' });
@@ -84,8 +105,8 @@ try {
     maxActiveChildren = Math.max(maxActiveChildren, view.runs.filter(run => run.role === 'child' && run.lifecycle !== 'terminal').length);
     const coordinator = view.runs.find(run => run.role === 'coordinator');
     if (coordinator.lifecycle === 'terminal') break;
-    const candidates = [...(await invoke('task.get', { taskId: root.id })).approvals];
-    for (const run of view.runs.filter(item => item.role === 'child' && item.lifecycle !== 'terminal')) candidates.push(...(await invoke('orchestration.child', { rootTaskId: root.id, childTaskId: run.taskId })).approvals);
+    const candidates = [...(await taskDetail(root.id)).approvals];
+    for (const run of view.runs.filter(item => item.role === 'child' && item.lifecycle !== 'terminal')) candidates.push(...(await taskDetail(run.taskId)).approvals);
     const next = candidates.find(value => value.state === 'awaiting-approval');
     if (next) {
       assert.ok(next.rootTaskId === root.id && next.targetLabel && Number.isInteger(next.generation), JSON.stringify(next));
@@ -110,13 +131,13 @@ try {
   const chat = await invoke('task.create', { title: 'Packaged compaction smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'chat', tokenBudget: 200000 });
   for (const content of ['alpha direction '.repeat(30).trim(), 'beta direction '.repeat(30).trim(), 'gamma direction '.repeat(30).trim()]) {
     await invoke('task.send', { taskId: chat.id, content });
-    for (let i = 0; i < 200 && (await invoke('task.get', { taskId: chat.id })).task.status === 'running'; i++) await delay(50);
+    for (let i = 0; i < 200 && (await invoke('task.read', { taskId: chat.id })).task.status === 'running'; i++) await delay(50);
   }
   const compaction = await invoke('task.compact', { taskId: chat.id, keepRecent: 2 });
   assert.equal(compaction.messageIds.length, 4);
   assert.ok(compaction.summary.includes('runtime-generated'));
-  const compactedDetail = await invoke('task.get', { taskId: chat.id });
-  assert.equal(compactedDetail.messages.length, 6); assert.equal(compactedDetail.compactions.length, 1);
+  const compactedDetail = await taskDetail(chat.id);
+  assert.equal(compactedDetail.messages.length, 6); assert.equal(compactedDetail.compactionCount, 1);
   const usage = await invoke('task.usage', { taskId: chat.id });
   assert.equal(usage.totals.requests, 3); assert.equal(usage.compactions.length, 1);
   const usageFilters = { taskId: chat.id, includeDemo: true };
@@ -141,7 +162,7 @@ try {
   await invoke('task.send', { taskId: mcpTask.id, content: '/mcp-demo' });
   let mcpFinal;
   for (let i = 0; i < 600; i++) {
-    const detail = await invoke('task.get', { taskId: mcpTask.id });
+    const detail = await taskDetail(mcpTask.id);
     const approval = detail.approvals.find(value => value.state === 'awaiting-approval');
     if (approval) { assert.equal(approval.tool, 'mcp__fixture__write_note'); assert.equal(approval.mcp.serverKey, 'fixture'); await invoke('approval.decide', { taskId: mcpTask.id, approvalId: approval.id, nonce: approval.nonce, decision: 'approve' }); }
     if (detail.task.status !== 'running') { mcpFinal = detail; break; }
@@ -159,10 +180,10 @@ try {
   for (const projectId of [savedProject.id, null]) {
     const draft = { requestId: randomUUID(), projectId, content: 'Packaged draft first message', profileId: snapshot.profiles[0].id, mode: 'chat', tokenBudget: 100000 };
     const started = await invoke('task.start', draft);
-    for (let i = 0; i < 200 && (await invoke('task.get', { taskId: started.id })).task.status === 'running'; i++) await delay(50);
+    for (let i = 0; i < 200 && (await taskDetail(started.id)).task.status === 'running'; i++) await delay(50);
     const replay = await invoke('task.start', draft);
     assert.equal(replay.id, started.id);
-    const detail = await invoke('task.get', { taskId: started.id });
+    const detail = await taskDetail(started.id);
     assert.equal(detail.task.status, 'idle');
     assert.equal(detail.messages.filter(message => message.role === 'user').length, 1);
     assert.equal(detail.task.workspaceKind, projectId ? 'folder' : 'none');
@@ -189,17 +210,31 @@ try {
   assert.deepEqual(retired.removedWorktrees, [chat.worktreePath]);
   await assert.rejects(stat(chat.worktreePath));
   assert.equal(git(source, 'rev-parse', '--verify', chat.branch).length, 40);
-  assert.equal((await invoke('task.get', { taskId: chat.id })).task.status, 'retired');
+  assert.equal((await invoke('task.read', { taskId: chat.id })).task.status, 'retired');
 
   // The source checkout is unchanged by every workflow.
   assert.equal(await readFile(join(source, 'README.md'), 'utf8'), '# Package fixture\n');
   assert.equal(git(source, 'status', '--porcelain'), '');
   assert.equal(git(source, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+  const expansion = await verifyExpansion({ invoke, crashAndRestart, source, directory, profileId: snapshot.profiles[0].id });
+  console.log(`Expansion smoke: ${JSON.stringify(expansion)}`);
   child.stdin.end(); assert.equal(await exit, 0, errors);
   assert.ok((await stat(join(directory, 'data', 'workspace.db'))).size > 0);
-  console.log(`PASS: packaged runtime loads schema v4, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
+  console.log(`PASS: packaged runtime loads schema v5, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
+} catch (error) {
+  failure = error;
+  console.error('Packaged smoke failed before cleanup:', error);
 } finally {
   clearTimeout(watchdog);
-  if (child && child.exitCode === null) { child.kill(); await new Promise(resolve => child.once('exit', resolve)); }
-  await rm(directory, { recursive: true, force: true });
+  try {
+    if (child && child.exitCode === null) {
+      const stopping = child;
+      try { stopping.stdin.end(); } catch { stopping.kill(); }
+      const stopTimer = setTimeout(() => stopping.kill(), 10000);
+      try { await exit; } finally { clearTimeout(stopTimer); }
+    }
+  } catch (error) { failure ??= error; console.error('Runtime shutdown failed:', error); }
+  try { await rm(directory, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 }); }
+  catch (error) { failure ??= error; console.error(`Fixture cleanup failed; retained at ${directory}:`, error); }
 }
+if (failure !== undefined) throw failure;

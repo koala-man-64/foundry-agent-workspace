@@ -131,6 +131,17 @@ describe('BrowserManager access and action authority', () => {
     expect((await manager.command({ kind: 'state' })).tabs[0]?.attachedTaskId).toBeNull();
   });
 
+  it('cancels a pending attachment when its task is revoked before the file check completes', async () => {
+    const manager = host();
+    const tabId = (await manager.command({ kind: 'state' })).activeTabId!;
+    // command yields at the debugger setup while the guard already identifies the target task.
+    const attaching = expect(manager.command({ kind: 'attach', tabId, taskId: taskA })).rejects.toMatchObject({ code: 'stale' });
+    await manager.request({ kind: 'revoke', taskId: taskA });
+    await attaching;
+    expect((await manager.command({ kind: 'state' })).tabs[0]?.attachedTaskId).toBeNull();
+    expect(await manager.request({ kind: 'tabs', taskId: taskA })).toEqual([]);
+  });
+
   it('adopts a secure popup WebContents into an active managed tab', async () => {
     const manager = host();
     const popup = mock.makeContents!() as FakeContents;

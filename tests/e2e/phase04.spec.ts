@@ -18,7 +18,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
   try {
     const page = await app.firstWindow();
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
     const createTask = async (title: string, mode: 'chat' | 'coding'): Promise<{ id: string; worktreePath: string; branch: string }> => {
       return createFixtureTask(page, project, title, mode);
     };
@@ -41,6 +41,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await page.getByRole('button', { name: 'Usage', exact: true }).click();
     await expect(page.getByTestId('usage-panel')).toContainText('2 messages');
     await expect(page.getByTestId('usage-panel')).toContainText('Requests');
+    await page.screenshot({ path: 'test-results/usage-chart.png' });
     const usage = await page.evaluate((taskId) => window.workspace.invoke('task.usage', { taskId }), chat.id);
     expect(usage.compactions).toHaveLength(1); expect(usage.totals.requests).toBe(3);
 
@@ -58,7 +59,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await expect(server).toContainText('foundry-fixture 1.0.0');
     // The allowlist is stored by the runtime (a save re-launches and relists the server); the checkbox reflects the saved state.
     await server.getByRole('checkbox', { name: /^echo/ }).click();
-    await expect.poll(() => page.evaluate(async () => (await window.workspace.invoke('mcp.list', {}))[0]?.readOnlyTools)).toEqual(['echo']);
+    await expect.poll(() => page.evaluate(async () => (await window.workspace.invoke('mcp.list', {})).items[0]?.readOnlyTools)).toEqual(['echo']);
     await expect(server.getByRole('checkbox', { name: /^echo/ })).toBeChecked();
     await settings.getByRole('button', { name: 'Close settings' }).click();
 
@@ -76,7 +77,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await page.screenshot({ path: 'test-results/mcp-approval-screenshot.png', fullPage: true });
     await expect(stat(notes)).rejects.toThrow();
     await card.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, coding.id)).toBe('idle');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.read', { taskId })).task.status, coding.id)).toBe('idle');
     await expect(page.locator('article.approval-card.complete')).toHaveCount(1);
     expect(await readFile(notes, 'utf8')).toBe('echo said: echo: ping from the offline demo\n');
     await expect(page.getByText('the note was written through the approved external tool', { exact: false })).toBeVisible();
@@ -102,7 +103,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     expect(JSON.parse(bundle).mcpServers[0].key).toBe('fixture');
 
     // 5. Explicit commit then safe retirement of the coding task worktree; the branch and history remain.
-    await page.getByRole('button', { name: /MCP demo task/ }).click();
+    await page.locator('.task-row', { hasText: 'MCP demo task' }).click();
     await writeFile(join(coding.worktreePath, 'demo-note.txt'), 'written by the user in the task worktree\n');
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await page.getByTestId('publish-panel').getByLabel('Commit message').fill('Offline MCP demo change');
@@ -115,7 +116,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await expect(page.getByRole('status')).toContainText('Retired 1 clean worktree');
     await expect(stat(coding.worktreePath)).rejects.toThrow();
     expect(git('rev-parse', '--verify', coding.branch)).toHaveLength(40);
-    await expect(page.getByRole('button', { name: /MCP demo task/ })).toHaveAttribute('title', /^Retired ·/);
+    await expect(page.locator('.task-row', { hasText: 'MCP demo task' })).toContainText('Retired');
     await expect(page.getByLabel('Task message')).toBeDisabled();
     expect(git('status', '--porcelain')).toBe('');
     expect(errors).toEqual([]);

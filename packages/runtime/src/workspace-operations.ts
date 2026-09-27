@@ -5,6 +5,7 @@ import type { Approval, CommitResult, CompactionRecord, DiagnosticsExport, Model
 import { CONTEXT_WARNING_PERCENT, boundText } from '../../protocol/src/index';
 import { estimateContext, prepareRequest } from './agent-loop';
 import { applyCompactions, compactContinuation, estimateContinuationTokens, planMessageCompaction, summarizeMessages } from './compaction';
+import { WorkspaceQueries } from './workspace-queries';
 import { McpManager } from './mcp';
 import type { AgentChannel } from './agent-channel';
 import { Redactor } from './redaction';
@@ -84,17 +85,16 @@ export class WorkspaceOperations {
     const includeChildren = task.mode === 'coordinated' && !task.parentTaskId;
     const filters = { taskId, includeDemo: true, includeChildren };
     const metrics = this.store.schemaVersion >= 4 ? this.store.usageSummary({ filters }).totals : undefined;
-    const records = includeChildren && metrics ? this.store.usageRequests({ filters, limit: 100 }).records.filter(row => row.outcome !== 'pending').reverse().map(row => ({
-      id: row.requestId, taskId: row.taskId!, requestId: row.requestId, reservedTokens: row.reservedTokens,
-      promptTokens: row.inputTokens, completionTokens: row.outputTokens, cacheReadTokens: row.cacheReadTokens,
-      cacheCreationTokens: row.cacheCreationTokens, usageKnown: row.usageKnown, reason: row.reason, createdAt: row.createdAt
-    })) : this.store.usageRecords(taskId, 100).records;
+    const queries = new WorkspaceQueries(this.store, this.redactor);
+    const usagePage = queries.dispatch('task.usageRecords', { taskId, limit: 20 }) as import('../../protocol/src/workspace').UsageRecordPage;
+    const compactionPage = queries.dispatch('task.compactions', { taskId, limit: 20 }) as import('../../protocol/src/workspace').CompactionPage;
     return {
       taskId, tokenBudget: task.tokenBudget, usedTokens: task.usedTokens, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit,
       estimatedContextTokens: estimated, contextPercent: Math.round(estimated / profile.contextLimit * 100), warningPercent: CONTEXT_WARNING_PERCENT,
       totals: metrics ? { requests: metrics.knownRequests + metrics.unknownRequests + metrics.notSentRequests, knownRequests: metrics.knownRequests, unknownRequests: metrics.unknownRequests,
         prompt: metrics.input, completion: metrics.output, cacheRead: metrics.cacheRead ?? 0, cacheCreation: metrics.cacheCreation ?? 0, reservedUnknown: metrics.reservedUnknown } : this.store.usageTotals(taskId),
-      records, compactions: this.store.compactions(taskId), metrics
+      records: usagePage.records, compactions: compactionPage.compactions, metrics,
+      recordsNextBefore: usagePage.nextBefore, compactionsNextBefore: compactionPage.nextBefore
     };
   }
 

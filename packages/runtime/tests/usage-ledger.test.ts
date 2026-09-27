@@ -76,13 +76,13 @@ describe('canonical usage ledger', () => {
     createV2('old.db');
     const legacy = open('old.db'); const t = task(); legacy.saveTask(t); const id = randomUUID();
     legacy.saveUsageRecord({ id: randomUUID(), taskId: t.id, requestId: id, reservedTokens: 300, promptTokens: 100, completionTokens: 20, cacheReadTokens: null, cacheCreationTokens: null, usageKnown: true, reason: null, createdAt: new Date().toISOString() });
-    const upgraded = await legacy.upgradeToCurrent(); expect(upgraded.version).toBe(4);
+    const upgraded = await legacy.upgradeToCurrent(); expect(upgraded.version).toBe(5);
     expect(legacy.usageSummary({}).totals).toMatchObject({ requests: 1, input: 100, output: 20, total: 120 });
     expect(legacy.usageRequests({}).records[0]).toMatchObject({ requestId: id, outcome: 'unknown', attributionKnown: false, profileId: null });
     expect((legacy.db.prepare('SELECT COUNT(*) AS n FROM usage_records').get() as { n: number }).n).toBe(1);
     const backup = new Database(upgraded.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(2); backup.close();
   });
-  it('keeps v2 untouched after failed v4 backup or migration', async () => {
+  it('keeps v2 untouched after failed current backup or migration', async () => {
     createV2('older.db');
     for (const options of [{ backupFault: 'verify' as const }, { migrationFault: 'after-ddl' as const }]) {
       const s = open('older.db', options); await expect(s.upgradeToCurrent()).rejects.toThrow();
@@ -90,7 +90,7 @@ describe('canonical usage ledger', () => {
       s.close(); stores.splice(stores.indexOf(s), 1);
     }
   });
-  it('upgrades published saved-projects v3 to v4 without rewriting projects or old usage', async () => {
+  it('upgrades published saved-projects v3 to v5 without rewriting projects or old usage', async () => {
     const path = join(dir, 'projects-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const s = open('projects-v3.db'); const t = task(); s.saveTask(t);
     const saved = await s.upgradeToV3(); expect(saved.version).toBe(3);
@@ -101,7 +101,7 @@ describe('canonical usage ledger', () => {
     s.close(); stores.splice(stores.indexOf(s), 1);
     const reopened = open('projects-v3.db'); expect(reopened.schemaVersion).toBe(3); expect(reopened.project(project.id)).toEqual(project);
     expect(reopened.usageSummary({}).detailedTracking).toBe(false);
-    const upgraded = await reopened.upgradeToCurrent(); expect(upgraded.version).toBe(4);
+    const upgraded = await reopened.upgradeToCurrent(); expect(upgraded.version).toBe(5);
     expect(reopened.project(project.id)).toEqual(project);
     expect(reopened.preferences()).toEqual(preferences);
     expect((reopened.db.prepare('SELECT state FROM task_starts WHERE request_id=?').get(startId) as { state: string }).state).toBe('unknown');
@@ -112,7 +112,7 @@ describe('canonical usage ledger', () => {
     expect((backup.prepare('SELECT COUNT(*) AS n FROM projects').get() as { n: number }).n).toBe(2);
     backup.close();
   });
-  it('rolls v3 back completely when v4 migration fails', async () => {
+  it('rolls v3 back completely when current migration fails', async () => {
     const path = join(dir, 'rollback-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const initial = open('rollback-v3.db'); await initial.upgradeToV3(); initial.close(); stores.splice(stores.indexOf(initial), 1);
     const s = open('rollback-v3.db', { migrationFault: 'after-ddl' });
@@ -121,10 +121,10 @@ describe('canonical usage ledger', () => {
     expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='provider_requests'").get()).toBeUndefined();
     expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='projects'").get()).toBeTruthy();
   });
-  it('upgrades a v1 database directly to v4 after backing it up', async () => {
+  it('upgrades a v1 database directly to v5 after backing it up', async () => {
     const path = join(dir, 'v1.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const s = open('v1.db'); expect(s.schemaVersion).toBe(1); const t = task(); s.saveTask(t);
-    const result = await s.upgradeToCurrent(); expect(result.version).toBe(4); expect(s.orchestrationAvailable).toBe(true);
+    const result = await s.upgradeToCurrent(); expect(result.version).toBe(5); expect(s.orchestrationAvailable).toBe(true);
     expect(s.task(t.id).title).toBe(t.title);
     const backup = new Database(result.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(1); backup.close();
   });

@@ -13,9 +13,10 @@ async function launch(state: string) {
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: [resolve('out/main/index.js')], env });
   const page = await app.firstWindow();
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+  await expect.poll(() => page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).toMatchObject({ runtime: 'ready' });
   return { app, page, errors };
 }
 
@@ -26,7 +27,7 @@ async function addProject(app: ElectronApplication, page: Page, folder: string) 
   }, folder);
   await page.getByRole('button', { name: 'Add project', exact: true }).click();
   const canonicalFolder = await realpath(folder);
-  await expect.poll(() => page.evaluate(async (path) => (await window.workspace.invoke('workspace.snapshot', {})).projects.some((project) => project.path.toLowerCase() === path.toLowerCase()), canonicalFolder)).toBe(true);
+  await expect.poll(() => page.evaluate(async (path) => (await window.workspace.invoke('workspace.summary', {})).projects.some((project) => project.path.toLowerCase() === path.toLowerCase()), canonicalFolder)).toBe(true);
 }
 
 test('saved ordinary folders keep grouped chats, drafts, visibility and collapsed state across navigation and restart', async () => {
@@ -43,14 +44,14 @@ test('saved ordinary folders keep grouped chats, drafts, visibility and collapse
     await expect(page.locator('.sidebar form')).toHaveCount(0);
     await addProject(app, page, beta); await addProject(app, page, alpha);
     await addProject(app, page, alpha);
-    expect((await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).projects).toHaveLength(2);
+    expect((await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).projects).toHaveLength(2);
     await page.getByRole('button', { name: 'New chat in Alpha', exact: true }).click();
     await page.getByLabel('Chat message', { exact: true }).fill('Remember the Alpha draft.');
     await page.getByRole('button', { name: 'New chat in Beta', exact: true }).click();
     await page.getByLabel('Chat message', { exact: true }).fill('Remember the Beta draft.');
     const alternateProfile = await page.evaluate(() => window.workspace.invoke('profile.save', { id: crypto.randomUUID(), name: 'Alternate offline', apiKind: 'fake', endpoint: '', deployment: 'fixture', contextLimit: 32000, outputLimit: 2048 }));
     await page.getByLabel('Model', { exact: true }).selectOption(alternateProfile.id);
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ preferences: { profileId: alternateProfile.id } });
+    await expect.poll(() => page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).toMatchObject({ preferences: { profileId: alternateProfile.id } });
     await page.getByRole('button', { name: 'New chat in Alpha', exact: true }).click();
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Remember the Alpha draft.');
     // An unrelated runtime event must not steal draft selection or its text.
@@ -67,14 +68,14 @@ test('saved ordinary folders keep grouped chats, drafts, visibility and collapse
     await page.getByRole('button', { name: /hello\.txt/ }).click();
     await expect(page.getByText('Read-only project file.', { exact: true })).toBeVisible();
     await expect(page.locator('.file-tree')).not.toContainText('.env');
-    const snapshot = await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}));
+    const snapshot = await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }));
     expect(snapshot.tasks).toHaveLength(1);
     expect(snapshot.tasks[0]).toMatchObject({ workspaceKind: 'folder', projectPath: await realpath(alpha) });
     expect(snapshot.tasks[0]).not.toHaveProperty('worktreePath');
     await page.getByRole('button', { name: 'New chat in Beta', exact: true }).click();
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Remember the Beta draft.');
     await page.evaluate((taskId) => window.workspace.invoke('task.send', { taskId, content: 'Continue in the background.' }), snapshot.tasks[0]!.id);
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, snapshot.tasks[0]!.id)).toBe('idle');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.read', { taskId })).task.status, snapshot.tasks[0]!.id)).toBe('idle');
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Remember the Beta draft.');
 
     await page.getByRole('button', { name: 'Manage projects', exact: true }).click();
@@ -120,7 +121,7 @@ test('projectless drafts retain Git mode preference and start without filesystem
     await page.getByLabel('Chat message', { exact: true }).fill('A conversation without a folder.');
     await page.getByRole('button', { name: /^Send/ }).click();
     await expect(page.getByText('Fake response: A conversation without a folder.', { exact: true })).toBeVisible();
-    const snapshot = await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}));
+    const snapshot = await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }));
     expect(snapshot.preferences.mode).toBe('coding');
     expect(snapshot.tasks).toHaveLength(1);
     const task = snapshot.tasks[0]!;
@@ -156,7 +157,7 @@ test('Git draft first send creates one isolated worktree and missing folder erro
     await page.getByLabel('Mode', { exact: true }).selectOption('chat');
     await page.getByRole('button', { name: /^Send/ }).click();
     await expect(page.getByText('Fake response: Start in the saved Git project.', { exact: true })).toBeVisible();
-    const snapshot = await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}));
+    const snapshot = await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }));
     expect(snapshot.tasks).toHaveLength(1);
     expect(snapshot.tasks[0]).toMatchObject({ workspaceKind: 'git' });
     expect(snapshot.tasks[0]!.worktreePath).not.toBe(gitFolder);
@@ -167,6 +168,6 @@ test('Git draft first send creates one isolated worktree and missing folder erro
     await page.getByRole('button', { name: /^Send/ }).click();
     await expect(page.getByRole('status')).toContainText(/could not|unavailable|folder|directory/i);
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Keep this text if the folder disappears.');
-    expect((await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).tasks).toHaveLength(1);
+    expect((await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).tasks).toHaveLength(1);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });

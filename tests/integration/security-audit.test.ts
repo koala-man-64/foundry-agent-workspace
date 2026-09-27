@@ -9,8 +9,9 @@
  *     to every egress (SQLite and its WAL, diagnostics bundles, the renderer event stream),
  *  4. Job Object reclamation of whole process trees by `job-runner.ps1` and `mcp-host.ps1`.
  *
- * The Electron module is the only stand-in: it is replaced so that `apps/desktop/src/main/index.ts`
- * can be loaded and its real IPC handlers invoked with forged senders and frames.
+ * Electron is replaced so that `apps/desktop/src/main/index.ts` can be loaded and its real IPC
+ * handlers invoked with forged senders and frames. BrowserManager is also replaced for the
+ * main-process lookup tests; its tab permissions and actions have separate focused tests.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
@@ -77,6 +78,7 @@ vi.mock('electron', () => ({
     quit: () => undefined
   },
   BrowserWindow: desktop.StandInWindow,
+  Notification: class { static isSupported() { return false; } },
   dialog: {
     showErrorBox: (title: string, detail: string) => { desktop.startupErrors.push(`${title}: ${detail}`); },
     showOpenDialog: async () => ({ canceled: true, filePaths: [] })
@@ -89,6 +91,18 @@ vi.mock('electron', () => ({
     }
   },
   safeStorage: { isEncryptionAvailable: () => true, encryptString: (value: string) => Buffer.from(value), decryptString: (value: Buffer) => value.toString() }
+}));
+
+// BrowserManager's tab/permission behavior has its own Electron-backed tests. These IPC tests
+// exercise the main-process task/profile authority check before handing off to the browser.
+vi.mock('../../apps/desktop/src/main/browser-manager', () => ({
+  BrowserManager: class {
+    async command(): Promise<{ tabs: []; activeTabId: null }> { return { tabs: [], activeTabId: null }; }
+    async request(): Promise<null> { return null; }
+    hide(): void { /* no browser surface in this IPC fixture */ }
+    restore(): void { /* no browser surface in this IPC fixture */ }
+    shutdown(): void { /* no browser surface in this IPC fixture */ }
+  }
 }));
 
 // ---------------------------------------------------------------- shared helpers
@@ -143,7 +157,7 @@ afterEach(async () => {
 // ================================================================ 1. IPC sender origin
 
 describe('IPC sender origin and subframe rejection', () => {
-  const PRIVILEGED = ['workspace:invoke', 'workspace:save-credential', 'workspace:pick-project', 'workspace:browser'] as const;
+  const PRIVILEGED = ['workspace:invoke', 'workspace:save-credential', 'workspace:pick-project', 'workspace:browser', 'workspace:notification-preferences', 'workspace:set-notifications'] as const;
 
   beforeAll(async () => {
     await import('../../apps/desktop/src/main/index');
@@ -152,9 +166,10 @@ describe('IPC sender origin and subframe rejection', () => {
 
   /** Arguments that are individually valid, so only `authorize` can be the reason a call is refused. */
   const argumentsFor = (channel: string): unknown[] =>
-    channel === 'workspace:invoke' ? ['workspace.snapshot', {}]
+    channel === 'workspace:invoke' ? ['workspace.summary', {}]
       : channel === 'workspace:save-credential' ? [randomUUID(), 'a-credential-value']
         : channel === 'workspace:browser' ? [{ kind: 'state' }]
+        : channel === 'workspace:set-notifications' ? [false]
         : [];
   const call = (channel: string, sender: unknown, senderFrame: unknown): Promise<unknown> =>
     Promise.resolve().then(() => desktop.handlers.get(channel)!({ sender, senderFrame }, ...argumentsFor(channel)));
@@ -241,8 +256,8 @@ describe('IPC sender origin and subframe rejection', () => {
     }));
     const root = profiles[0]!; const child = profiles[1]!;
     const result = { id: randomUUID(), title: 'First message' };
-    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async (method) => {
-      if (method === 'workspace.snapshot') return { tasks: [], profiles, projects: [], preferences: { profileId: root.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async (method, input) => {
+      if (method === 'profile.read') return profiles.find(profile => profile.id === (input as { profileId: string }).profileId) ?? null;
       if (method === 'runtime.credential') return null;
       if (method === 'task.start') return result;
       throw new Error(`Unexpected fixture method: ${method}`);
@@ -255,6 +270,8 @@ describe('IPC sender origin and subframe rejection', () => {
       expect(response).toEqual(result);
       expect(vault.mock.calls).toEqual([root, child].map(profile => [profile.id, JSON.stringify([profile.apiKind, profile.endpoint, profile.deployment])]));
       expect(request.mock.calls.filter(([method]) => method === 'runtime.credential').map(([, params]) => (params as { id: string }).id)).toEqual([root.id, child.id]);
+      expect(request.mock.calls.filter(([method]) => method === 'profile.read').map(([, params]) => (params as { profileId: string }).profileId)).toEqual([root.id, child.id]);
+      expect(request.mock.calls.some(([method]) => method === 'workspace.snapshot')).toBe(false);
       expect(request.mock.calls.at(-1)).toEqual(['task.start', params]);
       expect(JSON.stringify(response)).not.toContain('credential-canary');
     } finally { vault.mockRestore(); request.mockRestore(); }
@@ -264,13 +281,72 @@ describe('IPC sender origin and subframe rejection', () => {
     const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
     const { CredentialVault } = await import('../../apps/desktop/src/main/credentials');
     const profile = { id: randomUUID(), name: 'Changed binding', apiKind: 'responses', endpoint: 'https://changed.example.invalid', deployment: 'changed', contextLimit: 128000, outputLimit: 4096 };
-    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockResolvedValue({ tasks: [], profiles: [profile] });
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async method => {
+      if (method === 'profile.read') return profile;
+      throw new Error(`Unexpected fixture method: ${method}`);
+    });
     const vault = vi.spyOn(CredentialVault.prototype, 'load').mockRejectedValue(new Error('Could not unlock a saved credential for this endpoint.'));
     try {
       desktop.mainFrame.url = RENDERER_URL.href;
       await expect(desktop.handlers.get('workspace:invoke')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, 'task.start', { requestId: randomUUID(), projectId: null, content: 'First message', profileId: profile.id, mode: 'chat' })).rejects.toThrow('Could not unlock');
-      expect(request.mock.calls.map(([method]) => method)).toEqual(['workspace.snapshot']);
+      expect(request.mock.calls.map(([method]) => method)).toEqual(['profile.read']);
     } finally { vault.mockRestore(); request.mockRestore(); }
+  });
+
+  it('checks the exact attached task profile even when it is beyond the summary page', async () => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const taskId = randomUUID(); const tabId = randomUUID();
+    const profiles = Array.from({ length: 26 }, (_, index) => ({ id: randomUUID(), name: `Profile ${index}`, apiKind: 'fake', endpoint: '', deployment: '', contextLimit: 128000, outputLimit: 4096 }));
+    const profileId = profiles[25]!.id;
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async (method, input) => {
+      if (method === 'task.read') return { task: { id: taskId, profileId, status: 'idle', mode: 'chat' }, compactionCount: 0, pendingApprovals: 0, unknownOutcomes: 0 };
+      if (method === 'workspace.summary') return { profiles: profiles.slice(0, 25), nextProfileAfter: profiles[24]!.id, lastSequence: 0, runtime: 'ready' };
+      if (method === 'profile.read') return profiles.find(profile => profile.id === (input as { profileId: string }).profileId) ?? null;
+      throw new Error(`Unexpected aggregate read: ${method}`);
+    });
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      const command = { kind: 'attach', taskId, tabId };
+      await expect(desktop.handlers.get('workspace:browser')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, command)).resolves.toEqual({ tabs: [], activeTabId: null });
+      expect(request.mock.calls).toEqual([['task.read', { taskId }], ['profile.read', { profileId }]]);
+    } finally { request.mockRestore(); }
+  });
+
+  it.each(['task.cancel', 'task.retire'])('cancels pending browser eligibility checks when %s arrives', async method => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const taskId = randomUUID(); const profileId = randomUUID();
+    let release!: (value: unknown) => void;
+    const profile = new Promise(resolve => { release = resolve; });
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async name => {
+      if (name === 'task.read') return { task: { id: taskId, profileId, status: 'idle', mode: 'chat' } };
+      if (name === 'profile.read') return profile;
+      if (name === method) return null;
+      throw new Error(`Unexpected fixture method: ${name}`);
+    });
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      const event = { sender: desktop.webContents, senderFrame: desktop.mainFrame };
+      const attaching = desktop.handlers.get('workspace:browser')!(event, { kind: 'attach', taskId, tabId: randomUUID() });
+      const rejected = expect(attaching).rejects.toThrow('Task execution changed during attachment');
+      await vi.waitFor(() => expect(request.mock.calls.some(([name]) => name === 'profile.read')).toBe(true));
+      await desktop.handlers.get('workspace:invoke')!(event, method, method === 'task.retire' ? { taskId, confirm: 'retire' } : { taskId });
+      release({ id: profileId, apiKind: 'fake' });
+      await rejected;
+    } finally { release({ id: profileId, apiKind: 'fake' }); request.mockRestore(); }
+  });
+
+  it('rejects browser attachment to a missing task before attempting a profile read', async () => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const taskId = randomUUID(); const tabId = randomUUID();
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async method => {
+      if (method === 'task.read') return { task: null, compactionCount: 0, pendingApprovals: 0, unknownOutcomes: 0 };
+      throw new Error(`Unexpected profile read for a missing task: ${method}`);
+    });
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      await expect(desktop.handlers.get('workspace:browser')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, { kind: 'attach', taskId, tabId })).rejects.toThrow('Attach the tab to an active ordinary chat or coding task.');
+      expect(request.mock.calls).toEqual([['task.read', { taskId }]]);
+    } finally { request.mockRestore(); }
   });
 });
 
@@ -510,7 +586,7 @@ describe('credential canary screening and leak matrix', () => {
   const surfaces = async (taskId?: string): Promise<Record<string, string>> => {
     const collected: Record<string, string> = {
       events: JSON.stringify(events),
-      snapshot: JSON.stringify(await runtime.dispatch('workspace.snapshot', {})),
+      snapshot: JSON.stringify(await runtime.dispatch('workspace.summary', {})),
       mcp: JSON.stringify(await runtime.dispatch('mcp.list', {}))
     };
     for (const suffix of ['', '-wal', '-shm']) {
@@ -658,7 +734,7 @@ describe('credential canary screening and leak matrix', () => {
     expect(saved.running, `${saved.lastError ?? 'MCP server did not start'}; fixture: ${startupTrace}`).toBe(true);
     expect(saved.tools.map(tool => tool.name)).toEqual(['leak']);
 
-    const direct = await runtime.mcp.call(saved, 'leak', {}, new AbortController().signal);
+    const direct = await runtime.mcp.call(store.mcpServer(saved.id)!, 'leak', {}, new AbortController().signal);
     expect(direct.content).toBe('value=[REDACTED]');
 
     // An allowlisted read-only MCP result is persisted into provider state without a further decision,
@@ -686,19 +762,15 @@ describe('credential canary screening and leak matrix', () => {
     registerCanaries();
     const serving = join(base, 'audit-mcp-server.mjs');
     await fs.writeFile(serving, auditServerSource('not-a-canary'));
-    const leaky = await runtime.dispatch('mcp.save', {
-      id: randomUUID(), key: 'leaky', name: 'Leaky config', command: process.execPath, arguments: [serving],
-      cwd: '', environment: { AUDIT_LABEL: PLAIN_CANARY }, enabled: true, readOnlyTools: [], callTimeoutMs: 10_000
-    }) as McpServerStatus;
-    // The server is never launched and none of its tools are ever advertised to a model.
-    expect(leaky.running).toBe(false);
-    expect(leaky.tools).toEqual([]);
-    expect(leaky.lastError).toMatch(/secret-like/i);
+    for (const enabled of [true, false]) {
+      await expect(runtime.dispatch('mcp.save', {
+        id: randomUUID(), key: 'leaky', name: 'Leaky config', command: process.execPath, arguments: [serving],
+        cwd: '', environment: { AUDIT_LABEL: PLAIN_CANARY }, enabled, readOnlyTools: [], callTimeoutMs: 10_000
+      })).rejects.toThrow(/environment/);
+    }
     expect(runtime.mcp.toolDefinitions()).toEqual([]);
-    // Open finding, reported separately: `RuntimeService.dispatch`'s `mcp.save` catch branch stores the
-    // rejected configuration verbatim (packages/runtime/src/service.ts), so the refused environment
-    // value still reaches `mcp_servers.data` and is read back by `mcp.list`. The fix belongs in
-    // service.ts, which Workstream A must not edit, so this suite does not yet assert its absence.
+    expect(store.db.prepare('SELECT data FROM mcp_servers').all()).toEqual([]);
+    expect(await runtime.dispatch('mcp.list', {})).toEqual({ items: [], nextCursor: null });
   }, 60_000);
 });
 
@@ -789,7 +861,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
         id: randomUUID(), key: 'fixture', name: 'Job fixture', command: process.execPath, arguments: [FIXTURE_SERVER],
         cwd: '', environment: { MCP_FIXTURE_NOTES: join(base, 'notes.txt') }, enabled: true, readOnlyTools: ['spawn_child'], callTimeoutMs: 5000
       }) as McpServerStatus;
-      const spawned = await runtime.mcp.call(saved, 'spawn_child', {}, new AbortController().signal);
+      const spawned = await runtime.mcp.call(store.mcpServer(saved.id)!, 'spawn_child', {}, new AbortController().signal);
       const pid = (JSON.parse(spawned.content) as { pid: number }).pid;
       expect(alive(pid)).toBe(true);
 

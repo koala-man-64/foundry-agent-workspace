@@ -22,7 +22,7 @@ async function launch(stateDirectory: string): Promise<{ app: ElectronApplicatio
   const app = await electron.launch({ args: [resolve('out/main/index.js')], env: baseEnvironment(stateDirectory) });
   const page = await app.firstWindow();
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
-  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
   return { app, page, errors };
 }
 
@@ -50,22 +50,35 @@ async function createCoordinatedTask(page: Page, project: string, title: string)
 
 async function snapshotTaskByTitle(page: Page, title: string): Promise<{ id: string; worktreePath: string }> {
   return page.evaluate(async (taskTitle) => {
-    const snapshot = await window.workspace.invoke('workspace.snapshot', {});
-    const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
+    const page = await window.workspace.invoke('workspace.tasks', { visibility: 'all', sort: 'created', limit: 50 });
+    const task = page.tasks.find((candidate) => candidate.title === taskTitle);
     if (!task?.worktreePath) throw new Error('Coordinated task was not created.');
     return { id: task.id, worktreePath: task.worktreePath };
   }, title);
 }
 
-async function approveUntilSettled(page: Page, maxApprovals: number): Promise<void> {
+async function approveUntilSettled(page: Page, rootTaskId: string, maxApprovals: number): Promise<void> {
   await page.getByRole('button', { name: /^Approvals/ }).click();
   for (let i = 0; i < maxApprovals; i++) {
-    await expect.poll(async () => (await page.getByText(/^Completed on /).isVisible()) || (await page.locator('article.approval-card.awaiting-approval').count()) > 0, { timeout: 60000 }).toBe(true);
-    if (await page.getByText(/^Completed on /).isVisible()) return;
-    const approvalId = await page.locator('article.approval-card.awaiting-approval').first().getAttribute('data-approval-id');
-    expect(approvalId).toBeTruthy();
-    const card = page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`);
+    const card = page.locator('article.approval-card.awaiting-approval').first();
+    // A quiet interval during child provisioning/integration is not evidence of completion.
+    try {
+      await expect.poll(async () => {
+        if (await card.isVisible()) return 'approval';
+        const terminal = await page.evaluate(async id => (await window.workspace.invoke('orchestration.get', { rootTaskId: id })).runs.some(run => run.role === 'coordinator' && run.lifecycle === 'terminal'), rootTaskId);
+        return terminal ? 'terminal' : 'working';
+      }, { timeout: 45000 }).not.toBe('working');
+    } catch (error) {
+      const state = await page.evaluate(async id => window.workspace.invoke('orchestration.get', { rootTaskId: id }), rootTaskId);
+      await test.info().attach('coordinator-wait-state', { body: JSON.stringify(state, null, 2), contentType: 'application/json' });
+      await test.info().attach('coordinator-wait-ui', { body: await page.locator('body').innerText(), contentType: 'text/plain' });
+      await page.screenshot({ path: 'test-results/coordinator-wait.png' });
+      throw error;
+    }
+    if (!(await card.isVisible())) return;
     await expect(card.locator('.approval-target')).toBeVisible();
+    const approvalId = await card.getAttribute('data-approval-id');
+    expect(approvalId).toBeTruthy();
     await card.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect(page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`)).toHaveCount(0, { timeout: 30000 });
   }
@@ -86,6 +99,7 @@ test('coordinated workflow: delegation, review, serial integration and restart e
   let { app, page, errors } = await launch(join(fixture, 'state'));
   try {
     const savedProject = await page.evaluate((path) => window.workspace.invoke('project.add', { path }), project);
+    await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await page.getByRole('button', { name: `New chat in ${savedProject.name}`, exact: true }).click();
     await page.getByLabel('Mode', { exact: true }).selectOption('coordinated');
     await page.getByRole('button', { name: /More options/ }).click();
@@ -96,7 +110,7 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.getByRole('heading', { name: 'Coordinated demo task', exact: true })).toBeVisible();
     const created = await snapshotTaskByTitle(page, 'Coordinated demo task');
 
-    await approveUntilSettled(page, 40);
+    await approveUntilSettled(page, created.id, 40);
     try { await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 }); }
     catch (error) {
       await test.info().attach('coordinated-failure-state', { body: JSON.stringify({
@@ -110,7 +124,6 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await page.screenshot({ path: 'test-results/orchestration-complete.png', fullPage: true });
     await page.getByRole('button', { name: 'Orchestration', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Assignments', level: 3 })).toBeVisible();
-    await page.screenshot({ path: 'test-results/coordinated-workflow-screenshot.png', fullPage: true });
 
     // Git evidence on the coordinated root worktree: three new single-parent commits.
     const worktree = created.worktreePath;
@@ -133,7 +146,9 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await app.close();
 
     ({ app, page, errors } = await launch(join(fixture, 'state')));
-    await page.getByRole('button', { name: /Coordinated demo task/ }).click();
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await page.locator('.task-row', { hasText: 'Coordinated demo task' }).click();
+    await expect(page.getByLabel('Conversation transcript')).toContainText('/orchestrate-demo');
     await expect(page.getByRole('navigation', { name: 'Agent tree' })).toBeVisible();
     const childRows = page.locator('nav[aria-label="Agent tree"] .agent-row').filter({ hasNotText: 'Coordinator' });
     await expect(childRows).toHaveCount(3);
@@ -144,6 +159,61 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(assignmentCards).toHaveCount(3);
     await expect(page.getByRole('heading', { name: 'Combined validation', level: 3 })).toBeVisible();
     await expect(page.getByText(/^Completed on /)).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
+});
+
+test('archived coordinator with child approval retains recovery in Inbox after restart', async () => {
+  test.setTimeout(180_000);
+  const fixture = await mkdtemp(join(tmpdir(), 'foundry-orchestration-archive-e2e-'));
+  const project = join(fixture, 'repository');
+  await initFixtureRepo(project);
+  let { app, page, errors } = await launch(join(fixture, 'state'));
+  try {
+    await createCoordinatedTask(page, project, 'Archived coordinated task');
+    await page.getByLabel('Message coordinator').fill('/orchestrate-demo');
+    await page.getByRole('button', { name: /^Send/ }).click();
+    await page.getByRole('button', { name: /^Approvals/ }).click();
+    await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(2, { timeout: 30_000 });
+    const oldApprovalIds = await page.locator('article.approval-card.awaiting-approval').evaluateAll(items => items.map(item => item.getAttribute('data-approval-id')));
+    await page.getByRole('button', { name: 'Archive Archived coordinated task' }).click();
+    await page.getByRole('button', { name: /^Inbox(?: \(\d+\+?\))?$/ }).click();
+    await expect(page.getByLabel('Global action center').getByText('Archived coordinated task').first()).toBeVisible();
+    expect(errors).toEqual([]);
+    await app.close();
+
+    ({ app, page, errors } = await launch(join(fixture, 'state')));
+    await page.getByRole('button', { name: /^Inbox(?: \(\d+\+?\))?$/ }).click();
+    const action = page.getByLabel('Global action center').getByRole('button', { name: /Archived coordinated task/ }).first();
+    await expect(action).toBeVisible();
+    await action.click();
+    await expect(page.getByRole('heading', { name: 'Archived coordinated task' })).toBeVisible();
+    await expect(page.getByLabel('Conversation transcript')).toContainText('/orchestrate-demo');
+    await page.getByRole('button', { name: /^Approvals/ }).click();
+    for (const id of oldApprovalIds) {
+      const card = page.locator(`article.approval-card[data-approval-id="${id}"]`);
+      await expect(card).toContainText('revoked');
+      await expect(card.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+    }
+    await page.getByLabel('Message coordinator').fill('Resume the interrupted work after reviewing current state.');
+    await page.getByRole('button', { name: /^Send/ }).click();
+    await expect(page.getByLabel('Conversation transcript')).toContainText('Resume the interrupted work');
+    await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]!; window.setContentSize(1000, 680); window.webContents.setZoomFactor(2); });
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getZoomFactor())).toBe(2);
+    if (!(await page.getByLabel('Coordinated task inspector').isVisible())) await page.getByRole('button', { name: 'Inspect task' }).click();
+    await page.getByLabel('Coordinated task inspector').getByRole('button', { name: 'Orchestration', exact: true }).click();
+    const incomplete = page.locator('article.assignment-card', { hasText: 'alpha · revision 1' });
+    await expect(incomplete).toContainText('Incomplete');
+    await incomplete.getByRole('button', { name: 'Revise' }).click();
+    await incomplete.getByRole('button', { name: 'Submit revision' }).click();
+    await page.getByLabel('Coordinated task inspector').getByRole('button', { name: /^Approvals/ }).click();
+    const fresh = page.locator('article.approval-card.awaiting-approval').first();
+    await expect(fresh).toBeVisible({ timeout: 30_000 });
+    const freshId = await fresh.getAttribute('data-approval-id');
+    expect(oldApprovalIds).not.toContain(freshId);
+    await fresh.getByRole('button', { name: 'Approve', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator(`article.approval-card[data-approval-id="${freshId}"]`)).not.toHaveClass(/awaiting-approval/, { timeout: 15_000 });
     expect(errors).toEqual([]);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });
@@ -222,9 +292,11 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
 
   const { app, page } = await launch(stateDirectory);
   try {
-    await expect(page.getByRole('button', { name: /Legacy chat task/ })).toBeVisible();
-    await page.getByRole('button', { name: /Legacy chat task/ }).click();
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await expect(page.locator('.task-row', { hasText: 'Legacy chat task' })).toBeVisible();
+    await page.locator('.task-row', { hasText: 'Legacy chat task' }).click();
     await expect(page.getByText('Fake response: Legacy fixture message.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add project', exact: true })).toBeDisabled();
     await expect(page.locator('.upgrade-banner')).toBeVisible();
 
@@ -235,11 +307,12 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
 
     await page.locator('.upgrade-banner').getByRole('button', { name: 'Review upgrade' }).click();
     await page.getByRole('button', { name: 'Create backup and upgrade', exact: true }).click();
+    await expect(page.locator('.notice')).toContainText('Database upgraded to v5', { timeout: 20000 });
     await expect.poll(async () => ({
       schema: await page.evaluate(() => window.workspace.invoke('workspace.schema', {})),
       error: await page.locator('.notice').filter({ hasText: 'Could not upgrade' }).allTextContents()
-    }), { timeout: 20000 }).toMatchObject({ schema: { version: 4, coordinatedAvailable: true }, error: [] });
-    const backups = await readdir(join(stateDirectory, 'backups'));
+    }), { timeout: 20000 }).toMatchObject({ schema: { version: 5, coordinatedAvailable: true }, error: [] });
+    const backups = await readdir(join(stateDirectory, 'backups'), { recursive: true });
     expect(backups.some((name) => name.endsWith('.db'))).toBe(true);
 
     await expect(page.getByText('Fake response: Legacy fixture message.', { exact: true })).toBeVisible();

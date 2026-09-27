@@ -74,7 +74,7 @@ describe('runtime credential generation', () => {
     const creating = runtime.dispatch('task.create', { title: 'Drain', projectPath: join(directory, 'source'), profileId: '00000000-0000-4000-8000-000000000001', tokenBudget: 10_000 });
     await startedGate;
     const stopping = runtime.shutdown();
-    await expect(runtime.dispatch('workspace.snapshot', {})).rejects.toThrow('shutting down');
+    await expect(runtime.dispatch('workspace.summary', {})).rejects.toThrow('shutting down');
     release();
     const task = await creating as Task;
     await stopping;

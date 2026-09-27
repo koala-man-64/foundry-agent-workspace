@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
-import { COORDINATED_MODE_ENABLED, isGitTask, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
+import type { AutomationDraft, CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
+import { AutomationRpc, COORDINATED_MODE_ENABLED, isGitTask, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
 import { RepositoryService, RepositoryError } from './repository';
 import { Redactor } from './redaction';
@@ -14,24 +14,23 @@ import { Orchestrator } from './orchestrator';
 import { McpManager } from './mcp';
 import { WorkspaceOperations } from './workspace-operations';
 import { admitRequest, measuredUsage, type MeasuredUsage, type ResponseMetadata } from './usage-accounting';
-import { dirname, isAbsolute } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { statSync } from 'node:fs';
 import type { BrowserHost } from '../../protocol/src/index';
 import { profileFingerprint } from './profile-fingerprint';
 export { profileFingerprint } from './profile-fingerprint';
+import { checkMcpConfig, sanitizeStoredMcp, storedMcpConfiguration, type StoredMcpServer } from './mcp-config';
+import { isWorkspaceMethod, WorkspaceQueries } from './workspace-queries';
+import { ActionPreparationError, AutomationService } from './automation';
+import { ContinuityService, isContinuityMethod } from './continuity';
+import { repairMcpConfigurations } from './mcp-repair';
+import { ToolArguments } from './tool-definitions';
+import { newFeatureAdmission } from './feature-admission';
 
 export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean; mcpHostPath?: string; browserHost?: BrowserHost }
-// These operations never write runtime state, even while awaiting filesystem reads.
-// Unknown/new operations conservatively block a schema upgrade until they settle.
-const READ_ONLY_RPC = new Set<RpcMethod>([
-  'workspace.snapshot', 'workspace.schema', 'task.get', 'task.usage', 'task.diff',
-  'files.list', 'files.read', 'usage.summary', 'usage.breakdown', 'usage.requests',
-  'orchestration.get', 'orchestration.child', 'channel.get', 'mcp.list'
-]);
 export class RuntimeService {
   private readonly running = new Map<string, { abort: AbortController; done: Promise<void> }>();
   private readonly dispatches = new Set<Promise<unknown>>();
-  private readonly mutatingDispatches = new Set<Promise<unknown>>();
   private readonly credentials = new Map<string, string>();
   private readonly generations = new Map<string, number>();
   private readonly probing = new Set<string>();
@@ -48,9 +47,19 @@ export class RuntimeService {
   readonly operations: WorkspaceOperations;
   private readonly coordinatedMode: boolean;
   private readonly browserHost?: BrowserHost;
+  private readonly queries: WorkspaceQueries;
+  private readonly continuity: ContinuityService;
+  private automation?: AutomationService;
+  private automationTimer?: ReturnType<typeof setInterval>;
+  private automationFault?: string;
+  private readonly continuityLocks = new Set<string>();
+  private readonly features: ReturnType<typeof newFeatureAdmission>;
+  private credentialRepairs = Promise.resolve();
+  private credentialRepairError?: string;
   constructor(readonly store: Store, private readonly repositories: RepositoryService, private readonly emit: (event: WorkspaceEvent) => void, providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter = createProvider, commands = new CommandRunner(), options: RuntimeOptions = {}) {
     this.providerFactory = providerFactory;
     this.browserHost = options.browserHost;
+    this.features = newFeatureAdmission(store);
     this.coordinatedMode = options.coordinatedMode ?? (COORDINATED_MODE_ENABLED || process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1');
     const slots = new ExecutionSlots();
     const publish = (type: string, data: unknown, taskId: string): void => this.publish(type, data, taskId);
@@ -65,66 +74,136 @@ export class RuntimeService {
       profileFingerprint
     });
     this.tools.attachOrchestration(this.orchestrator);
-    this.mcp = new McpManager(() => this.store.mcpServers(), this.redactor, { hostPath: options.mcpHostPath, forbiddenRoots: () => [repositories.worktreeBaseDirectory] });
+    this.mcp = new McpManager(() => this.store.mcpServers().map(server => sanitizeStoredMcp(server, this.redactor)), this.redactor, { hostPath: options.mcpHostPath, forbiddenRoots: () => [repositories.worktreeBaseDirectory] });
     this.tools.attachMcp(this.mcp);
     this.operations = new WorkspaceOperations(store, repositories, this.redactor, this.mcp, (type, data, taskId) => this.publish(type, data, taskId), {
       isRunning: taskId => this.running.has(taskId),
       profileFingerprint,
       activeRuns: rootTaskId => this.store.orchestrationAvailable ? this.orchestrator.records.runs(rootTaskId).filter(run => run.lifecycle !== 'terminal').length : 0
     }, dirname(store.path), this.tools.channel);
+    this.queries = new WorkspaceQueries(store, this.redactor);
+    this.continuity = new ContinuityService(store, repositories, this.redactor, (type, data, taskId) => this.publish(type, data, taskId), { dataDirectory: dirname(store.path), profileReady: id => { const profile = store.profile(id); return Boolean(profile && this.profileReady(profile)); }, acquireSource: id => {
+      const task = store.task(id); const rootId = task.rootTaskId ?? id;
+      if (this.continuityLocks.has(rootId)) throw new Error('A continuation is already being created from this task grouping.');
+      if ([...this.running.keys()].some(activeId => (store.task(activeId).rootTaskId ?? activeId) === rootId)) throw new Error('Finish active execution before creating a continuation.');
+      this.continuityLocks.add(rootId); return () => { this.continuityLocks.delete(rootId); };
+    } });
+    this.initializeAutomation();
   }
   private readonly providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter;
-  private publish(type: string, data: unknown, taskId?: string): void { this.emit(this.store.event(type, data, taskId)); }
+  private publish(type: string, data: unknown, taskId?: string): void {
+    // Streaming fragments are transient and never trigger a history query or automation.
+    if (type === 'task.progress') { this.emit({ sequence: 0, type, data, taskId, createdAt: new Date().toISOString() }); return; }
+    const canonical = this.store.schemaVersion >= 5 && ['task.started', 'task.completed', 'task.stopped', 'approval.changed', 'message.completed'].includes(type);
+    const event = (canonical ? this.store.lastEvent(type, taskId) : undefined) ?? this.store.event(type, data, taskId); this.emit(event);
+    if (this.automation && !/^(?:hook\.|automation\.|draft\.|schedule\.)/.test(type)) void this.automation.onEvent(event).catch(error => this.recordAutomationFault(error));
+  }
+  private recordAutomationFault(error: unknown): void {
+    if (this.closing) return;
+    this.automationFault = this.redactor.text(error instanceof Error ? error.message : 'Automation failed.');
+    this.features.set({ feature: 'hooks', enabled: false, reason: 'runtime-fault' });
+    this.features.set({ feature: 'scheduling', enabled: false, reason: 'runtime-fault' });
+    this.emit(this.store.event('automation.fault', { message: this.automationFault }));
+  }
+  private initializeAutomation(): void {
+    if (this.store.schemaVersion < 5 || this.automation) return;
+    this.automation = new AutomationService(this.store, this.redactor, (type, data, taskId) => this.publish(type, data, taskId), { scriptDirectory: join(dirname(this.store.path), 'scripts'), prepareAction: draft => this.prepareDraftAction(draft), admission: () => ({ hooks: this.features.get('hooks').enabled, scheduling: this.features.get('scheduling').enabled }) });
+    const tick = (): void => { if (this.closing || this.automationFault) return; try { this.automation!.tick(new Date()); } catch (error) { this.recordAutomationFault(error); } };
+    tick(); void this.automation.catchUp().then(() => this.automation!.pumpQueued()).catch(error => this.recordAutomationFault(error));
+    this.automationTimer = setInterval(tick, 30_000); this.automationTimer.unref();
+  }
+  private async prepareDraftAction(draft: AutomationDraft): Promise<{ approvalId: string }> {
+    try {
+    if (!draft.taskId || !draft.proposal) throw new Error('This draft has no typed action and target task.');
+    await this.flushCredentialRepairs();
+    if (!this.features.get('hooks').enabled) throw new Error('Hook admission is paused. Retained drafts remain available; re-enable hooks before preparing a new action.');
+    this.assertContinuityUnlocked(draft.taskId);
+    const task = this.store.task(draft.taskId);
+    if (task.mode !== 'coding' || task.parentTaskId || task.rootTaskId || task.status !== 'idle') throw new Error('Action drafts require a ready standalone coding task. The draft remains available for review.');
+    if (this.running.has(task.id) || this.operations.isRetiring(task.id) || this.operations.isPublishing(task.id) || this.mcpBusy) throw new Error('Finish active execution or configuration before reviewing this draft.');
+    if (this.store.db.prepare("SELECT 1 FROM intents WHERE state IN ('pending','awaiting-approval','approved','executing','unknown') AND json_extract(data,'$.taskId')=? LIMIT 1").get(task.id)) throw new Error('Resolve pending or unknown operations before reviewing a new action draft.');
+    const tool = draft.proposal.tool;
+    const args = ToolArguments[tool].parse(draft.proposal.arguments);
+    const abort = new AbortController(); let prepared = false;
+    let accept!: (result: { approvalId: string }) => void; let reject!: (error: Error) => void;
+    const proposal = new Promise<{ approvalId: string }>((resolve, refuse) => { accept = resolve; reject = refuse; });
+    const done = this.tools.execute(task, { id: `draft:${draft.id}:${randomUUID()}`, name: tool, arguments: args }, abort.signal, { origin: 'hook', onApproval: approval => { prepared = true; accept({ approvalId: approval.id }); } })
+      .then(result => { if (!prepared) reject(new Error(result.content)); this.publish('automation.action.outcome', { draftId: draft.id, isError: result.isError ?? false }, task.id); })
+      .catch(error => { if (!prepared) reject(new Error(this.redactor.text(error instanceof Error ? error.message : 'Action preflight failed.'))); })
+      .finally(() => this.running.delete(task.id));
+    this.running.set(task.id, { abort, done });
+    return await proposal;
+    } catch (error) { throw new ActionPreparationError(this.redactor.text(error instanceof Error ? error.message : 'Action preflight failed.'), 'none'); }
+  }
   private profileReady(profile: ModelProfile): boolean {
     return profile.apiKind === 'fake' || (profile.verificationFingerprint === profileFingerprint(profile) && Boolean(profile.capabilities?.tools && profile.capabilities?.continuation));
   }
+  private assertContinuityUnlocked(taskId: string): void {
+    // This guard adds a source lock; method-specific validation still owns missing IDs.
+    if (!this.continuityLocks.size || !this.store.db.prepare('SELECT 1 FROM tasks WHERE id = ?').get(taskId)) return;
+    const task = this.store.task(taskId);
+    if (this.continuityLocks.has(task.rootTaskId ?? taskId)) throw new Error('Wait for the continuation to finish before changing source execution.');
+  }
   setCredential(id: string, secret: string, binding?: string): void {
+    if (this.closing) throw new Error('Runtime is shutting down.');
+    if (this.upgrading) throw new Error('The database upgrade is in progress.');
     const targetProfile = this.store.profile(id);
     if (binding !== undefined && (!targetProfile || JSON.stringify([targetProfile.apiKind, targetProfile.endpoint, targetProfile.deployment]) !== binding)) throw new Error('Profile changed while saving the credential; retry from model settings.');
-    if (this.credentials.get(id) === secret) return;
+    if (this.credentials.get(id) === secret && !this.credentialRepairError) return;
     if (this.running.size) throw new Error('Wait for active responses before changing credentials.');
     this.credentials.set(id, secret); this.redactor.add(secret);
+    this.credentialRepairs = this.credentialRepairs.then(async () => {
+      this.credentialRepairError = undefined;
+      const repaired = await repairMcpConfigurations(this.store, this.redactor);
+      for (const serverId of repaired.repairedIds) await this.mcp.stopServer(serverId);
+      if (repaired.repairedIds.length) this.publish('mcp.repaired', { serverIds: repaired.repairedIds, backupPath: repaired.backupPath });
+    }).catch(error => { this.credentialRepairError = this.redactor.text(error instanceof Error ? error.message : 'MCP configuration repair failed.'); });
     this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
     const profile = this.store.profile(id);
     if (profile) { delete profile.verifiedAt; delete profile.verificationFingerprint; delete profile.capabilities; this.store.saveProfile(profile); }
   }
+  async flushCredentialRepairs(): Promise<void> {
+    await this.credentialRepairs;
+    if (this.credentialRepairError) throw new Error(`MCP configuration repair failed; execution remains disabled: ${this.credentialRepairError}`);
+  }
   dispatch(method: RpcMethod, input: unknown): Promise<unknown> {
     if (this.closing) return Promise.reject(new Error('Runtime is shutting down.'));
-    const operation = this.dispatchInternal(method, input);
+    if (this.upgrading) return Promise.reject(new Error('The database upgrade is in progress.'));
+    const upgrade = method === 'workspace.upgrade';
+    if (upgrade && (this.running.size || this.probing.size || this.mcpBusy || this.orchestrator.isBusy()))
+      return Promise.reject(new Error('Finish or cancel active work before upgrading the database.'));
+    // Admission closes synchronously, before the first await in the upgrade path.
+    const prior = upgrade ? [...this.dispatches] : undefined;
+    if (upgrade) this.upgrading = true;
+    const operation = this.dispatchInternal(method, input, prior).finally(() => { if (upgrade) this.upgrading = false; });
     this.dispatches.add(operation);
-    if (!READ_ONLY_RPC.has(method)) this.mutatingDispatches.add(operation);
-    const settled = (): void => { this.dispatches.delete(operation); this.mutatingDispatches.delete(operation); };
+    const settled = (): void => { this.dispatches.delete(operation); };
     void operation.then(settled, settled);
     return operation;
   }
   private coordinatedAvailable(): boolean { return this.coordinatedMode && this.store.orchestrationAvailable; }
-  private async dispatchInternal(method: RpcMethod, input: unknown): Promise<unknown> {
+  private async dispatchInternal(method: RpcMethod, input: unknown, priorDispatches?: Promise<unknown>[]): Promise<unknown> {
     if (this.closing) throw new Error('Runtime is shutting down.');
+    if (method.startsWith('mcp.') || ['task.start', 'task.send', 'orchestration.resume', 'profile.probe'].includes(method)) await this.flushCredentialRepairs();
     const params = RpcMethods[method].parse(input);
-    if (this.upgrading && !READ_ONLY_RPC.has(method)) throw new Error('The database upgrade is in progress.');
     if (method.startsWith('orchestration.') && !this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
+    if (typeof params === 'object' && params !== null && !isWorkspaceMethod(method)) {
+      const targetId = ('taskId' in params ? params.taskId : 'rootTaskId' in params ? params.rootTaskId : undefined) as string | undefined;
+      if (targetId) this.assertContinuityUnlocked(targetId);
+    }
+    if (isWorkspaceMethod(method)) {
+      if (method === 'task.setArchived' && (params as { archived: boolean }).archived && !this.features.get('archive').enabled) throw new Error('Archive admission is paused. Restore and pending-work access remain available.');
+      const result = this.queries.dispatch(method, params);
+      if (method === 'task.setArchived') this.publish('tasks.changed', {}, (params as { taskId: string }).taskId);
+      return result;
+    }
+    if (isContinuityMethod(method)) return this.continuity.dispatch(method, params);
+    if (Object.hasOwn(AutomationRpc, method)) {
+      if (!this.automation) throw new Error('Upgrade the database before configuring automation.');
+      if (this.automationFault && /(?:save|register|grant)$/.test(method)) throw new Error(`New automation admission is disabled: ${this.automationFault}`);
+      return this.automation.dispatch(method as keyof typeof AutomationRpc, params);
+    }
     switch (method) {
-      case 'workspace.snapshot': {
-        const snapshot = this.store.snapshot();
-        snapshot.projects = snapshot.projects.map(project => {
-          try {
-            if (!statSync(project.path).isDirectory()) throw new Error('Folder unavailable.');
-            const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
-            if (!same) throw new Error('Folder now resolves to a different location.');
-            return project;
-          }
-          catch { return { ...project, kind: 'unavailable', unavailableReason: 'Folder is unavailable.' }; }
-        });
-        return snapshot;
-      }
-      case 'workspace.schema': return { version: this.store.schemaVersion, current: SCHEMA_VERSION, upgradeRequired: this.store.schemaVersion < SCHEMA_VERSION, coordinatedAvailable: this.coordinatedAvailable() };
-      case 'workspace.upgrade': {
-        // Stop admission and require idle work before the backed-up transactional upgrade.
-        // dispatchInternal starts before dispatch() adds this operation to the set.
-        if (this.running.size || this.mutatingDispatches.size > 0 || this.probing.size) throw new Error('Finish or cancel active work before upgrading the database.');
-        this.upgrading = true;
-        try { return await this.store.upgradeToCurrent(); } finally { this.upgrading = false; }
-      }
       case 'project.add': {
         this.store.requireProjects();
         const raw = (params as { path: string }).path;
@@ -152,10 +231,24 @@ export class RuntimeService {
         this.publish('preferences.changed', {}); return saved;
       }
       case 'task.start': return this.startTaskCoalesced(params as { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig });
-      case 'task.get': return this.store.detail((params as { taskId: string }).taskId);
       case 'usage.summary': return this.store.usageSummary(params as Parameters<Store['usageSummary']>[0]);
       case 'usage.breakdown': return this.store.usageBreakdown(params as Parameters<Store['usageBreakdown']>[0]);
       case 'usage.requests': return this.store.usageRequests(params as Parameters<Store['usageRequests']>[0]);
+      case 'features.get': return this.features.snapshot();
+      case 'features.set': {
+        const result = this.features.set(params as { feature: 'archive' | 'hooks' | 'scheduling'; enabled: boolean; reason?: 'user-paused' | 'runtime-fault' | 'migration-required' });
+        if (result.enabled && result.feature !== 'archive') this.automationFault = undefined;
+        this.publish('features.changed', { feature: result.feature, enabled: result.enabled }); return result;
+      }
+      case 'workspace.schema': return { version: this.store.schemaVersion, current: SCHEMA_VERSION, upgradeRequired: this.store.schemaVersion < SCHEMA_VERSION, coordinatedAvailable: this.coordinatedAvailable() };
+      case 'workspace.upgrade': {
+        // The admission lock was taken before dispatch started. Drain the prior set, excluding this request.
+        await Promise.allSettled(priorDispatches ?? []);
+        await this.flushCredentialRepairs();
+        if (this.closing) throw new Error('Runtime is shutting down.');
+        if (this.running.size || this.probing.size || this.mcpBusy || this.orchestrator.isBusy()) throw new Error('Finish or cancel active work before upgrading the database.');
+        const result = await this.store.upgradeToCurrent(); this.initializeAutomation(); return result;
+      }
       case 'profile.save': {
         const profile = ModelProfileSchema.parse(params);
         if (profile.effort && this.store.schemaVersion < 4) throw new Error('Upgrade the database before configuring effort presets.');
@@ -299,9 +392,35 @@ export class RuntimeService {
       case 'task.push': { const p = params as { taskId: string; remote: string }; return this.operations.push(p.taskId, p.remote); }
       case 'task.reconcilePublication': return this.operations.reconcilePublication((params as { taskId: string }).taskId);
       case 'task.retire': return this.operations.retire((params as { taskId: string }).taskId);
-      case 'mcp.list': return this.store.mcpServers().map(server => this.mcpStatus(server));
+      case 'mcp.list': {
+        const p = params as { after?: string; limit: number };
+        const servers = this.store.mcpServers().filter(server => !p.after || server.key > p.after);
+        const items: McpServerStatus[] = [];
+        for (const server of servers.slice(0, p.limit)) {
+          const item = this.mcpStatus(server);
+          if (Buffer.byteLength(JSON.stringify({ items: [...items, item], nextCursor: server.key }), 'utf8') > 224 * 1024) {
+            if (!items.length) throw new Error('MCP server status exceeds the response size limit.');
+            break;
+          }
+          items.push(item);
+        }
+        return { items, nextCursor: servers.length > items.length ? items.at(-1)!.key : null };
+      }
+      case 'mcp.getConfig': {
+        const server = this.store.mcpServer((params as { serverId: string }).serverId);
+        if (!server) throw new Error('MCP server not found.');
+        return checkMcpConfig(storedMcpConfiguration(sanitizeStoredMcp(server, this.redactor)), this.redactor);
+      }
+      case 'mcp.update': {
+        const p = params as { serverId: string; enabled?: boolean; readOnlyTools?: string[]; reconnect?: boolean };
+        const server = this.store.mcpServer(p.serverId);
+        if (!server) throw new Error('MCP server not found.');
+        const config = checkMcpConfig(storedMcpConfiguration(server), this.redactor);
+        return this.dispatchInternal('mcp.save', { ...config, ...(p.enabled !== undefined ? { enabled: p.enabled } : {}), ...(p.readOnlyTools ? { readOnlyTools: p.readOnlyTools } : {}) });
+      }
       case 'mcp.save': {
-        const config = McpServerConfigSchema.parse(params);
+        // Reject invalid/sensitive drafts before the connection try/catch and before any persistence.
+        const config = checkMcpConfig(params, this.redactor);
         const conflict = this.store.mcpServers().find(server => server.key === config.key && server.id !== config.id);
         if (conflict) throw new Error(`Another MCP server already uses the key ${config.key}.`);
         if (this.running.size || this.mcpBusy) throw new Error('Wait for active responses before changing MCP servers; advertised tools must not change during a turn.');
@@ -321,7 +440,7 @@ export class RuntimeService {
         } catch (error) {
           if (!config.enabled) throw error;
           const saved = this.store.saveMcpServer(config, { tools: [], toolsListedAt: null, serverInfo: null, lastError: this.redactor.text(error instanceof Error ? error.message : 'The server could not be started.') });
-          this.publish('mcp.changed', { serverId: config.id }); return { ...saved, running: false };
+          this.publish('mcp.changed', { serverId: config.id }); return { ...this.mcpStatus(saved), running: false };
         } finally {
           this.mcpBusy = false;
         }
@@ -342,9 +461,16 @@ export class RuntimeService {
     }
   }
   /** Stored listing plus live process state; a live failure is shown, otherwise the retained listing note (e.g. skipped tools). */
-  private mcpStatus(server: McpServerStatus): McpServerStatus {
+  private mcpStatus(stored: StoredMcpServer): McpServerStatus {
+    const server = sanitizeStoredMcp(stored, this.redactor);
     const live = this.mcp.statusOf(server.id);
-    return { ...server, running: live.running, lastError: live.lastError ?? server.lastError };
+    const { arguments: args, environment, ...status } = server;
+    const environmentNames = Object.keys(environment);
+    return { ...status, name: status.name.slice(0, 100), command: status.command.slice(0, 4096), cwd: status.cwd.slice(0, 4096), readOnlyTools: status.readOnlyTools.slice(0, 64),
+      serverInfo: status.serverInfo ? { name: status.serverInfo.name.slice(0, 100), version: status.serverInfo.version.slice(0, 50) } : null,
+      tools: server.tools.slice(0, 128).map(tool => ({ name: tool.name.slice(0, 64), description: tool.description.slice(0, 80), readOnlyHint: tool.readOnlyHint })),
+      argumentCount: args.length, environmentCount: environmentNames.length, environmentNames: environmentNames.slice(0, 16).map(name => name.slice(0, 64)), running: server.enabled && live.running,
+      lastError: this.redactor.text(server.lastError ?? live.lastError ?? '').slice(0, 2048) || null };
   }
   private async *observeProbe(request: ProviderRequest, stream: () => AsyncIterable<ProviderEvent>): AsyncIterable<ProviderEvent> {
     if (this.store.schemaVersion < 4) { yield* stream(); return; }
@@ -485,6 +611,7 @@ export class RuntimeService {
   }
   notifyBrowserInvalidated(taskId: string, tabId: string): void { this.tools.invalidateBrowser(taskId, tabId); }
   private startTurn(taskId: string, content: string, hooks: TurnHooks, browserEnabled = false): void {
+    this.assertContinuityUnlocked(taskId);
     if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');
     if (this.running.has(taskId)) throw new Error('This task already has an active response.');
@@ -526,6 +653,7 @@ export class RuntimeService {
   async shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise;
     this.closing = true;
+    clearInterval(this.automationTimer);
     this.orchestrator.beginShutdown();
     this.shutdownPromise = (async () => {
       for (const { abort } of this.running.values()) abort.abort();
@@ -537,7 +665,9 @@ export class RuntimeService {
         ...[...this.running.values()].map(entry => entry.done),
         ...this.dispatches,
         this.orchestrator.close(),
-        this.mcp.shutdown()
+        this.mcp.shutdown(),
+        this.automation?.close(),
+        this.credentialRepairs
       ]);
       await Promise.allSettled([...this.running.values()].map(entry => entry.done));
       this.store.close();

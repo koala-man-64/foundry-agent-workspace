@@ -14,6 +14,7 @@ import { Redactor } from './redaction';
 import { assertAcyclic, inScope, normalizeScope, normalizeScopePath, ordered, scopesOverlap } from './scope';
 import type { Store } from './store';
 import type { ApprovalBinding, OrchestrationToolHooks, ToolRuntime } from './tool-runtime';
+import { WorkspaceQueries } from './workspace-queries';
 
 export interface TurnPort {
   startTurn(taskId: string, content: string, hooks: TurnHooks): void;
@@ -38,6 +39,7 @@ export class Orchestrator implements OrchestrationToolHooks {
   readonly records: OrchestrationRecords;
   readonly ledger: BudgetLedger;
   private readonly rootLocks = new Map<string, Promise<unknown>>();
+  private activeRootLocks = 0;
   private readonly waiters = new Map<string, { rootTaskId: string; check: () => boolean; resolve: () => void }>();
   private readonly queue: string[] = [];
   private draining?: Promise<void>;
@@ -53,6 +55,8 @@ export class Orchestrator implements OrchestrationToolHooks {
 
   /** Stop scheduling and leave interrupted runs for durable recovery rather than marking them finished. */
   beginShutdown(): void { this.closing = true; }
+  /** Background scheduler and root work are independent of the desktop RPC dispatch lifetime. */
+  isBusy(): boolean { return this.queue.length > 0 || Boolean(this.draining) || this.pending.size > 0 || this.activeRootLocks > 0; }
   async close(): Promise<void> { this.closing = true; for (const waiter of this.waiters.values()) waiter.resolve(); await Promise.allSettled([...this.pending, this.draining]); }
 
   // ---------------------------------------------------------------- creation
@@ -83,8 +87,10 @@ export class Orchestrator implements OrchestrationToolHooks {
   withRootLock<T>(task: Task, action: () => Promise<T>): Promise<T> {
     const key = task.rootTaskId ?? task.id;
     const previous = this.rootLocks.get(key) ?? Promise.resolve();
+    this.activeRootLocks++;
     const next = previous.catch(() => undefined).then(action);
     this.rootLocks.set(key, next.catch(() => undefined));
+    void next.then(() => { this.activeRootLocks--; }, () => { this.activeRootLocks--; });
     return next;
   }
 
@@ -964,19 +970,20 @@ export class Orchestrator implements OrchestrationToolHooks {
   childDetail(rootTaskId: string, childTaskId: string): ChildDetail {
     this.store.requireOrchestration();
     const run = this.records.requireRun(childTaskId, rootTaskId);
-    const detail = this.store.detail(childTaskId);
-    let truncated = false;
-    let budget = ORCHESTRATION_LIMITS.responseBytes / 2;
-    const messages = [...detail.messages].reverse().map(message => {
-      const bounded = boundText(message.content, ORCHESTRATION_LIMITS.childReportBytes);
-      budget -= Buffer.byteLength(bounded.text, 'utf8');
-      if (bounded.truncated) truncated = true;
-      return { id: message.id, role: message.role, content: bounded.text, status: message.status, createdAt: message.createdAt, truncated: bounded.truncated };
-    }).filter(() => { if (budget < 0) { truncated = true; return false; } return true; }).reverse();
-    const approvals = (detail.approvals ?? []).slice(-10).map(item => ({ ...item, ...(item.before !== undefined ? { before: boundText(item.before, 8192).text } : {}), ...(item.after !== undefined ? { after: boundText(item.after, 8192).text } : {}) }));
+    const queries = new WorkspaceQueries(this.store, this.redactor);
+    const messagePage = queries.dispatch('task.messages', { taskId: childTaskId, limit: 10 }) as import('../../protocol/src/workspace').MessagePage;
+    const approvalPage = queries.dispatch('task.approvals', { taskId: childTaskId, limit: 10 }) as import('../../protocol/src/workspace').ApprovalPage;
+    const messages = messagePage.items.map(({ message }) => ({ id: message.id, role: message.role, content: message.content,
+      status: message.status, createdAt: message.createdAt, truncated: Boolean(message.truncated) }));
+    const approvals = approvalPage.approvals;
     const assignment = run.assignmentId ? this.records.assignment(run.assignmentId) ?? null : null;
-    const result: ChildDetail = { run, assignment, messages, approvals, results: assignment ? this.records.results(rootTaskId).filter(item => item.assignmentId === assignment.id) : [], evidence: this.records.runEvidence(childTaskId, 10), truncated };
-    if (Buffer.byteLength(JSON.stringify(result), 'utf8') > ORCHESTRATION_LIMITS.responseBytes) return { ...result, approvals: result.approvals.map(item => ({ ...item, before: undefined, after: undefined, handoff: item.handoff ? { ...item.handoff, patch: '[omitted from this page]', patchTruncated: true } : undefined })), messages: result.messages.slice(-4), truncated: true };
+    const latestResult = assignment ? this.records.latestResult(assignment.id) : undefined;
+    const resultCount = assignment ? (this.store.db.prepare('SELECT COUNT(*) AS count FROM child_results WHERE assignment_id = ?').get(assignment.id) as { count: number }).count : 0;
+    const results = latestResult ? [{ ...latestResult, summary: boundText(this.redactor.text(latestResult.summary), ORCHESTRATION_LIMITS.summaryTextBytes).text,
+      unresolved: boundText(this.redactor.text(latestResult.unresolved), ORCHESTRATION_LIMITS.summaryTextBytes).text }] : [];
+    const result: ChildDetail = { run, assignment, messages, approvals, results, evidence: this.records.runEvidence(childTaskId, 10),
+      truncated: messagePage.nextBefore !== null || approvalPage.nextBefore !== null || resultCount > results.length || messages.some(item => item.truncated) };
+    if (Buffer.byteLength(JSON.stringify(result), 'utf8') > ORCHESTRATION_LIMITS.responseBytes) return { ...result, messages: result.messages.slice(-4), truncated: true };
     return result;
   }
 

@@ -37,12 +37,12 @@ describe('saved projects and first-send creation', () => {
     expect((await runtime.dispatch('project.add', { path: join(folder, '.') }) as Project).id).toBe(project.id);
     await runtime.dispatch('project.update', { projectId: project.id, name: 'Notes archive', hidden: true });
     await runtime.dispatch('workspace.preferences.save', { profileId: FAKE_PROFILE_ID, mode: 'coding', collapsedProjectIds: [project.id, 'none', project.id] });
-    let snapshot = await runtime.dispatch('workspace.snapshot', {}) as { projects: Project[]; preferences: { mode: string; collapsedProjectIds: string[] } };
+    let snapshot = await runtime.dispatch('workspace.summary', {}) as { projects: Project[]; preferences: { mode: string; collapsedProjectIds: string[] } };
     expect(snapshot.projects[0]).toMatchObject({ id: project.id, name: 'Notes archive', hidden: true });
     expect(snapshot.preferences).toMatchObject({ mode: 'coding', collapsedProjectIds: [project.id, 'none'] });
     await runtime.dispatch('project.update', { projectId: project.id, hidden: false });
     await rm(folder, { recursive: true });
-    snapshot = await runtime.dispatch('workspace.snapshot', {}) as typeof snapshot;
+    snapshot = await runtime.dispatch('workspace.summary', {}) as typeof snapshot;
     expect(snapshot.projects[0]).toMatchObject({ kind: 'unavailable', unavailableReason: expect.any(String) });
   });
 
@@ -174,7 +174,7 @@ describe('saved projects and first-send creation', () => {
     await rename(folder, moved);
     const other = join(directory, 'other-notes'); await mkdir(other); await writeFile(join(other, 'readme.txt'), 'wrong folder');
     await symlink(other, folder, process.platform === 'win32' ? 'junction' : 'dir');
-    expect((await runtime.dispatch('workspace.snapshot', {}) as { projects: Project[] }).projects[0]).toMatchObject({ kind: 'unavailable' });
+    expect((await runtime.dispatch('workspace.summary', {}) as { projects: Project[] }).projects[0]).toMatchObject({ kind: 'unavailable' });
     await expect(runtime.dispatch('files.list', { taskId: task.id })).rejects.toThrow('different location');
     await expect(runtime.dispatch('files.read', { taskId: task.id, path: 'readme.txt' })).rejects.toThrow('different location');
     await expect(start(project.id)).rejects.toThrow('different location');

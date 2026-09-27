@@ -2,22 +2,29 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION, V4_MIGRATION } from './schema';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION, V4_MIGRATION, V5_MIGRATION } from './schema';
 import { UsageLedger } from './usage-ledger';
-import { isGitTask, type Approval, type CompactionRecord, type GitTask, type McpServerConfig, type McpServerStatus, type McpTool, type Message, type ModelProfile, type Project, type ProviderContinuation, type ProviderToolResult, type Snapshot, type Task, type TaskDetail, type ToolCall, type UsageRecord, type UsageFilters, type UsageGroup, type WorkspaceEvent, type WorkspacePreferences } from '../../protocol/src/index';
+import { isGitTask, type Approval, type CompactionRecord, type GitTask, type McpServerConfig, type McpTool, type Message, type ModelProfile, type Project, type ProviderContinuation, type ProviderToolResult, type Snapshot, type Task, type TaskDetail, type ToolCall, type UsageRecord, type UsageFilters, type UsageGroup, type WorkspaceEvent, type WorkspacePreferences } from '../../protocol/src/index';
+import { AUTOMATION_SCHEMA } from './automation-schema';
+import { CONTINUITY_SCHEMA } from './continuity-schema';
+import { FEATURE_ADMISSION_SCHEMA } from './feature-admission';
+import { Redactor } from './redaction';
+import { sanitizeStoredMcp, type StoredMcpServer } from './mcp-config';
+import { protectedBackupPath } from './backup-protection';
 
 export interface ProviderState { fingerprint: string; continuation: ProviderContinuation; pending: ToolCall[]; results: ProviderToolResult[]; seenToolCallIds?: string[]; }
 
 interface CompactionRow { id: string; task_id: string; from_ordinal: number; to_ordinal: number; message_ids: string; summary: string; estimated_before: number; estimated_after: number; created_at: string }
 interface UsageRow { id: string; task_id: string; request_id: string; reserved: number; prompt_tokens: number | null; completion_tokens: number | null; cache_read_tokens: number | null; cache_creation_tokens: number | null; usage_known: number; reason: string | null; created_at: string }
 interface McpRow { id: string; key: string; data: string; tools: string; tools_listed_at: string | null; server_info: string | null; last_error: string | null; updated_at: string }
+interface EventRow { sequence: number; type: string; task_id: string | null; data: string; created_at: string; version: number | null; source: string | null; root_task_id: string | null }
 
 export const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 export const canonicalPath = (path: string): string => { const absolute = resolve(path); try { return realpathSync.native(absolute); } catch { return absolute; } };
 export const pathKey = (path: string): string => process.platform === 'win32' ? canonicalPath(path).toLocaleLowerCase('en-US') : canonicalPath(path);
 /** Test-only fault injection for migration and backup failure paths. */
-export interface StoreOptions { migrationFault?: 'after-ddl'; backupFault?: 'copy' | 'verify' }
+export interface StoreOptions { migrationFault?: 'after-ddl'; backupFault?: 'protect' | 'copy' | 'verify' }
 export class Store {
   readonly db: Database.Database;
   readonly usage: UsageLedger;
@@ -34,9 +41,9 @@ export class Store {
     const fresh = version === 0 && !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get();
     this.db.transaction(() => {
       this.db.exec(V1_SCHEMA);
-      // Only a brand-new database is created at v4. Existing databases keep their
+      // Only a brand-new database is created at the current version. An existing v1 database keeps its
       // schema until the user confirms a verified, backed-up upgrade.
-      if (fresh) { this.db.exec(V2_MIGRATION); this.db.exec(V3_MIGRATION); this.db.exec(PHASE4_SCHEMA); this.db.exec(V4_MIGRATION); this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`); }
+      if (fresh) { this.db.exec(V2_MIGRATION); this.db.exec(V3_MIGRATION); this.db.exec(PHASE4_SCHEMA); this.db.exec(V4_MIGRATION); this.db.exec(V5_MIGRATION); this.db.exec(AUTOMATION_SCHEMA); this.db.exec(CONTINUITY_SCHEMA); this.db.exec(FEATURE_ADMISSION_SCHEMA); this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`); }
       else if (version === 0) this.db.pragma('user_version = 1');
       this.db.exec(PHASE4_SCHEMA);
       if (!this.profile(FAKE_PROFILE_ID)) this.saveProfile({ id: FAKE_PROFILE_ID, name: 'Offline demo', apiKind: 'fake', endpoint: '', deployment: 'deterministic-fixture', contextLimit: 32000, outputLimit: 2048 });
@@ -87,12 +94,12 @@ export class Store {
     if (check.length) throw new Error('Foreign key verification failed after upgrade; retain the verified backup.');
     return { version: this.schema, backupPath };
   }
-  /** Explicit, verified-backup upgrade from v1, v2 or the published projects v3 to v4. */
+  /** Explicit, verified-backup upgrade from published v1-v4 data to v5. */
   async upgradeToCurrent(backupDirectory = join(dirname(this.path), 'backups')): Promise<{ version: number; backupPath: string }> {
-    if (this.schema >= 4) throw new Error('The database is already current.');
-    mkdirSync(backupDirectory, { recursive: true });
+    if (this.schema >= CURRENT_SCHEMA_VERSION) throw new Error('The database is already current.');
+    if (this.options.backupFault === 'protect') throw new Error('Backup directory protection failed; the database was not changed.');
     const from = this.schema;
-    const backupPath = join(backupDirectory, `workspace-v${from}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.db`);
+    const backupPath = await protectedBackupPath(backupDirectory, `workspace-v${from}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.db`);
     if (this.options.backupFault === 'copy') throw new Error('Backup failed before the upgrade; the database was not changed.');
     await this.db.backup(backupPath);
     const expected = this.rowCounts(this.db);
@@ -112,6 +119,7 @@ export class Store {
           this.saveTask({ ...task, workspaceKind: 'git', projectId: project.id });
         }
       }
+      if (from < 4) {
       this.db.exec(V4_MIGRATION);
       const old = this.db.prepare('SELECT * FROM usage_records ORDER BY rowid').all() as UsageRow[];
       const insert = this.db.prepare(`INSERT INTO provider_requests(request_id,task_id,root_task_id,parent_task_id,task_title,root_task_title,role,purpose,attribution_known,created_at,attempted_at,finished_at,outcome,reserved,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens,usage_known,reason)
@@ -124,15 +132,39 @@ export class Store {
       const copied = this.db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(reserved),0) AS reserved, COALESCE(SUM(input_tokens),0) AS input, COALESCE(SUM(output_tokens),0) AS output FROM provider_requests').get() as { n: number; reserved: number; input: number; output: number };
       const original = this.db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(reserved),0) AS reserved, COALESCE(SUM(prompt_tokens),0) AS input, COALESCE(SUM(completion_tokens),0) AS output FROM usage_records').get();
       if (JSON.stringify(copied) !== JSON.stringify(original)) throw new Error('Historical usage verification failed; migration rolled back.');
+      }
+      this.db.exec(V5_MIGRATION);
+      this.db.exec(AUTOMATION_SCHEMA);
+      this.db.exec(CONTINUITY_SCHEMA);
+      this.db.exec(FEATURE_ADMISSION_SCHEMA);
+      this.backfillReadProjections();
       if (this.options.migrationFault === 'after-ddl') throw new Error('Injected migration failure.');
       if ((this.db.pragma('foreign_key_check') as unknown[]).length) throw new Error('Foreign key verification failed; migration rolled back.');
-      this.db.pragma('user_version = 4');
+      this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     })();
-    this.schema = 4;
-    if ((this.db.pragma('foreign_key_check') as unknown[]).length) throw new Error('Foreign key verification failed after upgrade; retain the verified backup.');
-    return { version: 4, backupPath };
+    this.schema = CURRENT_SCHEMA_VERSION;
+    return { version: this.schema, backupPath };
   }
   async upgradeToV2(backupDirectory?: string): Promise<{ version: number; backupPath: string }> { return this.upgradeToCurrent(backupDirectory); }
+  private backfillReadProjections(): void {
+    const tasks = this.db.prepare('SELECT id, data FROM tasks').all() as { id: string; data: string }[];
+    const update = this.db.prepare('UPDATE tasks SET created_at = ?, updated_at = ?, archived_at = ?, parent_task_id = ?, project_path = ?, project_id = ?, mode = ?, status = ? WHERE id = ?');
+    for (const row of tasks) {
+      const task = JSON.parse(row.data) as Task;
+      update.run(task.createdAt, task.updatedAt, task.archivedAt ?? null, task.parentTaskId ?? null, isGitTask(task) ? task.projectPath : task.workspaceKind === 'folder' ? task.projectPath : null, task.projectId ?? null, task.mode ?? 'chat', task.status, row.id);
+    }
+    const messages = this.db.prepare('SELECT rowid, id, task_id, data FROM messages').all() as { rowid: number; id: string; task_id: string; data: string }[];
+    const insert = this.db.prepare('INSERT INTO messages_fts(rowid, task_id, message_id, content) VALUES (?, ?, ?, ?)');
+    const redactor = new Redactor();
+    for (const row of messages) insert.run(row.rowid, row.task_id, row.id, redactor.text((JSON.parse(row.data) as Message).content));
+    const mcpRows = this.db.prepare('SELECT * FROM mcp_servers').all() as McpRow[];
+    const updateMcp = this.db.prepare('UPDATE mcp_servers SET data = ?, tools = ?, server_info = ?, last_error = ?, updated_at = ? WHERE id = ?');
+    for (const row of mcpRows) {
+      const original = this.mcpStatus(row);
+      const safe = sanitizeStoredMcp(original, redactor);
+      if (safe !== original) updateMcp.run(JSON.stringify({ id: safe.id, key: safe.key, name: safe.name, command: safe.command, arguments: safe.arguments, cwd: safe.cwd, environment: safe.environment, enabled: safe.enabled, readOnlyTools: safe.readOnlyTools, callTimeoutMs: safe.callTimeoutMs }), JSON.stringify(safe.tools), safe.serverInfo ? JSON.stringify(safe.serverInfo) : null, safe.lastError, new Date().toISOString(), safe.id);
+    }
+  }
   private rowCounts(db: Database.Database): Record<string, number> {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(row => row.name);
     const counts: Record<string, number> = {};
@@ -157,7 +189,32 @@ export class Store {
     return task;
   }
   gitTask(id: string): GitTask { const task = this.task(id); if (!isGitTask(task)) throw new Error('This action requires a Git worktree.'); return task; }
-  saveTask(task: Task): Task { this.db.prepare('INSERT OR REPLACE INTO tasks(id, data) VALUES (?, ?)').run(task.id, JSON.stringify(task)); return task; }
+  saveTask(task: Task, transition?: { reason?: string; usageKnown?: boolean; chargedTokens?: number }): Task {
+    if (this.schema < 5) { this.db.prepare('INSERT INTO tasks(id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(task.id, JSON.stringify(task)); return task; }
+    const previous = this.db.prepare('SELECT data, archived_at FROM tasks WHERE id = ?').get(task.id) as { data: string; archived_at: string | null } | undefined;
+    const archivedAt = Object.prototype.hasOwnProperty.call(task, 'archivedAt') ? task.archivedAt : previous?.archived_at ?? undefined;
+    const saved = { ...task, ...(archivedAt ? { archivedAt } : {}) } as Task;
+    if (!archivedAt) delete saved.archivedAt;
+    this.transaction(() => {
+      this.db.prepare(`INSERT INTO tasks(id, data, created_at, updated_at, archived_at, parent_task_id, project_path, project_id, mode, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET data=excluded.data, created_at=excluded.created_at, updated_at=excluded.updated_at, archived_at=excluded.archived_at,
+        parent_task_id=excluded.parent_task_id, project_path=excluded.project_path, project_id=excluded.project_id, mode=excluded.mode, status=excluded.status`)
+        .run(saved.id, JSON.stringify(saved), saved.createdAt, saved.updatedAt, archivedAt ?? null, saved.parentTaskId ?? null, saved.projectPath ?? null, saved.projectId ?? null, saved.mode ?? 'chat', saved.status);
+      const old = previous ? JSON.parse(previous.data) as Task : undefined;
+      if (!old || [old.title, old.projectPath, old.parentTaskId, old.mode, old.status, old.createdAt, old.updatedAt, old.archivedAt].join('\0') !==
+        [saved.title, saved.projectPath, saved.parentTaskId, saved.mode, saved.status, saved.createdAt, saved.updatedAt, archivedAt].join('\0'))
+        this.db.prepare('UPDATE workspace_read_meta SET task_generation = task_generation + 1 WHERE id = 1').run();
+      if (!old) this.event('task.created', { taskId: saved.id, mode: saved.mode ?? 'chat' }, saved.id);
+      else {
+        if (old.status !== saved.status) {
+          const type = saved.status === 'running' ? 'task.started' : saved.status === 'idle' && old.status === 'running' ? 'task.completed' : saved.status === 'retired' ? 'task.retired' : 'task.stopped';
+          this.event(type, { status: saved.status, previousStatus: old.status, ...transition }, saved.id);
+        }
+        if (old.archivedAt !== archivedAt) this.event(archivedAt ? 'task.archived' : 'task.unarchived', { archivedAt: archivedAt ?? null }, saved.id);
+      }
+    });
+    return saved;
+  }
   projects(): Project[] { return this.schema < 3 ? [] : this.db.prepare('SELECT data FROM projects').all().map(row => this.parse<Project>(row)!); }
   project(id: string): Project | undefined { this.requireProjects(); return this.parse<Project>(this.db.prepare('SELECT data FROM projects WHERE id = ?').get(id)); }
   projectByPath(path: string): Project | undefined { return this.parse<Project>(this.db.prepare('SELECT data FROM projects WHERE path_key = ?').get(pathKey(path))); }
@@ -180,9 +237,19 @@ export class Store {
   finishTaskStart(requestId: string, state: 'pending' | 'unknown' | 'failed' | 'complete'): void { this.db.prepare('UPDATE task_starts SET state = ? WHERE request_id = ?').run(state, requestId); }
   clearTaskStart(requestId: string): void { this.db.prepare('DELETE FROM task_starts WHERE request_id = ? AND state = ?').run(requestId, 'pending'); }
   saveMessage(message: Message): void {
-    const existing = this.db.prepare('SELECT id FROM messages WHERE id = ?').get(message.id);
-    if (existing) this.db.prepare('UPDATE messages SET data = ? WHERE id = ?').run(JSON.stringify(message), message.id);
-    else this.db.prepare('INSERT INTO messages(id, task_id, data, ordinal) VALUES (?, ?, ?, (SELECT COALESCE(MAX(ordinal), 0) + 1 FROM messages))').run(message.id, message.taskId, JSON.stringify(message));
+    this.transaction(() => {
+      const existing = this.db.prepare('SELECT rowid, data FROM messages WHERE id = ?').get(message.id) as { rowid: number; data: string } | undefined;
+      if (existing) this.db.prepare('UPDATE messages SET data = ? WHERE id = ?').run(JSON.stringify(message), message.id);
+      else this.db.prepare('INSERT INTO messages(id, task_id, data, ordinal) VALUES (?, ?, ?, (SELECT COALESCE(MAX(ordinal), 0) + 1 FROM messages))').run(message.id, message.taskId, JSON.stringify(message));
+      if (this.schema >= 5) {
+        const row = existing ?? this.db.prepare('SELECT rowid FROM messages WHERE id = ?').get(message.id) as { rowid: number };
+        if (existing) this.db.prepare('DELETE FROM messages_fts WHERE rowid = ?').run(row.rowid);
+        this.db.prepare('INSERT INTO messages_fts(rowid, task_id, message_id, content) VALUES (?, ?, ?, ?)').run(row.rowid, message.taskId, message.id, new Redactor().text(message.content));
+        this.db.prepare('UPDATE workspace_read_meta SET message_generation = message_generation + 1 WHERE id = 1').run();
+      }
+      if (this.schema >= 5 && message.status === 'complete' && (!existing || (JSON.parse(existing.data) as Message).status !== 'complete'))
+        this.event('message.completed', { messageId: message.id, role: message.role }, message.taskId);
+    });
   }
   detail(id: string): TaskDetail {
     const approvals = this.approvals(id).slice(-30); let evidenceBytes = 0;
@@ -232,15 +299,15 @@ export class Store {
       COALESCE(SUM(COALESCE(cache_creation_tokens, 0)), 0) AS cache_creation, COALESCE(SUM(CASE WHEN usage_known = 0 THEN reserved ELSE 0 END), 0) AS reserved_unknown FROM usage_records WHERE task_id = ?`).get(taskId) as { requests: number; known: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number };
     return { requests: row.requests, knownRequests: row.known, unknownRequests: row.requests - row.known, prompt: row.prompt, completion: row.completion, cacheRead: row.cache_read, cacheCreation: row.cache_creation, reservedUnknown: row.reserved_unknown };
   }
-  mcpServers(): McpServerStatus[] { return (this.db.prepare('SELECT * FROM mcp_servers ORDER BY key').all() as McpRow[]).map(row => this.mcpStatus(row)); }
-  mcpServer(id: string): McpServerStatus | undefined { const row = this.db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id) as McpRow | undefined; return row ? this.mcpStatus(row) : undefined; }
-  saveMcpServer(config: McpServerConfig, listing: { tools: McpTool[]; toolsListedAt: string | null; serverInfo: { name: string; version: string } | null; lastError: string | null }): McpServerStatus {
+  mcpServers(): StoredMcpServer[] { return (this.db.prepare('SELECT * FROM mcp_servers ORDER BY key').all() as McpRow[]).map(row => this.mcpStatus(row)); }
+  mcpServer(id: string): StoredMcpServer | undefined { const row = this.db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id) as McpRow | undefined; return row ? this.mcpStatus(row) : undefined; }
+  saveMcpServer(config: McpServerConfig, listing: { tools: McpTool[]; toolsListedAt: string | null; serverInfo: { name: string; version: string } | null; lastError: string | null }): StoredMcpServer {
     this.db.prepare('INSERT INTO mcp_servers(id, key, data, tools, tools_listed_at, server_info, last_error, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET key = excluded.key, data = excluded.data, tools = excluded.tools, tools_listed_at = excluded.tools_listed_at, server_info = excluded.server_info, last_error = excluded.last_error, updated_at = excluded.updated_at')
       .run(config.id, config.key, JSON.stringify(config), JSON.stringify(listing.tools), listing.toolsListedAt, listing.serverInfo ? JSON.stringify(listing.serverInfo) : null, listing.lastError, new Date().toISOString());
     return this.mcpServer(config.id)!;
   }
   removeMcpServer(id: string): boolean { return this.db.prepare('DELETE FROM mcp_servers WHERE id = ?').run(id).changes > 0; }
-  private mcpStatus(row: McpRow): McpServerStatus {
+  private mcpStatus(row: McpRow): StoredMcpServer {
     return { ...JSON.parse(row.data) as McpServerConfig, tools: JSON.parse(row.tools) as McpTool[], toolsListedAt: row.tools_listed_at, serverInfo: row.server_info ? JSON.parse(row.server_info) as { name: string; version: string } : null, lastError: row.last_error, running: false };
   }
   providerState(taskId: string): ProviderState | undefined { return this.parse<ProviderState>(this.db.prepare("SELECT data FROM intents WHERE id = ? AND kind = 'provider.context'").get(taskId)); }
@@ -251,7 +318,13 @@ export class Store {
     if (!row) throw new Error('Approval not found.');
     return { ...JSON.parse(row.data) as Approval, state: row.state };
   }
-  saveApproval(approval: Approval): void { this.db.prepare("INSERT INTO intents VALUES (?, 'tool.approval', ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, state = excluded.state").run(approval.id, JSON.stringify(approval), approval.state); }
+  saveApproval(approval: Approval): void {
+    this.transaction(() => {
+      const prior = this.db.prepare("SELECT state FROM intents WHERE id = ? AND kind = 'tool.approval'").get(approval.id) as { state: string } | undefined;
+      this.db.prepare("INSERT INTO intents VALUES (?, 'tool.approval', ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, state = excluded.state").run(approval.id, JSON.stringify(approval), approval.state);
+      if (this.schema >= 5 && prior?.state !== approval.state) this.event('approval.changed', { approvalId: approval.id, state: approval.state, ...(approval.origin ? { origin: approval.origin } : {}) }, approval.taskId);
+    });
+  }
   allTasks(): Task[] { return this.db.prepare('SELECT data FROM tasks').all().map(row => this.parse<Task>(row)!); }
   snapshot(): Snapshot {
     return {
@@ -266,12 +339,32 @@ export class Store {
   }
   event(type: string, data: unknown, taskId?: string): WorkspaceEvent {
     const createdAt = new Date().toISOString();
-    const result = this.db.prepare('INSERT INTO events(type, task_id, data, created_at) VALUES (?, ?, ?, ?)').run(type, taskId ?? null, JSON.stringify(data), createdAt);
-    return { sequence: Number(result.lastInsertRowid), type, taskId, data, createdAt };
+    const rootTaskId = this.schema >= 5 && taskId ? (this.db.prepare('SELECT COALESCE(parent_task_id,id) AS root FROM tasks WHERE id = ?').get(taskId) as { root: string } | undefined)?.root : undefined;
+    const result = this.schema >= 5
+      ? this.db.prepare('INSERT INTO events(type, task_id, data, created_at, version, source, root_task_id) VALUES (?, ?, ?, ?, 1, ?, ?)').run(type, taskId ?? null, JSON.stringify(data), createdAt, 'runtime', rootTaskId ?? null)
+      : this.db.prepare('INSERT INTO events(type, task_id, data, created_at) VALUES (?, ?, ?, ?)').run(type, taskId ?? null, JSON.stringify(data), createdAt);
+    return { sequence: Number(result.lastInsertRowid), type, taskId, rootTaskId, data, createdAt, version: 1, source: 'runtime' };
+  }
+  /** Persist state and its domain event together; notify renderer/hooks only after this call returns. */
+  transactionWithEvent<T>(fn: () => T, type: string, data: unknown, taskId?: string): { value: T; event: WorkspaceEvent } {
+    return this.transaction(() => { const value = fn(); return { value, event: this.event(type, data, taskId) }; });
+  }
+  lastEvent(type: string, taskId?: string): WorkspaceEvent | undefined {
+    const metadata = this.schema >= 5 ? 'version, source, root_task_id' : 'NULL AS version, NULL AS source, NULL AS root_task_id';
+    const row = this.db.prepare(`SELECT sequence, type, task_id, data, created_at, ${metadata} FROM events WHERE type = ? ${taskId ? 'AND task_id = ?' : 'AND task_id IS NULL'} ORDER BY sequence DESC LIMIT 1`)
+      .get(...(taskId ? [type, taskId] : [type])) as EventRow | undefined;
+    return row && this.mapStoredEvent(row);
   }
   recentEvents(limit: number): WorkspaceEvent[] {
-    return (this.db.prepare('SELECT sequence, type, task_id, data, created_at FROM events ORDER BY sequence DESC LIMIT ?').all(limit) as { sequence: number; type: string; task_id: string | null; data: string; created_at: string }[])
-      .reverse().map(row => ({ sequence: row.sequence, type: row.type, taskId: row.task_id ?? undefined, data: JSON.parse(row.data) as unknown, createdAt: row.created_at }));
+    const metadata = this.schema >= 5 ? 'version, source, root_task_id' : 'NULL AS version, NULL AS source, NULL AS root_task_id';
+    return (this.db.prepare(`SELECT sequence, type, task_id, data, created_at, ${metadata} FROM events ORDER BY sequence DESC LIMIT ?`).all(limit) as EventRow[])
+      .reverse().map(row => this.mapStoredEvent(row));
+  }
+  private mapStoredEvent(row: EventRow): WorkspaceEvent {
+    return { sequence: row.sequence, type: row.type, taskId: row.task_id ?? undefined,
+      rootTaskId: row.root_task_id ?? undefined, data: JSON.parse(row.data) as unknown, createdAt: row.created_at,
+      version: 1, source: row.version === 1 && row.source === 'runtime' ? 'runtime' : 'legacy',
+      ...(row.version === 1 && row.source === 'runtime' ? {} : { legacy: true as const }) };
   }
   intent(kind: string, data: unknown): string {
     const id = randomUUID(); this.db.prepare('INSERT INTO intents VALUES (?, ?, ?, ?)').run(id, kind, JSON.stringify(data), 'pending'); return id;

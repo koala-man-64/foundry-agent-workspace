@@ -5,7 +5,7 @@ import { MAX_RPC_BYTES, RpcResponseSchema, BrowserHostCallSchema, BrowserHostRep
 import type { WorkspaceEvent } from '../../../../packages/protocol/src/index';
 import { LineDecoder } from '../../../../packages/protocol/src/framing';
 
-const EventSchema = z.object({ jsonrpc: z.literal('2.0'), method: z.literal('workspace.event'), params: z.object({ sequence: z.number().int(), type: z.string(), taskId: z.string().optional(), data: z.unknown(), createdAt: z.string() }).strict() }).strict();
+export const EventSchema = z.object({ jsonrpc: z.literal('2.0'), method: z.literal('workspace.event'), params: z.object({ sequence: z.number().int(), type: z.string(), taskId: z.string().optional(), rootTaskId: z.string().optional(), version: z.literal(1).optional(), source: z.enum(['runtime', 'legacy']).optional(), legacy: z.literal(true).optional(), data: z.unknown(), createdAt: z.string() }).strict() }).strict();
 export class RuntimeSupervisor {
   private child?: ChildProcessWithoutNullStreams;
   private decoder = new LineDecoder(MAX_RPC_BYTES);
@@ -23,19 +23,28 @@ export class RuntimeSupervisor {
     const child = spawn(process.execPath, [this.runtimePath], { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child = child;
     child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => this.receive(chunk));
+    child.stdout.on('data', (chunk: string) => this.receive(child, chunk));
     // Runtime diagnostics are intentionally bounded and contain no provider payloads.
     child.stderr.on('data', () => { /* UI receives only the exit state. */ });
-    child.on('error', () => this.fail());
-    child.on('exit', () => { this.child = undefined; this.fail(); if (!this.closed) this.onExit(); });
+    for (const stream of [child.stdin, child.stdout, child.stderr]) stream.on('error', () => this.transportFailed(child));
+    child.on('error', () => this.transportFailed(child));
+    child.on('exit', () => this.transportFailed(child));
+  }
+  private transportFailed(child: ChildProcessWithoutNullStreams): void {
+    if (this.child !== child) return;
+    this.child = undefined;
+    try { child.kill(); } catch { /* Already exited. */ }
+    this.fail();
+    if (!this.closed) this.onExit();
   }
   private fail(): void {
-    for (const request of this.pending.values()) { clearTimeout(request.timer); request.reject(new Error('The runtime stopped. Restart the application to recover saved tasks.')); }
+    for (const request of this.pending.values()) { clearTimeout(request.timer); request.reject(new Error('The runtime transport stopped. The request outcome may be unknown; restart the application and inspect saved tasks before retrying.')); }
     this.pending.clear();
   }
-  private receive(chunk: string): void {
+  private receive(child: ChildProcessWithoutNullStreams, chunk: string): void {
+    if (this.child !== child) return;
     let lines: string[];
-    try { lines = this.decoder.push(chunk); } catch { this.child?.kill(); return; }
+    try { lines = this.decoder.push(chunk); } catch { this.transportFailed(child); return; }
     for (const line of lines) {
       try {
         const data: unknown = JSON.parse(line);
@@ -52,7 +61,7 @@ export class RuntimeSupervisor {
         const request = this.pending.get(response.id); if (!request) continue;
         clearTimeout(request.timer); this.pending.delete(response.id);
         if ('error' in response) request.reject(new Error(response.error.message)); else request.resolve(response.result);
-      } catch { this.child?.kill(); return; }
+      } catch { this.transportFailed(child); return; }
     }
   }
   private async answerBrowser(call: z.infer<typeof BrowserHostCallSchema>, child: ChildProcessWithoutNullStreams): Promise<void> {
@@ -67,33 +76,41 @@ export class RuntimeSupervisor {
         message: error instanceof BrowserHostError ? error.message.slice(0, 1000) : 'The browser request did not complete. Inspect the tab before continuing.'
       } };
     }
+    if (this.child !== child) return;
     this.browserCalls.delete(call.id);
-    if (this.child !== child || this.closed || !child.stdin.writable) return;
+    if (this.closed || !child.stdin.writable) return;
     const line = JSON.stringify(reply) + '\n';
-    if (Buffer.byteLength(line) > MAX_RPC_BYTES) { child.kill(); return; }
-    child.stdin.write(line, error => { if (error) this.fail(); });
+    if (Buffer.byteLength(line) > MAX_RPC_BYTES) { this.transportFailed(child); return; }
+    try { child.stdin.write(line, error => { if (error) this.transportFailed(child); }); }
+    catch { this.transportFailed(child); }
   }
   invalidateBrowser(taskId: string, tabId: string): void {
     const payload = BrowserInvalidationSchema.parse({ jsonrpc: '2.0', method: 'browser.invalidated', params: { taskId, tabId } });
-    if (this.child && !this.closed) this.child.stdin.write(JSON.stringify(payload) + '\n', error => { if (error) this.fail(); });
+    const child = this.child;
+    if (child && !this.closed) {
+      try { child.stdin.write(JSON.stringify(payload) + '\n', error => { if (error) this.transportFailed(child); }); }
+      catch { this.transportFailed(child); }
+    }
   }
   request(method: string, params: unknown): Promise<unknown> {
-    if (!this.child || this.closed) return Promise.reject(new Error('The runtime is not available. Restart the application.'));
+    const child = this.child;
+    if (!child || this.closed) return Promise.reject(new Error('The runtime is not available. Restart the application.'));
     const id = randomUUID(); const payload = JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n';
     if (Buffer.byteLength(payload) > MAX_RPC_BYTES) return Promise.reject(new Error('Request exceeds the allowed size.'));
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Runtime request timed out. Its outcome may be unknown; do not blindly retry a task creation.')); }, 120000);
       this.pending.set(id, { resolve, reject, timer });
-      this.child!.stdin.write(payload, error => { if (error) { clearTimeout(timer); this.pending.delete(id); reject(new Error('Could not communicate with the runtime.')); } });
+      try { child.stdin.write(payload, error => { if (error) this.transportFailed(child); }); }
+      catch { this.transportFailed(child); }
     });
   }
   async stop(): Promise<void> {
     this.closed = true;
     const child = this.child; if (!child) return;
-    child.stdin.end();
     await new Promise<void>(resolve => {
       const timer = setTimeout(() => { child.kill(); resolve(); }, 45000);
       child.once('exit', () => { clearTimeout(timer); resolve(); });
+      try { child.stdin.end(); } catch { this.transportFailed(child); }
     });
   }
 }

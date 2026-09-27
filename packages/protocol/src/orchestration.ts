@@ -28,7 +28,7 @@ export const ORCHESTRATION_LIMITS = {
 export const COORDINATED_MODE_ENABLED = true;
 
 /** Current SQLite schema version produced by this build. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type AgentRole = 'coordinator' | 'child';
 export type RunLifecycle = 'queued' | 'preparing' | 'running' | 'waiting' | 'terminal';
@@ -120,7 +120,7 @@ export interface SchemaStatus { version: number; current: number; upgradeRequire
 export interface UpgradeResult { version: number; backupPath: string }
 export interface ChildDetail {
   run: AgentRun; assignment: Assignment | null; messages: { id: string; role: 'user' | 'assistant' | 'system'; content: string; status: string; createdAt: string; truncated: boolean }[];
-  approvals: import('./index').Approval[]; results: ChildResult[]; evidence: ValidationEvidence[]; truncated: boolean;
+  approvals: import('./workspace').ApprovalSummary[]; results: ChildResult[]; evidence: ValidationEvidence[]; truncated: boolean;
 }
 
 /** UTF-8-safe truncation for display text only. IDs, hashes and structured evidence are never passed here. */

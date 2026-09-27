@@ -70,6 +70,7 @@ async function handle(line: string): Promise<void> {
     const credential = CredentialSchema.safeParse(input);
     if (credential.success) {
       id = credential.data.id; service.setCredential(credential.data.params.id, credential.data.params.value, credential.data.params.binding);
+      await service.flushCredentialRepairs();
       output({ jsonrpc: '2.0', id, result: null }); return;
     }
     const request = RpcRequestSchema.parse(input); id = request.id;

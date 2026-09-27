@@ -8,7 +8,7 @@ import type { AssignmentSpec, Task } from '../../protocol/src/index';
 import { ORCHESTRATION_LIMITS, boundText } from '../../protocol/src/index';
 import { BudgetError, BudgetLedger } from '../src/budget-ledger';
 import { OrchestrationRecords } from '../src/orchestration-records';
-import { V1_SCHEMA, V2_MIGRATION } from '../src/schema';
+import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION, V4_MIGRATION } from '../src/schema';
 import { FAKE_PROFILE_ID, Store } from '../src/store';
 
 let directory: string;
@@ -55,9 +55,9 @@ function admitChild(store: Store, rootId: string, records: OrchestrationRecords,
 }
 
 describe('schema versions and backed-up upgrade', () => {
-  it('creates a fresh database directly at v3 with orchestration available', () => {
+  it('creates a fresh database directly at v5 with orchestration available', () => {
     const store = open(join(directory, 'fresh.db'));
-    expect(store.schemaVersion).toBe(4); expect(store.orchestrationAvailable).toBe(true);
+    expect(store.schemaVersion).toBe(5); expect(store.orchestrationAvailable).toBe(true);
   });
   it('opens an existing v1 database without upgrading it and keeps legacy history', () => {
     const path = join(directory, 'legacy.db'); const { taskId } = createV1Database(path);
@@ -67,11 +67,25 @@ describe('schema versions and backed-up upgrade', () => {
     expect(store.detail(taskId).messages[0]?.content).toBe('legacy history');
     expect(() => store.requireOrchestration()).toThrow('backed-up database upgrade');
   });
-  it('upgrades v1 to v3 only after a verified backup and preserves rows and opaque provider state', async () => {
+  it('rolls back an upgrade with a legacy foreign-key violation while retaining the verified backup', async () => {
+    const path = join(directory, 'orphan.db'); createV1Database(path);
+    const corrupt = new Database(path); corrupt.pragma('foreign_keys = OFF');
+    corrupt.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(randomUUID(), randomUUID(), JSON.stringify({ content: 'orphan' }), 2);
+    corrupt.close();
+    const store = open(path);
+    await expect(store.upgradeToCurrent()).rejects.toThrow('Foreign key verification failed');
+    expect(store.schemaVersion).toBe(1);
+    expect(store.db.pragma('user_version', { simple: true })).toBe(1);
+    expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name='messages_fts'").get()).toBeUndefined();
+    const backupDirectories = await readdir(join(directory, 'backups'));
+    expect(backupDirectories).toHaveLength(1);
+    expect((await readdir(join(directory, 'backups', backupDirectories[0]!))).some(name => name.endsWith('.db'))).toBe(true);
+  });
+  it('upgrades v1 to v5 only after a verified backup and preserves rows and opaque provider state', async () => {
     const path = join(directory, 'legacy.db'); const { taskId } = createV1Database(path);
     const store = open(path);
-    const { version, backupPath } = await store.upgradeToV3();
-    expect(version).toBe(3); expect(store.orchestrationAvailable).toBe(true);
+    const { version, backupPath } = await store.upgradeToCurrent();
+    expect(version).toBe(5); expect(store.orchestrationAvailable).toBe(true);
     expect(store.task(taskId).usedTokens).toBe(1200); expect(store.task(taskId).mode).toBeUndefined();
     expect(store.providerState(taskId)).toEqual({ opaque: 'provider-state' });
     const backup = new Database(backupPath, { readonly: true });
@@ -80,7 +94,7 @@ describe('schema versions and backed-up upgrade', () => {
     expect((backup.prepare('SELECT COUNT(*) AS c FROM messages').get() as { c: number }).c).toBe(1);
     backup.close();
     expect(store.snapshot().projects).toEqual([expect.objectContaining({ path: 'C:\\fixture', kind: 'git' })]);
-    await expect(store.upgradeToV3()).rejects.toThrow('already current');
+    await expect(store.upgradeToCurrent()).rejects.toThrow('already current');
   });
   it('upgrades a v2 database to v3 and preserves orchestration records', async () => {
     const path = join(directory, 'v2.db'); const db = new Database(path);
@@ -91,8 +105,8 @@ describe('schema versions and backed-up upgrade', () => {
     const { childId, assignmentId } = admitChild(store, rootId, records, 10_000, ledger);
     const messageId = randomUUID();
     store.saveMessage({ id: messageId, taskId: childId, role: 'user', content: 'retained child history', createdAt: new Date().toISOString(), status: 'complete' });
-    const { version, backupPath } = await store.upgradeToV3();
-    expect(version).toBe(3);
+    const { version, backupPath } = await store.upgradeToCurrent();
+    expect(version).toBe(5);
     expect(store.task(rootId)).toMatchObject({ id: rootId, projectId: expect.any(String), role: 'coordinator' });
     expect(store.task(childId)).toMatchObject({ id: childId, projectId: store.task(rootId).projectId, parentTaskId: rootId, assignmentId });
     expect(store.detail(childId).messages).toMatchObject([{ id: messageId, content: 'retained child history' }]);
@@ -115,11 +129,38 @@ describe('schema versions and backed-up upgrade', () => {
       expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name = 'projects'").get()).toBeUndefined();
     }
   });
+  it('upgrades an existing v2 database through the same verified backup path', async () => {
+    const path = join(directory, 'v2-simple.db'); const { taskId } = createV1Database(path);
+    const db = new Database(path); db.exec(V2_MIGRATION); db.pragma('user_version = 2'); db.close();
+    const store = open(path);
+    expect(store.schemaVersion).toBe(2);
+    const { version, backupPath } = await store.upgradeToCurrent();
+    expect(version).toBe(5);
+    expect(store.task(taskId).title).toBe('Legacy coding');
+    expect((store.db.prepare('SELECT content FROM messages_fts').get() as { content: string }).content).toBe('legacy history');
+    const backup = new Database(backupPath, { readonly: true });
+    expect(backup.pragma('user_version', { simple: true })).toBe(2);
+    expect(backup.pragma('integrity_check', { simple: true })).toBe('ok');
+    backup.close();
+  });
+  it('opens a published v4 database without expansion tables, then upgrades it to v5', async () => {
+    const path = join(directory, 'published-v4.db'); const db = new Database(path);
+    db.exec(V1_SCHEMA); db.exec(V2_MIGRATION); db.exec(V3_MIGRATION); db.exec(PHASE4_SCHEMA); db.exec(V4_MIGRATION); db.pragma('user_version = 4'); db.close();
+    const store = open(path);
+    expect(store.schemaVersion).toBe(4);
+    expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name='messages_fts'").get()).toBeUndefined();
+    const { version, backupPath } = await store.upgradeToCurrent();
+    expect(version).toBe(5);
+    expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name='messages_fts'").get()).toMatchObject({ name: 'messages_fts' });
+    const backup = new Database(backupPath, { readonly: true });
+    expect(backup.pragma('user_version', { simple: true })).toBe(4);
+    backup.close();
+  });
   it('does not change the database when the backup fails or cannot be verified', async () => {
-    for (const fault of ['copy', 'verify'] as const) {
+    for (const fault of ['protect', 'copy', 'verify'] as const) {
       const path = join(directory, `legacy-${fault}.db`); createV1Database(path);
       const store = open(path, { backupFault: fault });
-      await expect(store.upgradeToV2(join(directory, `backups-${fault}`))).rejects.toThrow(/Backup/);
+      await expect(store.upgradeToCurrent(join(directory, `backups-${fault}`))).rejects.toThrow(/Backup/);
       expect(store.schemaVersion).toBe(1);
       expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name = 'agent_runs'").get()).toBeUndefined();
     }
@@ -127,18 +168,20 @@ describe('schema versions and backed-up upgrade', () => {
   it('rolls back an interrupted migration completely while retaining the verified backup', async () => {
     const path = join(directory, 'legacy.db'); createV1Database(path);
     const store = open(path, { migrationFault: 'after-ddl' });
-    await expect(store.upgradeToV2(join(directory, 'backups'))).rejects.toThrow('Injected migration failure');
+    await expect(store.upgradeToCurrent(join(directory, 'backups'))).rejects.toThrow('Injected migration failure');
     expect(Number(store.db.pragma('user_version', { simple: true }))).toBe(1);
     expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name IN ('agent_runs', 'assignments')").all()).toEqual([]);
-    expect((await readdir(join(directory, 'backups'))).filter(name => name.endsWith('.db'))).toHaveLength(1);
+    const backupDirectories = await readdir(join(directory, 'backups'));
+    expect(backupDirectories).toHaveLength(1);
+    expect((await readdir(join(directory, 'backups', backupDirectories[0]!))).filter(name => name.endsWith('.db'))).toHaveLength(1);
     store.close();
     const reopened = open(path);
     expect(reopened.schemaVersion).toBe(1);
   });
   it('rejects unsupported future versions and never downgrades a newer database in place', () => {
-    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 5'); db.close();
+    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 6'); db.close();
     expect(() => new Store(path)).toThrow('newer application');
-    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(5); check.close();
+    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(6); check.close();
   });
 });
 

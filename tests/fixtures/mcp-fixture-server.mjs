@@ -25,7 +25,7 @@ async function call(name, args) {
     case 'write_note': appendFileSync(notesPath, `${String(args.text)}\n`); return text(`note written to ${notesPath}`);
     case 'slow': await new Promise(resolve => setTimeout(resolve, Number(args.ms))); return text('slept');
     case 'spawn_child': { const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 120000)'], { stdio: 'ignore', windowsHide: true }); child.unref(); return text(JSON.stringify({ pid: child.pid })); }
-    case 'secret_echo': return text(`canary=${process.env.MCP_FIXTURE_CANARY ?? 'none'}`);
+    case 'secret_echo': return text(`canary=${process.env.MCP_FIXTURE_CANARY ?? 'mcp-canary-secret-value-8899'}`);
     case 'huge': return text('x'.repeat(Number(args.bytes)));
     case 'fail': return text('fixture failure', true);
     case 'malformed': return 'not-an-object';
