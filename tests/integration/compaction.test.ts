@@ -3,12 +3,15 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import type { CompactionRecord, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, GitTask as Task, UsageReport } from '../../packages/protocol/src/index';
+import type { BrowserHost, CompactionRecord, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, GitTask as Task, UsageReport } from '../../packages/protocol/src/index';
 import { RuntimeService, profileFingerprint } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 
 let directory: string; let store: Store; let runtime: RuntimeService; let project: string;
+let browserAttached = false;
+const browserTabId = '4ed4c14a-1c54-43da-83e8-f763fd968b05';
+const browserHost: BrowserHost = { request: async input => input.kind === 'tabs' && browserAttached ? [{ id: browserTabId, title: 'Fixture', url: 'https://example.test/', loading: false, canGoBack: false, canGoForward: false, generation: 1, attachedTaskId: input.taskId, authorizedOrigin: 'https://example.test', sharing: true, error: null }] : input.kind === 'tabs' || input.kind === 'revoke' ? [] : null };
 const events: { type: string; taskId?: string; data: unknown }[] = [];
 const requests: ProviderRequest[] = [];
 const TEXT_PROFILE_ID = '00000000-0000-4000-8000-000000000003';
@@ -45,7 +48,8 @@ beforeEach(async () => {
   git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
   await writeFile(join(project, 'hello.txt'), 'original\n'); git('add', 'hello.txt'); git('commit', '-m', 'fixture');
   store = new Store(join(directory, 'state', 'workspace.db'));
-  runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), () => chatProvider);
+  browserAttached = false;
+  runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), () => chatProvider, undefined, { browserHost });
   // Preserve text-only chat coverage: tool-capable chats now retain native state for project communication.
   const textProfile: ModelProfile = { ...store.profile(FAKE_PROFILE_ID)!, id: TEXT_PROFILE_ID, apiKind: 'chat-completions', endpoint: 'https://fixture.openai.azure.com', deployment: 'text-only', capabilities: { streaming: true, tools: false, continuation: false, cancellation: true, usage: true } };
   store.saveProfile({ ...textProfile, verificationFingerprint: profileFingerprint(textProfile) });
@@ -57,6 +61,26 @@ const waitDone = async (id: string): Promise<void> => { await expect.poll(() => 
 const send = async (id: string, content: string): Promise<void> => { await runtime.dispatch('task.send', { taskId: id, content }); await waitDone(id); };
 
 describe('controlled compaction and usage visibility', () => {
+  it('preserves and compacts browser-chat native continuation after detaching the tab', async () => {
+    const remote: ModelProfile = { id: '00000000-0000-4000-8000-000000000004', name: 'Browser chat', apiKind: 'chat-completions', endpoint: 'https://resource.openai.azure.com', deployment: 'model', credentialRef: '00000000-0000-4000-8000-000000000004', contextLimit: 200000, outputLimit: 256 };
+    store.saveProfile(remote); runtime.setCredential(remote.id, 'fixture-credential-value');
+    store.saveProfile({ ...remote, verifiedAt: new Date().toISOString(), verificationFingerprint: profileFingerprint(remote), capabilities: { streaming: true, tools: true, continuation: true, cancellation: true, usage: true } });
+    const task = await runtime.dispatch('task.create', { title: 'Browser chat', projectPath: project, profileId: remote.id, mode: 'chat', tokenBudget: 1000000 }) as Task;
+    browserAttached = true;
+    const filler = 'page notes '.repeat(300);
+    for (let index = 0; index < 4; index++) await send(task.id, `${index} ${filler}`);
+    const before = store.providerState(task.id);
+    expect(before).toBeDefined();
+    expect(requests[0]?.tools?.map(item => item.name)).toEqual(['list_project_agents', 'send_agent_message', 'read_agent_messages', 'browser_tabs', 'browser_snapshot', 'browser_action']);
+    browserAttached = false;
+    const record = await runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 1 }) as CompactionRecord;
+    expect(record.estimatedTokensAfter).toBeLessThan(record.estimatedTokensBefore);
+    expect(store.providerState(task.id)?.continuation).not.toEqual(before?.continuation);
+    await send(task.id, 'Continue after detach');
+    expect(requests.at(-1)?.tools?.map(item => item.name)).toEqual(['list_project_agents', 'send_agent_message', 'read_agent_messages']);
+    expect(requests.at(-1)?.continuation).toBeDefined();
+    expect((await runtime.dispatch('task.usage', { taskId: task.id }) as UsageReport).estimatedContextTokens).toBeGreaterThan(0);
+  });
   it('warns at 80% of the context limit, compacts retained history into a summary, and keeps every original message', async () => {
     const profile = { ...store.profile(TEXT_PROFILE_ID)!, contextLimit: 8192, outputLimit: 64 };
     store.saveProfile({ ...profile, verificationFingerprint: profileFingerprint(profile) });

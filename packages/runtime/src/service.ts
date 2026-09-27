@@ -1,4 +1,4 @@
-import { randomUUID, createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
 import { COORDINATED_MODE_ENABLED, isGitTask, McpServerConfigSchema, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
@@ -16,11 +16,11 @@ import { WorkspaceOperations } from './workspace-operations';
 import { admitRequest, measuredUsage, type MeasuredUsage, type ResponseMetadata } from './usage-accounting';
 import { dirname, isAbsolute } from 'node:path';
 import { statSync } from 'node:fs';
+import type { BrowserHost } from '../../protocol/src/index';
+import { profileFingerprint } from './profile-fingerprint';
+export { profileFingerprint } from './profile-fingerprint';
 
-export function profileFingerprint(profile: ModelProfile): string {
-  return createHash('sha256').update(JSON.stringify({ apiKind: profile.apiKind, endpoint: profile.endpoint, deployment: profile.deployment, credentialRef: profile.credentialRef, contextLimit: profile.contextLimit, outputLimit: profile.outputLimit, effort: profile.effort })).digest('hex');
-}
-export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean; mcpHostPath?: string }
+export interface RuntimeOptions { git?: GitOperations; coordinatedMode?: boolean; mcpHostPath?: string; browserHost?: BrowserHost }
 // These operations never write runtime state, even while awaiting filesystem reads.
 // Unknown/new operations conservatively block a schema upgrade until they settle.
 const READ_ONLY_RPC = new Set<RpcMethod>([
@@ -47,12 +47,15 @@ export class RuntimeService {
   readonly mcp: McpManager;
   readonly operations: WorkspaceOperations;
   private readonly coordinatedMode: boolean;
+  private readonly browserHost?: BrowserHost;
   constructor(readonly store: Store, private readonly repositories: RepositoryService, private readonly emit: (event: WorkspaceEvent) => void, providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter = createProvider, commands = new CommandRunner(), options: RuntimeOptions = {}) {
     this.providerFactory = providerFactory;
+    this.browserHost = options.browserHost;
     this.coordinatedMode = options.coordinatedMode ?? (COORDINATED_MODE_ENABLED || process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1');
     const slots = new ExecutionSlots();
     const publish = (type: string, data: unknown, taskId: string): void => this.publish(type, data, taskId);
     this.tools = new ToolRuntime(store, repositories, commands, this.redactor, publish, slots);
+    if (options.browserHost) this.tools.attachBrowser(options.browserHost);
     this.loop = new AgentLoop(store, this.tools, slots, this.redactor, providerFactory, publish);
     this.orchestrator = new Orchestrator(store, options.git ?? new GitOperations(repositories.worktreeBaseDirectory), this.tools, this.redactor, publish, {
       startTurn: (taskId, content, hooks) => this.startTurn(taskId, content, hooks),
@@ -240,6 +243,12 @@ export class RuntimeService {
       case 'approval.reconcile': {
         const p = params as { taskId: string; approvalId: string }; return this.tools.reconcile(p.taskId, p.approvalId);
       }
+      case 'browser.acknowledgeUnknown': {
+        const p = params as { taskId: string; approvalId: string; confirm: 'inspected-unknown-result' };
+        if (p.confirm !== 'inspected-unknown-result') throw new Error('Explicit inspection acknowledgment is required.');
+        if (!this.tools.browserTools()) throw new Error('Browser host is unavailable.');
+        return this.tools.browserTools()!.acknowledgeUnknown(p.taskId, p.approvalId);
+      }
       case 'task.send': {
         const p = params as { taskId: string; content: string };
         const task = this.store.task(p.taskId);
@@ -249,13 +258,15 @@ export class RuntimeService {
           if (!this.coordinatedAvailable()) throw new Error('Coordinated tasks are not available in this build or database.');
           return this.orchestrator.resume(task.id, p.content);
         }
-        this.startTurn(p.taskId, p.content, legacyHooks(this.store)); return { accepted: true };
+        const attached = this.tools.browserTools() ? await this.tools.browserTools()!.attached(task.id) : [];
+        this.startTurn(p.taskId, p.content, legacyHooks(this.store), attached.length > 0); return { accepted: true };
       }
       case 'task.cancel': {
         const task = this.store.task((params as { taskId: string }).taskId);
         if (task.parentTaskId || task.role === 'child') throw new Error('Cancel a child from its coordinated task so the cancellation scope is explicit.');
         if (task.mode === 'coordinated' && this.store.orchestrationAvailable) return this.orchestrator.cancelRoot(task.id);
         const entry = this.running.get(task.id); entry?.abort.abort();
+        if (this.browserHost) await this.browserHost.request({ kind: 'revoke', taskId: task.id }).catch(() => undefined);
         return { accepted: Boolean(entry) };
       }
       case 'files.list': {
@@ -472,7 +483,8 @@ export class RuntimeService {
       throw new Error(`Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying. ${this.redactor.text(error instanceof Error ? error.message : 'Operation failed.')}`, { cause: error });
     }
   }
-  private startTurn(taskId: string, content: string, hooks: TurnHooks): void {
+  notifyBrowserInvalidated(taskId: string, tabId: string): void { this.tools.invalidateBrowser(taskId, tabId); }
+  private startTurn(taskId: string, content: string, hooks: TurnHooks, browserEnabled = false): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.mcpBusy) throw new Error('Wait for MCP server configuration to finish before starting a response.');
     if (this.running.has(taskId)) throw new Error('This task already has an active response.');
@@ -490,11 +502,11 @@ export class RuntimeService {
     const profile = this.store.profile(task.profileId);
     if (!profile) throw new Error('Profile not found.');
     if (profile.apiKind !== 'fake' && profile.verificationFingerprint !== profileFingerprint(profile)) throw new Error('Probe this model profile successfully before starting a response.');
-    if ((task.mode === 'coding' || task.mode === 'coordinated') && !this.profileReady(profile)) throw new Error('Probe tool and continuation capabilities before starting a coding response.');
+    if ((task.mode === 'coding' || task.mode === 'coordinated' || browserEnabled || Boolean(this.store.providerState(task.id))) && !this.profileReady(profile)) throw new Error('Probe tool and continuation capabilities before starting a response with tools.');
     const cleanContent = this.redactor.text(content);
     const abort = new AbortController();
     const fingerprint = profileFingerprint(profile);
-    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : [], this.tools.channel);
+    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : [], this.tools.channel, browserEnabled);
     const now = new Date().toISOString();
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
     let handle!: ReservationHandle;
@@ -517,6 +529,7 @@ export class RuntimeService {
     this.orchestrator.beginShutdown();
     this.shutdownPromise = (async () => {
       for (const { abort } of this.running.values()) abort.abort();
+      if (this.browserHost) await Promise.allSettled([...this.running.keys()].map(taskId => this.browserHost!.request({ kind: 'revoke', taskId })));
       // Worktree creation and profile probes are not model loops. Let them reach a
       // known result before closing SQLite; an external supervisor may still kill
       // an overlong drain, in which case intent recovery remains conservative.

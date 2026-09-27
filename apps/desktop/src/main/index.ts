@@ -1,17 +1,26 @@
 import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
 import { join, resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
-import { RpcMethods, type RpcMethod, type Snapshot, type ModelProfile } from '../../../../packages/protocol/src/index';
+import { RpcMethods, BrowserCommandSchema, BrowserStateSchema, BrowserHostError, type BrowserState, type RpcMethod, type Snapshot, type ModelProfile } from '../../../../packages/protocol/src/index';
+import { profileFingerprint } from '../../../../packages/runtime/src/profile-fingerprint';
+import { BrowserManager } from './browser-manager';
 import { CredentialVault } from './credentials';
 import { RuntimeSupervisor } from './supervisor';
 
 let window: BrowserWindow | undefined;
 let runtime: RuntimeSupervisor | undefined;
+let browser: BrowserManager | undefined;
+let browserState: BrowserState = { tabs: [], activeTabId: null };
 let quitting = false;
 app.setName('Foundry Agent Workspace');
 app.setPath('userData', join(process.env.LOCALAPPDATA ?? app.getPath('appData'), 'FoundryAgentWorkspace'));
 if (process.env.FOUNDRY_WORKSPACE_TEST_DATA && !app.isPackaged) app.setPath('userData', resolve(process.env.FOUNDRY_WORKSPACE_TEST_DATA));
+// Chromium profile databases are separate from the runtime-owned workspace database.
+const browserData = join(app.getPath('userData'), 'browser-data');
+mkdirSync(browserData, { recursive: true });
+app.setPath('sessionData', browserData);
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
 else {
@@ -28,7 +37,27 @@ else {
     const vault = new CredentialVault(join(dataDirectory, 'credentials'));
     // Coordinated mode can be enabled before release qualification only for unpackaged development/test runs.
     const runtimeEnvironment: Record<string, string> = !app.isPackaged && process.env.FOUNDRY_WORKSPACE_ENABLE_COORDINATED === '1' ? { FOUNDRY_WORKSPACE_ENABLE_COORDINATED: '1' } : {};
-    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event); }, () => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', { sequence: 0, type: 'runtime.stopped', data: {}, createdAt: new Date().toISOString() }); }, runtimeEnvironment);
+    const publishBrowser = (state: BrowserState): void => {
+      const next = BrowserStateSchema.parse(state);
+      for (const previous of browserState.tabs) {
+        const current = next.tabs.find(tab => tab.id === previous.id);
+        if (previous.attachedTaskId && (!current || current.generation !== previous.generation || current.attachedTaskId !== previous.attachedTaskId || (previous.sharing && !current.sharing))) runtime?.invalidateBrowser(previous.attachedTaskId, previous.id);
+      }
+      browserState = next;
+      if (!window?.isDestroyed()) window?.webContents.send('workspace:browser-state', next);
+    };
+    const ensureBrowser = (): BrowserManager => browser ??= new BrowserManager(window!, publishBrowser);
+    runtime = new RuntimeSupervisor(join(__dirname, 'runtime.js'), dataDirectory, event => { if (!window?.isDestroyed()) window?.webContents.send('workspace:event', event); }, () => {
+      for (const tab of browserState.tabs) if (tab.attachedTaskId) void browser?.command({ kind: 'takeControl', tabId: tab.id }).catch(() => undefined);
+      if (!window?.isDestroyed()) window?.webContents.send('workspace:event', { sequence: 0, type: 'runtime.stopped', data: {}, createdAt: new Date().toISOString() });
+    }, runtimeEnvironment, { request: async input => {
+      if (!browser) {
+        if (input.kind === 'tabs') return [];
+        if (input.kind === 'revoke') return null;
+        throw new BrowserHostError('stale', 'Open a browser tab and attach it to this chat first.');
+      }
+      return browser.request(input);
+    } });
     runtime.start();
     const developmentUrl = process.env.ELECTRON_RENDERER_URL;
     const expectedUrl = !app.isPackaged && developmentUrl ? new URL(developmentUrl) : pathToFileURL(join(__dirname, '../renderer/index.html'));
@@ -44,10 +73,23 @@ else {
     };
     const binding = (profile: ModelProfile): string => JSON.stringify([profile.apiKind, profile.endpoint, profile.deployment]);
     const credentialsLoaded = new Set<string>();
+    ipcMain.handle('workspace:browser', async (event, input: unknown) => {
+      authorize(event);
+      const command = BrowserCommandSchema.parse(input);
+      if (command.kind === 'attach') {
+        const snapshot = await runtime!.request('workspace.snapshot', {}) as Snapshot;
+        const task = snapshot.tasks.find(item => item.id === command.taskId);
+        const profile = snapshot.profiles.find(item => item.id === task?.profileId);
+        if (!task || task.retiredAt || task.status === 'retired' || task.mode === 'coordinated' || task.rootTaskId || task.parentTaskId) throw new Error('Attach the tab to an active ordinary chat or coding task.');
+        if (!profile || (profile.apiKind !== 'fake' && (!profile.capabilities?.tools || !profile.capabilities.continuation || profile.verificationFingerprint !== profileFingerprint(profile)))) throw new Error('Probe this chat’s model for tools and continuation before attaching a browser tab.');
+      }
+      return BrowserStateSchema.parse(await ensureBrowser().command(command));
+    });
     ipcMain.handle('workspace:invoke', async (event, method: unknown, params: unknown) => {
       authorize(event);
       if (typeof method !== 'string' || !Object.prototype.hasOwnProperty.call(RpcMethods, method)) throw new Error('Unsupported operation.');
       const validated = RpcMethods[method as RpcMethod].parse(params);
+      if (method === 'task.cancel' || method === 'task.retire') await browser?.request({ kind: 'revoke', taskId: (validated as { taskId: string }).taskId });
       if (method === 'profile.save') {
         const next = validated as ModelProfile;
         const before = await runtime!.request('workspace.snapshot', {}) as Snapshot;
@@ -76,8 +118,11 @@ else {
     });
     ipcMain.handle('workspace:pick-project', async event => {
       authorize(event);
-      const result = await dialog.showOpenDialog(window!, { title: 'Add a project folder', properties: ['openDirectory'] });
-      return result.canceled ? null : result.filePaths[0] ?? null;
+      browser?.hide();
+      try {
+        const result = await dialog.showOpenDialog(window!, { title: 'Add a project folder', properties: ['openDirectory'] });
+        return result.canceled ? null : result.filePaths[0] ?? null;
+      } finally { browser?.restore(); }
     });
     ipcMain.handle('workspace:save-credential', async (event, profileId: unknown, value: unknown) => {
       authorize(event);
@@ -97,5 +142,5 @@ app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if (quitting || !runtime) return;
   event.preventDefault(); quitting = true;
-  void runtime.stop().finally(() => app.quit());
+  void runtime.stop().finally(() => browser?.shutdown()).finally(() => app.quit()).catch(() => undefined);
 });
