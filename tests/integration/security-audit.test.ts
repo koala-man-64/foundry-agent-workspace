@@ -443,12 +443,14 @@ function auditServerSource(secret: string, tracePath?: string): string {
   return [
     `import { appendFileSync } from 'node:fs';`,
     `const tracePath = ${JSON.stringify(tracePath ?? null)};`,
-    `const trace = stage => { if (tracePath) appendFileSync(tracePath, stage + '\\n'); };`,
+    `const trace = stage => { if (tracePath) appendFileSync(tracePath, Date.now() + ':' + stage + '\\n'); };`,
     `trace('started');`,
     `process.on('exit', () => trace('exited'));`,
     `process.stdin.on('end', () => trace('stdin-ended'));`,
+    `process.stdout.on('error', () => trace('stdout-error'));`,
+    `process.stdout.on('drain', () => trace('stdout-drain'));`,
     `const secret = ${JSON.stringify(secret)};`,
-    `const write = value => { trace('reply'); process.stdout.write(JSON.stringify(value) + '\\n'); };`,
+    `const write = value => { trace('reply'); const ready = process.stdout.write(JSON.stringify(value) + '\\n', error => trace(error ? 'reply-write-error' : 'reply-written')); trace(ready ? 'reply-buffer-ready' : 'reply-buffer-full'); };`,
     `const listing = { tools: [{ name: 'leak', description: 'Return the audit canary.', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }] };`,
     `const hello = { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'audit', version: '1.0.0' } };`,
     `let buffer = '';`,
@@ -647,6 +649,7 @@ describe('credential canary screening and leak matrix', () => {
 
     start(new ScriptProvider([[{ id: 'mcp-canary-1', name: 'mcp__audit__leak', arguments: {} }]]));
     registerCanaries();
+    await fs.writeFile(tracePath, `${Date.now()}:save-started\n`);
     const saved = await runtime.dispatch('mcp.save', {
       id: randomUUID(), key: 'audit', name: 'Audit server', command: process.execPath, arguments: [serving],
       cwd: '', environment: {}, enabled: true, readOnlyTools: ['leak'], callTimeoutMs: 10_000

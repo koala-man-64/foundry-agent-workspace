@@ -54,10 +54,24 @@ export class McpClient {
   private readonly decoder = new LineDecoder(MAX_MESSAGE_BYTES);
   private closed: Error | undefined;
   private sequence = 0;
+  private readonly constructedAt = performance.now();
+  private receivedChunks = 0;
+  private receivedBytes = 0;
+  private completedFrames = 0;
+  private matchedReplies = 0;
+  private unmatchedReplies = 0;
+  private firstChunkMs: number | null = null;
+  private firstFrameMs: number | null = null;
+  private firstMatchedReplyMs: number | null = null;
   readonly notifications: { method: string; params: unknown }[] = [];
   constructor(private readonly output: NodeJS.WritableStream, input: NodeJS.ReadableStream, private readonly onProtocolError: (error: Error) => void = () => undefined) {
     input.setEncoding('utf8');
-    input.on('data', (chunk: string) => this.receive(chunk));
+    input.on('data', (chunk: string) => {
+      if (this.firstChunkMs === null) this.firstChunkMs = this.elapsedMs();
+      this.receivedChunks++;
+      this.receivedBytes += Buffer.byteLength(chunk, 'utf8');
+      this.receive(chunk);
+    });
     input.on('end', () => this.close(new McpError('The MCP server closed its output stream.', true)));
     input.on('error', error => this.close(new McpError(`MCP transport failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
     output.on('error', error => this.close(new McpError(`MCP transport write failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
@@ -65,6 +79,8 @@ export class McpClient {
   private receive(chunk: string): void {
     let lines: string[];
     try { lines = this.decoder.push(chunk); } catch { this.close(new McpError('The MCP server sent a message above the size limit.')); return; }
+    if (lines.length && this.firstFrameMs === null) this.firstFrameMs = this.elapsedMs();
+    this.completedFrames += lines.length;
     for (const line of lines) {
       if (!line.trim()) continue;
       let message: JsonRpcMessage;
@@ -80,7 +96,9 @@ export class McpClient {
         continue;
       }
       const waiter = this.pending.get(String(message.id));
-      if (!waiter) continue;
+      if (!waiter) { this.unmatchedReplies++; continue; }
+      if (this.firstMatchedReplyMs === null) this.firstMatchedReplyMs = this.elapsedMs();
+      this.matchedReplies++;
       clearTimeout(waiter.timer); this.pending.delete(String(message.id));
       if (message.error) waiter.reject(new McpError(`MCP server error${typeof message.error.code === 'number' ? ` ${message.error.code}` : ''}: ${typeof message.error.message === 'string' ? message.error.message.slice(0, 500) : 'unknown'}`));
       else waiter.resolve(message.result);
@@ -123,6 +141,21 @@ export class McpClient {
     this.onProtocolError(error);
   }
   get isClosed(): boolean { return Boolean(this.closed); }
+  private elapsedMs(): number { return Math.max(0, Math.round(performance.now() - this.constructedAt)); }
+  /** Numeric transport evidence only: no payloads, identifiers, methods, or server text. */
+  get diagnostics(): Readonly<{ elapsedMs: number; receivedBytes: number; receivedChunks: number; completedFrames: number; matchedReplies: number; unmatchedReplies: number; firstChunkMs: number | null; firstFrameMs: number | null; firstMatchedReplyMs: number | null }> {
+    return {
+      elapsedMs: this.elapsedMs(),
+      receivedBytes: this.receivedBytes,
+      receivedChunks: this.receivedChunks,
+      completedFrames: this.completedFrames,
+      matchedReplies: this.matchedReplies,
+      unmatchedReplies: this.unmatchedReplies,
+      firstChunkMs: this.firstChunkMs,
+      firstFrameMs: this.firstFrameMs,
+      firstMatchedReplyMs: this.firstMatchedReplyMs
+    };
+  }
 }
 
 /** One hosted server process. */
@@ -332,8 +365,10 @@ export class McpManager {
         session.client.notify('notifications/initialized', {});
         session.tools = (await this.listTools(session)).tools;
       } catch (error) {
+        const transportAtFailure = session.client.diagnostics;
         const host = await processHandle.stop();
-        const detail = [error instanceof Error ? this.redactor.text(error.message) : 'unknown error', host ? `host: exit ${host.exitCode ?? 'terminated'}${host.parentDied ? ', runtime parent check failed' : ''}` : 'host result unavailable', processHandle.stderr ? `stderr: ${this.redactor.text(processHandle.stderr).slice(0, 300)}` : ''].filter(Boolean).join('; ');
+        const transportAfterStop = session.client.diagnostics;
+        const detail = [error instanceof Error ? this.redactor.text(error.message) : 'unknown error', `transport at failure: ${JSON.stringify(transportAtFailure)}`, `transport after stop: ${JSON.stringify(transportAfterStop)}`, host ? `host: exit ${host.exitCode ?? 'terminated'}${host.parentDied ? ', runtime parent check failed' : ''}` : 'host result unavailable', processHandle.stderr ? `stderr: ${this.redactor.text(processHandle.stderr).slice(0, 300)}` : ''].filter(Boolean).join('; ');
         throw new McpError(`The MCP server failed to start. ${detail}`);
       }
       this.sessions.set(config.id, session);
