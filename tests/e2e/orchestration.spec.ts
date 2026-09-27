@@ -60,12 +60,16 @@ async function snapshotTaskByTitle(page: Page, title: string): Promise<{ id: str
 async function approveUntilSettled(page: Page, maxApprovals: number): Promise<void> {
   await page.getByRole('button', { name: /^Approvals/ }).click();
   for (let i = 0; i < maxApprovals; i++) {
-    const card = page.locator('article.approval-card.awaiting-approval').first();
-    try { await expect(card).toBeVisible({ timeout: 8000 }); } catch { return; }
+    await expect.poll(async () => (await page.getByText(/^Completed on /).isVisible()) || (await page.locator('article.approval-card.awaiting-approval').count()) > 0, { timeout: 60000 }).toBe(true);
+    if (await page.getByText(/^Completed on /).isVisible()) return;
+    const approvalId = await page.locator('article.approval-card.awaiting-approval').first().getAttribute('data-approval-id');
+    expect(approvalId).toBeTruthy();
+    const card = page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`);
     await expect(card.locator('.approval-target')).toBeVisible();
     await card.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect(card).not.toHaveClass(/awaiting-approval/, { timeout: 8000 }).catch(() => undefined);
+    await expect(page.locator(`article.approval-card.awaiting-approval[data-approval-id="${approvalId}"]`)).toHaveCount(0, { timeout: 30000 });
   }
+  throw new Error(`Coordinated fixture exceeded ${maxApprovals} approvals without completing.`);
 }
 
 test('coordinated workflow: delegation, review, serial integration and restart evidence', async () => {

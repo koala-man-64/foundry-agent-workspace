@@ -34,7 +34,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
 
 function ApprovalCard({ approval, busy, onDecide }: { approval: Approval; busy?: 'approve' | 'reject'; onDecide: (approval: Approval, decision: 'approve' | 'reject') => void }) {
-  return <article className={`approval-card ${approval.state}`} key={approval.id}>
+  return <article className={`approval-card ${approval.state}`} key={approval.id} data-approval-id={approval.id}>
     <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
     {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
     <p>{approval.summary}</p>

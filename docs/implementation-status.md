@@ -12,13 +12,13 @@ Local implementation on `codex/saved-projects-sidebar` in the [Foundry Agent Wor
 
 Validated locally using temporary folders, fresh application data, and offline providers:
 
-- `pnpm check`: typecheck and lint passed; 242 tests passed across 22 files.
-- `pnpm test:e2e`: all 10 Electron workflows passed, including coordinated draft first-send, saved ordinary folders, Git projects, No folder, confirmed v1 upgrade, restart history, keyboard navigation, and the narrow layout. Background task events preserve another project's draft.
-- After the final canonical-location availability fix, the 10 focused project tests and all 3 project Electron workflows passed again; typecheck and focused runtime lint also passed.
+- `pnpm check`: typecheck and lint passed; 256 tests passed across 24 files after integrating the project channel.
+- `pnpm test:e2e`: all 11 Electron workflows passed, including coordinated draft first-send, saved ordinary folders, Git projects, No folder, confirmed v1 upgrade, restart history, keyboard navigation, and the narrow layout. Background task events preserve another project's draft. Git chats retain the project channel; folder and projectless chats cannot access it.
+- The initial integrated Electron run exposed an approval test helper that silently stopped waiting before the next approval arrived. The helper now waits for completion or a pending approval and binds its evidence, click, and state check to one stable approval ID. Independent review found no remaining issue; typecheck and scoped lint passed.
 - `pnpm package:dir` and `pnpm smoke:package`: passed. The packaged runtime verified schema v3, idempotent folder/projectless first-send, saved-project management, reviewed coding tools, coordination, compaction, MCP, diagnostics, and safe Git retirement against isolated fixtures.
 - Independent GPT-6 Sol/medium review of filesystem, IPC, persistence, concurrency, and draft boundaries found no remaining actionable defects after fixes. Three GPT-6 Sol/medium agents handled runtime implementation, renderer implementation, and independent review under the supplied AGENTS.md Critical lane.
 
-Exact command logs, the independent review handoff, and rendered screenshots are retained under `.local/validation/saved-projects-*`. Packaged `release/win-unpacked/resources/app.asar` SHA-256: `3ad5ea8d738920fce1af64802d03f30504ed843d23b17dc663612bd02f99d59f`.
+The final stable-ID coordinator Electron rerun passed (1.7 minutes). Packaging and packaged smoke passed again after integration. Exact command logs and review evidence are retained under `.local/validation/saved-projects-*` and `.local/validation/delivery-*`. Packaged `release/win-unpacked/resources/app.asar` SHA-256: `1f8e1f9d4cadeeb857700a687195142c0cadad7056043ccdfed803cd2b59fd21`.
 
 This is a local source and unpacked-package result. No user's application database was upgraded. External publication, installed/signed installer validation, live Foundry qualification, and live deployment remain unverified and outside this change's execution.
 
