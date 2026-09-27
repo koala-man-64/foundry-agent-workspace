@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { ChannelMessageInput, ChannelTools, CHANNEL_LIMITS, type AgentMessage, type ChannelPage, type ChannelParticipant, type ChannelView, type ProviderRequest, type Task, type ToolCall } from '../../protocol/src/index';
+import { ChannelMessageInput, ChannelTools, CHANNEL_LIMITS, isGitTask, type AgentMessage, type ChannelPage, type ChannelParticipant, type ChannelView, type ProviderRequest, type Task, type ToolCall } from '../../protocol/src/index';
 import type { Store } from './store';
 import type { Redactor } from './redaction';
 
@@ -40,6 +40,7 @@ export class AgentChannel {
   private row(sequence: number): MessageRow { return this.store.db.prepare('SELECT sequence, task_id, data, created_at FROM events WHERE sequence = ?').get(sequence) as MessageRow; }
 
   private project(task: Task): string {
+    if (!isGitTask(task)) throw new Error('Project channel requires a Git worktree.');
     // Task creation validates the root. Resolve aliases for older tasks as well; never accept a model-supplied project.
     let canonical = realpathSync.native(task.projectPath);
     while (!existsSync(join(canonical, '.git'))) {
@@ -59,6 +60,7 @@ export class AgentChannel {
     return createHash('sha256').update(process.platform === 'win32' ? identity.toLowerCase() : identity).digest('hex');
   }
   private available(task: Task): boolean {
+    if (!isGitTask(task)) return false;
     if (task.retiredAt || task.status === 'retired' || task.status === 'cancelled') return false;
     if (task.rootTaskId && this.store.orchestrationAvailable) {
       const run = this.store.db.prepare('SELECT lifecycle, cancel_requested FROM agent_runs WHERE task_id = ?').get(task.id) as { lifecycle: string; cancel_requested: number } | undefined;

@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { Approval, ProviderAdapter, Task } from '../../packages/protocol/src/index';
+import type { Approval, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
 import { RuntimeService, profileFingerprint } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { CommandRunner, CommandPreflightError, type PreparedCommand } from '../../packages/runtime/src/command-runner';

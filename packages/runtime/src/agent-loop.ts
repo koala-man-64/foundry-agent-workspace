@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Message, ModelProfile, ProviderAdapter, ProviderEvent, ProviderMessage, ProviderRequest, ProviderToolResult, Task, ToolCall, ToolDefinition } from '../../protocol/src/index';
-import { CONTEXT_WARNING_PERCENT } from '../../protocol/src/index';
+import { CONTEXT_WARNING_PERCENT, isGitTask } from '../../protocol/src/index';
 import { applyCompactions } from './compaction';
 import { ExecutionSlots } from './execution-slots';
 import { Redactor } from './redaction';
@@ -62,10 +62,12 @@ export function legacyHooks(store: Store): TurnHooks {
 }
 
 export function prepareRequest(store: Store, task: Task, profile: ModelProfile, fingerprint: string, content: string, credential: string | undefined, signal: AbortSignal, hooks?: TurnHooks, externalTools: ToolDefinition[] = [], channel?: AgentChannel): ProviderRequest {
-  const tooling = usesTools(task) || profile.apiKind === 'fake' || (profile.verificationFingerprint === fingerprint && Boolean(profile.capabilities?.tools && profile.capabilities?.continuation));
+  const channelAvailable = isGitTask(task) && channel !== undefined;
+  const channelToolsCapable = channelAvailable && (profile.apiKind === 'fake' || (profile.verificationFingerprint === fingerprint && Boolean(profile.capabilities?.tools && profile.capabilities?.continuation)));
+  const tooling = usesTools(task) || channelToolsCapable;
   // External (MCP) tools are advertised only to single-agent coding tasks; coordinated roles keep their fixed tool policy.
-  const tools = task.mode === 'coding' && agentRole(task) === 'coding' ? [...TOOL_DEFINITIONS, ...CHANNEL_TOOL_DEFINITIONS, ...externalTools] : usesTools(task) ? toolsFor(task) : tooling ? CHANNEL_TOOL_DEFINITIONS : undefined;
-  const enrich = (request: ProviderRequest): ProviderRequest => channel?.enrich(task, request) ?? request;
+  const tools = task.mode === 'coding' && agentRole(task) === 'coding' ? [...TOOL_DEFINITIONS, ...(channelAvailable ? CHANNEL_TOOL_DEFINITIONS : []), ...externalTools] : usesTools(task) ? toolsFor(task) : channelToolsCapable ? CHANNEL_TOOL_DEFINITIONS : undefined;
+  const enrich = (request: ProviderRequest): ProviderRequest => channelAvailable ? channel.enrich(task, request) : request;
   const state = tooling ? store.providerState(task.id) : undefined;
   if (state && state.fingerprint !== fingerprint) throw new Error('This task has native conversation state for an earlier profile configuration. Create a new task for this configuration.');
   if (store.approvals(task.id).some(item => item.state === 'unknown')) throw new Error('This task has an unknown mutation outcome. Check the outcome and inspect its worktree before continuing.');
@@ -81,7 +83,7 @@ export function prepareRequest(store: Store, task: Task, profile: ModelProfile, 
   if (tooling) {
     const role = agentRole(task);
     messages.unshift(...(hooks?.context?.(task) ?? []));
-    messages.unshift({ role: 'system', content: (usesTools(task) ? role === 'coordinator' ? COORDINATOR_SYSTEM : role === 'child' ? CHILD_SYSTEM : SYSTEM : 'You are a chat assistant. Only project communication tools are available; you have no repository execution authority.') + '\n' + CHANNEL_SYSTEM });
+    messages.unshift({ role: 'system', content: (usesTools(task) ? role === 'coordinator' ? COORDINATOR_SYSTEM : role === 'child' ? CHILD_SYSTEM : SYSTEM : 'You are a chat assistant. Only project communication tools are available; you have no repository execution authority.') + (channelAvailable ? '\n' + CHANNEL_SYSTEM : '') });
   }
   messages.push({ role: 'user', content });
   return enrich({ profile, credential, signal, messages, ...(tools ? { tools } : {}) });

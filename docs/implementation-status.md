@@ -1,5 +1,27 @@
 # Implementation status
 
+## Saved projects and draft-first chat creation — 27 September 2026
+
+Local implementation on `codex/saved-projects-sidebar` in the [Foundry Agent Workspace source](https://github.com/koala-man-64/foundry-agent-workspace). Publication, installed application upgrades, and live provider qualification are separate gates.
+
+- The sidebar now groups chats under saved projects, with compact status dots, alphabetical project ordering, recent chat ordering, and a final **No folder** group. Project menus and **Manage projects** support rename, hide, and restore. Hiding retains chats and files; collapsed groups persist. Settings and diagnostics are in the footer.
+- **New chat** and project **+** controls open session drafts in the main area. Switching projects preserves drafts, and background refreshes do not replace them. The first send creates the chat; an omitted title comes from the first message's first line, limited to 80 characters. Model and Git mode preferences persist app-wide; ordinary-folder and projectless drafts use Chat without changing the remembered Git mode.
+- Saved projects use stable IDs and canonical paths. Folder registration uses the native picker and runtime validation. Missing folders stay listed as unavailable. Task workspace kinds distinguish Git worktrees, ordinary folders, and no folder; the runtime enforces the same capabilities as the inspector. Ordinary-folder browsing retains containment, symlink, secret-file, and size checks. Coding, coordination, worktree operations, and Git publication require Git workspaces.
+- `task.start` binds a client request ID to the first message and settings. Durable reservation precedes workspace creation and dispatch. Completed retries return the existing task; unknown outcomes retain their evidence and do not replay automatically. The renderer retains failed drafts and their original request. Existing task-creation callers remain supported and their successful creations associate with saved projects.
+- Schema v3 adds projects, preferences, and first-send records. Existing v1/v2 databases remain readable until the user confirms the existing verified-backup upgrade flow. Migration groups legacy tasks by project path and preserves task IDs, history, and coordinator/child relationships.
+
+Validated locally using temporary folders, fresh application data, and offline providers:
+
+- `pnpm check`: typecheck and lint passed; 256 tests passed across 24 files after integrating the project channel.
+- `pnpm test:e2e`: all 11 Electron workflows passed, including coordinated draft first-send, saved ordinary folders, Git projects, No folder, confirmed v1 upgrade, restart history, keyboard navigation, and the narrow layout. Background task events preserve another project's draft. Git chats retain the project channel; folder and projectless chats cannot access it.
+- The initial integrated Electron run exposed an approval test helper that silently stopped waiting before the next approval arrived. The helper now waits for completion or a pending approval and binds its evidence, click, and state check to one stable approval ID. Independent review found no remaining issue; typecheck and scoped lint passed.
+- `pnpm package:dir` and `pnpm smoke:package`: passed. The packaged runtime verified schema v3, idempotent folder/projectless first-send, saved-project management, reviewed coding tools, coordination, compaction, MCP, diagnostics, and safe Git retirement against isolated fixtures.
+- Independent GPT-6 Sol/medium review of filesystem, IPC, persistence, concurrency, and draft boundaries found no remaining actionable defects after fixes. Three GPT-6 Sol/medium agents handled runtime implementation, renderer implementation, and independent review under the supplied AGENTS.md Critical lane.
+
+The final stable-ID coordinator Electron rerun passed (1.7 minutes). Packaging and packaged smoke passed again after integration. Exact command logs and review evidence are retained under `.local/validation/saved-projects-*` and `.local/validation/delivery-*`. Packaged `release/win-unpacked/resources/app.asar` SHA-256: `1f8e1f9d4cadeeb857700a687195142c0cadad7056043ccdfed803cd2b59fd21`.
+
+This is a local source and unpacked-package result. No user's application database was upgraded. External publication, installed/signed installer validation, live Foundry qualification, and live deployment remain unverified and outside this change's execution.
+
 ## Project channel — local implementation
 
 Recorded 27 September 2026. Agents in separate task chats and coordinator teams can discover teammates, broadcast project messages, and send direct messages. The runtime derives membership from the canonical local Git common directory, including linked worktrees. Independent clones stay separate. The inspector exposes **Project channel**, a participant list, paginated retained history, and a user-labelled message composer.

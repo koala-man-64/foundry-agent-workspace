@@ -254,7 +254,7 @@ export class OrchestrationRecords {
   }
 
   private mapRun(row: RunRow): AgentRun {
-    const task = this.store.task(row.task_id);
+    const task = this.store.gitTask(row.task_id);
     return { taskId: row.task_id, rootTaskId: row.root_task_id, parentTaskId: row.parent_task_id, role: row.role, assignmentId: row.assignment_id, lifecycle: row.lifecycle, waitReason: row.wait_reason, outcome: row.outcome, generation: row.generation, cancelRequested: row.cancel_requested === 1, title: task.title, profileId: task.profileId, worktreePath: task.worktreePath, branch: task.branch, baseCommit: task.baseCommit, createdAt: row.created_at, updatedAt: row.updated_at };
   }
   private mapAssignment(row: AssignmentRow): Assignment {

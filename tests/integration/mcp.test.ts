@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import type { Approval, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, Task, ToolCall } from '../../packages/protocol/src/index';
+import type { Approval, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, GitTask as Task, ToolCall } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';

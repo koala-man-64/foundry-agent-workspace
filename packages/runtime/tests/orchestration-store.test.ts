@@ -8,7 +8,7 @@ import type { AssignmentSpec, Task } from '../../protocol/src/index';
 import { ORCHESTRATION_LIMITS, boundText } from '../../protocol/src/index';
 import { BudgetError, BudgetLedger } from '../src/budget-ledger';
 import { OrchestrationRecords } from '../src/orchestration-records';
-import { V1_SCHEMA } from '../src/schema';
+import { V1_SCHEMA, V2_MIGRATION } from '../src/schema';
 import { FAKE_PROFILE_ID, Store } from '../src/store';
 
 let directory: string;
@@ -44,7 +44,7 @@ function coordinatedRoot(store: Store, cap = 100_000): { rootId: string; records
 const spec = (allocation: number, writePaths = ['a.txt']): AssignmentSpec => ({ objective: 'Change a file', acceptance: ['done'], readPaths: [''], writePaths, profileId: FAKE_PROFILE_ID, profileFingerprint: 'f'.repeat(64), allocation, validation: null });
 function admitChild(store: Store, rootId: string, records: OrchestrationRecords, allocation: number, ledger?: BudgetLedger): { childId: string; assignmentId: string } {
   const assignment = records.insertAssignment({ rootTaskId: rootId, key: randomUUID().slice(0, 8), spec: spec(allocation), createdBy: 'coordinator', creatorCallId: 'call', supersedesId: null });
-  const childId = randomUUID(); const root = store.task(rootId);
+  const childId = randomUUID(); const root = store.gitTask(rootId);
   store.transaction(() => {
     store.saveTask({ ...root, id: childId, parentTaskId: rootId, role: 'child', assignmentId: assignment.id, mode: 'coding', coordination: undefined });
     records.admitAssignment(assignment.id, childId);
@@ -55,9 +55,9 @@ function admitChild(store: Store, rootId: string, records: OrchestrationRecords,
 }
 
 describe('schema versions and backed-up upgrade', () => {
-  it('creates a fresh database directly at v2 with orchestration available', () => {
+  it('creates a fresh database directly at v3 with orchestration available', () => {
     const store = open(join(directory, 'fresh.db'));
-    expect(store.schemaVersion).toBe(2); expect(store.orchestrationAvailable).toBe(true);
+    expect(store.schemaVersion).toBe(3); expect(store.orchestrationAvailable).toBe(true);
   });
   it('opens an existing v1 database without upgrading it and keeps legacy history', () => {
     const path = join(directory, 'legacy.db'); const { taskId } = createV1Database(path);
@@ -67,11 +67,11 @@ describe('schema versions and backed-up upgrade', () => {
     expect(store.detail(taskId).messages[0]?.content).toBe('legacy history');
     expect(() => store.requireOrchestration()).toThrow('backed-up database upgrade');
   });
-  it('upgrades v1 to v2 only after a verified backup and preserves rows and opaque provider state', async () => {
+  it('upgrades v1 to v3 only after a verified backup and preserves rows and opaque provider state', async () => {
     const path = join(directory, 'legacy.db'); const { taskId } = createV1Database(path);
     const store = open(path);
-    const { version, backupPath } = await store.upgradeToV2();
-    expect(version).toBe(2); expect(store.orchestrationAvailable).toBe(true);
+    const { version, backupPath } = await store.upgradeToV3();
+    expect(version).toBe(3); expect(store.orchestrationAvailable).toBe(true);
     expect(store.task(taskId).usedTokens).toBe(1200); expect(store.task(taskId).mode).toBeUndefined();
     expect(store.providerState(taskId)).toEqual({ opaque: 'provider-state' });
     const backup = new Database(backupPath, { readonly: true });
@@ -79,7 +79,41 @@ describe('schema versions and backed-up upgrade', () => {
     expect(backup.pragma('integrity_check', { simple: true })).toBe('ok');
     expect((backup.prepare('SELECT COUNT(*) AS c FROM messages').get() as { c: number }).c).toBe(1);
     backup.close();
-    await expect(store.upgradeToV2()).rejects.toThrow('already current');
+    expect(store.snapshot().projects).toEqual([expect.objectContaining({ path: 'C:\\fixture', kind: 'git' })]);
+    await expect(store.upgradeToV3()).rejects.toThrow('already current');
+  });
+  it('upgrades a v2 database to v3 and preserves orchestration records', async () => {
+    const path = join(directory, 'v2.db'); const db = new Database(path);
+    db.exec(V1_SCHEMA); db.exec(V2_MIGRATION); db.pragma('user_version = 2'); db.close();
+    const store = open(path);
+    expect(store.schemaVersion).toBe(2);
+    const { rootId, records, ledger } = coordinatedRoot(store);
+    const { childId, assignmentId } = admitChild(store, rootId, records, 10_000, ledger);
+    const messageId = randomUUID();
+    store.saveMessage({ id: messageId, taskId: childId, role: 'user', content: 'retained child history', createdAt: new Date().toISOString(), status: 'complete' });
+    const { version, backupPath } = await store.upgradeToV3();
+    expect(version).toBe(3);
+    expect(store.task(rootId)).toMatchObject({ id: rootId, projectId: expect.any(String), role: 'coordinator' });
+    expect(store.task(childId)).toMatchObject({ id: childId, projectId: store.task(rootId).projectId, parentTaskId: rootId, assignmentId });
+    expect(store.detail(childId).messages).toMatchObject([{ id: messageId, content: 'retained child history' }]);
+    expect(records.assignment(assignmentId)?.childTaskId).toBe(childId);
+    expect(store.snapshot().tasks.map(task => task.id)).toEqual([rootId]);
+    const backup = new Database(backupPath, { readonly: true });
+    expect(backup.pragma('user_version', { simple: true })).toBe(2);
+    expect((backup.prepare('SELECT COUNT(*) AS c FROM agent_runs').get() as { c: number }).c).toBe(2);
+    backup.close();
+  });
+  it('leaves v2 data and schema untouched if backup verification or migration fails', async () => {
+    for (const fault of ['verify', 'after-ddl'] as const) {
+      const path = join(directory, `v2-${fault}.db`); const db = new Database(path);
+      db.exec(V1_SCHEMA); db.exec(V2_MIGRATION); db.pragma('user_version = 2'); db.close();
+      const store = open(path, fault === 'verify' ? { backupFault: 'verify' } : { migrationFault: 'after-ddl' });
+      const { rootId } = coordinatedRoot(store);
+      await expect(store.upgradeToV3(join(directory, `v2-backup-${fault}`))).rejects.toThrow(fault === 'verify' ? 'Backup verification failed' : 'Injected migration failure');
+      expect(store.schemaVersion).toBe(2);
+      expect(store.task(rootId).id).toBe(rootId);
+      expect(store.db.prepare("SELECT name FROM sqlite_master WHERE name = 'projects'").get()).toBeUndefined();
+    }
   });
   it('does not change the database when the backup fails or cannot be verified', async () => {
     for (const fault of ['copy', 'verify'] as const) {
@@ -102,9 +136,9 @@ describe('schema versions and backed-up upgrade', () => {
     expect(reopened.schemaVersion).toBe(1);
   });
   it('rejects unsupported future versions and never downgrades a newer database in place', () => {
-    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 3'); db.close();
+    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 4'); db.close();
     expect(() => new Store(path)).toThrow('newer application');
-    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(3); check.close();
+    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(4); check.close();
   });
 });
 
