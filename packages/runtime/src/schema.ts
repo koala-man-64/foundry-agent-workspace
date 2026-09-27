@@ -395,3 +395,32 @@ export const V3_MIGRATION = `
     created_at TEXT NOT NULL
   );
 `;
+
+/** Indexed read projections. Task JSON, message rows and intent records remain authoritative. */
+export const V5_MIGRATION = `
+  ALTER TABLE tasks ADD COLUMN created_at TEXT;
+  ALTER TABLE tasks ADD COLUMN updated_at TEXT;
+  ALTER TABLE tasks ADD COLUMN archived_at TEXT;
+  ALTER TABLE tasks ADD COLUMN parent_task_id TEXT;
+  ALTER TABLE tasks ADD COLUMN project_path TEXT;
+  ALTER TABLE tasks ADD COLUMN project_id TEXT;
+  ALTER TABLE tasks ADD COLUMN mode TEXT;
+  ALTER TABLE tasks ADD COLUMN status TEXT;
+  ALTER TABLE events ADD COLUMN version INTEGER;
+  ALTER TABLE events ADD COLUMN source TEXT;
+  ALTER TABLE events ADD COLUMN root_task_id TEXT;
+  CREATE INDEX tasks_root_created ON tasks(parent_task_id, created_at DESC, id DESC);
+  CREATE INDEX tasks_root_recent ON tasks(parent_task_id, updated_at DESC, id DESC);
+  CREATE INDEX tasks_archive_created ON tasks(archived_at, parent_task_id, created_at DESC, id DESC);
+  CREATE INDEX tasks_status_updated ON tasks(status, updated_at DESC, id DESC);
+  CREATE INDEX tasks_project_created ON tasks(project_id, parent_task_id, created_at DESC, id DESC);
+  CREATE INDEX intents_state_kind ON intents(state, kind);
+  CREATE INDEX intents_task_json ON intents(json_extract(data, '$.taskId')) WHERE json_valid(data);
+  CREATE INDEX events_task_sequence ON events(task_id, sequence);
+  CREATE INDEX events_type_created ON events(type, created_at DESC, sequence);
+  CREATE INDEX agent_runs_lifecycle_updated ON agent_runs(lifecycle, updated_at DESC, task_id);
+  CREATE INDEX validation_run_kind_created ON validation_evidence(run_task_id, kind, created_at DESC, id DESC);
+  CREATE VIRTUAL TABLE messages_fts USING fts5(task_id UNINDEXED, message_id UNINDEXED, content, tokenize='unicode61');
+  CREATE TABLE workspace_read_meta (id INTEGER PRIMARY KEY CHECK(id = 1), task_generation INTEGER NOT NULL, message_generation INTEGER NOT NULL);
+  INSERT INTO workspace_read_meta(id, task_generation, message_generation) VALUES (1, 0, 0);
+`;

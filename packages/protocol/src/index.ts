@@ -7,6 +7,14 @@ export * from './usage';
 export * from './orchestration';
 import { ChannelRpc, type AgentMessage, type ChannelView } from './agent-channel';
 export * from './agent-channel';
+import { WorkspaceRpc, type WorkspaceApi } from './workspace';
+export * from './workspace';
+import { AutomationRpc, type AutomationApi } from './automation';
+export * from './automation';
+import { ContinuityRpc, type ContinuityApi } from './continuity';
+export * from './continuity';
+import { FeatureRpc, type FeatureApi } from './features';
+export * from './features';
 
 export const MAX_RPC_BYTES = 1024 * 1024;
 export const ApiKindSchema = z.enum(['fake', 'responses', 'chat-completions', 'anthropic']);
@@ -25,6 +33,7 @@ export type TaskStatus = 'idle' | 'running' | 'cancelled' | 'interrupted' | 'fai
 export interface TaskBase { id: string; title: string; projectId?: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding' | 'coordinated';
   /** Set once the task worktree was retired through the explicit user action; the branch and history remain. */
   retiredAt?: string;
+  archivedAt?: string;
   /** Present only on coordinated roots and their children. Legacy tasks omit every field below. */
   rootTaskId?: string; parentTaskId?: string; role?: AgentRole; assignmentId?: string; coordination?: CoordinationConfig; }
 export interface GitTask extends TaskBase { workspaceKind?: 'git'; projectPath: string; worktreePath: string; branch: string; baseCommit: string; }
@@ -35,7 +44,7 @@ export function isGitTask(task: Task): task is GitTask { return !task.workspaceK
 export interface Project { id: string; name: string; path: string; hidden: boolean; kind: 'git' | 'folder' | 'unavailable'; unavailableReason?: string; createdAt: string; updatedAt: string; }
 export interface WorkspacePreferences { profileId: string; mode: 'chat' | 'coding' | 'coordinated'; collapsedProjectIds: string[]; }
 export interface Message { id: string; taskId: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; status: 'complete' | 'streaming' | 'cancelled' | 'interrupted' | 'failed'; }
-export interface WorkspaceEvent { sequence: number; type: string; taskId?: string; data: unknown; createdAt: string; }
+export interface WorkspaceEvent { sequence: number; type: string; taskId?: string; rootTaskId?: string; data: unknown; createdAt: string; version?: 1; source?: 'runtime' | 'legacy'; legacy?: true; }
 export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; projects: Project[]; preferences: WorkspacePreferences; lastSequence: number; runtime: 'ready'; }
 export interface TaskDetail { task: Task; messages: Message[]; approvals?: Approval[]; compactions?: CompactionRecord[]; hasUnknownPublication?: boolean; }
 /** One provider request's accounting. Unknown usage keeps its full conservative reservation. */
@@ -48,7 +57,8 @@ export interface UsageReport {
   /** Conservative byte-based estimate of the next request's context (messages, native continuation, tool schemas) plus the output reservation. */
   estimatedContextTokens: number; contextPercent: number; warningPercent: number;
   totals: { requests: number; knownRequests: number; unknownRequests: number; prompt: number; completion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number };
-  records: UsageRecord[]; compactions: CompactionRecord[];
+  records: UsageRecord[]; compactions: import('./workspace').CompactionSummary[];
+  recordsNextBefore?: number | null; compactionsNextBefore?: number | null;
   metrics?: UsageTotals;
 }
 export const McpServerConfigSchema = z.object({
@@ -62,7 +72,8 @@ export const McpServerConfigSchema = z.object({
 }).strict();
 export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export interface McpTool { name: string; description: string; inputSchema: Record<string, unknown>; readOnlyHint: boolean; }
-export interface McpServerStatus extends McpServerConfig { tools: McpTool[]; toolsListedAt: string | null; serverInfo: { name: string; version: string } | null; lastError: string | null; running: boolean; }
+export interface McpServerStatus extends Omit<McpServerConfig, 'arguments' | 'environment'> { argumentCount: number; environmentCount: number; environmentNames: string[]; tools: Pick<McpTool, 'name' | 'description' | 'readOnlyHint'>[]; toolsListedAt: string | null; serverInfo: { name: string; version: string } | null; lastError: string | null; running: boolean; }
+export interface McpStatusPage { items: McpServerStatus[]; nextCursor: string | null; }
 export interface DiagnosticsExport { path: string; bytes: number; sha256: string; }
 export interface CommitResult { commit: string; branch: string; changedPaths: string[]; }
 export interface PushResult { remote: string; branch: string; detail: string; }
@@ -75,13 +86,11 @@ export interface ProbeResult { ok: boolean; capabilities: { streaming: boolean; 
 const Id = z.string().uuid();
 export const RpcMethods = {
   ...BrowserRecoveryRpc,
-  'workspace.snapshot': z.object({}).strict(),
   'project.add': z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   'project.update': z.object({ projectId: Id, name: z.string().trim().min(1).max(100).optional(), hidden: z.boolean().optional() }).strict(),
   'workspace.preferences.save': z.object({ profileId: Id.optional(), mode: z.enum(['chat', 'coding', 'coordinated']).optional(), collapsedProjectIds: z.array(z.union([Id, z.literal('none')])).max(1000).optional() }).strict(),
   'task.start': z.object({ requestId: Id, projectId: Id.nullable(), content: z.string().trim().min(1).max(64000), title: z.string().trim().min(1).max(160).optional(), profileId: Id, mode: z.enum(['chat', 'coding', 'coordinated']), tokenBudget: z.number().int().min(1024).max(10000000).default(100000), coordination: CoordinationConfigSchema.optional() }).strict(),
   'task.create': z.object({ title: z.string().trim().min(1).max(160), projectPath: z.string().min(1).max(4096), profileId: Id, tokenBudget: z.number().int().min(1024).max(10000000).default(100000), mode: z.enum(['chat', 'coding', 'coordinated']).default('chat'), coordination: CoordinationConfigSchema.optional() }).strict(),
-  'task.get': z.object({ taskId: Id }).strict(),
   'task.send': z.object({ taskId: Id, content: z.string().trim().min(1).max(64000) }).strict(),
   'task.cancel': z.object({ taskId: Id }).strict(),
   'profile.save': ModelProfileSchema,
@@ -98,12 +107,18 @@ export const RpcMethods = {
   'task.push': z.object({ taskId: Id, remote: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/).default('origin'), confirm: z.literal('push') }).strict(),
   'task.reconcilePublication': z.object({ taskId: Id }).strict(),
   'task.retire': z.object({ taskId: Id, confirm: z.literal('retire') }).strict(),
-  'mcp.list': z.object({}).strict(),
+  'mcp.list': z.object({ after: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/).optional(), limit: z.number().int().min(1).max(20).default(10) }).strict(),
   'mcp.save': McpServerConfigSchema,
+  'mcp.getConfig': z.object({ serverId: Id }).strict(),
+  'mcp.update': z.object({ serverId: Id, enabled: z.boolean().optional(), readOnlyTools: z.array(z.string().max(64)).max(64).optional(), reconnect: z.boolean().optional() }).strict(),
   'mcp.remove': z.object({ serverId: Id }).strict(),
   ...OrchestrationRpc,
   ...ChannelRpc,
-  ...UsageRpc
+  ...UsageRpc,
+  ...WorkspaceRpc,
+  ...AutomationRpc,
+  ...ContinuityRpc,
+  ...FeatureRpc
 } as const;
 export type RpcMethod = keyof typeof RpcMethods;
 export const RpcRequestSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string().min(1).max(100), method: z.enum(Object.keys(RpcMethods) as [RpcMethod, ...RpcMethod[]]), params: z.unknown() }).strict();
@@ -113,7 +128,7 @@ export const RpcResponseSchema = z.union([
   z.object({ jsonrpc: z.literal('2.0'), id: z.string(), result: z.unknown() }).strict(),
   z.object({ jsonrpc: z.literal('2.0'), id: z.string(), error: z.object({ code: z.number(), message: z.string() }).strict() }).strict()
 ]);
-export interface DesktopApi {
+export interface CoreDesktopApi {
   invoke(method: 'channel.get', params: { taskId: string; before?: number; afterTaskId?: string }): Promise<ChannelView>;
   invoke(method: 'channel.send', params: { taskId: string; requestId: string; recipientTaskId?: string | null; content: string }): Promise<AgentMessage>;
   invoke(method: 'usage.summary', params: z.input<typeof UsageRpc['usage.summary']>): Promise<UsageSummary>;
@@ -123,13 +138,11 @@ export interface DesktopApi {
   browser(command: BrowserCommand): Promise<BrowserState>;
   onBrowserState(listener: (state: BrowserState) => void): () => void;
   invoke(method: 'browser.acknowledgeUnknown', params: { taskId: string; approvalId: string; confirm: 'inspected-unknown-result' }): Promise<Approval>;
-  invoke(method: 'workspace.snapshot', params: Record<string, never>): Promise<Snapshot>;
   invoke(method: 'project.add', params: { path: string }): Promise<Project>;
   invoke(method: 'project.update', params: { projectId: string; name?: string; hidden?: boolean }): Promise<Project>;
   invoke(method: 'workspace.preferences.save', params: z.input<typeof RpcMethods['workspace.preferences.save']>): Promise<WorkspacePreferences>;
   invoke(method: 'task.start', params: z.input<typeof RpcMethods['task.start']>): Promise<Task>;
   invoke(method: 'task.create', params: z.input<typeof RpcMethods['task.create']>): Promise<GitTask>;
-  invoke(method: 'task.get', params: { taskId: string }): Promise<TaskDetail>;
   invoke(method: 'task.send' | 'task.cancel', params: { taskId: string; content?: string }): Promise<{ accepted: boolean }>;
   invoke(method: 'profile.save', params: ModelProfile): Promise<ModelProfile>;
   invoke(method: 'profile.probe', params: { profileId: string }): Promise<ProbeResult>;
@@ -156,14 +169,19 @@ export interface DesktopApi {
   invoke(method: 'task.push', params: { taskId: string; remote?: string; confirm: 'push' }): Promise<PushResult>;
   invoke(method: 'task.reconcilePublication', params: { taskId: string }): Promise<{ reconciled: boolean; detail: string }>;
   invoke(method: 'task.retire', params: { taskId: string; confirm: 'retire' }): Promise<RetireResult>;
-  invoke(method: 'mcp.list', params: Record<string, never>): Promise<McpServerStatus[]>;
+  invoke(method: 'mcp.list', params: { after?: string; limit?: number }): Promise<McpStatusPage>;
   invoke(method: 'mcp.save', params: z.input<typeof McpServerConfigSchema>): Promise<McpServerStatus>;
+  invoke(method: 'mcp.getConfig', params: { serverId: string }): Promise<McpServerConfig>;
+  invoke(method: 'mcp.update', params: { serverId: string; enabled?: boolean; readOnlyTools?: string[]; reconnect?: boolean }): Promise<McpServerStatus>;
   invoke(method: 'mcp.remove', params: { serverId: string }): Promise<{ removed: boolean }>;
   pickProject(): Promise<string | null>;
   saveCredential(profileId: string, value: string): Promise<void>;
+  notificationPreferences(): Promise<{ enabled: boolean }>;
+  setNotificationsEnabled(enabled: boolean): Promise<{ enabled: boolean }>;
   onEvent(listener: (event: WorkspaceEvent) => void): () => void;
 }
 
+export type DesktopApi = CoreDesktopApi & WorkspaceApi & AutomationApi & ContinuityApi & FeatureApi;
 export interface ProviderMessage { role: 'user' | 'assistant' | 'system'; content: string; }
 export interface ToolDefinition { name: string; description: string; inputSchema: Record<string, unknown>; }
 export interface ToolCall { id: string; name: string; arguments: unknown; }
@@ -178,6 +196,8 @@ export interface ProviderAdapter { streamTurn(request: ProviderRequest): AsyncIt
 export type ApprovalState = 'awaiting-approval' | 'approved' | 'executing' | 'complete' | 'rejected' | 'revoked' | 'unknown' | 'failed';
 export interface Approval {
   browser?: BrowserApprovalData;
+  /** Set by runtime-only draft preparation; suppresses recursive hook activation. */
+  origin?: 'hook';
   id: string; taskId: string; toolCallId: string; nonce: string; tool: string; state: ApprovalState;
   createdAt: string; summary: string; path?: string; before?: string; after?: string;
   expectedHash?: string | null; resultingHash?: string;

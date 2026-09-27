@@ -185,7 +185,7 @@ export class AgentLoop {
         });
         if (!calls.length) {
           answer.status = 'complete'; this.store.saveMessage(answer);
-          this.store.saveTask({ ...this.store.task(task.id), status: 'idle', updatedAt: new Date().toISOString() });
+          this.store.saveTask({ ...this.store.task(task.id), status: 'idle', updatedAt: new Date().toISOString() }, { usageKnown: usage !== undefined, chargedTokens: usage ?? reserved });
           this.publish('task.completed', { usageKnown: usage !== undefined, chargedTokens: usage ?? reserved }, task.id);
           hooks.turnEnded?.(this.store.task(task.id), 'complete', undefined, undefined);
           return;
@@ -213,11 +213,11 @@ export class AgentLoop {
       settle(abort.signal.aborted ? 'cancelled' : 'failed', 'Turn stopped before this request completed.');
       answer.content += (answer.content && raw ? '\n\n' : '') + this.redactor.text(raw);
       answer.status = abort.signal.aborted ? 'cancelled' : 'failed';
+      const reason = abort.signal.aborted ? 'Response cancelled. Unreported usage remains reserved conservatively.' : this.redactor.text(error instanceof Error ? error.message : 'Provider failed.');
       this.store.transaction(() => {
         this.store.saveMessage(answer);
-        this.store.saveTask({ ...this.store.task(task.id), status: answer.status === 'cancelled' ? 'cancelled' : 'failed', updatedAt: new Date().toISOString() });
+        this.store.saveTask({ ...this.store.task(task.id), status: answer.status === 'cancelled' ? 'cancelled' : 'failed', updatedAt: new Date().toISOString() }, { reason });
       });
-      const reason = abort.signal.aborted ? 'Response cancelled. Unreported usage remains reserved conservatively.' : this.redactor.text(error instanceof Error ? error.message : 'Provider failed.');
       this.publish('task.stopped', { reason }, task.id);
       hooks.turnEnded?.(this.store.task(task.id), answer.status === 'cancelled' ? 'cancelled' : 'failed', reason, error);
     }

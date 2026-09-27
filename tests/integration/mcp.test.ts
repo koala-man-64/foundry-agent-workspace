@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import type { Approval, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, GitTask as Task, ToolCall } from '../../packages/protocol/src/index';
+import type { Approval, McpServerConfig, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, GitTask as Task, ToolCall } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
@@ -30,7 +30,7 @@ class ScriptProvider implements ProviderAdapter {
   }
 }
 
-const config = (overrides: Partial<McpServerStatus> = {}): Record<string, unknown> => ({ id: randomUUID(), key: 'fixture', name: 'Fixture server', command: process.execPath, arguments: [FIXTURE], cwd: '', environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY }, enabled: true, readOnlyTools: ['echo', 'secret_echo', 'huge'], callTimeoutMs: 1500, ...overrides });
+const config = (overrides: Partial<McpServerConfig> = {}): Record<string, unknown> => ({ id: randomUUID(), key: 'fixture', name: 'Fixture server', command: process.execPath, arguments: [FIXTURE], cwd: '', environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_CANARY: CANARY }, enabled: true, readOnlyTools: ['echo', 'secret_echo', 'huge'], callTimeoutMs: 1500, ...overrides });
 
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), 'foundry-mcp-')); project = join(directory, 'source'); await mkdir(project); notes = join(directory, 'notes.txt');
@@ -106,11 +106,12 @@ describe('MCP servers under runtime policy', () => {
     expect(saved.serverInfo).toEqual({ name: 'foundry-fixture', version: '1.0.0' });
     expect(saved.lastError).toContain('bad.name');
     expect(saved.running).toBe(true);
-    const listed = await runtime.dispatch('mcp.list', {}) as McpServerStatus[];
-    expect(listed).toHaveLength(1);
+    const listed = await runtime.dispatch('mcp.list', {}) as { items: McpServerStatus[]; nextCursor: string | null };
+    expect(listed.items).toHaveLength(1); expect(listed.nextCursor).toBeNull();
+    expect(listed.items[0]?.tools[0]).not.toHaveProperty('inputSchema');
     await expect(runtime.dispatch('mcp.save', config({ key: 'other', command: 'node' }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('absolute path') });
     await expect(runtime.dispatch('mcp.save', config({ key: 'fixture', id: randomUUID() }))).rejects.toThrow('already uses the key');
-    await expect(runtime.dispatch('mcp.save', config({ key: 'env', environment: { API_KEY: 'x' } }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('not permitted') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'env', environment: { API_KEY: 'x' } }))).rejects.toThrow('not permitted');
     const worktreeRoot = join(directory, 'worktrees');
     await mkdir(worktreeRoot, { recursive: true });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-cwd', cwd: worktreeRoot }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
@@ -142,6 +143,48 @@ describe('MCP servers under runtime policy', () => {
     expect(loopServer.tools.map(tool => tool.name)).toEqual(['loop_tool', 'loop_tool']);
     expect(loopServer.lastError).toContain('pagination loop detected');
     expect((await runtime.dispatch('mcp.remove', { serverId: loopServer.id })) as { removed: boolean }).toEqual({ removed: true });
+  });
+
+  it('bounds a malicious multi-page schema inventory before save and pages every configured status', async () => {
+    const fixture = join(directory, 'large-mcp.mjs');
+    await writeFile(fixture, `import { createInterface } from 'node:readline';
+const tools=Array.from({length:128},(_,i)=>({name:'large_'+i,description:'Tool '+i,inputSchema:{type:'object',properties:{text:{type:'string',description:'x'.repeat(12000)}}}}));
+const rl=createInterface({input:process.stdin});
+rl.on('line',line=>{const m=JSON.parse(line); if(m.id===undefined)return; let result;
+if(m.method==='initialize') result={protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'large-fixture',version:'1'}};
+else if(m.method==='tools/list'){const n=Number(m.params?.cursor??0);result={tools:tools.slice(n,n+32),...(n+32<tools.length?{nextCursor:String(n+32)}:{})};}
+else result={};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`);
+    const saved = await runtime.dispatch('mcp.save', config({ key: 'large-fixture', arguments: [fixture], environment: {} })) as McpServerStatus;
+    expect(saved.tools.length).toBeGreaterThan(0);
+    expect(saved.tools.length).toBeLessThan(128);
+    expect(saved.lastError).toContain('aggregate tool schema limit');
+    expect(Buffer.byteLength(JSON.stringify(saved))).toBeLessThan(224 * 1024);
+    expect(saved.tools[0]).not.toHaveProperty('inputSchema');
+    const canonical = store.mcpServer(saved.id)!;
+    expect(canonical.tools[0]?.inputSchema).toHaveProperty('properties');
+    expect(Buffer.byteLength(JSON.stringify(canonical.tools))).toBeLessThan(193 * 1024);
+    for (let index = 0; index < 12; index++) await runtime.dispatch('mcp.save', config({ id: randomUUID(), key: `disabled-${index}`, enabled: false, environment: {} }));
+    let after: string | undefined; const keys: string[] = [];
+    do {
+      const page = await runtime.dispatch('mcp.list', { after, limit: 4 }) as { items: McpServerStatus[]; nextCursor: string | null };
+      expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(224 * 1024);
+      keys.push(...page.items.map(item => item.key)); after = page.nextCursor ?? undefined;
+      if (!page.nextCursor) break;
+    } while (keys.length < 30);
+    expect(new Set(keys).size).toBe(13);
+    expect(keys).toContain('large-fixture');
+  });
+
+  it('keeps a legacy oversized canonical tool listing recoverable through a bounded status page', async () => {
+    const legacy = config({ key: 'legacy-large', environment: {} }) as McpServerConfig;
+    const tools = Array.from({ length: 128 }, (_, index) => ({ name: `tool_${index}`, description: '\u0001'.repeat(1024), inputSchema: { type: 'object', properties: { text: { type: 'string', description: 'x'.repeat(15000) } } }, readOnlyHint: false }));
+    store.saveMcpServer(legacy, { tools, toolsListedAt: new Date().toISOString(), serverInfo: { name: 'legacy', version: '1' }, lastError: '\u0001'.repeat(4000) });
+    const page = await runtime.dispatch('mcp.list', { limit: 1 }) as { items: McpServerStatus[]; nextCursor: string | null };
+    expect(page.items.map(item => item.key)).toEqual(['legacy-large']);
+    expect(page.items[0]?.tools).toHaveLength(128);
+    expect(page.items[0]?.tools[0]).not.toHaveProperty('inputSchema');
+    expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(224 * 1024);
+    expect(store.mcpServer(legacy.id)?.tools[0]?.inputSchema).toEqual(tools[0]?.inputSchema);
   });
 
   it('does not launch a server when disabled and stops any existing session', async () => {
@@ -181,7 +224,7 @@ describe('MCP servers under runtime policy', () => {
   });
 
   it('screens secrets in arguments and outputs, bounds large results, and reports server errors as failed calls', async () => {
-    await runtime.dispatch('mcp.save', config({ readOnlyTools: ['echo', 'secret_echo', 'huge', 'fail'] }));
+    await runtime.dispatch('mcp.save', config({ environment: { MCP_FIXTURE_NOTES: notes }, readOnlyTools: ['echo', 'secret_echo', 'huge', 'fail'] }));
     const provider = new ScriptProvider([[
       { id: 'c1', name: 'mcp__fixture__secret_echo', arguments: {} },
       { id: 'c3', name: 'mcp__fixture__huge', arguments: { bytes: 200000 } },

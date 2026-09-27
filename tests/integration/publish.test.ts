@@ -184,14 +184,14 @@ describe('explicit commit, push and worktree retirement', () => {
     // Simulate an intent marked unknown due to an interrupted push operation
     const intent = store.intent('git.push', { taskId: task.id, branch: task.branch, remote: 'origin' });
     store.finishIntent(intent, 'unknown');
-    const detailBefore = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
-    expect(detailBefore.hasUnknownPublication).toBe(true);
+    const detailBefore = await runtime.dispatch('task.read', { taskId: task.id }) as { unknownOutcomes: number };
+    expect(detailBefore.unknownOutcomes).toBe(1);
     await expect(runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' })).rejects.toThrow('unknown git.push outcome');
     await expect(runtime.dispatch('task.commit', { taskId: task.id, message: 'commit 2' })).rejects.toThrow('unknown git.push outcome');
     const reconciled = await runtime.dispatch('task.reconcilePublication', { taskId: task.id }) as { reconciled: boolean; detail: string };
     expect(reconciled.reconciled).toBe(true);
-    const detailAfter = await runtime.dispatch('task.get', { taskId: task.id }) as { hasUnknownPublication?: boolean };
-    expect(detailAfter.hasUnknownPublication).toBeUndefined();
+    const detailAfter = await runtime.dispatch('task.read', { taskId: task.id }) as { unknownOutcomes: number };
+    expect(detailAfter.unknownOutcomes).toBe(0);
     const pushed = await runtime.dispatch('task.push', { taskId: task.id, remote: 'origin', confirm: 'push' }) as PushResult;
     expect(pushed.branch).toBe(task.branch);
   });

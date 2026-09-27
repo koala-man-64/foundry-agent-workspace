@@ -4,7 +4,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { McpServerConfig, McpServerStatus, McpTool, ToolDefinition } from '../../protocol/src/index';
+import type { McpServerConfig, McpTool, ToolDefinition } from '../../protocol/src/index';
+import type { StoredMcpServer } from './mcp-config';
 import { LineDecoder } from '../../protocol/src/framing';
 import { Redactor } from './redaction';
 
@@ -28,6 +29,7 @@ const MAX_ARGUMENT_BYTES = 64 * 1024;
 const MAX_TOOLS = 128;
 const MAX_TOOL_DESCRIPTION_CHARS = 1024;
 const MAX_SCHEMA_BYTES = 16 * 1024;
+const MAX_LISTED_TOOLS_BYTES = 192 * 1024;
 const MAX_STDERR_BYTES = 8 * 1024;
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
 // Includes cold host preparation before the server can read the buffered initialize request.
@@ -213,7 +215,7 @@ export class McpManager {
   private readonly starting = new Map<string, Promise<Session>>();
   private readonly hostPath: string;
   private closing = false;
-  constructor(private readonly servers: () => McpServerStatus[], private readonly redactor: Redactor, private readonly options: McpManagerOptions = {}) {
+  constructor(private readonly servers: () => StoredMcpServer[], private readonly redactor: Redactor, private readonly options: McpManagerOptions = {}) {
     this.hostPath = path.resolve(options.hostPath ?? unpackedHostPath());
   }
 
@@ -234,7 +236,7 @@ export class McpManager {
   static isMcpToolName(name: string): boolean { return name.startsWith(MCP_TOOL_PREFIX); }
 
   /** Resolve an advertised name to its configured server and retained tool description. */
-  resolve(name: string): { server: McpServerStatus; tool: McpTool; readOnly: boolean } | undefined {
+  resolve(name: string): { server: StoredMcpServer; tool: McpTool; readOnly: boolean } | undefined {
     if (!name.startsWith(MCP_TOOL_PREFIX)) return undefined;
     const rest = name.slice(MCP_TOOL_PREFIX.length);
     const separator = rest.indexOf('__');
@@ -384,6 +386,8 @@ export class McpManager {
 
   private async listTools(session: Session): Promise<McpListing> {
     const tools: McpTool[] = []; const skipped: string[] = [];
+    let unreportedSkips = 0; let listedBytes = 0;
+    const noteSkip = (reason: string): void => { if (skipped.length < 20) skipped.push(reason); else unreportedSkips++; };
     let cursor: string | undefined = undefined;
     let totalFetched = 0;
     const seenCursors = new Set<string>();
@@ -392,14 +396,14 @@ export class McpManager {
     do {
       if (cursor) {
         if (seenCursors.has(cursor)) {
-          skipped.push('pagination loop detected in MCP tools/list');
+          noteSkip('pagination loop detected in MCP tools/list');
           break;
         }
         seenCursors.add(cursor);
       }
       pages++;
       if (pages > MAX_PAGES) {
-        skipped.push('MCP tools/list exceeded page limit');
+        noteSkip('MCP tools/list exceeded page limit');
         break;
       }
       const params: Record<string, unknown> = cursor ? { cursor } : {};
@@ -408,17 +412,21 @@ export class McpManager {
       for (const raw of result.tools) {
         totalFetched++;
         if (tools.length >= MAX_TOOLS) continue;
-        if (!isRecord(raw) || typeof raw.name !== 'string') { skipped.push('(invalid tool entry)'); continue; }
-        if (!TOOL_NAME.test(raw.name) || !composeName(session.config.key, raw.name)) { skipped.push(`${raw.name.slice(0, 64)}: unsupported name`); continue; }
+        if (!isRecord(raw) || typeof raw.name !== 'string') { noteSkip('(invalid tool entry)'); continue; }
+        if (!TOOL_NAME.test(raw.name) || !composeName(session.config.key, raw.name)) { noteSkip(`${raw.name.slice(0, 64)}: unsupported name`); continue; }
         const schema = isRecord(raw.inputSchema) && raw.inputSchema.type === 'object' ? raw.inputSchema : { type: 'object', properties: {}, additionalProperties: true };
-        if (Buffer.byteLength(JSON.stringify(schema), 'utf8') > MAX_SCHEMA_BYTES) { skipped.push(`${raw.name}: schema too large`); continue; }
+        if (Buffer.byteLength(JSON.stringify(schema), 'utf8') > MAX_SCHEMA_BYTES) { noteSkip(`${raw.name}: schema too large`); continue; }
         const description = this.redactor.text(typeof raw.description === 'string' ? raw.description : '').replace(/\s+/g, ' ').trim().slice(0, MAX_TOOL_DESCRIPTION_CHARS);
         const annotations = isRecord(raw.annotations) ? raw.annotations : {};
-        tools.push({ name: raw.name, description, inputSchema: JSON.parse(this.redactor.text(JSON.stringify(schema))) as Record<string, unknown>, readOnlyHint: annotations.readOnlyHint === true });
+        const candidate = { name: raw.name, description, inputSchema: JSON.parse(this.redactor.text(JSON.stringify(schema))) as Record<string, unknown>, readOnlyHint: annotations.readOnlyHint === true };
+        const bytes = Buffer.byteLength(JSON.stringify(candidate), 'utf8');
+        if (listedBytes + bytes > MAX_LISTED_TOOLS_BYTES) { noteSkip(`${raw.name}: aggregate tool schema limit reached`); continue; }
+        listedBytes += bytes; tools.push(candidate);
       }
       cursor = typeof result.nextCursor === 'string' && result.nextCursor.length ? result.nextCursor : undefined;
     } while (cursor && tools.length < MAX_TOOLS);
-    if (totalFetched > MAX_TOOLS) skipped.push(`${totalFetched - MAX_TOOLS} further tools beyond the limit`);
+    if (totalFetched > MAX_TOOLS) noteSkip(`${totalFetched - MAX_TOOLS} further tools beyond the limit`);
+    if (unreportedSkips) skipped.push(`${unreportedSkips} additional tools or warnings omitted`);
     return { tools, skipped, serverInfo: session.serverInfo };
   }
 

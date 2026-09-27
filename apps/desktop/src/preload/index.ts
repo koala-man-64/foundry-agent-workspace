@@ -11,6 +11,8 @@ const api = {
   invoke: (method: string, params: unknown) => ipcRenderer.invoke('workspace:invoke', method, params),
   pickProject: () => ipcRenderer.invoke('workspace:pick-project'),
   saveCredential: (profileId: string, value: string) => ipcRenderer.invoke('workspace:save-credential', profileId, value),
+  notificationPreferences: () => ipcRenderer.invoke('workspace:notification-preferences'),
+  setNotificationsEnabled: (enabled: boolean) => ipcRenderer.invoke('workspace:set-notifications', enabled),
   onEvent: (listener: (event: WorkspaceEvent) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: WorkspaceEvent): void => listener(payload);
     ipcRenderer.on('workspace:event', handler);

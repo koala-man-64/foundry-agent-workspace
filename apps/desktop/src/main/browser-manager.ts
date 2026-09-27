@@ -12,7 +12,7 @@ const MAX_CHECKED_FRAMES = 64;
 const FILE_CHECK_TIMEOUT_MS = 5_000;
 const MAX_PREPARED_PER_TAB = 32;
 const PREPARED_TTL_MS = 10 * 60_000;
-type Tab = { id: string; view: WebContentsView; contents: WebContents; generation: number; attachmentId: string | null; taskId: string | null; attaching: { id: string; cancelled: boolean } | null; lastTaskId: string | null; authorizedOrigin: string | null; pendingOrigin: string | null; error: string | null; snapshot: BrowserSnapshot | null; fingerprints: Map<string, string>; prepared: Set<string>; downloads: Set<DownloadItem>; contextId: number | null; busy: Promise<void> };
+type Tab = { id: string; view: WebContentsView; contents: WebContents; generation: number; attachmentId: string | null; taskId: string | null; attaching: { id: string; taskId: string; cancelled: boolean } | null; lastTaskId: string | null; authorizedOrigin: string | null; pendingOrigin: string | null; error: string | null; snapshot: BrowserSnapshot | null; fingerprints: Map<string, string>; prepared: Set<string>; downloads: Set<DownloadItem>; contextId: number | null; busy: Promise<void> };
 type PreparedRecord = { value: BrowserPrepared; fingerprint?: string; consumed: boolean };
 const originOf = (url: string): string => { try { const parsed = new URL(url); return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : 'null'; } catch { return 'null'; } };
 const safeUrl = (url: string): string => { const parsed = new URL(url); if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new BrowserHostError('failed', 'Only HTTP and HTTPS pages are supported.'); return parsed.href; };
@@ -242,7 +242,7 @@ export class BrowserManager {
       else if (command.kind === 'takeControl') this.detach(tab);
       else if (command.kind === 'attach') {
         if (tab.attaching) throw new BrowserHostError('stale', 'Attachment is already in progress.');
-        const guard = { id: randomUUID(), cancelled: false };
+        const guard = { id: randomUUID(), taskId: command.taskId, cancelled: false };
         const generation = tab.generation;
         const url = tab.contents.getURL();
         tab.attaching = guard;
@@ -335,7 +335,13 @@ export class BrowserManager {
     const request = BrowserHostRequestSchema.parse(input);
     if (this.stopped) throw new BrowserHostError('failed', 'Browser is shutting down.');
     if (request.kind === 'tabs') return [...this.tabs.values()].filter(tab => tab.taskId === request.taskId).map(tab => this.metadata(tab));
-    if (request.kind === 'revoke') { for (const tab of this.tabs.values()) if (tab.taskId === request.taskId) this.detach(tab); this.emit(); return null; }
+    if (request.kind === 'revoke') {
+      for (const tab of this.tabs.values()) {
+        if (tab.taskId === request.taskId) this.detach(tab);
+        else if (tab.attaching?.taskId === request.taskId) tab.attaching.cancelled = true;
+      }
+      this.emit(); return null;
+    }
     if (request.kind === 'inspect') { const tab = this.required(request.tabId); if (tab.taskId !== request.taskId && tab.lastTaskId !== request.taskId) throw new BrowserHostError('stale', 'Tab does not belong to this chat.'); return { tabId: tab.id, generation: tab.generation, origin: originOf(tab.contents.getURL()), inspectedAt: new Date().toISOString() }; }
     const tab = this.attached(request.taskId, request.kind === 'snapshot' ? request.tabId : request.kind === 'prepare' ? request.action.tabId : this.prepared.get(request.preparedId)?.value.tabId ?? '');
     return this.withTab(tab, async () => {

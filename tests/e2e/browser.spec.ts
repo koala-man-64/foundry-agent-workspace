@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { BrowserState, TaskDetail } from '../../packages/protocol/src/index';
+import type { BrowserState } from '../../packages/protocol/src/index';
 const expect = baseExpect.configure({ timeout: 30000 });
 
 const HTML = `<!doctype html><html><head><title>Browser fixture</title></head><body>
@@ -27,7 +27,7 @@ async function launch(directory: string): Promise<{ app: ElectronApplication; pa
   app.process().stderr?.on('data', chunk => process.stderr.write(chunk));
   app.on('console', message => { if (message.type() === 'error') process.stderr.write(`${message.text()}\n`); });
   const page = await app.firstWindow();
-  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
   return { app, page };
 }
 async function startServer(): Promise<{ server: Server; base: string }> {
@@ -51,7 +51,7 @@ async function startChat(page: Page, title: string): Promise<string> {
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
   await expect(page.getByText(`Fake response: ${title}`, { exact: true })).toBeVisible();
-  return page.evaluate(async () => (await window.workspace.invoke('workspace.snapshot', {})).tasks[0]!.id);
+  return page.evaluate(async () => (await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 })).tasks[0]!.id);
 }
 async function browserValue(app: ElectronApplication, url: string, script: string): Promise<unknown> {
   await expect.poll(() => app.evaluate(({ webContents }, target) => webContents.getAllWebContents().some(item => item.getURL() === target && !item.isLoading()), url)).toBe(true);
@@ -107,6 +107,7 @@ test('persistent browser storage, blank restart, manual navigation, popup and is
     await expect(page.getByRole('dialog')).toBeVisible();
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.contentView.children.slice(1).every(view => !view.getVisible()))).toBe(true);
     await page.getByRole('button', { name: 'Close settings' }).click();
+    await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await page.getByRole('button', { name: 'Manage projects', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Manage projects' })).toBeVisible();
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.contentView.children.slice(1).every(view => !view.getVisible()))).toBe(true);
@@ -148,7 +149,7 @@ test('persistent browser storage, blank restart, manual navigation, popup and is
     await page.evaluate(input => window.workspace.browser({ kind: 'navigate', tabId: input.id, url: input.url }), { id: current, url: `${base}/read` });
     await browserValue(app, `${base}/read`, 'window.storageReady');
     expect(await browserValue(app, `${base}/read`, "({cookie:document.cookie,stored:localStorage.getItem('fixture-value'),indexed:window.storedValue})")).toEqual({ cookie: '', stored: null, indexed: null });
-    expect(await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+    expect(await page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
   } finally { await running?.app.close(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(directory, { recursive: true, force: true }); }
 });
 
@@ -179,7 +180,7 @@ test('ordinary chat reads an attached page and executes only the approved browse
     await expect(page.getByText('Attached to this chat · page shared')).toBeVisible();
     await page.getByLabel('Task message').fill('/browser-demo'); await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(async () => {
-      const detail = await page.evaluate(id => window.workspace.invoke('task.get', { taskId: id }), taskId) as TaskDetail;
+      const detail = await page.evaluate(async id => { const read = await window.workspace.invoke('task.read', { taskId: id }); const summaries = await window.workspace.invoke('task.approvals', { taskId: id }); const approvals = await Promise.all(summaries.approvals.map(async item => (await window.workspace.invoke('approval.get', { taskId: id, approvalId: item.id })).approval)); return { ...read, approvals }; }, taskId);
       return detail.approvals?.find(approval => approval.browser)?.state;
     }).toBe('awaiting-approval');
     expect(await browserValue(app, `${base}/read`, "document.querySelector('#result').textContent")).toBe('No action yet');
@@ -188,7 +189,7 @@ test('ordinary chat reads an attached page and executes only the approved browse
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect.poll(() => browserValue(app, `${base}/read`, "document.querySelector('#result').textContent")).toBe('Approved click ran');
     await expect(page.getByText(/Offline browser demo finished:/)).toBeVisible();
-    const detail = await page.evaluate(id => window.workspace.invoke('task.get', { taskId: id }), taskId) as TaskDetail;
+    const detail = await page.evaluate(async id => { const read = await window.workspace.invoke('task.read', { taskId: id }); const summaries = await window.workspace.invoke('task.approvals', { taskId: id }); const approvals = await Promise.all(summaries.approvals.map(async item => (await window.workspace.invoke('approval.get', { taskId: id, approvalId: item.id })).approval)); return { ...read, approvals }; }, taskId);
     expect(detail.approvals?.filter(approval => approval.browser)).toHaveLength(1);
     expect(detail.approvals?.find(approval => approval.browser)?.state).toBe('complete');
     expect(detail.task.mode).toBe('chat');
@@ -204,6 +205,6 @@ test('ordinary chat reads an attached page and executes only the approved browse
     await browserValue(app, `${base}/read`, "(() => { const link=document.createElement('a'); link.href='/download'; document.body.append(link); link.click(); })()");
     await expect.poll(async () => readFile(destination, 'utf8').catch(() => '')).toBe('browser download fixture');
     await page.evaluate(() => window.workspace.browser({ kind: 'clearProfile', confirm: 'clear-profile' }));
-    expect((await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).tasks.some(task => task.id === taskId)).toBe(true);
+    expect((await page.evaluate(() => window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }))).tasks.some(task => task.id === taskId)).toBe(true);
   } finally { await running?.app.close(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(directory, { recursive: true, force: true }); }
 });

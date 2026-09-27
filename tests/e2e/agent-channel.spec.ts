@@ -27,15 +27,15 @@ test('independent agents share a project channel with direct messages and a reta
     await page.getByRole('button', { name: 'Project channel', exact: true }).click();
     const channel = page.getByTestId('project-channel');
     await expect(channel.getByText('Agent finding for the project', { exact: true })).toBeVisible();
-    const recipientId = await page.evaluate(async () => (await window.workspace.invoke('workspace.snapshot', {})).tasks.find(task => task.title === 'Recipient')!.id);
+    const recipientId = await page.evaluate(async () => (await window.workspace.invoke('workspace.tasks', { visibility: 'all', sort: 'created', limit: 50 })).tasks.find(task => task.title === 'Recipient')!.id);
     await channel.getByLabel('Channel recipient').selectOption(recipientId);
     await channel.getByLabel('Channel message').fill('Private handoff to recipient');
     await channel.getByRole('button', { name: 'Send to channel' }).click();
     await expect(channel.getByText('Private handoff to recipient', { exact: true })).toBeVisible();
     await expect(channel.getByText('You via Sender', { exact: true })).toBeVisible();
-    await page.getByRole('navigation', { name: 'Chats by project' }).getByRole('button', { name: /Recipient/ }).click();
+    await page.getByRole('navigation', { name: 'Task history' }).locator('.task-row', { hasText: 'Recipient' }).click();
     await expect(channel.getByText('Private handoff to recipient', { exact: true })).toBeVisible();
-    await expect.poll(() => page.evaluate(async (id) => (await window.workspace.invoke('task.get', { taskId: id })).task.status, recipientId)).toBe('idle');
+    await expect.poll(() => page.evaluate(async (id) => (await window.workspace.invoke('task.read', { taskId: id })).task.status, recipientId)).toBe('idle');
     await create('Third agent');
     await expect(channel.getByText('Agent finding for the project', { exact: true })).toBeVisible();
     await expect(channel.getByText('Private handoff to recipient', { exact: true })).toHaveCount(0);

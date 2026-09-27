@@ -21,7 +21,7 @@ test('isolated task, offline conversation, file inspection and restart history',
     let page = await app.firstWindow();
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
     expect(await page.evaluate(() => 'require' in window)).toBe(false);
     const createdTask = await createFixtureTask(page, project, 'Offline acceptance task', 'chat');
     await page.getByLabel('Task message').fill('Explain the project briefly.');
@@ -77,9 +77,10 @@ test('isolated task, offline conversation, file inspection and restart history',
     await app.close();
     app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: /Offline acceptance task/ }).click();
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await page.locator('.task-row', { hasText: 'Offline acceptance task' }).click();
     await expect(page.getByText('Fake response: Explain the project briefly.', { exact: true })).toBeVisible();
-    const task = await page.evaluate(async () => (await window.workspace.invoke('workspace.snapshot', {})).tasks[0]);
+    const task = await page.evaluate(async () => (await window.workspace.invoke('workspace.tasks', { visibility: 'all', sort: 'created', limit: 50 })).tasks[0]);
     expect(task?.worktreePath).not.toBe(project);
     expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
@@ -97,11 +98,11 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
   let app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
   try {
     let page = await app.firstWindow();
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
+    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
     const createCodingTask = async (title: string): Promise<{ id: string; worktreePath: string }> => {
       await createFixtureTask(page, project, title, 'coding');
       return page.evaluate(async (taskTitle) => {
-        const snapshot = await window.workspace.invoke('workspace.snapshot', {});
+        const snapshot = await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 });
         const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
         if (!task?.worktreePath) throw new Error('Coding task was not created.');
         return { id: task.id, worktreePath: task.worktreePath };
@@ -119,7 +120,7 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     const rejectedEdit = page.locator('article.approval-card').filter({ has: page.locator('dt', { hasText: 'File' }) }).first();
     await expect(rejectedEdit).toBeVisible();
     await rejectedEdit.getByRole('button', { name: 'Reject', exact: true }).click();
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).approvals?.find((approval) => approval.state === 'rejected')?.state, rejected.id)).toBe('rejected');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find((approval) => approval.state === 'rejected')?.state, rejected.id)).toBe('rejected');
     await expect(readFile(join(rejected.worktreePath, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
 
     await page.getByRole('button', { name: 'Files', exact: true }).click();
@@ -129,12 +130,19 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     const reviewedAfter = await editApproval.locator('dl').filter({ has: page.locator('dt', { hasText: 'After' }) }).locator('pre').textContent();
     expect(reviewedAfter).toBeTruthy();
     await editApproval.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).approvals?.find((approval) => approval.command)?.state, accepted.id)).toBe('awaiting-approval');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find((approval) => approval.state === 'awaiting-approval')?.state, accepted.id)).toBe('awaiting-approval');
     const commandApproval = page.locator('article.approval-card').filter({ has: page.locator('.command-evidence') }).first();
     await expect(commandApproval).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
     await page.screenshot({ path: 'test-results/coding-approval-screenshot.png', fullPage: true });
     await commandApproval.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, accepted.id)).toBe('idle');
+    // Windows process startup and verified Job cleanup can exceed the generic 5s UI assertion budget.
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.read', { taskId })).task.status, accepted.id), { timeout: 30000 }).toBe('idle');
+    const completedCommand = await page.evaluate(async (taskId) => {
+      const command = (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find(approval => approval.tool === 'run_command');
+      if (!command) throw new Error('Reviewed command approval was not retained.');
+      return (await window.workspace.invoke('approval.get', { taskId, approvalId: command.id })).approval;
+    }, accepted.id);
+    expect(completedCommand).toMatchObject({ state: 'complete', result: { cleanupVerified: true, exitCode: 0 } });
     await expect(readFile(join(accepted.worktreePath, 'README.md'), 'utf8')).resolves.toBe(reviewedAfter);
     await expect(readFile(join(project, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
     expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
@@ -142,7 +150,8 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     await app.close();
     app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: /Approve offline demo/ }).click();
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await page.locator('.task-row', { hasText: 'Approve offline demo' }).click();
     await page.getByRole('button', { name: 'Approvals', exact: false }).click();
     await expect(page.locator('article.approval-card.complete')).toHaveCount(2);
     await expect(page.getByText('Redacted result', { exact: false }).first()).toBeVisible();
