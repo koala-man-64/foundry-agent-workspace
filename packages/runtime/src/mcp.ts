@@ -30,7 +30,10 @@ const MAX_TOOL_DESCRIPTION_CHARS = 1024;
 const MAX_SCHEMA_BYTES = 16 * 1024;
 const MAX_STDERR_BYTES = 8 * 1024;
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
-const START_TIMEOUT_MS = 30_000;
+// Includes cold host preparation before the server can read the buffered initialize request.
+// Listing and tool-call limits remain independent of that one-time launch allowance.
+const INITIALIZE_TIMEOUT_MS = 60_000;
+const LIST_TIMEOUT_MS = 30_000;
 const IDLE_STOP_MS = 2 * 60 * 1000;
 const LIFETIME_MS = 6 * 60 * 60 * 1000;
 const STOP_GRACE_MS = 10_000;
@@ -358,7 +361,7 @@ export class McpManager {
       session.client = new McpClient(processHandle.stdin, processHandle.stdout, error => { session.failed = error; });
       void processHandle.exited.then(() => session.client.close(new McpError(`The MCP server exited${processHandle.stderr ? `: ${this.redactor.text(processHandle.stderr).slice(0, 500)}` : '.'}`)));
       try {
-        const init = await session.client.request('initialize', { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'foundry-agent-workspace', version: '0.2.0' } }, START_TIMEOUT_MS);
+        const init = await session.client.request('initialize', { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'foundry-agent-workspace', version: '0.2.0' } }, INITIALIZE_TIMEOUT_MS);
         if (!isRecord(init) || typeof init.protocolVersion !== 'string') throw new McpError('The MCP server returned an invalid initialize result.');
         const info = isRecord(init.serverInfo) ? init.serverInfo : {};
         session.serverInfo = { name: String(info.name ?? 'unknown').slice(0, 100), version: String(info.version ?? '').slice(0, 50) };
@@ -400,7 +403,7 @@ export class McpManager {
         break;
       }
       const params: Record<string, unknown> = cursor ? { cursor } : {};
-      const result = await session.client.request('tools/list', params, START_TIMEOUT_MS);
+      const result = await session.client.request('tools/list', params, LIST_TIMEOUT_MS);
       if (!isRecord(result) || !Array.isArray(result.tools)) throw new McpError('The MCP server returned an invalid tools/list result.');
       for (const raw of result.tools) {
         totalFetched++;

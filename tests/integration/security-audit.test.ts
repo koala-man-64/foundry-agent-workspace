@@ -707,10 +707,10 @@ describe('credential canary screening and leak matrix', () => {
 describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
   const POWERSHELL = '"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"';
   const quote = (value: string): string => value.replaceAll("'", "''");
-  /** A command that records its own pid, starts a detached grandchild that records its pid, then lingers. */
+  /** Record both actual process IDs before lingering; discovery must not depend on child interpreter startup. */
   const treeCommand = (root: string, lingerSeconds: number): string => {
-    const grandchild = `[IO.File]::WriteAllText('${quote(join(root, 'child.pid'))}', $PID); Start-Sleep -Seconds 120`;
-    return `[IO.File]::WriteAllText('${quote(join(root, 'root.pid'))}', $PID); Start-Process -WindowStyle Hidden -FilePath ${POWERSHELL} -ArgumentList '-NoProfile','-NonInteractive','-Command','${quote(grandchild)}'; Start-Sleep -Seconds ${lingerSeconds}`;
+    const grandchild = 'Start-Sleep -Seconds 120';
+    return `[IO.File]::WriteAllText('${quote(join(root, 'root.pid'))}', $PID); $child = Start-Process -PassThru -ErrorAction Stop -WindowStyle Hidden -FilePath ${POWERSHELL} -ArgumentList '-NoProfile','-NonInteractive','-Command','${quote(grandchild)}'; [IO.File]::WriteAllText('${quote(join(root, 'child.pid'))}', [string]$child.Id); Start-Sleep -Seconds ${lingerSeconds}`;
   };
   const treePids = async (root: string, execution: Promise<unknown>): Promise<number[]> => {
     let ended: { result?: unknown; error?: string } | undefined;
@@ -720,7 +720,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
       if (found.every(Boolean)) return true;
       if (ended) throw new Error(`Command ended before recording its process tree: ${JSON.stringify(ended)}`);
       return false;
-    }, 'the command process tree to report its pids');
+    }, 'the command process tree to report its pids after helper startup', 60_000);
     return Promise.all(['root.pid', 'child.pid'].map(async name => Number((await fs.readFile(join(root, name), 'utf8')).trim())));
   };
 
@@ -740,7 +740,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
       controller.abort();
       await executing.catch(() => undefined);
     }
-  }, 60_000);
+  }, 90_000);
 
   it('terminates a background descendant that outlives a command exiting normally', async () => {
     const root = await gitRepository(join(await scratch('foundry-job-exit-'), 'worktree'));
@@ -760,7 +760,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
       controller.abort();
       await executing.catch(() => undefined);
     }
-  }, 60_000);
+  }, 90_000);
 
   it('terminates every command descendant when the user cancels', async () => {
     const root = await gitRepository(join(await scratch('foundry-job-cancel-'), 'worktree'));
@@ -778,7 +778,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
       controller.abort();
       await executing.catch(() => undefined);
     }
-  }, 60_000);
+  }, 90_000);
 
   it('terminates MCP server descendants when the hosted session is stopped', async () => {
     const base = await scratch('foundry-job-mcp-');

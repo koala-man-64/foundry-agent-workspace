@@ -70,6 +70,7 @@ public static class JobRun {
     IntPtr job = IntPtr.Zero, parent = IntPtr.Zero, stdoutRead = IntPtr.Zero, stdoutWrite = IntPtr.Zero, stderrRead = IntPtr.Zero, stderrWrite = IntPtr.Zero, stdinRead = IntPtr.Zero, stdinWrite = IntPtr.Zero, env = IntPtr.Zero;
     PROCESS_INFORMATION pi = new PROCESS_INFORMATION(); bool processCreated = false; bool assigned = false; bool normalEnd = false;
     try {
+      if (File.Exists(cancelPath)) return new JobRunResult { stdout = "", stderr = "", exitCode = null, cancelled = true, timedOut = false, cleanupVerified = true };
       parent = VerifiedParent(parentPid, parentStartedAtMs); job = CreateJobObject(IntPtr.Zero, null); if (job == IntPtr.Zero) throw new InvalidOperationException("CreateJobObject failed: " + Marshal.GetLastWin32Error());
       var limits = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION(); limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
       int limitsSize = Marshal.SizeOf(typeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)); IntPtr limitsMemory = Marshal.AllocHGlobal(limitsSize); try { Marshal.StructureToPtr(limits, limitsMemory, false); Check(SetInformationJobObject(job, JobObjectExtendedLimitInformation, limitsMemory, (uint)limitsSize), "SetInformationJobObject"); } finally { Marshal.FreeHGlobal(limitsMemory); }
@@ -77,9 +78,18 @@ public static class JobRun {
       var startup = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFO)), dwFlags = (int)STARTF_USESTDHANDLES, hStdInput = stdinRead, hStdOutput = stdoutWrite, hStdError = stderrWrite };
       string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(command)); var line = new StringBuilder(Quote(shell) + " -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + encoded);
       if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) throw new InvalidOperationException("Runtime parent exited before command launch.");
-      env = EnvironmentBlock(environment); Check(CreateProcess(shell, line, IntPtr.Zero, IntPtr.Zero, true, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, env, cwd, ref startup, out pi), "CreateProcess"); processCreated = true;
+      env = EnvironmentBlock(environment);
+      if (File.Exists(cancelPath)) return new JobRunResult { stdout = "", stderr = "", exitCode = null, cancelled = true, timedOut = false, cleanupVerified = true };
+      Check(CreateProcess(shell, line, IntPtr.Zero, IntPtr.Zero, true, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, env, cwd, ref startup, out pi), "CreateProcess"); processCreated = true;
       CloseHandle(stdinRead); stdinRead = IntPtr.Zero; CloseHandle(stdinWrite); stdinWrite = IntPtr.Zero; CloseHandle(stdoutWrite); stdoutWrite = IntPtr.Zero; CloseHandle(stderrWrite); stderrWrite = IntPtr.Zero;
-      Check(AssignProcessToJobObject(job, pi.hProcess), "AssignProcessToJobObject"); assigned = true; if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { TerminateJobObject(job, 4); throw new InvalidOperationException("Runtime parent exited before command resume."); } if (ResumeThread(pi.hThread) == 0xffffffff) throw new InvalidOperationException("ResumeThread failed: " + Marshal.GetLastWin32Error());
+      Check(AssignProcessToJobObject(job, pi.hProcess), "AssignProcessToJobObject"); assigned = true;
+      if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { TerminateJobObject(job, 4); throw new InvalidOperationException("Runtime parent exited before command resume."); }
+      if (File.Exists(cancelPath)) {
+        Check(TerminateJobObject(job, 1), "TerminateJobObject");
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        return new JobRunResult { stdout = "", stderr = "", exitCode = null, cancelled = true, timedOut = false, cleanupVerified = JobEmpty(job) };
+      }
+      if (ResumeThread(pi.hThread) == 0xffffffff) throw new InvalidOperationException("ResumeThread failed: " + Marshal.GetLastWin32Error());
       IntPtr stdoutHandle = stdoutRead; stdoutRead = IntPtr.Zero; IntPtr stderrHandle = stderrRead; stderrRead = IntPtr.Zero; Task<string> stdout = Task.Run(() => ReadLimited(stdoutHandle)); Task<string> stderr = Task.Run(() => ReadLimited(stderrHandle));
       var watch = Stopwatch.StartNew(); bool cancelled = false, timedOut = false, parentDied = false, backgroundTerminated = false;
       while (WaitForSingleObject(pi.hProcess, 50) != WAIT_OBJECT_0) { if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { parentDied = true; TerminateJobObject(job, 4); break; } if (File.Exists(cancelPath)) { cancelled = true; TerminateJobObject(job, 1); break; } if (watch.ElapsedMilliseconds >= timeoutMs) { timedOut = true; TerminateJobObject(job, 2); break; } }
