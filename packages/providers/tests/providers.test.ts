@@ -167,6 +167,7 @@ describe('native tool streams', () => {
 
   it('probes text, cancellation, and fixture-tool continuation without live transport', async () => {
     let calls = 0;
+    const observed: ProviderRequest[] = [];
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async (_url, init) => {
       calls += 1;
       if (calls === 1)
@@ -180,7 +181,14 @@ describe('native tool streams', () => {
       const token = JSON.parse(result.output).token;
       return new Response(sse(`event: response.output_text.delta\ndata: ${JSON.stringify({ delta: token })}\n\n`, `event: response.completed\ndata: ${JSON.stringify({ response: { status: 'completed', output: [{ type: 'message', id: 'm2', content: [{ type: 'output_text', text: token }] }], usage: { input_tokens: 1, output_tokens: 1 } } })}\n\n`));
     });
-    await expect(createProvider('responses', { fetch }).probe(profile('responses'), 'secret-value')).resolves.toMatchObject({ ok: true, capabilities: { tools: true, continuation: true, cancellation: true } });
+    const configured = { ...profile('responses'), effort: 'high' as const, outputLimit: 1024 };
+    await expect(createProvider('responses', { fetch }).probe(configured, 'secret-value', (input, stream) => {
+      observed.push(input);
+      return stream();
+    })).resolves.toMatchObject({ ok: true, capabilities: { tools: true, continuation: true, cancellation: true } });
     expect(fetch).toHaveBeenCalledTimes(4);
+    expect(observed).toHaveLength(4);
+    expect(observed.every(input => input.profile.outputLimit === 1024 && input.profile.effort === 'high')).toBe(true);
+    expect(fetch.mock.calls.every(([, init]) => JSON.parse(String(init?.body)).max_output_tokens === 1024)).toBe(true);
   });
 });

@@ -68,7 +68,7 @@ try {
   assert.equal(final.approvals.find(value => value.command).result.cleanupVerified, true);
 
   // 2. Coordinated two-child workflow plus a dependent child, serial integration and combined validation.
-  assert.deepEqual(await invoke('workspace.schema', {}), { version: 3, current: 3, upgradeRequired: false, coordinatedAvailable: true });
+  assert.deepEqual(await invoke('workspace.schema', {}), { version: 4, current: 4, upgradeRequired: false, coordinatedAvailable: true });
   const root = await invoke('task.create', { title: 'Packaged coordinated smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [], requiredValidation: VALIDATION } });
   const baseHead = git(root.worktreePath, 'rev-parse', 'HEAD');
   await invoke('task.send', { taskId: root.id, content: '/orchestrate-demo' });
@@ -113,6 +113,17 @@ try {
   assert.equal(compactedDetail.messages.length, 6); assert.equal(compactedDetail.compactions.length, 1);
   const usage = await invoke('task.usage', { taskId: chat.id });
   assert.equal(usage.totals.requests, 3); assert.equal(usage.compactions.length, 1);
+  const usageFilters = { taskId: chat.id, includeDemo: true };
+  const analytics = await invoke('usage.summary', { filters: usageFilters, timeZone: 'UTC' });
+  assert.equal(analytics.totals.requests, 3); assert.equal(analytics.totals.attemptedRequests, 3);
+  assert.equal(analytics.totals.total, usage.metrics.total);
+  assert.equal((await invoke('usage.summary', {})).totals.requests, 0, 'Offline requests must be excluded by default.');
+  const requestPage = await invoke('usage.requests', { filters: usageFilters, limit: 2 });
+  assert.equal(requestPage.records.length, 2); assert.ok(requestPage.nextCursor);
+  const lastPage = await invoke('usage.requests', { filters: usageFilters, limit: 2, cursor: requestPage.nextCursor });
+  assert.equal(lastPage.records.length, 1); assert.equal(lastPage.nextCursor, null);
+  assert.equal(new Set([...requestPage.records, ...lastPage.records].map(row => row.requestId)).size, 3);
+  assert.equal((await invoke('usage.breakdown', { filters: usageFilters, groupBy: 'model' })).rows.length, 1);
 
   // 4. MCP server hosted by the unpacked Job Object helper: read-only echo runs within policy, write_note needs a one-shot approval.
   await stat(resolve('release/win-unpacked/resources/app.asar.unpacked/out/main/mcp-host.ps1'));
@@ -180,7 +191,7 @@ try {
   assert.equal(git(source, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
   child.stdin.end(); assert.equal(await exit, 0, errors);
   assert.ok((await stat(join(directory, 'data', 'workspace.db'))).size > 0);
-  console.log(`PASS: packaged runtime loads SQLite v3, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
+  console.log(`PASS: packaged runtime loads schema v4, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
 } finally {
   clearTimeout(watchdog);
   if (child && child.exitCode === null) { child.kill(); await new Promise(resolve => child.once('exit', resolve)); }

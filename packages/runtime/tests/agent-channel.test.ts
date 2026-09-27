@@ -109,6 +109,6 @@ describe('runtime-owned project channel', () => {
     expect(channel.enrich(teammate, request()).channelCursor).toBe(enriched.channelCursor); // independent recipient
     store.close(); store = new Store(join(directory, 'state.db')); channel = new AgentChannel(store, redactor, () => {});
     expect(channel.enrich(recipient, request()).channelCursor).toBe(next.channelCursor);
-    expect(store.schemaVersion).toBe(3);
+    expect(store.schemaVersion).toBe(4);
   });
 });

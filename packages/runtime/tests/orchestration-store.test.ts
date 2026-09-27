@@ -57,7 +57,7 @@ function admitChild(store: Store, rootId: string, records: OrchestrationRecords,
 describe('schema versions and backed-up upgrade', () => {
   it('creates a fresh database directly at v3 with orchestration available', () => {
     const store = open(join(directory, 'fresh.db'));
-    expect(store.schemaVersion).toBe(3); expect(store.orchestrationAvailable).toBe(true);
+    expect(store.schemaVersion).toBe(4); expect(store.orchestrationAvailable).toBe(true);
   });
   it('opens an existing v1 database without upgrading it and keeps legacy history', () => {
     const path = join(directory, 'legacy.db'); const { taskId } = createV1Database(path);
@@ -136,9 +136,9 @@ describe('schema versions and backed-up upgrade', () => {
     expect(reopened.schemaVersion).toBe(1);
   });
   it('rejects unsupported future versions and never downgrades a newer database in place', () => {
-    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 4'); db.close();
+    const path = join(directory, 'future.db'); const db = new Database(path); db.pragma('user_version = 5'); db.close();
     expect(() => new Store(path)).toThrow('newer application');
-    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(4); check.close();
+    const check = new Database(path); expect(check.pragma('user_version', { simple: true })).toBe(5); check.close();
   });
 });
 

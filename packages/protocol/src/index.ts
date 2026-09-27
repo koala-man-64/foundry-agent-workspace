@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { CoordinationConfigSchema, OrchestrationRpc, type AgentRole, type ChildDetail, type CoordinationConfig, type OrchestrationView, type SchemaStatus, type UpgradeResult } from './orchestration';
+import { EffortSchema, supportedEfforts, UsageRpc, type UsageSummary, type UsageBreakdown, type UsageRequests, type UsageTotals } from './usage';
+export * from './usage';
 export * from './orchestration';
 import { ChannelRpc, type AgentMessage, type ChannelView } from './agent-channel';
 export * from './agent-channel';
@@ -13,8 +15,9 @@ export const ModelProfileSchema = z.object({
   endpoint: z.string().max(2048), deployment: z.string().max(200),
   credentialRef: z.string().max(100).optional(), contextLimit: z.number().int().min(1024).max(2000000),
   outputLimit: z.number().int().min(16).max(128000),
+  effort: EffortSchema.optional(),
   verifiedAt: z.string().optional(), verificationFingerprint: z.string().optional(), capabilities: CapabilitiesSchema.optional()
-}).strict();
+}).strict().refine(value => value.effort === undefined || supportedEfforts(value.apiKind).includes(value.effort), { message: 'Effort is not supported by this API type.', path: ['effort'] });
 export type ModelProfile = z.infer<typeof ModelProfileSchema>;
 export type TaskStatus = 'idle' | 'running' | 'cancelled' | 'interrupted' | 'failed' | 'retired';
 export interface TaskBase { id: string; title: string; projectId?: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding' | 'coordinated';
@@ -44,6 +47,7 @@ export interface UsageReport {
   estimatedContextTokens: number; contextPercent: number; warningPercent: number;
   totals: { requests: number; knownRequests: number; unknownRequests: number; prompt: number; completion: number; cacheRead: number; cacheCreation: number; reservedUnknown: number };
   records: UsageRecord[]; compactions: CompactionRecord[];
+  metrics?: UsageTotals;
 }
 export const McpServerConfigSchema = z.object({
   id: z.string().uuid(), key: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/), name: z.string().trim().min(1).max(100),
@@ -95,7 +99,8 @@ export const RpcMethods = {
   'mcp.save': McpServerConfigSchema,
   'mcp.remove': z.object({ serverId: Id }).strict(),
   ...OrchestrationRpc,
-  ...ChannelRpc
+  ...ChannelRpc,
+  ...UsageRpc
 } as const;
 export type RpcMethod = keyof typeof RpcMethods;
 export const RpcRequestSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string().min(1).max(100), method: z.enum(Object.keys(RpcMethods) as [RpcMethod, ...RpcMethod[]]), params: z.unknown() }).strict();
@@ -108,6 +113,9 @@ export const RpcResponseSchema = z.union([
 export interface DesktopApi {
   invoke(method: 'channel.get', params: { taskId: string; before?: number; afterTaskId?: string }): Promise<ChannelView>;
   invoke(method: 'channel.send', params: { taskId: string; requestId: string; recipientTaskId?: string | null; content: string }): Promise<AgentMessage>;
+  invoke(method: 'usage.summary', params: z.input<typeof UsageRpc['usage.summary']>): Promise<UsageSummary>;
+  invoke(method: 'usage.breakdown', params: z.input<typeof UsageRpc['usage.breakdown']>): Promise<UsageBreakdown>;
+  invoke(method: 'usage.requests', params: z.input<typeof UsageRpc['usage.requests']>): Promise<UsageRequests>;
   invoke(method: 'workspace.snapshot', params: Record<string, never>): Promise<Snapshot>;
   invoke(method: 'project.add', params: { path: string }): Promise<Project>;
   invoke(method: 'project.update', params: { projectId: string; name?: string; hidden?: boolean }): Promise<Project>;
@@ -155,8 +163,10 @@ export interface ToolCall { id: string; name: string; arguments: unknown; }
 export interface ProviderToolResult { id: string; name: string; content: string; isError: boolean; }
 export interface ProviderContinuation { apiKind: ApiKind; data: unknown; }
 export interface ProviderRequest { profile: ModelProfile; messages: ProviderMessage[]; credential?: string; signal: AbortSignal; tools?: ToolDefinition[]; continuation?: ProviderContinuation; toolResults?: ProviderToolResult[]; channelCursor?: number; }
-export type ProviderEvent = { type: 'text'; text: string } | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheCreationTokens?: number } | { type: 'tool_call'; call: ToolCall } | { type: 'done'; continuation?: ProviderContinuation };
-export interface ProviderAdapter { streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent>; probe(profile: ModelProfile, credential?: string): Promise<ProbeResult>; }
+export type ProviderEvent = { type: 'text'; text: string } | { type: 'metadata'; reportedModel?: string; responseId?: string } | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheCreationTokens?: number; reasoningTokens?: number } | { type: 'tool_call'; call: ToolCall } | { type: 'done'; continuation?: ProviderContinuation };
+/** Runtime-owned observation of each individual paid probe; adapters never persist data. */
+export type ProbeObserver = (request: ProviderRequest, stream: () => AsyncIterable<ProviderEvent>) => AsyncIterable<ProviderEvent>;
+export interface ProviderAdapter { streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent>; probe(profile: ModelProfile, credential?: string, observer?: ProbeObserver): Promise<ProbeResult>; }
 
 export type ApprovalState = 'awaiting-approval' | 'approved' | 'executing' | 'complete' | 'rejected' | 'revoked' | 'unknown' | 'failed';
 export interface Approval {
