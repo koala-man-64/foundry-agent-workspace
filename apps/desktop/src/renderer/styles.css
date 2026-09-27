@@ -189,3 +189,17 @@ input:disabled, select:disabled { cursor: not-allowed; color: #79766c; backgroun
 .mcp-error { margin-top: 6px; color: #994734; font-size: 11px; }
 .mcp-form { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #ded6c4; }
 .mcp-form textarea { min-height: 48px; }
+.channel-tab { flex: 0 0 auto; margin: 8px 12px; padding: 9px 10px; color: #365247; border: 1px solid #c8c0af; background: #f7f3e9; text-align: left; font-size: 12px; }
+.channel-tab.active { border-left: 3px solid #b85f3d; background: #e0e8dc; }
+.channel-panel { padding: 12px; overflow-y: auto; font-size: 12px; }
+.channel-panel .muted, .channel-panel .quiet { color: #58675c; }
+.channel-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.channel-heading h3 { margin: 0; }
+.channel-agent { display: grid; gap: 3px; overflow-wrap: anywhere; }
+.channel-agent span, .channel-message small { color: #69766c; }
+.channel-message { border-top: 1px solid #ddd5c3; padding: 12px 0; overflow-wrap: anywhere; }
+.channel-message p { white-space: pre-wrap; }
+.channel-composer { display: grid; gap: 10px; margin-top: 16px; }
+.channel-composer label { display: grid; gap: 4px; }
+.channel-composer textarea { min-height: 80px; }
+.channel-error { color: #994734; }

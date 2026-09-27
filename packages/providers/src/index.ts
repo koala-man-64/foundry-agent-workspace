@@ -23,7 +23,17 @@ class FakeProvider implements ProviderAdapter {
         if (isOrchestrationRequest(request)) { yield* orchestrationFixture(request); return; }
         const state = fakeState(request.continuation);
         throwIfAborted(request.signal);
-        if (!state && request.tools?.length && lastUser(request.messages).startsWith("/demo")) {
+        if (request.tools?.some(tool => tool.name === 'send_agent_message') && lastUser(request.messages).startsWith('/channel-demo')) {
+            const content = lastUser(request.messages).slice('/channel-demo'.length).trim() || 'Hello from the offline agent.';
+            const call = { id: randomUUID(), name: 'send_agent_message', arguments: { recipientTaskId: null, content } };
+            yield { type: 'tool_call', call }; yield { type: 'done', continuation: fakeContinuation('channel-send', [call]) }; return;
+        }
+        if (state?.stage === 'channel-send') {
+            const result = request.toolResults?.find(item => item.id === state.calls[0]?.id);
+            yield* fakeText(result?.isError ? 'Channel message was not sent.' : 'Channel message recorded. Idle agents receive it on their next turn.', request.signal);
+            yield { type: 'done', continuation: fakeContinuation('complete', []) }; return;
+        }
+        if (!state && request.tools?.some(tool => tool.name === 'read_file') && lastUser(request.messages).startsWith("/demo")) {
             requireTools(request.tools, ["read_file", "replace_text", "run_command"]);
             const call = { id: "fake-read-1", name: "read_file", arguments: { path: "README.md" } };
             yield { type: "tool_call", call };
@@ -62,7 +72,7 @@ class FakeProvider implements ProviderAdapter {
             return;
         }
         // Offline MCP demo: one user-allowlisted read-only external tool, then one external tool that needs approval.
-        if (!state && request.tools?.length && lastUser(request.messages).startsWith("/mcp-demo")) {
+        if (!state && request.tools?.some(tool => tool.name === 'mcp__fixture__echo') && lastUser(request.messages).startsWith("/mcp-demo")) {
             requireTools(request.tools, ["mcp__fixture__echo", "mcp__fixture__write_note"]);
             const call = { id: "fake-mcp-echo-1", name: "mcp__fixture__echo", arguments: { text: "ping from the offline demo" } };
             yield { type: "tool_call", call };
