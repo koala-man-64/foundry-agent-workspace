@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import type { Approval, CompactionRecord, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, ModelProfile, ProbeResult, Project, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
 import { ORCHESTRATION_LIMITS } from '../../../../packages/protocol/src/index';
 import { CoordinatedTaskView } from './Orchestration';
+import { AgentChannelPanel } from './AgentChannel';
 import { McpSettings } from './McpSettings';
 import { ProjectSidebar } from './ProjectSidebar';
 
@@ -59,7 +60,7 @@ function App() {
   const [file, setFile] = useState<FileContent>();
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
-  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish'>('files');
+  const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish' | 'channel'>('files');
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
@@ -415,7 +416,8 @@ function App() {
     </section>
     <aside className="inspector">
       <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button>}<button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}</div>
-      {!selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'files' ? <>
+      {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} onClick={() => setRightTab('channel')}>Project channel</button>}
+      {!selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}

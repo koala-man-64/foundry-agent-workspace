@@ -59,7 +59,7 @@ export class RuntimeService {
       isRunning: taskId => this.running.has(taskId),
       profileFingerprint,
       activeRuns: rootTaskId => this.store.orchestrationAvailable ? this.orchestrator.records.runs(rootTaskId).filter(run => run.lifecycle !== 'terminal').length : 0
-    }, dirname(store.path));
+    }, dirname(store.path), this.tools.channel);
   }
   private readonly providerFactory: (kind: ModelProfile['apiKind']) => ProviderAdapter;
   private publish(type: string, data: unknown, taskId?: string): void { this.emit(this.store.event(type, data, taskId)); }
@@ -254,6 +254,8 @@ export class RuntimeService {
         const result = await this.repositories.diff(this.store.gitTask((params as { taskId: string }).taskId).worktreePath);
         return { ...result, patch: this.redactor.text(result.patch), summary: this.redactor.text(result.summary) };
       }
+      case 'channel.get': { const p = params as { taskId: string; before?: number; afterTaskId?: string }; return this.tools.channel.view(p.taskId, p.before, p.afterTaskId); }
+      case 'channel.send': { const p = params as { taskId: string; requestId: string; recipientTaskId: string | null; content: string }; return this.tools.channel.send(p.taskId, p.requestId, { recipientTaskId: p.recipientTaskId, content: p.content }, 'user'); }
       case 'orchestration.get': { const p = params as { rootTaskId: string; runsCursor: number; eventsBefore?: number }; return this.orchestrator.view(p.rootTaskId, p.runsCursor, p.eventsBefore); }
       case 'orchestration.child': { const p = params as { rootTaskId: string; childTaskId: string }; return this.orchestrator.childDetail(p.rootTaskId, p.childTaskId); }
       case 'orchestration.cancelChild': { const p = params as { rootTaskId: string; childTaskId: string; generation: number }; return this.orchestrator.cancelChild(p.rootTaskId, p.childTaskId, p.generation); }
@@ -451,7 +453,7 @@ export class RuntimeService {
     const cleanContent = this.redactor.text(content);
     const abort = new AbortController();
     const fingerprint = profileFingerprint(profile);
-    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : []);
+    const request = prepareRequest(this.store, task, profile, fingerprint, cleanContent, this.credentials.get(profile.id), abort.signal, hooks, task.mode === 'coding' ? this.mcp.toolDefinitions() : [], this.tools.channel);
     const now = new Date().toISOString();
     const answer: Message = { id: randomUUID(), taskId, role: 'assistant', content: '', createdAt: now, status: 'streaming' };
     let handle!: ReservationHandle;

@@ -61,6 +61,7 @@ test('saved ordinary folders keep grouped chats, drafts, visibility and collapse
     await expect(page.getByRole('heading', { name: 'Discuss the Alpha project.', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Changes', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Project channel', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Files', exact: true }).click();
     await page.getByRole('button', { name: /hello\.txt/ }).click();
     await expect(page.getByText('Read-only project file.', { exact: true })).toBeVisible();
@@ -125,6 +126,7 @@ test('projectless drafts retain Git mode preference and start without filesystem
     expect(task.workspaceKind).toBe('none');
     expect(task).not.toHaveProperty('projectPath'); expect(task).not.toHaveProperty('worktreePath');
     await expect(page.getByRole('button', { name: 'Files', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Project channel', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
     await expect(page.evaluate((taskId) => window.workspace.invoke('files.list', { taskId }), task.id)).rejects.toThrow();
     await expect(page.evaluate((taskId) => window.workspace.invoke('task.retire', { taskId, confirm: 'retire' }), task.id)).rejects.toThrow();

@@ -11,6 +11,7 @@ import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 let directory: string; let store: Store; let runtime: RuntimeService; let project: string;
 const events: { type: string; taskId?: string; data: unknown }[] = [];
 const requests: ProviderRequest[] = [];
+const TEXT_PROFILE_ID = '00000000-0000-4000-8000-000000000003';
 function git(...args: string[]): string { return execFileSync('git', ['-c', 'core.hooksPath=NUL', '-C', project, ...args], { encoding: 'utf8', windowsHide: true }).trim(); }
 
 /** Chat-style provider: echoes the last user message, reports usage with cache detail, and keeps a Chat-Completions-shaped native continuation the way the real adapter does. */
@@ -45,6 +46,9 @@ beforeEach(async () => {
   await writeFile(join(project, 'hello.txt'), 'original\n'); git('add', 'hello.txt'); git('commit', '-m', 'fixture');
   store = new Store(join(directory, 'state', 'workspace.db'));
   runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), () => chatProvider);
+  // Preserve text-only chat coverage: tool-capable chats now retain native state for project communication.
+  const textProfile: ModelProfile = { ...store.profile(FAKE_PROFILE_ID)!, id: TEXT_PROFILE_ID, apiKind: 'chat-completions', endpoint: 'https://fixture.openai.azure.com', deployment: 'text-only', capabilities: { streaming: true, tools: false, continuation: false, cancellation: true, usage: true } };
+  store.saveProfile({ ...textProfile, verificationFingerprint: profileFingerprint(textProfile) });
   events.length = 0; requests.length = 0;
 });
 afterEach(async () => { await runtime.shutdown(); await rm(directory, { recursive: true, force: true }); });
@@ -54,9 +58,9 @@ const send = async (id: string, content: string): Promise<void> => { await runti
 
 describe('controlled compaction and usage visibility', () => {
   it('warns at 80% of the context limit, compacts retained history into a summary, and keeps every original message', async () => {
-    const profile = store.profile(FAKE_PROFILE_ID)!;
-    store.saveProfile({ ...profile, contextLimit: 8192, outputLimit: 64 });
-    const task = await runtime.dispatch('task.create', { title: 'Compaction', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 1000000 }) as Task;
+    const profile = { ...store.profile(TEXT_PROFILE_ID)!, contextLimit: 8192, outputLimit: 64 };
+    store.saveProfile({ ...profile, verificationFingerprint: profileFingerprint(profile) });
+    const task = await runtime.dispatch('task.create', { title: 'Compaction', projectPath: project, profileId: TEXT_PROFILE_ID, tokenBudget: 1000000 }) as Task;
     const filler = (index: number): string => `Turn ${index}: ${'lorem ipsum '.repeat(100).trim()}`;
     for (let index = 1; index <= 4; index++) await send(task.id, filler(index));
     expect(events.filter(event => event.type === 'task.context-warning' && event.taskId === task.id)).toHaveLength(0);
@@ -92,14 +96,14 @@ describe('controlled compaction and usage visibility', () => {
     await expect(runtime.dispatch('task.compact', { taskId: task.id, keepRecent: 20 })).rejects.toThrow('Nothing to compact');
   });
 
-  it('compacts provider-native continuation, preserves system instructions and tool units, and sends the compacted context on the next turn', async () => {
+  it.each(['coding', 'chat'] as const)('compacts provider-native continuation for %s tasks, preserving system instructions and tool units on the next turn', async (mode) => {
     const remote: ModelProfile = { id: '00000000-0000-4000-8000-000000000002', name: 'Chat', apiKind: 'chat-completions', endpoint: 'https://resource.openai.azure.com', deployment: 'model', credentialRef: '00000000-0000-4000-8000-000000000002', contextLimit: 200000, outputLimit: 256 };
     store.saveProfile(remote);
     runtime.setCredential(remote.id, 'fixture-credential-value');
     // Verification is recorded after the credential, exactly as a successful runtime probe would leave it.
     store.saveProfile({ ...remote, verifiedAt: new Date().toISOString(), verificationFingerprint: profileFingerprint(remote), capabilities: { streaming: true, tools: true, continuation: true, cancellation: true, usage: true } });
-    const task = await runtime.dispatch('task.create', { title: 'Native', projectPath: project, profileId: remote.id, mode: 'coding', tokenBudget: 1000000 }) as Task;
-    await send(task.id, '/read first'); await send(task.id, 'second turn'); await send(task.id, 'third turn');
+    const task = await runtime.dispatch('task.create', { title: 'Native', projectPath: project, profileId: remote.id, mode, tokenBudget: 1000000 }) as Task;
+    await send(task.id, '/read first'); await send(task.id, 'second turn ' + 'native context '.repeat(100)); await send(task.id, 'third turn');
     const state = store.providerState(task.id)!;
     const items = (state.continuation.data as { messages: Record<string, unknown>[] }).messages;
     expect(items[0]?.role).toBe('system');
@@ -126,7 +130,7 @@ describe('controlled compaction and usage visibility', () => {
     const slow: ProviderAdapter = { probe: chatProvider.probe, async *streamTurn(request) { yield { type: 'text', text: 'partial' }; await gate; request.signal.throwIfAborted(); yield { type: 'done' }; } };
     await runtime.shutdown(); store = new Store(join(directory, 'state', 'workspace.db'));
     runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), () => slow);
-    const task = await runtime.dispatch('task.create', { title: 'Busy', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
+    const task = await runtime.dispatch('task.create', { title: 'Busy', projectPath: project, profileId: TEXT_PROFILE_ID, tokenBudget: 100000 }) as Task;
     await runtime.dispatch('task.send', { taskId: task.id, content: 'start' });
     await expect(runtime.dispatch('task.compact', { taskId: task.id })).rejects.toThrow('active response');
     release(); await waitDone(task.id);
@@ -147,7 +151,7 @@ describe('controlled compaction and usage visibility', () => {
   });
 
   it('refuses compaction when the summary would not reduce context size', async () => {
-    const task = await runtime.dispatch('task.create', { title: 'Tiny', projectPath: project, profileId: FAKE_PROFILE_ID, tokenBudget: 100000 }) as Task;
+    const task = await runtime.dispatch('task.create', { title: 'Tiny', projectPath: project, profileId: TEXT_PROFILE_ID, tokenBudget: 100000 }) as Task;
     await send(task.id, 'short 1');
     await send(task.id, 'short 2');
     await send(task.id, 'short 3');

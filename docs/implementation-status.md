@@ -22,6 +22,27 @@ Exact command logs, the independent review handoff, and rendered screenshots are
 
 This is a local source and unpacked-package result. No user's application database was upgraded. External publication, installed/signed installer validation, live Foundry qualification, and live deployment remain unverified and outside this change's execution.
 
+## Project channel — local implementation
+
+Recorded 27 September 2026. Agents in separate task chats and coordinator teams can discover teammates, broadcast project messages, and send direct messages. The runtime derives membership from the canonical local Git common directory, including linked worktrees. Independent clones stay separate. The inspector exposes **Project channel**, a participant list, paginated retained history, and a user-labelled message composer.
+
+The protocol validates every request. Sender identity comes from the active runtime task; messages cannot supply authority, widen assignments or approve actions. Cancelled/terminal coordinated agents and retired tasks cannot send. Secret-screened messages have byte and per-task count limits. Communication-only tools are available to capable chat profiles without enabling repository tools; text-only profiles can receive pending context. Coding and coordinated agents retain their existing action gates.
+
+Messages and per-recipient delivery cursors use existing events, with an incremental runtime metadata index and primary-key body reads. No schema upgrade is added. Delivery occurs on the next model request, including native tool continuation, and never wakes an idle agent. Cursors advance with successful provider-state persistence; a failed request leaves messages pending. Serialized delivery is bounded and explicitly marks truncated text, while history retains the full message. Real native chat histories also participate in compaction and pending messages are included in usage estimates.
+
+Independent review used GPT-6 Sol at medium effort, selected by the project working agreements for IPC, persistence and concurrency risk. Review findings on event-scan cost, linked-worktree identity, and escaped-message bounds were fixed with regressions; the final channel and compaction review found no remaining blocker.
+
+Validation completed locally against isolated fixtures:
+
+| Boundary | Evidence | Scope |
+| --- | --- | --- |
+| Types, lint and automated tests | `pnpm check --maxWorkers=1 --hookTimeout=60000`: **23 files, 242 tests passed**, clean typecheck and lint | Includes 9 channel unit tests, 4 channel integration tests, native chat/coding compaction, and existing approval/coordinator coverage. One worker and a 60-second fixture setup limit accommodate slow Windows Git setup; application timeouts and safety assertions are unchanged. |
+| Desktop user paths | `pnpm test:e2e`: **8 passed (3.2m)** | Agent broadcast, user direct message, recipient isolation, idle-agent behavior, retained visible history, and existing desktop workflows. After the final CSS-only contrast adjustment, `pnpm exec playwright test tests/e2e/agent-channel.spec.ts` passed again (6.4s), and the screenshot was visually inspected. |
+| Packaged build | `pnpm package:dir`: **PASS** | Final Windows unpacked build at `release/win-unpacked/Foundry Agent Workspace.exe`, including the final styling. |
+| Packaged runtime | `pnpm smoke:package`: **PASS** | SQLite v2, approved editing/commands, 14 bound coordinated approvals, 3 serial integrations, compaction, MCP, diagnostics and clean fixture retirement through the packaged executable. |
+
+Exact logs and the final channel screenshot are retained locally under `.local/verification/agent-channel/`: `check-serial.log`, `e2e.log`, `channel-ui-final.log`, `package.log`, `smoke.log`, and `agent-channel.png`. Earlier failed diagnostics are also retained; their results do not replace the passing evidence above. The package smoke verifies runtime compatibility; the dedicated channel tests supply messaging behavior evidence. Live paid-provider messaging, installer installation and external publication are unverified. No dependency or database schema change was required.
+
 ## Phase 05 — Independent review and Windows release
 
 Recorded 19 September 2026 (America/Chicago) on branch `main`. Delivered via parallel multi-agent workstreams:

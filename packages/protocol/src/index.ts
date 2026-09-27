@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { CoordinationConfigSchema, OrchestrationRpc, type AgentRole, type ChildDetail, type CoordinationConfig, type OrchestrationView, type SchemaStatus, type UpgradeResult } from './orchestration';
 export * from './orchestration';
+import { ChannelRpc, type AgentMessage, type ChannelView } from './agent-channel';
+export * from './agent-channel';
 
 export const MAX_RPC_BYTES = 1024 * 1024;
 export const ApiKindSchema = z.enum(['fake', 'responses', 'chat-completions', 'anthropic']);
@@ -92,7 +94,8 @@ export const RpcMethods = {
   'mcp.list': z.object({}).strict(),
   'mcp.save': McpServerConfigSchema,
   'mcp.remove': z.object({ serverId: Id }).strict(),
-  ...OrchestrationRpc
+  ...OrchestrationRpc,
+  ...ChannelRpc
 } as const;
 export type RpcMethod = keyof typeof RpcMethods;
 export const RpcRequestSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string().min(1).max(100), method: z.enum(Object.keys(RpcMethods) as [RpcMethod, ...RpcMethod[]]), params: z.unknown() }).strict();
@@ -103,6 +106,8 @@ export const RpcResponseSchema = z.union([
   z.object({ jsonrpc: z.literal('2.0'), id: z.string(), error: z.object({ code: z.number(), message: z.string() }).strict() }).strict()
 ]);
 export interface DesktopApi {
+  invoke(method: 'channel.get', params: { taskId: string; before?: number; afterTaskId?: string }): Promise<ChannelView>;
+  invoke(method: 'channel.send', params: { taskId: string; requestId: string; recipientTaskId?: string | null; content: string }): Promise<AgentMessage>;
   invoke(method: 'workspace.snapshot', params: Record<string, never>): Promise<Snapshot>;
   invoke(method: 'project.add', params: { path: string }): Promise<Project>;
   invoke(method: 'project.update', params: { projectId: string; name?: string; hidden?: boolean }): Promise<Project>;
@@ -149,7 +154,7 @@ export interface ToolDefinition { name: string; description: string; inputSchema
 export interface ToolCall { id: string; name: string; arguments: unknown; }
 export interface ProviderToolResult { id: string; name: string; content: string; isError: boolean; }
 export interface ProviderContinuation { apiKind: ApiKind; data: unknown; }
-export interface ProviderRequest { profile: ModelProfile; messages: ProviderMessage[]; credential?: string; signal: AbortSignal; tools?: ToolDefinition[]; continuation?: ProviderContinuation; toolResults?: ProviderToolResult[]; }
+export interface ProviderRequest { profile: ModelProfile; messages: ProviderMessage[]; credential?: string; signal: AbortSignal; tools?: ToolDefinition[]; continuation?: ProviderContinuation; toolResults?: ProviderToolResult[]; channelCursor?: number; }
 export type ProviderEvent = { type: 'text'; text: string } | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheCreationTokens?: number } | { type: 'tool_call'; call: ToolCall } | { type: 'done'; continuation?: ProviderContinuation };
 export interface ProviderAdapter { streamTurn(request: ProviderRequest): AsyncIterable<ProviderEvent>; probe(profile: ModelProfile, credential?: string): Promise<ProbeResult>; }
 

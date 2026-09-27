@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project, Task } from '../../protocol/src/index';
+import { AgentChannel } from '../src/agent-channel';
+import { prepareRequest } from '../src/agent-loop';
+import { Redactor } from '../src/redaction';
 import { RepositoryService } from '../src/repository';
 import { RuntimeService } from '../src/service';
 import { FAKE_PROFILE_ID, Store } from '../src/store';
@@ -69,6 +72,11 @@ describe('saved projects and first-send creation', () => {
       const params = method === 'task.commit' ? { taskId: first.id, message: 'x' } : method === 'task.push' ? { taskId: first.id, confirm: 'push' } : method === 'task.retire' ? { taskId: first.id, confirm: 'retire' } : { taskId: first.id };
       await expect(runtime.dispatch(method, params)).rejects.toThrow('Git worktree');
     }
+    await expect(runtime.dispatch('channel.get', { taskId: first.id })).rejects.toThrow('Git worktree');
+    await expect(runtime.dispatch('channel.send', { taskId: first.id, requestId: randomUUID(), recipientTaskId: null, content: 'x' })).rejects.toThrow();
+    const request = prepareRequest(store, first, store.profile(FAKE_PROFILE_ID)!, '', 'hello', undefined, new AbortController().signal, undefined, [], new AgentChannel(store, new Redactor(), () => {}));
+    expect(request.tools).toBeUndefined();
+    expect(request.messages).toEqual(expect.arrayContaining([{ role: 'user', content: 'hello' }]));
   });
 
   it('starts a projectless chat with no file access and rejects coding and forged project IDs', async () => {
@@ -77,6 +85,10 @@ describe('saved projects and first-send creation', () => {
     expect('projectPath' in task).toBe(false);
     await expect(runtime.dispatch('files.list', { taskId: task.id })).rejects.toThrow('no folder access');
     await expect(runtime.dispatch('files.read', { taskId: task.id, path: 'readme.txt' })).rejects.toThrow('no folder access');
+    await expect(runtime.dispatch('channel.get', { taskId: task.id })).rejects.toThrow('Git worktree');
+    await expect(runtime.dispatch('channel.send', { taskId: task.id, requestId: randomUUID(), recipientTaskId: null, content: 'x' })).rejects.toThrow();
+    const request = prepareRequest(store, task, store.profile(FAKE_PROFILE_ID)!, '', 'hello', undefined, new AbortController().signal, undefined, [], new AgentChannel(store, new Redactor(), () => {}));
+    expect(request.tools).toBeUndefined();
     await expect(runtime.dispatch('task.start', { requestId: randomUUID(), projectId: null, content: 'coding', profileId: FAKE_PROFILE_ID, mode: 'coding', tokenBudget: 100000 })).rejects.toThrow('Git project');
     await expect(start(randomUUID())).rejects.toThrow('Project not found');
   });

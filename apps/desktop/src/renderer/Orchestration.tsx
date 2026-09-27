@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AgentChannelPanel } from './AgentChannel';
 import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, Task } from '../../../../packages/protocol/src/index';
 import type {
   AgentRun, Assignment, AssignmentState, ChildDetail, IntegrationOperation, IntegrationState, OrchestrationView, RunLifecycle, RunOutcome, WaitReason
@@ -83,7 +84,7 @@ export function CoordinatedTaskView({ api, task, notice, setNotice, onWorkspaceR
   const [childDetail, setChildDetail] = useState<ChildDetail>();
   const [rootApprovals, setRootApprovals] = useState<Approval[]>([]);
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
-  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration'>('orchestration');
+  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'channel'>('orchestration');
   const [composer, setComposer] = useState('');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject'>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
@@ -312,7 +313,7 @@ export function CoordinatedTaskView({ api, task, notice, setNotice, onWorkspaceR
             <button className="primary" disabled={!composer.trim()}>Send <span>↵</span></button>
           </form>
         </> : <div className="child-panel">
-          <p className="child-note">Child agents receive input only through assignments.</p>
+          <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
           <div className="messages" aria-live="polite">
             {childDetail?.messages.map((message) => <article className={`message ${message.role}`} key={message.id}><div className="message-meta">{message.role === 'assistant' ? 'Agent' : message.role === 'user' ? 'You' : 'System'}</div><p>{message.content}{message.truncated ? ' (truncated)' : ''}</p></article>)}
           </div>
@@ -343,7 +344,8 @@ export function CoordinatedTaskView({ api, task, notice, setNotice, onWorkspaceR
         <button className={tab === 'approvals' ? 'active' : ''} onClick={() => setTab('approvals')}>Approvals{pendingApprovals.some((item) => item.state === 'awaiting-approval') ? ' · 1+' : ''}</button>
         <button className={tab === 'orchestration' ? 'active' : ''} onClick={() => setTab('orchestration')}>Orchestration</button>
       </div>
-      {tab === 'files' ? <>
+      <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} onClick={() => setTab('channel')}>Project channel</button>
+      {tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}

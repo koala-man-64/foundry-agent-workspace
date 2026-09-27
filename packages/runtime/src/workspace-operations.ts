@@ -6,7 +6,7 @@ import { CONTEXT_WARNING_PERCENT, boundText } from '../../protocol/src/index';
 import { estimateContext, prepareRequest } from './agent-loop';
 import { applyCompactions, compactContinuation, estimateContinuationTokens, planMessageCompaction, summarizeMessages } from './compaction';
 import { McpManager } from './mcp';
-import { usesTools } from './orchestration-tools';
+import type { AgentChannel } from './agent-channel';
 import { Redactor } from './redaction';
 import { RepositoryService, RepositoryError } from './repository';
 import { Store } from './store';
@@ -24,7 +24,7 @@ export interface OperationPorts {
 export class WorkspaceOperations {
   private readonly retiring = new Set<string>();
   private readonly publishing = new Set<string>();
-  constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly redactor: Redactor, private readonly mcp: McpManager, private readonly publish: (type: string, data: unknown, taskId?: string) => void, private readonly ports: OperationPorts, private readonly dataDirectory: string) {}
+  constructor(private readonly store: Store, private readonly repositories: RepositoryService, private readonly redactor: Redactor, private readonly mcp: McpManager, private readonly publish: (type: string, data: unknown, taskId?: string) => void, private readonly ports: OperationPorts, private readonly dataDirectory: string, private readonly channel?: AgentChannel) {}
 
   isRetiring(taskId: string): boolean { return this.retiring.has(taskId); }
   isPublishing(taskId: string): boolean { return this.publishing.has(taskId); }
@@ -43,7 +43,10 @@ export class WorkspaceOperations {
     const plan = planMessageCompaction(messages, existing, keepRecent);
     const nextMessage = messages.find(message => message.ordinal > plan.toOrdinal);
     const summary = this.redactor.text(summarizeMessages(plan.messages, this.store.approvals(taskId), nextMessage ? nextMessage.createdAt : null));
-    const state = usesTools(task) ? this.store.providerState(taskId) : undefined;
+    const nativeState = this.store.providerState(taskId);
+    // Tool-capable chats retain real provider history too. The offline fixture only keeps a
+    // small stage marker, so its human-readable transcript is the history that can shrink.
+    const state = nativeState?.continuation.apiKind === 'fake' ? undefined : nativeState;
     if (state && state.fingerprint !== this.ports.profileFingerprint(profile)) throw new Error('This task has native conversation state for an earlier profile configuration and cannot be compacted.');
     const before = state ? estimateContinuationTokens(state.continuation) : Buffer.byteLength(JSON.stringify(applyCompactions(messages, existing)), 'utf8');
     // The provider-native history is compacted shape by shape and validated before anything is stored. It keeps as many
@@ -73,7 +76,7 @@ export class WorkspaceOperations {
     if (!profile) throw new Error('Profile not found.');
     let estimated: number;
     try {
-      const request = prepareRequest(this.store, task, profile, this.ports.profileFingerprint(profile), 'estimate', undefined, new AbortController().signal, undefined, this.mcp.toolDefinitions());
+      const request = prepareRequest(this.store, task, profile, this.ports.profileFingerprint(profile), 'estimate', undefined, new AbortController().signal, undefined, this.mcp.toolDefinitions(), this.channel);
       estimated = estimateContext(request);
     } catch {
       estimated = estimateContinuationTokens(this.store.providerState(taskId)?.continuation) + profile.outputLimit;
