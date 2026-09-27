@@ -439,21 +439,29 @@ class ScriptProvider implements ProviderAdapter {
  * A minimal stdio MCP server whose only tool returns a canary carried in its own source, so the
  * value can only reach the runtime through the server's stdout — never through stored configuration.
  */
-function auditServerSource(secret: string): string {
+function auditServerSource(secret: string, tracePath?: string): string {
   return [
+    `import { appendFileSync } from 'node:fs';`,
+    `const tracePath = ${JSON.stringify(tracePath ?? null)};`,
+    `const trace = stage => { if (tracePath) appendFileSync(tracePath, stage + '\\n'); };`,
+    `trace('started');`,
+    `process.on('exit', () => trace('exited'));`,
+    `process.stdin.on('end', () => trace('stdin-ended'));`,
     `const secret = ${JSON.stringify(secret)};`,
-    `const write = value => process.stdout.write(JSON.stringify(value) + '\\n');`,
+    `const write = value => { trace('reply'); process.stdout.write(JSON.stringify(value) + '\\n'); };`,
     `const listing = { tools: [{ name: 'leak', description: 'Return the audit canary.', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }] };`,
     `const hello = { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'audit', version: '1.0.0' } };`,
     `let buffer = '';`,
     `process.stdin.setEncoding('utf8');`,
     `process.stdin.on('data', chunk => {`,
+    `  trace('input-bytes:' + chunk.length);`,
     `  buffer += chunk;`,
     `  for (let index = buffer.indexOf('\\n'); index >= 0; index = buffer.indexOf('\\n')) {`,
     `    const line = buffer.slice(0, index).trim();`,
     `    buffer = buffer.slice(index + 1);`,
     `    if (!line) continue;`,
     `    const message = JSON.parse(line);`,
+    `    trace('request:' + message.method);`,
     `    if (message.id === undefined || message.id === null) continue;`,
     `    const result = message.method === 'initialize' ? hello`,
     `      : message.method === 'tools/list' ? listing`,
@@ -632,7 +640,8 @@ describe('credential canary screening and leak matrix', () => {
     // Both servers carry the canary inside their own source, so nothing secret-like is ever stored as
     // configuration: what reaches SQLite can only have come through the server's stdout or stderr.
     const serving = join(base, 'audit-mcp-server.mjs');
-    await fs.writeFile(serving, auditServerSource(PLAIN_CANARY));
+    const tracePath = join(base, 'audit-mcp.trace');
+    await fs.writeFile(serving, auditServerSource(PLAIN_CANARY, tracePath));
     const failing = join(base, 'audit-mcp-failure.mjs');
     await fs.writeFile(failing, `process.stderr.write(${JSON.stringify(`startup failed: ${QUOTED_CANARY}`)}); process.exit(1);`);
 
@@ -642,7 +651,8 @@ describe('credential canary screening and leak matrix', () => {
       id: randomUUID(), key: 'audit', name: 'Audit server', command: process.execPath, arguments: [serving],
       cwd: '', environment: {}, enabled: true, readOnlyTools: ['leak'], callTimeoutMs: 10_000
     }) as McpServerStatus;
-    expect(saved.running, saved.lastError ?? 'MCP server did not start').toBe(true);
+    const startupTrace = await fs.readFile(tracePath, 'utf8').catch(() => 'fixture did not write a trace');
+    expect(saved.running, `${saved.lastError ?? 'MCP server did not start'}; fixture: ${startupTrace}`).toBe(true);
     expect(saved.tools.map(tool => tool.name)).toEqual(['leak']);
 
     const direct = await runtime.mcp.call(saved, 'leak', {}, new AbortController().signal);
