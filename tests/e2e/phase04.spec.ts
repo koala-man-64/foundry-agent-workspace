@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile, readFile, stat } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { createFixtureTask } from './fixtures';
 
 test('compaction, MCP under approval, diagnostics export, explicit commit and safe retirement through the desktop UI', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-phase04-e2e-'));
@@ -19,17 +20,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}))).toMatchObject({ runtime: 'ready' });
     const createTask = async (title: string, mode: 'chat' | 'coding'): Promise<{ id: string; worktreePath: string; branch: string }> => {
-      await page.getByLabel('Project path').fill(project);
-      await page.getByLabel('Task title').fill(title);
-      await page.getByLabel('Mode').selectOption(mode);
-      await page.getByRole('button', { name: 'Create task', exact: true }).click();
-      await expect(page.getByRole('heading', { name: title })).toBeVisible();
-      return page.evaluate(async (taskTitle) => {
-        const snapshot = await window.workspace.invoke('workspace.snapshot', {});
-        const task = snapshot.tasks.find((candidate) => candidate.title === taskTitle);
-        if (!task) throw new Error('Task was not created.');
-        return { id: task.id, worktreePath: task.worktreePath, branch: task.branch };
-      }, title);
+      return createFixtureTask(page, project, title, mode);
     };
     const send = async (content: string): Promise<void> => {
       await page.getByLabel('Task message').fill(content);
@@ -82,7 +73,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await expect(card).toContainText('Fixture server (fixture)');
     await expect(card).toContainText('echo said: echo: ping from the offline demo');
     await expect(card).toContainText('server\'s own annotations grant nothing');
-    await page.screenshot({ path: 'docs/mcp-approval-screenshot.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/mcp-approval-screenshot.png', fullPage: true });
     await expect(stat(notes)).rejects.toThrow();
     await card.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.get', { taskId })).task.status, coding.id)).toBe('idle');
@@ -124,7 +115,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await expect(page.getByRole('status')).toContainText('Retired 1 clean worktree');
     await expect(stat(coding.worktreePath)).rejects.toThrow();
     expect(git('rev-parse', '--verify', coding.branch)).toHaveLength(40);
-    await expect(page.getByRole('button', { name: /MCP demo task/ })).toContainText('Retired');
+    await expect(page.getByRole('button', { name: /MCP demo task/ })).toHaveAttribute('title', /^Retired ·/);
     await expect(page.getByLabel('Task message')).toBeDisabled();
     expect(git('status', '--porcelain')).toBe('');
     expect(errors).toEqual([]);

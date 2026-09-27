@@ -15,14 +15,21 @@ export const ModelProfileSchema = z.object({
 }).strict();
 export type ModelProfile = z.infer<typeof ModelProfileSchema>;
 export type TaskStatus = 'idle' | 'running' | 'cancelled' | 'interrupted' | 'failed' | 'retired';
-export interface Task { id: string; title: string; projectPath: string; worktreePath: string; branch: string; baseCommit: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding' | 'coordinated';
+export interface TaskBase { id: string; title: string; projectId?: string; profileId: string; status: TaskStatus; createdAt: string; updatedAt: string; tokenBudget: number; usedTokens: number; mode?: 'chat' | 'coding' | 'coordinated';
   /** Set once the task worktree was retired through the explicit user action; the branch and history remain. */
   retiredAt?: string;
   /** Present only on coordinated roots and their children. Legacy tasks omit every field below. */
   rootTaskId?: string; parentTaskId?: string; role?: AgentRole; assignmentId?: string; coordination?: CoordinationConfig; }
+export interface GitTask extends TaskBase { workspaceKind?: 'git'; projectPath: string; worktreePath: string; branch: string; baseCommit: string; }
+export interface FolderTask extends TaskBase { workspaceKind: 'folder'; projectPath: string; worktreePath?: never; branch?: never; baseCommit?: never; mode: 'chat'; }
+export interface NoFolderTask extends TaskBase { workspaceKind: 'none'; projectPath?: never; worktreePath?: never; branch?: never; baseCommit?: never; mode: 'chat'; }
+export type Task = GitTask | FolderTask | NoFolderTask;
+export function isGitTask(task: Task): task is GitTask { return !task.workspaceKind || task.workspaceKind === 'git'; }
+export interface Project { id: string; name: string; path: string; hidden: boolean; kind: 'git' | 'folder' | 'unavailable'; unavailableReason?: string; createdAt: string; updatedAt: string; }
+export interface WorkspacePreferences { profileId: string; mode: 'chat' | 'coding' | 'coordinated'; collapsedProjectIds: string[]; }
 export interface Message { id: string; taskId: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; status: 'complete' | 'streaming' | 'cancelled' | 'interrupted' | 'failed'; }
 export interface WorkspaceEvent { sequence: number; type: string; taskId?: string; data: unknown; createdAt: string; }
-export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; lastSequence: number; runtime: 'ready'; }
+export interface Snapshot { tasks: Task[]; profiles: ModelProfile[]; projects: Project[]; preferences: WorkspacePreferences; lastSequence: number; runtime: 'ready'; }
 export interface TaskDetail { task: Task; messages: Message[]; approvals?: Approval[]; compactions?: CompactionRecord[]; hasUnknownPublication?: boolean; }
 /** One provider request's accounting. Unknown usage keeps its full conservative reservation. */
 export interface UsageRecord { id: string; taskId: string; requestId: string; reservedTokens: number; promptTokens: number | null; completionTokens: number | null; cacheReadTokens: number | null; cacheCreationTokens: number | null; usageKnown: boolean; reason: string | null; createdAt: string; }
@@ -60,6 +67,10 @@ export interface ProbeResult { ok: boolean; capabilities: { streaming: boolean; 
 const Id = z.string().uuid();
 export const RpcMethods = {
   'workspace.snapshot': z.object({}).strict(),
+  'project.add': z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
+  'project.update': z.object({ projectId: Id, name: z.string().trim().min(1).max(100).optional(), hidden: z.boolean().optional() }).strict(),
+  'workspace.preferences.save': z.object({ profileId: Id.optional(), mode: z.enum(['chat', 'coding', 'coordinated']).optional(), collapsedProjectIds: z.array(z.union([Id, z.literal('none')])).max(1000).optional() }).strict(),
+  'task.start': z.object({ requestId: Id, projectId: Id.nullable(), content: z.string().trim().min(1).max(64000), title: z.string().trim().min(1).max(160).optional(), profileId: Id, mode: z.enum(['chat', 'coding', 'coordinated']), tokenBudget: z.number().int().min(1024).max(10000000).default(100000), coordination: CoordinationConfigSchema.optional() }).strict(),
   'task.create': z.object({ title: z.string().trim().min(1).max(160), projectPath: z.string().min(1).max(4096), profileId: Id, tokenBudget: z.number().int().min(1024).max(10000000).default(100000), mode: z.enum(['chat', 'coding', 'coordinated']).default('chat'), coordination: CoordinationConfigSchema.optional() }).strict(),
   'task.get': z.object({ taskId: Id }).strict(),
   'task.send': z.object({ taskId: Id, content: z.string().trim().min(1).max(64000) }).strict(),
@@ -93,7 +104,11 @@ export const RpcResponseSchema = z.union([
 ]);
 export interface DesktopApi {
   invoke(method: 'workspace.snapshot', params: Record<string, never>): Promise<Snapshot>;
-  invoke(method: 'task.create', params: z.input<typeof RpcMethods['task.create']>): Promise<Task>;
+  invoke(method: 'project.add', params: { path: string }): Promise<Project>;
+  invoke(method: 'project.update', params: { projectId: string; name?: string; hidden?: boolean }): Promise<Project>;
+  invoke(method: 'workspace.preferences.save', params: z.input<typeof RpcMethods['workspace.preferences.save']>): Promise<WorkspacePreferences>;
+  invoke(method: 'task.start', params: z.input<typeof RpcMethods['task.start']>): Promise<Task>;
+  invoke(method: 'task.create', params: z.input<typeof RpcMethods['task.create']>): Promise<GitTask>;
   invoke(method: 'task.get', params: { taskId: string }): Promise<TaskDetail>;
   invoke(method: 'task.send' | 'task.cancel', params: { taskId: string; content?: string }): Promise<{ accepted: boolean }>;
   invoke(method: 'profile.save', params: ModelProfile): Promise<ModelProfile>;

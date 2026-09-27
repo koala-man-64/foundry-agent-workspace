@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import type { CompactionRecord, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, Task, UsageReport } from '../../packages/protocol/src/index';
+import type { CompactionRecord, ModelProfile, ProviderAdapter, ProviderEvent, ProviderRequest, GitTask as Task, UsageReport } from '../../packages/protocol/src/index';
 import { RuntimeService, profileFingerprint } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';

@@ -50,7 +50,7 @@ export function agentRole(task: Task): 'coding' | 'coordinator' | 'child' {
   if (task.mode === 'coordinated') return 'coordinator';
   return 'coding';
 }
-export function usesTools(task: Task): boolean { return task.mode === 'coding' || task.mode === 'coordinated'; }
+export function usesTools(task: Task): boolean { return (!task.workspaceKind || task.workspaceKind === 'git') && (task.mode === 'coding' || task.mode === 'coordinated'); }
 export function toolsFor(task: Task): ToolDefinition[] {
   const allowed = new Set<string>(ROLE_TOOLS[agentRole(task)]);
   return [...TOOL_DEFINITIONS.filter(tool => allowed.has(tool.name)), ...Object.values(ORCHESTRATION_TOOL_DEFINITIONS).filter(tool => allowed.has(tool.name))];

@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Approval, CompactionRecord, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, ModelProfile, ProbeResult, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
+import type { Approval, CompactionRecord, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, ModelProfile, ProbeResult, Project, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
 import { ORCHESTRATION_LIMITS } from '../../../../packages/protocol/src/index';
 import { CoordinatedTaskView } from './Orchestration';
 import { McpSettings } from './McpSettings';
+import { ProjectSidebar } from './ProjectSidebar';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -12,7 +13,12 @@ const OFFLINE_PROFILE: ModelProfile = {
 };
 
 const statusLabel: Record<TaskStatus, string> = { idle: 'Ready', running: 'Working', cancelled: 'Cancelled', interrupted: 'Interrupted', failed: 'Needs attention', retired: 'Retired' };
-const emptySnapshot: Snapshot = { tasks: [], profiles: [], lastSequence: 0, runtime: 'ready' };
+const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
+type Mode = 'chat' | 'coding' | 'coordinated';
+interface StartPayload { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: Mode; tokenBudget: number; coordination?: { childProfileIds: string[]; requiredValidation: { command: string; cwd: string; timeoutMs: number } }; }
+interface Draft { content: string; title: string; requiredValidationCommand: string; coordinatedBudget: number; childProfileIds: string[]; startPayload?: StartPayload; pending?: boolean; unknown?: boolean; }
+const blankDraft = (): Draft => ({ content: '', title: '', requiredValidationCommand: '', coordinatedBudget: 600000, childProfileIds: [] });
+const draftKey = (projectId: string | null) => projectId ?? 'none';
 
 function relativeTime(value: string): string {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
@@ -37,13 +43,14 @@ function App() {
   const [selectedId, setSelectedId] = useState<string>();
   const [detail, setDetail] = useState<TaskDetail>();
   const [usage, setUsage] = useState<UsageReport>();
-  const [projectPath, setProjectPath] = useState('');
-  const [title, setTitle] = useState('');
   const [profileId, setProfileId] = useState(OFFLINE_PROFILE.id);
-  const [taskMode, setTaskMode] = useState<'chat' | 'coding' | 'coordinated'>('chat');
-  const [requiredValidationCommand, setRequiredValidationCommand] = useState('');
-  const [coordinatedBudget, setCoordinatedBudget] = useState(600000);
-  const [childProfileIds, setChildProfileIds] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<Mode>('chat');
+  const [draftProjectId, setDraftProjectId] = useState<string | null | undefined>(null);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({ none: blankDraft() });
+  const [moreOptions, setMoreOptions] = useState(false);
+  const [addingProject, setAddingProject] = useState(false);
+  const [collapsedProjectIds, setCollapsedProjectIds] = useState<string[]>([]);
+  const manageDialogRef = useRef<HTMLDialogElement>(null);
   const [schema, setSchema] = useState<SchemaStatus>();
   const [composer, setComposer] = useState('');
   const [notice, setNotice] = useState('');
@@ -71,19 +78,32 @@ function App() {
   const inspectorVersion = useRef(0);
   const detailVersion = useRef(0);
   const snapshotVersion = useRef(0);
+  const preferencesLoaded = useRef(false);
+  const preferencesTouched = useRef(false);
+  const selectionVersion = useRef(0);
   const selectedRef = useRef<string | undefined>(undefined);
+  const draftProjectRef = useRef<string | null | undefined>(null);
   const currentPathRef = useRef('');
   const sequenceRef = useRef(0);
   const eventSequenceRef = useRef(0);
   selectedRef.current = selectedId;
+  draftProjectRef.current = draftProjectId;
   currentPathRef.current = currentPath;
 
   const profiles = snapshot.profiles.length ? snapshot.profiles : [OFFLINE_PROFILE];
-  const selectedTask = detail?.task ?? snapshot.tasks.find((task) => task.id === selectedId);
-  const selectedProfile = profiles.find((profile) => profile.id === profileId) ?? OFFLINE_PROFILE;
+  const projects = snapshot.projects ?? [];
+  const activeProject = projects.find((project) => project.id === draftProjectId);
+  const draft = drafts[draftKey(draftProjectId ?? null)] ?? blankDraft();
+  const isDraft = draftProjectId !== undefined;
+  const draftDisplayProfileId = draft.unknown && draft.startPayload ? draft.startPayload.profileId : profileId;
+  const draftDisplayMode = draft.unknown && draft.startPayload ? draft.startPayload.mode : activeProject?.kind === 'git' ? taskMode : 'chat';
+  const selectedTask = detail && detail.task.id === selectedId ? detail.task : snapshot.tasks.find((task) => task.id === selectedId);
+  const workspaceKind = selectedTask?.workspaceKind ?? 'git';
+  const effectiveRightTab = (workspaceKind === 'git' || rightTab === 'usage' || (workspaceKind === 'folder' && rightTab === 'files')) ? rightTab : 'usage';
+  const configuredProfile = profiles.find((profile) => profile.id === profileId);
   const taskProfile = selectedTask ? profiles.find((profile) => profile.id === selectedTask.profileId) : undefined;
   const isProfileReady = (profile: ModelProfile): boolean => profile.apiKind === 'fake' || Boolean(profile.verifiedAt && profile.capabilities?.tools && profile.capabilities?.continuation);
-  const codingReady = isProfileReady(selectedProfile);
+  const codingReady = Boolean(configuredProfile && isProfileReady(configuredProfile));
   const coordinatedAvailable = Boolean(schema?.coordinatedAvailable);
   const coordinatedReady = coordinatedAvailable && codingReady;
   const availableChildProfiles = profiles.filter((profile) => profile.id !== profileId && isProfileReady(profile));
@@ -118,13 +138,12 @@ function App() {
     }
   }, [api]);
 
-  const refreshInspector = useCallback(async (taskId: string, path: string) => {
+  const refreshInspector = useCallback(async (taskId: string, path: string, kind: 'git' | 'folder' | 'none') => {
     const version = ++inspectorVersion.current;
+    if (kind === 'none') { setFiles([]); setDiff(undefined); return; }
     try {
-      const [nextFiles, nextDiff] = await Promise.all([
-        api.invoke('files.list', { taskId, path }),
-        api.invoke('task.diff', { taskId })
-      ]);
+      const nextFiles = await api.invoke('files.list', { taskId, path });
+      const nextDiff = kind === 'git' ? await api.invoke('task.diff', { taskId }) : undefined;
       if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) {
         setFiles(nextFiles);
         setDiff(nextDiff);
@@ -147,7 +166,13 @@ function App() {
       sequenceRef.current = fresh.lastSequence;
       setSnapshot(fresh);
       setSchema(nextSchema);
-      const next = selection && fresh.tasks.some((task) => task.id === selection) ? selection : fresh.tasks[0]?.id;
+      if (!preferencesLoaded.current && fresh.preferences) {
+        preferencesLoaded.current = true;
+        if (!preferencesTouched.current) { setProfileId(fresh.preferences.profileId); setTaskMode(fresh.preferences.mode); }
+        setCollapsedProjectIds(fresh.preferences.collapsedProjectIds);
+      }
+      const next = selection && fresh.tasks.some((task) => task.id === selection) ? selection : undefined;
+      if (draftProjectRef.current !== undefined) return;
       if (next !== selectedRef.current) setSelectedId(next);
       else if (next) void loadTaskDetail(next);
       if (fresh.lastSequence < eventSequenceRef.current) void refresh(next);
@@ -185,27 +210,59 @@ function App() {
     currentPathRef.current = '';
     setCurrentPath(''); setDetail(undefined); setUsage(undefined); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
     void loadTaskDetail(selectedId);
-    void refreshInspector(selectedId, '');
-  }, [loadTaskDetail, refreshInspector, selectedId]);
+    const kind = snapshot.tasks.find((task) => task.id === selectedId)?.workspaceKind ?? 'git';
+    void refreshInspector(selectedId, '', kind);
+  }, [loadTaskDetail, refreshInspector, loadFiles, selectedId]);
 
-  const chooseProject = async () => { const chosen = await api.pickProject(); if (chosen) setProjectPath(chosen); };
-  const createTask = async (event: FormEvent) => {
+  const updateDraftFor = (key: string, patch: Partial<Draft>) => setDrafts((current) => ({ ...current, [key]: { ...(current[key] ?? blankDraft()), ...patch } }));
+  const updateDraft = (patch: Partial<Draft>) => updateDraftFor(draftKey(draftProjectId ?? null), patch);
+  const selectDraft = (projectId: string | null) => { ++selectionVersion.current; ++detailVersion.current; ++inspectorVersion.current; selectedRef.current = undefined; draftProjectRef.current = projectId; setSelectedId(undefined); setDraftProjectId(projectId); setNotice(''); };
+  const selectTask = (taskId: string) => { ++selectionVersion.current; draftProjectRef.current = undefined; selectedRef.current = taskId; setDraftProjectId(undefined); setSelectedId(taskId); setNotice(''); };
+  const addProject = async () => {
+    if (addingProject || !schema || schema.version < 3) return;
+    const chosen = await api.pickProject();
+    if (!chosen) return;
+    setAddingProject(true);
+    try { const project = await api.invoke('project.add', { path: chosen }); await refresh(); selectDraft(project.id); }
+    catch (error) { setNotice(`Could not add project: ${error instanceof Error ? error.message : String(error)}`); }
+    finally { setAddingProject(false); }
+  };
+  const updateProject = async (project: Project, patch: { name?: string; hidden?: boolean }) => {
+    try { await api.invoke('project.update', { projectId: project.id, ...patch }); await refresh(); }
+    catch (error) { setNotice(`Could not update project: ${error instanceof Error ? error.message : String(error)}`); }
+  };
+  const savePreferences = async (patch: { profileId?: string; mode?: Mode; collapsedProjectIds?: string[] }) => {
+    try { await api.invoke('workspace.preferences.save', patch); }
+    catch (error) { setNotice(`Could not save preferences: ${error instanceof Error ? error.message : String(error)}`); }
+  };
+  const toggleProject = (projectId: string) => {
+    const next = collapsedProjectIds.includes(projectId) ? collapsedProjectIds.filter((id) => id !== projectId) : [...collapsedProjectIds, projectId];
+    setCollapsedProjectIds(next); void savePreferences({ collapsedProjectIds: next });
+  };
+  const startDraft = async (event: FormEvent) => {
     event.preventDefault();
-    if (!projectPath.trim() || !title.trim()) { setNotice('Choose a project and name the task before creating it.'); return; }
+    if (!draft.content.trim() || creating || !schema || schema.version < 3) return;
+    if (!draft.unknown && (!configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt))) { setNotice('Choose a verified model profile in Model settings before sending.'); return; }
+    if (!draft.unknown && activeProject?.kind === 'unavailable') { setNotice('This folder is unavailable. Restore it before starting a chat.'); return; }
+    const mode: Mode = activeProject?.kind === 'git' ? taskMode : 'chat';
+    if (!draft.unknown && mode !== 'chat' && configuredProfile && !isProfileReady(configuredProfile)) { setNotice('Coding and coordinated modes require a verified profile with tools and continuation support.'); return; }
+    if (mode === 'coordinated' && !draft.requiredValidationCommand.trim() && !draft.unknown) { setNotice('Enter the required combined validation command.'); return; }
+    const originKey = draftKey(draftProjectId ?? null);
+    const originSelection = selectionVersion.current;
+    const payload: StartPayload = draft.unknown && draft.startPayload ? draft.startPayload : { requestId: crypto.randomUUID(), projectId: draftProjectId ?? null, content: draft.content.trim(), title: draft.title.trim() || undefined, profileId, mode,
+      tokenBudget: mode === 'coordinated' ? draft.coordinatedBudget : 100000,
+      ...(mode === 'coordinated' ? { coordination: { childProfileIds: draft.childProfileIds, requiredValidation: { command: draft.requiredValidationCommand.trim(), cwd: '', timeoutMs: 600000 } } } : {}) };
+    updateDraftFor(originKey, { startPayload: payload, pending: true, unknown: false });
     setCreating(true); setNotice('');
     try {
-      const activeProfile = profiles.find((profile) => profile.id === profileId) ?? OFFLINE_PROFILE;
-      const canCode = isProfileReady(activeProfile);
-      if ((taskMode === 'coding' || taskMode === 'coordinated') && !canCode) throw new Error('Coding and coordinated modes require a freshly verified profile with tool and continuation support.');
-      if (taskMode === 'coordinated' && !requiredValidationCommand.trim()) throw new Error('Enter the required combined validation command before creating a coordinated task.');
-      if (!snapshot.profiles.some((profile) => profile.id === activeProfile.id)) await api.invoke('profile.save', activeProfile);
-      const task = await api.invoke('task.create', {
-        projectPath: projectPath.trim(), title: title.trim(), profileId: activeProfile.id,
-        tokenBudget: taskMode === 'coordinated' ? coordinatedBudget : 100000, mode: taskMode,
-        ...(taskMode === 'coordinated' ? { coordination: { childProfileIds, requiredValidation: { command: requiredValidationCommand.trim(), cwd: '', timeoutMs: 600000 } } } : {})
-      });
-      setTitle(''); setRequiredValidationCommand(''); setChildProfileIds([]); setSelectedId(task.id); await refresh(task.id);
-    } catch (error) { setNotice(`Could not create task: ${error instanceof Error ? error.message : String(error)}`); } finally { setCreating(false); }
+      const task = await api.invoke('task.start', payload);
+      setDrafts((current) => ({ ...current, [originKey]: blankDraft() }));
+      if (originSelection === selectionVersion.current) { setSnapshot((current) => ({ ...current, tasks: [...current.tasks.filter((existing) => existing.id !== task.id), task] })); draftProjectRef.current = undefined; selectedRef.current = task.id; setDraftProjectId(undefined); setSelectedId(task.id); await refresh(task.id); }
+      else await refresh();
+    } catch (error) {
+      updateDraftFor(originKey, { pending: false, unknown: true });
+      if (originSelection === selectionVersion.current) setNotice(`Start outcome is unknown: ${error instanceof Error ? error.message : String(error)}. Your draft is preserved. Retry uses the same request ID.`);
+    } finally { setCreating(false); }
   };
   const send = async (event: FormEvent) => {
     event.preventDefault(); if (!selectedId || !composer.trim()) return;
@@ -230,7 +287,7 @@ function App() {
   const commit = async () => {
     if (!selectedId || publishBusy || !commitMessage.trim()) return;
     setPublishBusy('commit');
-    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit.slice(0, 10)} on ${result.branch} (${result.changedPaths.length} paths).`); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current); }
+    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit.slice(0, 10)} on ${result.branch} (${result.changedPaths.length} paths).`); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current, 'git'); }
     catch (error) { setNotice(`Could not commit: ${error instanceof Error ? error.message : String(error)}`); }
     finally { setPublishBusy(undefined); }
   };
@@ -255,7 +312,7 @@ function App() {
       const result = await api.invoke('task.reconcilePublication', { taskId: selectedId });
       setNotice(result.detail);
       await loadTaskDetail(selectedId);
-      void refreshInspector(selectedId, currentPathRef.current);
+      void refreshInspector(selectedId, currentPathRef.current, 'git');
     } catch (error) {
       setNotice(`Could not reconcile publication: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -286,7 +343,7 @@ function App() {
   };
   const refreshCurrentInspector = () => {
     if (!selectedId) return;
-    void refreshInspector(selectedId, currentPathRef.current);
+    void refreshInspector(selectedId, currentPathRef.current, workspaceKind);
     if (file) void readFile(file.path);
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
@@ -315,46 +372,36 @@ function App() {
     try {
       const saved = await api.invoke('profile.save', { ...profileDraft, name: profileDraft.name.trim(), endpoint: profileDraft.endpoint.trim(), deployment: profileDraft.deployment.trim() });
       if (credential) await api.saveCredential(saved.id, credential);
-      setCredential(''); setProfileId(saved.id); await refresh(); dialogRef.current?.close();
+      setCredential(''); preferencesTouched.current = true; setProfileId(saved.id); await savePreferences({ profileId: saved.id }); await refresh(); dialogRef.current?.close();
     } catch (error) { setCredential(''); setNotice(`Could not save profile: ${error instanceof Error ? error.message : String(error)}`); }
   };
   const probeProfile = async () => { try { const saved = await api.invoke('profile.save', profileDraft); if (credential) await api.saveCredential(saved.id, credential); setCredential(''); setProbe(await api.invoke('profile.probe', { profileId: saved.id })); } catch (error) { setCredential(''); setProbe({ ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: error instanceof Error ? error.message : String(error), fingerprint: '' }); } };
-  const sortedTasks = useMemo(() => [...snapshot.tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [snapshot.tasks]);
   const coordinatedTask = selectedTask?.mode === 'coordinated' ? selectedTask : undefined;
   const contextLine = usage ? ` · context ≈ ${usage.contextPercent}% of ${usage.contextLimit.toLocaleString()}` : '';
 
   return <>
     {schema?.upgradeRequired && <div className="upgrade-banner" role="status">
-      This database needs a verified, backed-up upgrade before coordinated tasks are available.
+      This database needs a verified, backed-up upgrade before saved projects and new chats are available. Earlier chats remain accessible.
       <button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.showModal()}>Review upgrade</button>
     </div>}
     <main className="workspace">
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">F</span><div><strong>Foundry</strong><small>Agent workspace</small></div></div>
-      <form className="new-task" onSubmit={createTask}><h2>New task</h2>
-        <label>Project <div className="project-picker"><input value={projectPath} onChange={(e) => setProjectPath(e.target.value)} placeholder="Choose a local project" aria-label="Project path" /><button type="button" onClick={() => void chooseProject()}>Browse</button></div></label>
-        <label>Task title <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What should this task do?" /></label>
-        <label>Profile <select value={profileId} onChange={(e) => { const next = profiles.find((profile) => profile.id === e.target.value) ?? OFFLINE_PROFILE; setProfileId(next.id); if (taskMode !== 'chat' && !isProfileReady(next)) setTaskMode('chat'); }}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.apiKind}</option>)}</select></label>
-        <label>Mode <select value={taskMode} onChange={(e) => setTaskMode(e.target.value as 'chat' | 'coding' | 'coordinated')}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding with reviewed tools</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated (coordinator + children)</option></select></label>
-        <p className="mode-note">{taskMode === 'coding' ? selectedProfile.apiKind === 'fake' ? 'Offline deterministic demo: type /demo to propose a bounded README edit and command, or /mcp-demo with a configured "fixture" MCP server.' : 'Tools require a reviewed approval before they run.' : taskMode === 'coordinated' ? 'The coordinator delegates bounded assignments to children; every commit, integration and command still needs your reviewed approval.' : 'Chat does not request tool execution.'}</p>
-        {taskMode === 'coordinated' && <>
-          <label>Required validation command <textarea value={requiredValidationCommand} onChange={(e) => setRequiredValidationCommand(e.target.value)} placeholder="Command run on the final integrated tree" maxLength={16384} /></label>
-          <label>Token budget <input type="number" min={1024} max={10000000} value={coordinatedBudget} onChange={(e) => setCoordinatedBudget(Number(e.target.value))} /></label>
-          <fieldset className="child-profiles"><legend>Child profiles</legend>
-            {availableChildProfiles.map((profile) => <label key={profile.id} className="checkbox-row"><input type="checkbox" checked={childProfileIds.includes(profile.id)} disabled={!childProfileIds.includes(profile.id) && childProfileIds.length >= ORCHESTRATION_LIMITS.maxChildProfiles} onChange={(e) => setChildProfileIds((current) => e.target.checked ? [...current, profile.id] : current.filter((id) => id !== profile.id))} />{profile.name}</label>)}
-            {!availableChildProfiles.length && <p className="muted">No other verified profiles are available; children reuse the coordinator profile.</p>}
-          </fieldset>
-        </>}
-        <button className="primary" disabled={creating}>{creating ? 'Creating…' : 'Create task'}</button>
+    <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={selectedId} draftProjectId={draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => manageDialogRef.current?.showModal()} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={openSettings} onExport={() => void exportDiagnostics()} />
+    {isDraft ? <section className="conversation draft-conversation">
+      <header className="task-header"><div><p className="eyebrow">{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
+      {notice && <div className="notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
+      <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
+      <form className="draft-compose" onSubmit={startDraft}>
+        <textarea aria-label="Chat message" placeholder="Ask a question or describe the work…" value={draft.content} onChange={(event) => updateDraft({ content: event.target.value, startPayload: undefined })} disabled={creating || draft.unknown || activeProject?.kind === 'unavailable' || !schema || schema.version < 3} />
+        <div className="draft-toolbar"><label>Model<select aria-label="Model" value={draftDisplayProfileId} disabled={draft.unknown} onChange={(event) => { const next = event.target.value; preferencesTouched.current = true; setProfileId(next); void savePreferences({ profileId: next }); }}>{!profiles.some((profile) => profile.id === draftDisplayProfileId) && <option value={draftDisplayProfileId}>Unavailable profile</option>}{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label><label>Mode<select aria-label="Mode" value={draftDisplayMode} disabled={activeProject?.kind !== 'git' || draft.unknown} onChange={(event) => { const next = event.target.value as Mode; preferencesTouched.current = true; setTaskMode(next); void savePreferences({ mode: next }); }}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated</option></select></label><button type="button" className="draft-more" aria-expanded={moreOptions} onClick={() => setMoreOptions(!moreOptions)}>More options {moreOptions ? '⌃' : '⌄'}</button></div>
+        {moreOptions && <div className="draft-options"><label>Title (optional)<input value={draft.title} maxLength={160} disabled={draft.unknown} placeholder="From first message if empty" onChange={(event) => updateDraft({ title: event.target.value, startPayload: undefined })} /></label>{activeProject?.kind === 'git' && draftDisplayMode === 'coordinated' && <><label>Required validation command<textarea value={draft.requiredValidationCommand} maxLength={16384} disabled={draft.unknown} onChange={(event) => updateDraft({ requiredValidationCommand: event.target.value, startPayload: undefined })} /></label><label>Token budget<input type="number" min={1024} max={10000000} value={draft.coordinatedBudget} disabled={draft.unknown} onChange={(event) => updateDraft({ coordinatedBudget: Number(event.target.value), startPayload: undefined })} /></label><fieldset className="child-profiles" disabled={draft.unknown}><legend>Child profiles</legend>{availableChildProfiles.map((profile) => <label key={profile.id} className="checkbox-row"><input type="checkbox" checked={draft.childProfileIds.includes(profile.id)} disabled={!draft.childProfileIds.includes(profile.id) && draft.childProfileIds.length >= ORCHESTRATION_LIMITS.maxChildProfiles} onChange={(event) => updateDraft({ childProfileIds: event.target.checked ? [...draft.childProfileIds, profile.id] : draft.childProfileIds.filter((id) => id !== profile.id), startPayload: undefined })} />{profile.name}</label>)}{!availableChildProfiles.length && <p className="muted">Children reuse the coordinator profile.</p>}</fieldset></>}</div>}
+        {!configuredProfile && <p className="draft-warning">The saved model profile is unavailable. Choose a profile before sending.</p>}
+        {configuredProfile && configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt && <p className="draft-warning">Verify this profile in Model settings before sending.</p>}
+        {draft.unknown && <p className="draft-warning">The start outcome is unknown. Check the project chat list first. Retry uses the original message and settings. <button type="button" className="secondary" onClick={() => updateDraft({ startPayload: undefined, unknown: false })}>Start fresh draft</button></p>}
+        <button type="submit" className="primary draft-send" disabled={!draft.content.trim() || creating || !schema || schema.version < 3 || (!draft.unknown && (activeProject?.kind === 'unavailable' || !configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt) || (activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim())))}>{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : 'Send'}</button>
       </form>
-      <div className="history-head"><h2>Task history</h2><button className="quiet" type="button" onClick={() => void refresh()}>Refresh</button></div>
-      <nav className="task-list" aria-label="Task history">{sortedTasks.map((task) => <button key={task.id} className={`task-row ${task.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(task.id)}><span className={`status-dot ${task.status}`} /><span><strong>{task.title}</strong><small>{statusLabel[task.status]} · {relativeTime(task.updatedAt)}</small></span></button>)}{!sortedTasks.length && <p className="muted">Your local tasks will appear here.</p>}</nav>
-      <button className="settings-link" type="button" onClick={() => void exportDiagnostics()} disabled={exporting}>{exporting ? 'Exporting diagnostics…' : 'Export diagnostics'} <span>↓</span></button>
-      <button className="settings-link" type="button" onClick={openSettings}>Model settings <span>↗</span></button>
-    </aside>
-    {coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} /> : <>
+    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} /> : <>
     <section className="conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions">{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions">{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
       <div className="messages" aria-live="polite">{detail?.messages.map((message, index) => {
         const record = compactionByMessage.get(message.id);
@@ -367,16 +414,16 @@ function App() {
       <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
     </section>
     <aside className="inspector">
-      <div className="inspector-tabs"><button className={rightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button><button className={rightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button><button className={rightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button><button className={rightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button><button className={rightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button></div>
-      {!selectedId ? <p className="muted inspector-empty">Select a task to inspect its local worktree.</p> : rightTab === 'files' ? <>
-        <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
+      <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button>}<button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}</div>
+      {!selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'files' ? <>
+        <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
           {files.map((entry) => <button key={entry.path} type="button" className={file?.path === entry.path ? 'active-file' : ''} onClick={() => entry.kind === 'directory' ? browseDirectory(entry.path) : void readFile(entry.path)}><span>{entry.kind === 'directory' ? '▸' : '·'}</span>{entry.path}</button>)}
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : rightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div> : rightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
+      </> : effectiveRightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
         {usage ? <>
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>
@@ -395,7 +442,7 @@ function App() {
           {usage.records.slice(-20).reverse().map((record) => <div className="usage-row" key={record.id}><strong>{record.usageKnown ? `${(record.promptTokens ?? 0).toLocaleString()} in · ${(record.completionTokens ?? 0).toLocaleString()} out` : `reserved ${record.reservedTokens.toLocaleString()}`}</strong><span>{record.usageKnown ? `cache ${(record.cacheReadTokens ?? 0).toLocaleString()} · reserved ${record.reservedTokens.toLocaleString()}` : record.reason ?? 'usage unknown'} · {relativeTime(record.createdAt)}</span></div>)}
           {!usage.records.length && <p className="muted">No provider requests recorded yet.</p>}
         </> : <p className="muted inspector-empty">Loading usage…</p>}
-      </div> : rightTab === 'publish' ? <div className="publish-panel" data-testid="publish-panel">
+      </div> : effectiveRightTab === 'publish' ? <div className="publish-panel" data-testid="publish-panel">
         <p className="tool-readiness">Commit, push and retirement are explicit actions you take here. The agent never proposes or runs them. Push uses your Git credential helper for this action only and never forces.</p>
         {selectedTask?.mode === 'coordinated' ? <p className="muted">Coordinated worktrees are integrated through reviewed operations; retire the root once every run is terminal.</p> : <>
           <label>Commit message <textarea value={commitMessage} onChange={(e) => setCommitMessage(e.target.value)} placeholder="Describe the change" maxLength={2000} disabled={Boolean(publishBusy) || taskBusy || taskRetired} /></label>
@@ -436,6 +483,10 @@ function App() {
       </div>}
     </aside>
     </>}
+    <dialog ref={manageDialogRef} className="settings-dialog manage-dialog" aria-labelledby="manage-projects-title">
+      <div className="dialog-head"><div><p className="eyebrow">SAVED FOLDERS</p><h2 id="manage-projects-title">Manage projects</h2></div><button type="button" className="secondary" onClick={() => manageDialogRef.current?.close()}>Close</button></div>
+      <div className="manage-list">{projects.map((project) => <form key={`${project.id}:${project.updatedAt}`} className="manage-project" onSubmit={(event) => { event.preventDefault(); const name = new FormData(event.currentTarget).get('name'); if (typeof name === 'string' && name.trim() && name.trim() !== project.name) void updateProject(project, { name: name.trim() }); }}><div><label>Name for {project.name}<input name="name" aria-label={`Name for ${project.name}`} defaultValue={project.name} maxLength={100} required /></label><small title={project.path}>{project.path}</small>{project.kind === 'unavailable' && <span className="project-unavailable-note">Folder unavailable</span>}</div><div className="manage-actions"><button type="submit" className="secondary">Save name</button><button type="button" className="secondary" onClick={() => void updateProject(project, { hidden: !project.hidden })}>{project.hidden ? `Restore ${project.name}` : `Hide ${project.name}`}</button></div></form>)}{!projects.length && <p className="muted">No saved projects yet.</p>}</div>
+    </dialog>
     <dialog ref={dialogRef} className="settings-dialog" onClose={() => setCredential('')}>
       <form method="dialog" className="dialog-head">
         <div><p className="eyebrow">CONNECTIONS</p><h2>Model profile</h2></div>
@@ -457,7 +508,7 @@ function App() {
     <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog">
       <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2>Back up and upgrade</h2></div></div>
       <div className="profile-form">
-        <p>This creates a verified SQLite backup of your current database, then upgrades it in place to enable coordinated tasks. The current build can only open the upgraded database; if you keep the current database, retain the backup and open it with the older application to roll back.</p>
+        <p>This creates a verified SQLite backup of your current database, then upgrades it in place to enable saved projects and new chats. Earlier chats remain available during the upgrade decision. Retain the backup if you need to open the older database with an older application.</p>
         <div className="dialog-actions">
           <button type="button" className="secondary" onClick={() => upgradeDialogRef.current?.close()}>Keep current database</button>
           <button type="button" className="primary" disabled={upgrading} onClick={() => void confirmUpgrade()}>{upgrading ? 'Upgrading…' : 'Create backup and upgrade'}</button>

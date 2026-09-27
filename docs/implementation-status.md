@@ -1,5 +1,27 @@
 # Implementation status
 
+## Saved projects and draft-first chat creation — 27 September 2026
+
+Local implementation on `codex/saved-projects-sidebar` in the [Foundry Agent Workspace source](https://github.com/koala-man-64/foundry-agent-workspace). Publication, installed application upgrades, and live provider qualification are separate gates.
+
+- The sidebar now groups chats under saved projects, with compact status dots, alphabetical project ordering, recent chat ordering, and a final **No folder** group. Project menus and **Manage projects** support rename, hide, and restore. Hiding retains chats and files; collapsed groups persist. Settings and diagnostics are in the footer.
+- **New chat** and project **+** controls open session drafts in the main area. Switching projects preserves drafts, and background refreshes do not replace them. The first send creates the chat; an omitted title comes from the first message's first line, limited to 80 characters. Model and Git mode preferences persist app-wide; ordinary-folder and projectless drafts use Chat without changing the remembered Git mode.
+- Saved projects use stable IDs and canonical paths. Folder registration uses the native picker and runtime validation. Missing folders stay listed as unavailable. Task workspace kinds distinguish Git worktrees, ordinary folders, and no folder; the runtime enforces the same capabilities as the inspector. Ordinary-folder browsing retains containment, symlink, secret-file, and size checks. Coding, coordination, worktree operations, and Git publication require Git workspaces.
+- `task.start` binds a client request ID to the first message and settings. Durable reservation precedes workspace creation and dispatch. Completed retries return the existing task; unknown outcomes retain their evidence and do not replay automatically. The renderer retains failed drafts and their original request. Existing task-creation callers remain supported and their successful creations associate with saved projects.
+- Schema v3 adds projects, preferences, and first-send records. Existing v1/v2 databases remain readable until the user confirms the existing verified-backup upgrade flow. Migration groups legacy tasks by project path and preserves task IDs, history, and coordinator/child relationships.
+
+Validated locally using temporary folders, fresh application data, and offline providers:
+
+- `pnpm check`: typecheck and lint passed; 242 tests passed across 22 files.
+- `pnpm test:e2e`: all 10 Electron workflows passed, including coordinated draft first-send, saved ordinary folders, Git projects, No folder, confirmed v1 upgrade, restart history, keyboard navigation, and the narrow layout. Background task events preserve another project's draft.
+- After the final canonical-location availability fix, the 10 focused project tests and all 3 project Electron workflows passed again; typecheck and focused runtime lint also passed.
+- `pnpm package:dir` and `pnpm smoke:package`: passed. The packaged runtime verified schema v3, idempotent folder/projectless first-send, saved-project management, reviewed coding tools, coordination, compaction, MCP, diagnostics, and safe Git retirement against isolated fixtures.
+- Independent GPT-6 Sol/medium review of filesystem, IPC, persistence, concurrency, and draft boundaries found no remaining actionable defects after fixes. Three GPT-6 Sol/medium agents handled runtime implementation, renderer implementation, and independent review under the supplied AGENTS.md Critical lane.
+
+Exact command logs, the independent review handoff, and rendered screenshots are retained under `.local/validation/saved-projects-*`. Packaged `release/win-unpacked/resources/app.asar` SHA-256: `3ad5ea8d738920fce1af64802d03f30504ed843d23b17dc663612bd02f99d59f`.
+
+This is a local source and unpacked-package result. No user's application database was upgraded. External publication, installed/signed installer validation, live Foundry qualification, and live deployment remain unverified and outside this change's execution.
+
 ## Phase 05 — Independent review and Windows release
 
 Recorded 19 September 2026 (America/Chicago) on branch `main`. Delivered via parallel multi-agent workstreams:

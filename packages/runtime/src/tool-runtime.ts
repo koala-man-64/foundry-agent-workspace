@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Approval, ProviderToolResult, Task, ToolCall } from '../../protocol/src/index';
+import { isGitTask, type Approval, type ProviderToolResult, type Task, type ToolCall } from '../../protocol/src/index';
 import { CommandRunner, CommandPreflightError, type CommandResult, type PreparedCommand } from './command-runner';
 import { RepositoryService, RepositoryError, type PreparedEdit } from './repository';
 import { Redactor } from './redaction';
@@ -73,7 +73,7 @@ export class ToolRuntime {
     if (approval.taskId !== taskId || approval.state !== 'unknown') throw new Error('Only an unknown outcome for this task can be checked.');
     if (approval.path && approval.resultingHash) {
       try {
-        const file = await this.repositories.readFile(this.store.task(taskId).worktreePath, approval.path);
+        const file = await this.repositories.readFile(this.store.gitTask(taskId).worktreePath, approval.path);
         if (file.hash === approval.resultingHash) { approval.state = 'complete'; approval.result = { content: 'Read-only reconciliation found the exact approved file content.', isError: false }; }
         else if (file.hash === approval.expectedHash) { approval.state = 'failed'; approval.result = { content: 'Read-only reconciliation found the original content. No retry was performed.', isError: true }; }
         else approval.result = { content: 'File content matches neither the original nor approved result. Outcome remains unknown; inspect the worktree.', isError: true };
@@ -96,6 +96,7 @@ export class ToolRuntime {
     let command: PreparedCommand | undefined;
     try {
       signal.throwIfAborted();
+      if (!isGitTask(task)) throw new Error('Repository tools require a Git worktree.');
       const role = agentRole(task);
       if (role !== 'coding' && !(ROLE_TOOLS[role] as string[]).includes(call.name)) {
         // Policy boundary: a fabricated coordinator-only call from a child (or edit call from a coordinator) is denied here even if an adapter accepted it.

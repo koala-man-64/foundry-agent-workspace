@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { Approval, Assignment, AssignmentSpec, ChildDetail, CompletionState, ModelProfile, OrchestrationView, ProviderRequest, ProviderToolResult, Task, ToolCall, WaitReason } from '../../protocol/src/index';
-import { ORCHESTRATION_LIMITS, boundText } from '../../protocol/src/index';
+import type { Approval, Assignment, AssignmentSpec, ChildDetail, CompletionState, GitTask, ModelProfile, OrchestrationView, ProviderRequest, ProviderToolResult, Task, ToolCall, WaitReason } from '../../protocol/src/index';
+import { ORCHESTRATION_LIMITS, boundText, isGitTask } from '../../protocol/src/index';
 import { ProviderHttpError } from '../../providers/src/index';
 import { estimateRequest, type TurnHooks } from './agent-loop';
 import { BudgetError, BudgetLedger } from './budget-ledger';
@@ -57,7 +57,7 @@ export class Orchestrator implements OrchestrationToolHooks {
 
   // ---------------------------------------------------------------- creation
 
-  createRoot(task: Task): void {
+  createRoot(task: GitTask): void {
     this.store.requireOrchestration();
     this.records.insertCoordinatorRun(task.id);
     this.ledger.openAccount(task.id, task.tokenBudget);
@@ -88,9 +88,10 @@ export class Orchestrator implements OrchestrationToolHooks {
     return next;
   }
 
-  commandStarting(task: Task): Promise<WorktreeState> { return this.git.state(task.worktreePath); }
+  commandStarting(task: Task): Promise<WorktreeState> { if (!isGitTask(task)) throw new Error('Git worktree required.'); return this.git.state(task.worktreePath); }
 
   async commandFinished(task: Task, approval: Approval, before: unknown, executed: CommandResult, requestedEnvironment: Record<string, string>): Promise<{ evidenceId: string; passed: boolean } | undefined> {
+    if (!isGitTask(task)) throw new Error('Git worktree required.');
     const run = this.records.run(task.id);
     if (!run || !approval.command || approval.cwd === undefined) return undefined;
     // Validation is configured without environment changes. A run with any model-supplied variables
@@ -121,6 +122,7 @@ export class Orchestrator implements OrchestrationToolHooks {
   }
 
   async execute(task: Task, call: ToolCall, signal: AbortSignal): Promise<ProviderToolResult> {
+    if (!isGitTask(task)) throw new Error('Git worktree required.');
     const ok = (value: unknown): ProviderToolResult => ({ id: call.id, name: call.name, content: this.redactor.text(JSON.stringify(value)), isError: false });
     const fail = (message: string): ProviderToolResult => ({ id: call.id, name: call.name, content: this.redactor.text(message), isError: true });
     try {
@@ -145,7 +147,8 @@ export class Orchestrator implements OrchestrationToolHooks {
 
   // ---------------------------------------------------------------- coordinator tools
 
-  private requireCoordinator(task: Task): Task {
+  private requireCoordinator(task: Task): GitTask {
+    if (!isGitTask(task)) throw new ToolFailure('Only Git worktrees support coordination.');
     if (agentRole(task) !== 'coordinator') throw new ToolFailure('Only the coordinator can use this tool.');
     const run = this.records.run(task.id);
     if (!run || run.role !== 'coordinator' || run.cancelRequested || run.lifecycle === 'terminal') throw new ToolFailure('The coordinated task is cancelled or finished.');
@@ -389,7 +392,7 @@ export class Orchestrator implements OrchestrationToolHooks {
   async completionState(rootTaskId: string, forCompletion = false): Promise<CompletionState> {
     const done = this.records.completion(rootTaskId);
     const blockers: string[] = [];
-    const root = this.store.task(rootTaskId);
+    const root = this.store.gitTask(rootTaskId);
     const run = this.records.run(rootTaskId);
     if (!run || run.cancelRequested) blockers.push('The task is cancelled.');
     const assignments = this.records.assignments(rootTaskId);
@@ -438,6 +441,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     const base = assignment.baseCommit!;
     const declared = [...new Set(args.paths.map(entry => entry.replaceAll('\\', '/')))].sort();
     const message = `Foundry handoff ${assignment.key} r${assignment.revision}: ${this.redactor.text(args.summary).split(/\r?\n/)[0]!.slice(0, 200)}\n\nAssignment: ${assignment.id}`;
+    if (!isGitTask(task)) throw new ToolFailure('Only Git worktrees support handoffs.');
     const prepared = await this.git.prepareHandoff(task.worktreePath, { branch: task.branch, expectedHead: base, message, allowed: entry => inScope(assignment.writePaths, entry) });
     if (JSON.stringify(prepared.paths) !== JSON.stringify(declared)) throw new ToolFailure(`Declared paths do not exactly match the changed paths (${prepared.paths.slice(0, 20).join(', ')}).`);
     if (this.redactor.text(prepared.patch) !== prepared.patch) throw new ToolFailure('The handoff patch contains secret-like content and cannot be committed.');
@@ -487,6 +491,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     if (!handoff?.commit) throw new ToolFailure('Create the reviewed handoff commit first.');
     if (Buffer.byteLength(args.summary, 'utf8') > ORCHESTRATION_LIMITS.childReportBytes) throw new ToolFailure('The report exceeds the 16 KiB limit; shorten it.');
     if (this.childUnknown(task.id)) throw new ToolFailure('An effect of this child is unknown; it cannot submit a result.');
+    if (!isGitTask(task)) throw new ToolFailure('Only Git worktrees support handoffs.');
     const state = await this.git.state(task.worktreePath);
     if (state.head !== handoff.commit || !state.clean || state.operation !== 'none' || state.branch !== task.branch) throw new ToolFailure('The child worktree must be clean at the handoff commit.');
     const info = await this.git.commitInfo(task.worktreePath, handoff.commit);
@@ -539,7 +544,7 @@ export class Orchestrator implements OrchestrationToolHooks {
       for (const item of proposed) if (item.waitReason !== 'dependencies') this.records.setAssignmentWait(item.id, 'admission');
       return false;
     }
-    const root = this.store.task(rootTaskId);
+    const root = this.store.gitTask(rootTaskId);
     const target = await this.git.state(root.worktreePath);
     const active = this.records.activeIntegration(rootTaskId);
     for (const assignment of proposed) {
@@ -585,7 +590,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     if (assignment.waitReason !== reason) { this.records.setAssignmentWait(assignment.id, reason); this.publish('orchestration.assignment-waiting', { assignmentId: assignment.id, reason }, assignment.rootTaskId); }
   }
 
-  private async provision(root: Task, childId: string, assignmentId: string, base: string, intent: string): Promise<void> {
+  private async provision(root: GitTask, childId: string, assignmentId: string, base: string, intent: string): Promise<void> {
     let created: { worktreePath: string; branch: string; baseCommit: string; baseTree: string };
     try { created = await this.git.createChildWorktree(root.projectPath, childId, base); }
     catch (error) {
@@ -602,7 +607,7 @@ export class Orchestrator implements OrchestrationToolHooks {
       return;
     }
     this.store.transaction(() => {
-      this.store.saveTask({ ...this.store.task(childId), worktreePath: created.worktreePath, branch: created.branch, baseCommit: created.baseCommit });
+      this.store.saveTask({ ...this.store.gitTask(childId), worktreePath: created.worktreePath, branch: created.branch, baseCommit: created.baseCommit });
       this.records.recordBase(assignmentId, created.baseCommit, created.baseTree);
       this.store.finishIntent(intent, 'complete');
       this.records.setLifecycle(childId, 'queued');
@@ -704,7 +709,7 @@ export class Orchestrator implements OrchestrationToolHooks {
   /** task.send on a coordinated root and explicit Resume share one path: read-only reconciliation, recorded delivery, then an explicit continuation turn. */
   async resume(rootTaskId: string, content: string): Promise<{ accepted: boolean; delivered: number }> {
     this.store.requireOrchestration();
-    const root = this.store.task(rootTaskId);
+    const root = this.store.gitTask(rootTaskId);
     const run = this.records.run(rootTaskId);
     if (root.mode !== 'coordinated' || !run) throw new Error('Not a coordinated task.');
     if (run.cancelRequested || run.lifecycle === 'terminal') throw new Error('This coordinated task is finished or cancelled.');
@@ -807,7 +812,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     this.store.requireOrchestration();
     const run = this.records.requireRun(rootTaskId, rootTaskId);
     if (run.cancelRequested || run.lifecycle === 'terminal') throw new Error('This coordinated task is finished or cancelled.');
-    const root = this.store.task(rootTaskId);
+    const root = this.store.gitTask(rootTaskId);
     const operation = this.records.integration(operationId);
     if (!operation || operation.rootTaskId !== rootTaskId || operation.kind !== 'cherry-pick') throw new Error('Integration operation not found.');
     const children = this.records.integrations(rootTaskId).filter(item => item.parentOperationId === operation.id);
@@ -844,7 +849,7 @@ export class Orchestrator implements OrchestrationToolHooks {
       return { accepted: true };
     }
     approval.state = 'approved'; this.tools.saveApproval(approval);
-    const root = this.store.task(approval.rootTaskId!);
+    const root = this.store.gitTask(approval.rootTaskId!);
     const execution = this.withRootLock(root, async () => {
       this.store.transaction(() => { this.records.updateIntegration(operation.id, 'executing'); approval.state = 'executing'; this.tools.saveApproval(approval); });
       const parent = this.records.integration(operation.parentOperationId!)!;
@@ -860,7 +865,7 @@ export class Orchestrator implements OrchestrationToolHooks {
 
   async reconcile(rootTaskId: string, operationId: string): Promise<{ kind: string; detail: string }> {
     this.store.requireOrchestration();
-    const root = this.store.task(rootTaskId);
+    const root = this.store.gitTask(rootTaskId);
     const childRun = this.records.run(operationId);
     if (childRun?.role === 'child') return this.reconcileProvisioning(rootTaskId, operationId);
     const integration = this.records.integration(operationId);
@@ -880,7 +885,7 @@ export class Orchestrator implements OrchestrationToolHooks {
     const handoff = this.store.orchestrationAvailable ? this.records.handoff(operationId) : undefined;
     if (!handoff || handoff.rootTaskId !== rootTaskId) throw new Error('Operation not found for this task.');
     if (handoff.state !== 'unknown') throw new Error('Only an unknown handoff can be checked.');
-    const child = this.store.task(handoff.childTaskId);
+    const child = this.store.gitTask(handoff.childTaskId);
     const prepared = handoff.prepared as { manifest: { entries: never[]; sha256: string } };
     const outcome = await this.git.reconcileHandoff(child.worktreePath, { branch: handoff.branch, expectedHead: handoff.expectedHead, manifest: prepared.manifest });
     const approval = this.store.approval(handoff.approvalId);
@@ -901,7 +906,7 @@ export class Orchestrator implements OrchestrationToolHooks {
   private async reconcileProvisioning(rootTaskId: string, childTaskId: string): Promise<{ kind: string; detail: string }> {
     const run = this.records.requireRun(childTaskId, rootTaskId);
     if (run.role !== 'child' || run.lifecycle !== 'waiting' || run.waitReason !== 'reconciliation') throw new Error('Only a child whose worktree creation outcome is unknown can be checked.');
-    const root = this.store.task(rootTaskId); const child = this.store.task(childTaskId);
+    const root = this.store.gitTask(rootTaskId); const child = this.store.gitTask(childTaskId);
     const assignment = this.records.assignment(run.assignmentId!)!;
     const intent = this.records.provisioningIntent(childTaskId);
     const outcome = await this.git.reconcileChildWorktree(root.projectPath, childTaskId, child.baseCommit);
@@ -915,7 +920,7 @@ export class Orchestrator implements OrchestrationToolHooks {
       return { kind: 'not-started', detail: 'Read-only reconciliation proved the worktree was never created. The assignment failed with no repository effect.' };
     }
     this.store.transaction(() => {
-      this.store.saveTask({ ...this.store.task(childTaskId), worktreePath: outcome.worktreePath, branch: outcome.branch, baseCommit: outcome.baseCommit });
+      this.store.saveTask({ ...this.store.gitTask(childTaskId), worktreePath: outcome.worktreePath, branch: outcome.branch, baseCommit: outcome.baseCommit });
       if (!assignment.baseCommit) this.records.recordBase(assignment.id, outcome.baseCommit, outcome.baseTree);
       if (intent) this.store.finishIntent(intent.id, 'complete');
       this.records.setLifecycle(childTaskId, 'queued');

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { Approval, CommitResult, CompactionRecord, DiagnosticsExport, ModelProfile, PushResult, RetireResult, Task, UsageReport } from '../../protocol/src/index';
+import type { Approval, CommitResult, CompactionRecord, DiagnosticsExport, ModelProfile, PushResult, RetireResult, GitTask, UsageReport } from '../../protocol/src/index';
 import { CONTEXT_WARNING_PERCENT, boundText } from '../../protocol/src/index';
 import { estimateContext, prepareRequest } from './agent-loop';
 import { applyCompactions, compactContinuation, estimateContinuationTokens, planMessageCompaction, summarizeMessages } from './compaction';
@@ -117,8 +117,8 @@ export class WorkspaceOperations {
 
   // ---------------------------------------------------------------- explicit Git actions
 
-  private publishable(taskId: string): Task {
-    const task = this.store.task(taskId);
+  private publishable(taskId: string): GitTask {
+    const task = this.store.gitTask(taskId);
     if (this.ports.isRunning(taskId) || task.status === 'running') throw new Error('Wait for the active response to finish or cancel it first.');
     if (task.status === 'retired') throw new Error('This task worktree is retired.');
     if (task.parentTaskId || task.role === 'child') throw new Error('Child agent worktrees are published only through reviewed handoff commits and coordinator integration.');
@@ -132,7 +132,7 @@ export class WorkspaceOperations {
   }
 
   async reconcilePublication(taskId: string): Promise<{ reconciled: boolean; detail: string }> {
-    const task = this.store.task(taskId);
+    const task = this.store.gitTask(taskId);
     if (this.publishing.has(taskId)) throw new Error('A Git operation is already in progress for this task.');
     this.publishing.add(taskId);
     try {
@@ -236,11 +236,11 @@ export class WorkspaceOperations {
 
   /** Remove the task worktree(s) only when Git proves they hold no uncommitted or untracked files. The branch and all records remain. */
   async retire(taskId: string): Promise<RetireResult> {
-    const task = this.store.task(taskId);
+    const task = this.store.gitTask(taskId);
     if (this.ports.isRunning(taskId) || task.status === 'running') throw new Error('Wait for the active response to finish or cancel it before retiring the worktree.');
     if (task.status === 'retired') throw new Error('This task worktree is already retired.');
     if (task.parentTaskId || task.role === 'child') throw new Error('Retire a child worktree from its coordinated task; children are retired together with their root.');
-    const members = [task, ...(task.mode === 'coordinated' ? this.store.allTasks().filter(item => item.parentTaskId === task.id) : [])];
+    const members = [task, ...(task.mode === 'coordinated' ? this.store.allTasks().filter(item => item.parentTaskId === task.id).map(item => this.store.gitTask(item.id)) : [])];
     if (this.retiring.has(taskId) || members.some(member => this.retiring.has(member.id))) throw new Error('Worktree retirement is already in progress for this task.');
     for (const member of members) this.retiring.add(member.id);
     try {
@@ -250,7 +250,7 @@ export class WorkspaceOperations {
         throw new Error('This task has an unknown mutation outcome. Inspect the worktree before retiring it.');
       }
       // Every worktree is checked read-only before any removal starts; one dirty worktree refuses the whole retirement.
-      const present: Task[] = [];
+      const present: GitTask[] = [];
       for (const member of members) {
         const exists = await fs.stat(member.worktreePath).then(stat => stat.isDirectory()).catch(() => false);
         if (!exists) continue;

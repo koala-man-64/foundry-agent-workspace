@@ -11,7 +11,6 @@ export const V1_SCHEMA = `
   CREATE TABLE IF NOT EXISTS events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, task_id TEXT, data TEXT NOT NULL, created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS intents (id TEXT PRIMARY KEY, kind TEXT NOT NULL, data TEXT NOT NULL, state TEXT NOT NULL);
 `;
-
 /**
  * Phase 04 retained records. Purely additive tables that no earlier build reads, created with
  * IF NOT EXISTS on every open so a v1 and a v2 database gain them without a version change or
@@ -338,4 +337,22 @@ export const V2_MIGRATION = `
   );
   CREATE TRIGGER task_completions_immutable BEFORE UPDATE ON task_completions BEGIN SELECT RAISE(ABORT, 'completion records are immutable'); END;
   CREATE TRIGGER task_completions_no_delete BEFORE DELETE ON task_completions BEGIN SELECT RAISE(ABORT, 'completion records are retained'); END;
+`;
+export const V3_MIGRATION = `
+  CREATE TABLE projects (
+    id TEXT PRIMARY KEY,
+    path_key TEXT NOT NULL UNIQUE,
+    data TEXT NOT NULL
+  );
+  CREATE TABLE workspace_preferences (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL
+  );
+  CREATE TABLE task_starts (
+    request_id TEXT PRIMARY KEY,
+    input_hash TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'unknown', 'failed', 'complete')),
+    created_at TEXT NOT NULL
+  );
 `;

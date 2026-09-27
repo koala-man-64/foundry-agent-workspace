@@ -47,6 +47,17 @@ export class RepositoryService {
     return this.worktreeBase;
   }
 
+  /** Classify a saved folder without creating a worktree or altering Git state. */
+  public async isGitWorkingTree(root: string): Promise<boolean> {
+    try {
+      const selected = await this.requireRepository(root);
+      const top = (await this.git(selected, ['rev-parse', '--show-toplevel'])).stdout.trim();
+      const canonicalTop = await fs.realpath(top);
+      const key = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+      return key(selected) === key(canonicalTop);
+    } catch { return false; }
+  }
+
   public async createTaskWorktree(
     projectPath: string,
     taskId: string,

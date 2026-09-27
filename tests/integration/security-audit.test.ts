@@ -19,7 +19,7 @@ import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path, { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { McpServerStatus, ProviderAdapter, ProviderEvent, ProviderRequest, Task, TaskDetail, ToolCall, WorkspaceEvent } from '../../packages/protocol/src/index';
+import type { McpServerStatus, ProviderAdapter, ProviderEvent, ProviderRequest, GitTask as Task, TaskDetail, ToolCall, WorkspaceEvent } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { CommandRunner } from '../../packages/runtime/src/command-runner';
 import { Redactor } from '../../packages/runtime/src/redaction';
@@ -228,6 +228,48 @@ describe('IPC sender origin and subframe rejection', () => {
     expect(desktop.navigation).toContain('will-attach-webview');
     expect(desktop.permissions.length).toBeGreaterThan(0);
     expect(desktop.permissions.every(granted => granted === false)).toBe(true);
+  });
+
+  it('loads only explicitly selected bound credentials before a first-message task start', async () => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const { CredentialVault } = await import('../../apps/desktop/src/main/credentials');
+    const profiles = ['Coordinator', 'Child', 'Unrelated'].map(name => ({
+      id: randomUUID(), name, apiKind: 'responses' as const,
+      endpoint: `https://${name.toLowerCase()}.example.invalid`, deployment: name,
+      contextLimit: 128000, outputLimit: 4096
+    }));
+    const root = profiles[0]!; const child = profiles[1]!;
+    const result = { id: randomUUID(), title: 'First message' };
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async (method) => {
+      if (method === 'workspace.snapshot') return { tasks: [], profiles, projects: [], preferences: { profileId: root.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
+      if (method === 'runtime.credential') return null;
+      if (method === 'task.start') return result;
+      throw new Error(`Unexpected fixture method: ${method}`);
+    });
+    const vault = vi.spyOn(CredentialVault.prototype, 'load').mockResolvedValue('fixture-only-credential-canary');
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      const params = { requestId: randomUUID(), projectId: randomUUID(), content: 'First message', profileId: root.id, mode: 'coordinated', tokenBudget: 600000, coordination: { childProfileIds: [child.id], requiredValidation: { command: 'Write-Output fixture', cwd: '', timeoutMs: 60000 } } };
+      const response = await desktop.handlers.get('workspace:invoke')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, 'task.start', params);
+      expect(response).toEqual(result);
+      expect(vault.mock.calls).toEqual([root, child].map(profile => [profile.id, JSON.stringify([profile.apiKind, profile.endpoint, profile.deployment])]));
+      expect(request.mock.calls.filter(([method]) => method === 'runtime.credential').map(([, params]) => (params as { id: string }).id)).toEqual([root.id, child.id]);
+      expect(request.mock.calls.at(-1)).toEqual(['task.start', params]);
+      expect(JSON.stringify(response)).not.toContain('credential-canary');
+    } finally { vault.mockRestore(); request.mockRestore(); }
+  });
+
+  it('does not start a draft if its stored credential binding cannot be unlocked', async () => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const { CredentialVault } = await import('../../apps/desktop/src/main/credentials');
+    const profile = { id: randomUUID(), name: 'Changed binding', apiKind: 'responses', endpoint: 'https://changed.example.invalid', deployment: 'changed', contextLimit: 128000, outputLimit: 4096 };
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockResolvedValue({ tasks: [], profiles: [profile] });
+    const vault = vi.spyOn(CredentialVault.prototype, 'load').mockRejectedValue(new Error('Could not unlock a saved credential for this endpoint.'));
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      await expect(desktop.handlers.get('workspace:invoke')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, 'task.start', { requestId: randomUUID(), projectId: null, content: 'First message', profileId: profile.id, mode: 'chat' })).rejects.toThrow('Could not unlock');
+      expect(request.mock.calls.map(([method]) => method)).toEqual(['workspace.snapshot']);
+    } finally { vault.mockRestore(); request.mockRestore(); }
   });
 });
 
@@ -570,7 +612,7 @@ describe('credential canary screening and leak matrix', () => {
     start(new ScriptProvider([[{ id: 'canary-edit-1', name: 'read_file', arguments: { path: 'README.md' } }]]));
     registerCanaries();
     const task = await createTask('coding');
-    const worktree = store.task(task.id).worktreePath;
+    const worktree = store.gitTask(task.id).worktreePath;
     const before = await fs.readFile(join(worktree, 'README.md'), 'utf8');
     const expectedHash = createHash('sha256').update(before, 'utf8').digest('hex');
     await runtime.shutdown();

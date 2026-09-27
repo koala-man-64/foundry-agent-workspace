@@ -28,7 +28,7 @@ export const ORCHESTRATION_LIMITS = {
 export const COORDINATED_MODE_ENABLED = true;
 
 /** Current SQLite schema version produced by this build. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type AgentRole = 'coordinator' | 'child';
 export type RunLifecycle = 'queued' | 'preparing' | 'running' | 'waiting' | 'terminal';
