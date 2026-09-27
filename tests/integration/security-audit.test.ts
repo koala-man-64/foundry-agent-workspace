@@ -439,21 +439,31 @@ class ScriptProvider implements ProviderAdapter {
  * A minimal stdio MCP server whose only tool returns a canary carried in its own source, so the
  * value can only reach the runtime through the server's stdout — never through stored configuration.
  */
-function auditServerSource(secret: string): string {
+function auditServerSource(secret: string, tracePath?: string): string {
   return [
+    `import { appendFileSync } from 'node:fs';`,
+    `const tracePath = ${JSON.stringify(tracePath ?? null)};`,
+    `const trace = stage => { if (tracePath) appendFileSync(tracePath, Date.now() + ':' + stage + '\\n'); };`,
+    `trace('started');`,
+    `process.on('exit', () => trace('exited'));`,
+    `process.stdin.on('end', () => trace('stdin-ended'));`,
+    `process.stdout.on('error', () => trace('stdout-error'));`,
+    `process.stdout.on('drain', () => trace('stdout-drain'));`,
     `const secret = ${JSON.stringify(secret)};`,
-    `const write = value => process.stdout.write(JSON.stringify(value) + '\\n');`,
+    `const write = value => { trace('reply'); const ready = process.stdout.write(JSON.stringify(value) + '\\n', error => trace(error ? 'reply-write-error' : 'reply-written')); trace(ready ? 'reply-buffer-ready' : 'reply-buffer-full'); };`,
     `const listing = { tools: [{ name: 'leak', description: 'Return the audit canary.', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }] };`,
     `const hello = { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'audit', version: '1.0.0' } };`,
     `let buffer = '';`,
     `process.stdin.setEncoding('utf8');`,
     `process.stdin.on('data', chunk => {`,
+    `  trace('input-code-units:' + chunk.length);`,
     `  buffer += chunk;`,
     `  for (let index = buffer.indexOf('\\n'); index >= 0; index = buffer.indexOf('\\n')) {`,
     `    const line = buffer.slice(0, index).trim();`,
     `    buffer = buffer.slice(index + 1);`,
     `    if (!line) continue;`,
     `    const message = JSON.parse(line);`,
+    `    trace('request:' + message.method);`,
     `    if (message.id === undefined || message.id === null) continue;`,
     `    const result = message.method === 'initialize' ? hello`,
     `      : message.method === 'tools/list' ? listing`,
@@ -632,17 +642,20 @@ describe('credential canary screening and leak matrix', () => {
     // Both servers carry the canary inside their own source, so nothing secret-like is ever stored as
     // configuration: what reaches SQLite can only have come through the server's stdout or stderr.
     const serving = join(base, 'audit-mcp-server.mjs');
-    await fs.writeFile(serving, auditServerSource(PLAIN_CANARY));
+    const tracePath = join(base, 'audit-mcp.trace');
+    await fs.writeFile(serving, auditServerSource(PLAIN_CANARY, tracePath));
     const failing = join(base, 'audit-mcp-failure.mjs');
     await fs.writeFile(failing, `process.stderr.write(${JSON.stringify(`startup failed: ${QUOTED_CANARY}`)}); process.exit(1);`);
 
     start(new ScriptProvider([[{ id: 'mcp-canary-1', name: 'mcp__audit__leak', arguments: {} }]]));
     registerCanaries();
+    await fs.writeFile(tracePath, `${Date.now()}:save-started\n`);
     const saved = await runtime.dispatch('mcp.save', {
       id: randomUUID(), key: 'audit', name: 'Audit server', command: process.execPath, arguments: [serving],
       cwd: '', environment: {}, enabled: true, readOnlyTools: ['leak'], callTimeoutMs: 10_000
     }) as McpServerStatus;
-    expect(saved.running).toBe(true);
+    const startupTrace = await fs.readFile(tracePath, 'utf8').catch(() => 'fixture did not write a trace');
+    expect(saved.running, `${saved.lastError ?? 'MCP server did not start'}; fixture: ${startupTrace}`).toBe(true);
     expect(saved.tools.map(tool => tool.name)).toEqual(['leak']);
 
     const direct = await runtime.mcp.call(saved, 'leak', {}, new AbortController().signal);
@@ -694,16 +707,20 @@ describe('credential canary screening and leak matrix', () => {
 describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
   const POWERSHELL = '"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"';
   const quote = (value: string): string => value.replaceAll("'", "''");
-  /** A command that records its own pid, starts a detached grandchild that records its pid, then lingers. */
+  /** Record both actual process IDs before lingering; discovery must not depend on child interpreter startup. */
   const treeCommand = (root: string, lingerSeconds: number): string => {
-    const grandchild = `[IO.File]::WriteAllText('${quote(join(root, 'child.pid'))}', $PID); Start-Sleep -Seconds 120`;
-    return `[IO.File]::WriteAllText('${quote(join(root, 'root.pid'))}', $PID); Start-Process -WindowStyle Hidden -FilePath ${POWERSHELL} -ArgumentList '-NoProfile','-NonInteractive','-Command','${quote(grandchild)}'; Start-Sleep -Seconds ${lingerSeconds}`;
+    const grandchild = 'Start-Sleep -Seconds 120';
+    return `[IO.File]::WriteAllText('${quote(join(root, 'root.pid'))}', $PID); $child = Start-Process -PassThru -ErrorAction Stop -WindowStyle Hidden -FilePath ${POWERSHELL} -ArgumentList '-NoProfile','-NonInteractive','-Command','${quote(grandchild)}'; [IO.File]::WriteAllText('${quote(join(root, 'child.pid'))}', [string]$child.Id); Start-Sleep -Seconds ${lingerSeconds}`;
   };
-  const treePids = async (root: string): Promise<number[]> => {
+  const treePids = async (root: string, execution: Promise<unknown>): Promise<number[]> => {
+    let ended: { result?: unknown; error?: string } | undefined;
+    void execution.then(result => { ended = { result }; }, error => { ended = { error: error instanceof Error ? error.message : String(error) }; });
     await waitFor(async () => {
       const found = await Promise.all(['root.pid', 'child.pid'].map(name => fs.readFile(join(root, name), 'utf8').then(value => value.trim().length > 0, () => false)));
-      return found.every(Boolean);
-    }, 'the command process tree to report its pids');
+      if (found.every(Boolean)) return true;
+      if (ended) throw new Error(`Command ended before recording its process tree: ${JSON.stringify(ended)}`);
+      return false;
+    }, 'the command process tree to report its pids after helper startup', 60_000);
     return Promise.all(['root.pid', 'child.pid'].map(async name => Number((await fs.readFile(join(root, name), 'utf8')).trim())));
   };
 
@@ -711,14 +728,19 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     const root = await gitRepository(join(await scratch('foundry-job-timeout-'), 'worktree'));
     const runner = new CommandRunner();
     const prepared = await runner.prepare(root, { command: treeCommand(root, 120), cwd: '', environment: {}, timeoutMs: 8_000 });
-    const executing = runner.execute(prepared, new AbortController().signal);
-    const pids = await treePids(root);
-    expect(pids.every(alive)).toBe(true);
-
-    const result = await executing;
-    expect(result).toMatchObject({ timedOut: true, cancelled: false, exitCode: null, cleanupVerified: true });
-    await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
-  }, 60_000);
+    const controller = new AbortController();
+    const executing = runner.execute(prepared, controller.signal);
+    try {
+      const pids = await treePids(root, executing);
+      expect(pids.every(alive)).toBe(true);
+      const result = await executing;
+      expect(result).toMatchObject({ timedOut: true, cancelled: false, exitCode: null, cleanupVerified: true });
+      await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    } finally {
+      controller.abort();
+      await executing.catch(() => undefined);
+    }
+  }, 90_000);
 
   it('terminates a background descendant that outlives a command exiting normally', async () => {
     const root = await gitRepository(join(await scratch('foundry-job-exit-'), 'worktree'));
@@ -726,14 +748,19 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     // The root exits on its own well before its timeout; only the Job Object can still reach the
     // detached grandchild, which holds the inherited output handles open behind it.
     const prepared = await runner.prepare(root, { command: treeCommand(root, 3), cwd: '', environment: {}, timeoutMs: 30_000 });
-    const executing = runner.execute(prepared, new AbortController().signal);
-    const pids = await treePids(root);
-
-    const result = await executing;
-    expect(result).toMatchObject({ exitCode: 0, timedOut: false, cancelled: false, cleanupVerified: true });
-    expect(result.stderr).toContain('[background job descendants terminated]');
-    await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
-  }, 60_000);
+    const controller = new AbortController();
+    const executing = runner.execute(prepared, controller.signal);
+    try {
+      const pids = await treePids(root, executing);
+      const result = await executing;
+      expect(result).toMatchObject({ exitCode: 0, timedOut: false, cancelled: false, cleanupVerified: true });
+      expect(result.stderr).toContain('[background job descendants terminated]');
+      await waitFor(() => pids.every(pid => !alive(pid)), 'every command descendant to be reclaimed');
+    } finally {
+      controller.abort();
+      await executing.catch(() => undefined);
+    }
+  }, 90_000);
 
   it('terminates every command descendant when the user cancels', async () => {
     const root = await gitRepository(join(await scratch('foundry-job-cancel-'), 'worktree'));
@@ -742,7 +769,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
     const prepared = await runner.prepare(root, { command: treeCommand(root, 120), cwd: '', environment: {}, timeoutMs: 120_000 });
     const executing = runner.execute(prepared, controller.signal);
     try {
-      const pids = await treePids(root);
+      const pids = await treePids(root, executing);
       controller.abort();
       const result = await executing;
       expect(result).toMatchObject({ cancelled: true, timedOut: false, exitCode: null, cleanupVerified: true });
@@ -751,7 +778,7 @@ describe.runIf(WINDOWS)('Job Object process tree reclamation', () => {
       controller.abort();
       await executing.catch(() => undefined);
     }
-  }, 60_000);
+  }, 90_000);
 
   it('terminates MCP server descendants when the hosted session is stopped', async () => {
     const base = await scratch('foundry-job-mcp-');

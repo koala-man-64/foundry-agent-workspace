@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CommandRunner } from '../src/command-runner.js';
@@ -37,6 +38,36 @@ function processExited(pid: number): boolean { try { process.kill(pid, 0); retur
 afterEach(async () => { await Promise.all(directories.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true }))); });
 
 describe.runIf(process.platform === 'win32')('CommandRunner', () => {
+  it('returns a verified cancellation without launching when the helper receives a preexisting cancel marker', async () => {
+    const { root, runner } = await fixture();
+    const marker = path.join(root, 'must-not-start.txt');
+    const prepared = await prepare(runner, root, `[IO.File]::WriteAllText('${marker.replace(/'/g, "''")}', 'started')`, 8_000);
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-prelaunch-cancel-'));
+    directories.push(control);
+    const cancelPath = path.join(control, 'cancel');
+    const resultPath = path.join(control, 'result.json');
+    await fs.writeFile(cancelPath, 'cancelled');
+    const helper = path.join(process.cwd(), 'packages', 'runtime', 'src', 'job-runner.ps1');
+    const child = spawn(prepared.shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true, env: prepared.environment });
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8'); });
+    const completion = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill(); }, 75_000);
+    try {
+      child.stdin?.end(JSON.stringify({ ...prepared, nonce: randomUUID(), resultPath, cancelPath, parentPid: process.pid, parentStartedAtMs: Math.floor(Date.now() - process.uptime() * 1000) }));
+      const exitCode = await completion;
+      expect(timedOut, stderr).toBe(false);
+      expect(exitCode, stderr).toBe(0);
+      expect(JSON.parse(await fs.readFile(resultPath, 'utf8'))).toMatchObject({ exitCode: null, cancelled: true, timedOut: false, cleanupVerified: true });
+      await expect(fs.access(marker)).rejects.toThrow();
+    } finally {
+      clearTimeout(timer);
+      if (child.exitCode === null) child.kill();
+      await completion.catch(() => undefined);
+    }
+  }, 90_000);
+
   it('does not run the command while preparing, then returns bounded separated output', async () => {
     const { root, runner } = await fixture();
     const marker = path.join(root, 'marker.txt').replace(/'/g, "''");

@@ -91,9 +91,20 @@ public static class McpHost {
       var startup = new STARTUPINFOEX { StartupInfo = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFOEX)), dwFlags = (int)STARTF_USESTDHANDLES, hStdInput = stdIn, hStdOutput = stdOut, hStdError = stdErr }, lpAttributeList = attributes };
       var line = new StringBuilder(Quote(command)); foreach (var argument in arguments) line.Append(' ').Append(Quote(argument));
       if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) throw new InvalidOperationException("Runtime parent exited before server launch.");
+      // The client can time out while PowerShell prepares this host. Do not start a server
+      // after its owner has already cancelled the launch.
+      if (File.Exists(cancelPath)) return new McpHostResult { cancelled = true, cleanupVerified = JobEmpty(job), processId = 0 };
       env = EnvironmentBlock(environment); Check(CreateProcess(command, line, IntPtr.Zero, IntPtr.Zero, true, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT, env, cwd, ref startup, out pi), "CreateProcess"); processCreated = true;
       Check(AssignProcessToJobObject(job, pi.hProcess), "AssignProcessToJobObject"); assigned = true;
       if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { TerminateJobObject(job, 4); throw new InvalidOperationException("Runtime parent exited before server resume."); }
+      if (File.Exists(cancelPath)) {
+        Check(TerminateJobObject(job, 1), "TerminateJobObject");
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        bool cancelledEmpty = JobEmpty(job);
+        var cancelledVerify = Stopwatch.StartNew();
+        while (!cancelledEmpty && cancelledVerify.ElapsedMilliseconds < 5000) { System.Threading.Thread.Sleep(25); cancelledEmpty = JobEmpty(job); }
+        return new McpHostResult { cancelled = true, cleanupVerified = cancelledEmpty, processId = pi.dwProcessId };
+      }
       if (ResumeThread(pi.hThread) == 0xffffffff) throw new InvalidOperationException("ResumeThread failed: " + Marshal.GetLastWin32Error());
       var watch = Stopwatch.StartNew(); bool cancelled = false, expired = false, parentDied = false;
       while (WaitForSingleObject(pi.hProcess, 100) != WAIT_OBJECT_0) {

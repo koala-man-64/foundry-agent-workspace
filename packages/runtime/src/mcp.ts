@@ -30,7 +30,10 @@ const MAX_TOOL_DESCRIPTION_CHARS = 1024;
 const MAX_SCHEMA_BYTES = 16 * 1024;
 const MAX_STDERR_BYTES = 8 * 1024;
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
-const START_TIMEOUT_MS = 30_000;
+// Includes cold host preparation before the server can read the buffered initialize request.
+// Listing and tool-call limits remain independent of that one-time launch allowance.
+const INITIALIZE_TIMEOUT_MS = 60_000;
+const LIST_TIMEOUT_MS = 30_000;
 const IDLE_STOP_MS = 2 * 60 * 1000;
 const LIFETIME_MS = 6 * 60 * 60 * 1000;
 const STOP_GRACE_MS = 10_000;
@@ -54,10 +57,24 @@ export class McpClient {
   private readonly decoder = new LineDecoder(MAX_MESSAGE_BYTES);
   private closed: Error | undefined;
   private sequence = 0;
+  private readonly constructedAt = performance.now();
+  private receivedChunks = 0;
+  private receivedBytes = 0;
+  private completedFrames = 0;
+  private matchedReplies = 0;
+  private unmatchedReplies = 0;
+  private firstChunkMs: number | null = null;
+  private firstFrameMs: number | null = null;
+  private firstMatchedReplyMs: number | null = null;
   readonly notifications: { method: string; params: unknown }[] = [];
   constructor(private readonly output: NodeJS.WritableStream, input: NodeJS.ReadableStream, private readonly onProtocolError: (error: Error) => void = () => undefined) {
     input.setEncoding('utf8');
-    input.on('data', (chunk: string) => this.receive(chunk));
+    input.on('data', (chunk: string) => {
+      if (this.firstChunkMs === null) this.firstChunkMs = this.elapsedMs();
+      this.receivedChunks++;
+      this.receivedBytes += Buffer.byteLength(chunk, 'utf8');
+      this.receive(chunk);
+    });
     input.on('end', () => this.close(new McpError('The MCP server closed its output stream.', true)));
     input.on('error', error => this.close(new McpError(`MCP transport failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
     output.on('error', error => this.close(new McpError(`MCP transport write failed: ${error instanceof Error ? error.message : 'unknown error'}`, true)));
@@ -65,6 +82,8 @@ export class McpClient {
   private receive(chunk: string): void {
     let lines: string[];
     try { lines = this.decoder.push(chunk); } catch { this.close(new McpError('The MCP server sent a message above the size limit.')); return; }
+    if (lines.length && this.firstFrameMs === null) this.firstFrameMs = this.elapsedMs();
+    this.completedFrames += lines.length;
     for (const line of lines) {
       if (!line.trim()) continue;
       let message: JsonRpcMessage;
@@ -80,7 +99,9 @@ export class McpClient {
         continue;
       }
       const waiter = this.pending.get(String(message.id));
-      if (!waiter) continue;
+      if (!waiter) { this.unmatchedReplies++; continue; }
+      if (this.firstMatchedReplyMs === null) this.firstMatchedReplyMs = this.elapsedMs();
+      this.matchedReplies++;
       clearTimeout(waiter.timer); this.pending.delete(String(message.id));
       if (message.error) waiter.reject(new McpError(`MCP server error${typeof message.error.code === 'number' ? ` ${message.error.code}` : ''}: ${typeof message.error.message === 'string' ? message.error.message.slice(0, 500) : 'unknown'}`));
       else waiter.resolve(message.result);
@@ -123,6 +144,21 @@ export class McpClient {
     this.onProtocolError(error);
   }
   get isClosed(): boolean { return Boolean(this.closed); }
+  private elapsedMs(): number { return Math.max(0, Math.round(performance.now() - this.constructedAt)); }
+  /** Numeric transport evidence only: no payloads, identifiers, methods, or server text. */
+  get diagnostics(): Readonly<{ elapsedMs: number; receivedBytes: number; receivedChunks: number; completedFrames: number; matchedReplies: number; unmatchedReplies: number; firstChunkMs: number | null; firstFrameMs: number | null; firstMatchedReplyMs: number | null }> {
+    return {
+      elapsedMs: this.elapsedMs(),
+      receivedBytes: this.receivedBytes,
+      receivedChunks: this.receivedChunks,
+      completedFrames: this.completedFrames,
+      matchedReplies: this.matchedReplies,
+      unmatchedReplies: this.unmatchedReplies,
+      firstChunkMs: this.firstChunkMs,
+      firstFrameMs: this.firstFrameMs,
+      firstMatchedReplyMs: this.firstMatchedReplyMs
+    };
+  }
 }
 
 /** One hosted server process. */
@@ -262,13 +298,25 @@ export class McpManager {
     if (!path.isAbsolute(config.command) || !/\.exe$/i.test(config.command)) throw new McpError('The server command must be an absolute path to an .exe file; pass scripts as arguments to their interpreter.');
     const command = await fs.realpath(config.command).catch(() => { throw new McpError('The server command was not found.'); });
     if (!(await fs.stat(command)).isFile()) throw new McpError('The server command must be a file.');
-    const forbidden = this.options.forbiddenRoots?.() ?? [];
-    for (const root of forbidden) if (isInside(root, command)) throw new McpError('The server command must not live inside app-owned worktrees.');
+    const forbidden = await Promise.all((this.options.forbiddenRoots?.() ?? []).map(async root => {
+      if (!path.isAbsolute(root)) throw new McpError('An app-owned worktree root could not be verified.');
+      try { return { literal: path.resolve(root), canonical: await canonicalizeContainmentPath(root) }; }
+      catch { throw new McpError('An app-owned worktree root could not be verified.'); }
+    }));
+    const isForbidden = async (candidate: string): Promise<boolean> => {
+      if (forbidden.some(root => isInside(root.literal, candidate))) return true;
+      // Canonicalize the nearest existing ancestor, so a nonexistent script argument
+      // beneath a junction or short-name alias is still compared in the same namespace.
+      let canonical: string;
+      try { canonical = await canonicalizeContainmentPath(candidate); }
+      catch { throw new McpError('The server path could not be verified.'); }
+      return forbidden.some(root => isInside(root.canonical, canonical));
+    };
+    if (await isForbidden(config.command)) throw new McpError('The server command must not live inside app-owned worktrees.');
     if (config.cwd) {
       if (!path.isAbsolute(config.cwd)) throw new McpError('The server working directory must be an absolute path.');
       if (!(await fs.stat(config.cwd).catch(() => undefined))?.isDirectory()) throw new McpError('The server working directory was not found.');
-      const realCwd = await fs.realpath(config.cwd).catch(() => path.resolve(config.cwd));
-      for (const root of forbidden) if (isInside(root, realCwd)) throw new McpError('The server working directory must not live inside app-owned worktrees.');
+      if (await isForbidden(config.cwd)) throw new McpError('The server working directory must not live inside app-owned worktrees.');
     }
     for (const [key, value] of Object.entries(config.environment)) {
       if (RESERVED_ENVIRONMENT.test(key) || FORBIDDEN_ENVIRONMENT.test(key)) throw new McpError(`Environment variable ${key} is not permitted for MCP servers.`);
@@ -278,8 +326,7 @@ export class McpManager {
     for (const argument of config.arguments) {
       if (argument.includes('\0') || (screenSecrets && this.redactor.text(argument) !== argument)) throw new McpError('Server arguments contain NUL or secret-like content.');
       if (path.isAbsolute(argument)) {
-        const resolved = await fs.realpath(argument).catch(() => path.resolve(argument));
-        for (const root of forbidden) if (isInside(root, resolved)) throw new McpError('Server arguments must not reference files inside app-owned worktrees.');
+        if (await isForbidden(argument)) throw new McpError('Server arguments must not reference files inside app-owned worktrees.');
       }
     }
   }
@@ -314,15 +361,17 @@ export class McpManager {
       session.client = new McpClient(processHandle.stdin, processHandle.stdout, error => { session.failed = error; });
       void processHandle.exited.then(() => session.client.close(new McpError(`The MCP server exited${processHandle.stderr ? `: ${this.redactor.text(processHandle.stderr).slice(0, 500)}` : '.'}`)));
       try {
-        const init = await session.client.request('initialize', { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'foundry-agent-workspace', version: '0.2.0' } }, START_TIMEOUT_MS);
+        const init = await session.client.request('initialize', { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'foundry-agent-workspace', version: '0.2.0' } }, INITIALIZE_TIMEOUT_MS);
         if (!isRecord(init) || typeof init.protocolVersion !== 'string') throw new McpError('The MCP server returned an invalid initialize result.');
         const info = isRecord(init.serverInfo) ? init.serverInfo : {};
         session.serverInfo = { name: String(info.name ?? 'unknown').slice(0, 100), version: String(info.version ?? '').slice(0, 50) };
         session.client.notify('notifications/initialized', {});
         session.tools = (await this.listTools(session)).tools;
       } catch (error) {
+        const transportAtFailure = session.client.diagnostics;
         const host = await processHandle.stop();
-        const detail = [error instanceof Error ? this.redactor.text(error.message) : 'unknown error', host ? `host: exit ${host.exitCode ?? 'terminated'}${host.parentDied ? ', runtime parent check failed' : ''}` : 'host result unavailable', processHandle.stderr ? `stderr: ${this.redactor.text(processHandle.stderr).slice(0, 300)}` : ''].filter(Boolean).join('; ');
+        const transportAfterStop = session.client.diagnostics;
+        const detail = [error instanceof Error ? this.redactor.text(error.message) : 'unknown error', `transport at failure: ${JSON.stringify(transportAtFailure)}`, `transport after stop: ${JSON.stringify(transportAfterStop)}`, host ? `host: exit ${host.exitCode ?? 'terminated'}${host.parentDied ? ', runtime parent check failed' : ''}` : 'host result unavailable', processHandle.stderr ? `stderr: ${this.redactor.text(processHandle.stderr).slice(0, 300)}` : ''].filter(Boolean).join('; ');
         throw new McpError(`The MCP server failed to start. ${detail}`);
       }
       this.sessions.set(config.id, session);
@@ -354,7 +403,7 @@ export class McpManager {
         break;
       }
       const params: Record<string, unknown> = cursor ? { cursor } : {};
-      const result = await session.client.request('tools/list', params, START_TIMEOUT_MS);
+      const result = await session.client.request('tools/list', params, LIST_TIMEOUT_MS);
       if (!isRecord(result) || !Array.isArray(result.tools)) throw new McpError('The MCP server returned an invalid tools/list result.');
       for (const raw of result.tools) {
         totalFetched++;
@@ -419,6 +468,21 @@ function isInside(root: string, candidate: string): boolean {
   const normalize = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
   const relative = path.relative(normalize(root), normalize(candidate));
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+/** Resolve aliases even when a final script or worktree path does not exist yet. */
+export async function canonicalizeContainmentPath(value: string, realpath: (candidate: string) => Promise<string> = candidate => fs.realpath(candidate)): Promise<string> {
+  let current = path.resolve(value);
+  const missing: string[] = [];
+  for (;;) {
+    try { return path.resolve(await realpath(current), ...missing.reverse()); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      const parent = path.dirname(current);
+      if (parent === current) throw error;
+      missing.push(path.basename(current));
+      current = parent;
+    }
+  }
 }
 function unpackedHostPath(): string {
   const source = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mcp-host.ps1');

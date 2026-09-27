@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -25,7 +25,8 @@ async function addProject(app: ElectronApplication, page: Page, folder: string) 
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] });
   }, folder);
   await page.getByRole('button', { name: 'Add project', exact: true }).click();
-  await expect.poll(() => page.evaluate(async (path) => (await window.workspace.invoke('workspace.snapshot', {})).projects.some((project) => project.path.toLowerCase() === path.toLowerCase()), folder)).toBe(true);
+  const canonicalFolder = await realpath(folder);
+  await expect.poll(() => page.evaluate(async (path) => (await window.workspace.invoke('workspace.snapshot', {})).projects.some((project) => project.path.toLowerCase() === path.toLowerCase()), canonicalFolder)).toBe(true);
 }
 
 test('saved ordinary folders keep grouped chats, drafts, visibility and collapsed state across navigation and restart', async () => {
@@ -68,7 +69,7 @@ test('saved ordinary folders keep grouped chats, drafts, visibility and collapse
     await expect(page.locator('.file-tree')).not.toContainText('.env');
     const snapshot = await page.evaluate(() => window.workspace.invoke('workspace.snapshot', {}));
     expect(snapshot.tasks).toHaveLength(1);
-    expect(snapshot.tasks[0]).toMatchObject({ workspaceKind: 'folder', projectPath: alpha });
+    expect(snapshot.tasks[0]).toMatchObject({ workspaceKind: 'folder', projectPath: await realpath(alpha) });
     expect(snapshot.tasks[0]).not.toHaveProperty('worktreePath');
     await page.getByRole('button', { name: 'New chat in Beta', exact: true }).click();
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Remember the Beta draft.');

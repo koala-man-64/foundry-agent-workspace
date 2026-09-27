@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { basename, dirname, join, resolve } from 'node:path';
+import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { Approval, McpServerStatus, ProviderAdapter, ProviderEvent, ProviderToolResult, GitTask as Task, ToolCall } from '../../packages/protocol/src/index';
 import { RuntimeService } from '../../packages/runtime/src/service';
@@ -52,6 +52,52 @@ const withProvider = async (provider: ProviderAdapter): Promise<void> => {
   runtime = new RuntimeService(store, new RepositoryService(join(directory, 'worktrees')), event => events.push(event), kind => kind === 'fake' ? provider : createProvider(kind));
 };
 
+describe.runIf(process.platform === 'win32')('MCP host cancellation before server launch', () => {
+  it('does not create a server when cancellation exists before host preparation', async () => {
+    const marker = join(directory, 'late-server-started');
+    const script = join(directory, 'late-server.mjs');
+    await writeFile(script, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'started');`);
+    const systemRoot = process.env.SystemRoot ?? process.env.WINDIR ?? 'C:\\Windows';
+    const environment = {
+      SystemRoot: systemRoot, WINDIR: systemRoot, ComSpec: join(systemRoot, 'System32', 'cmd.exe'),
+      PATH: dirname(process.execPath), PATHEXT: '.COM;.EXE;.BAT;.CMD',
+      TEMP: tmpdir(), TMP: tmpdir(), USERPROFILE: process.env.USERPROFILE ?? tmpdir()
+    };
+    const nonce = randomUUID();
+    const cancelPath = join(directory, 'cancel');
+    const resultPath = join(directory, 'host-result.json');
+    const specPath = join(directory, 'host-spec.json');
+    await writeFile(cancelPath, 'cancelled');
+    await writeFile(specPath, JSON.stringify({
+      nonce, resultPath, cancelPath, command: process.execPath, arguments: [script], cwd: directory,
+      environment, lifetimeMs: 60_000, parentPid: process.pid,
+      parentStartedAtMs: Math.floor(Date.now() - process.uptime() * 1000)
+    }));
+    const shell = join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const child = spawn(shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', resolve('packages/runtime/src/mcp-host.ps1'), specPath], {
+      stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: environment
+    });
+    let stderr = '';
+    child.stdout?.resume();
+    child.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8').slice(0, 1000 - stderr.length); });
+    const closed = new Promise<number | null>((resolveClose, rejectClose) => {
+      child.once('error', rejectClose);
+      child.once('close', resolveClose);
+    });
+    const watchdog = setTimeout(() => child.kill(), 75_000);
+    try {
+      expect(await closed, stderr).toBe(0);
+      const result = JSON.parse(await readFile(resultPath, 'utf8')) as { nonce: string; cancelled: boolean; cleanupVerified: boolean; processId: number };
+      expect(result).toMatchObject({ nonce, cancelled: true, cleanupVerified: true, processId: 0 });
+      await expect(stat(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      clearTimeout(watchdog);
+      if (child.exitCode === null) child.kill();
+      await closed.catch(() => undefined);
+    }
+  }, 90_000);
+});
+
 describe('MCP servers under runtime policy', () => {
   it('lists tools from a real supervised launch, skips unsupported names, and rejects unsafe configuration', async () => {
     const saved = await runtime.dispatch('mcp.save', config()) as McpServerStatus;
@@ -69,6 +115,13 @@ describe('MCP servers under runtime policy', () => {
     await mkdir(worktreeRoot, { recursive: true });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-cwd', cwd: worktreeRoot }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-arg', arguments: [join(worktreeRoot, 'script.js')] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference files inside app-owned worktrees') });
+    const externalBinaryAlias = join(worktreeRoot, 'external-bin');
+    await symlink(dirname(process.execPath), externalBinaryAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-command-alias', command: join(externalBinaryAlias, basename(process.execPath)) }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
+    const alias = join(directory, 'worktree-alias');
+    await symlink(worktreeRoot, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(runtime.dispatch('mcp.save', config({ key: 'aliased-worktree-cwd', cwd: alias }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'aliased-worktree-arg', arguments: [join(alias, 'nonexistent-script.js')] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference files inside app-owned worktrees') });
     const missing = await runtime.dispatch('mcp.save', config({ key: 'missing', arguments: [join(directory, 'nope.mjs')] })) as McpServerStatus;
     expect(missing.tools).toEqual([]); expect(missing.lastError).toContain('failed to start');
     expect((await runtime.dispatch('mcp.remove', { serverId: saved.id })) as { removed: boolean }).toEqual({ removed: true });

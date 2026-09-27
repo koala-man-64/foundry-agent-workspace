@@ -12,6 +12,8 @@ const MAX_ENV_ENTRIES = 64;
 const MAX_ENV_VALUE_CHARS = 4 * 1024;
 const MAX_TIMEOUT_MS = 10 * 60 * 1000;
 const HELPER_GRACE_MS = 10_000;
+// Allow bounded cold Windows helper startup before the native execution deadline begins.
+const HELPER_STARTUP_MS = 60_000;
 const MAX_HELPER_ERROR_BYTES = 8 * 1024;
 const MAX_STATE_FILES = 10_000;
 const MAX_STATE_BYTES = 64 * 1024 * 1024;
@@ -230,7 +232,7 @@ export class CommandRunner {
     signal.addEventListener('abort', cancel, { once: true });
     if (signal.aborted) { cancel(); child.kill(); throw abortError(signal); }
     let watchdogFired = false;
-    const watchdog = setTimeout(() => { watchdogFired = true; child.kill(); }, spec.timeoutMs + HELPER_GRACE_MS);
+    const watchdog = setTimeout(() => { watchdogFired = true; child.kill(); }, spec.timeoutMs + HELPER_STARTUP_MS + HELPER_GRACE_MS);
     try {
       child.stdin?.end(JSON.stringify(helperSpec));
       const exitCode = await new Promise<number | null>((resolve, reject) => {
