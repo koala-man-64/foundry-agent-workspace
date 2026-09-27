@@ -454,7 +454,7 @@ function auditServerSource(secret: string, tracePath?: string): string {
     `let buffer = '';`,
     `process.stdin.setEncoding('utf8');`,
     `process.stdin.on('data', chunk => {`,
-    `  trace('input-bytes:' + chunk.length);`,
+    `  trace('input-code-units:' + chunk.length);`,
     `  buffer += chunk;`,
     `  for (let index = buffer.indexOf('\\n'); index >= 0; index = buffer.indexOf('\\n')) {`,
     `    const line = buffer.slice(0, index).trim();`,

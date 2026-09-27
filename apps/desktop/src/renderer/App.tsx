@@ -67,6 +67,7 @@ function App() {
   const [currentPath, setCurrentPath] = useState('');
   const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'publish' | 'channel' | 'browser'>('files');
   const [inspectorWidth, setInspectorWidth] = useState(360);
+  const [inspectorDragging, setInspectorDragging] = useState(false);
   const [browserExpanded, setBrowserExpanded] = useState(false);
   const [appDialogOpen, setAppDialogOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
@@ -385,13 +386,24 @@ function App() {
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
   const beginInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || browserExpanded) return;
     event.preventDefault();
     const startX = event.clientX;
-    const startWidth = inspectorWidth;
-    const move = (next: PointerEvent) => setInspectorWidth(Math.max(300, Math.min(window.innerWidth - 650, startWidth + startX - next.clientX)));
-    const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); };
+    const separator = event.currentTarget;
+    const workspace = separator.parentElement;
+    const startWidth = separator.nextElementSibling?.getBoundingClientRect().width ?? inspectorWidth;
+    const sidebarWidth = workspace?.querySelector('.sidebar-shell')?.getBoundingClientRect().width ?? 0;
+    const minConversation = window.innerWidth <= 950 ? 260 : 320;
+    const maxWidth = Math.max(300, (workspace?.getBoundingClientRect().width ?? window.innerWidth) - sidebarWidth - minConversation - separator.getBoundingClientRect().width);
+    setInspectorDragging(true);
+    separator.setPointerCapture(event.pointerId);
+    const move = (next: PointerEvent) => setInspectorWidth(Math.max(300, Math.min(maxWidth, startWidth + startX - next.clientX)));
+    const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); window.removeEventListener('blur', stop); separator.removeEventListener('lostpointercapture', stop); if (separator.hasPointerCapture(event.pointerId)) separator.releasePointerCapture(event.pointerId); setInspectorDragging(false); };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop, { once: true });
+    window.addEventListener('pointercancel', stop, { once: true });
+    window.addEventListener('blur', stop, { once: true });
+    separator.addEventListener('lostpointercapture', stop, { once: true });
   };
   const openSettings = () => { const profile = profiles.find((item) => item.id === profileId) ?? OFFLINE_PROFILE; setProfileDraft(profile); setCredential(''); setProbe(undefined); void loadMcp(); setAppDialogOpen(true); dialogRef.current?.showModal(); };
   const newProfile = () => { setProfileDraft({ id: crypto.randomUUID(), name: 'New Azure profile', apiKind: 'responses', endpoint: '', deployment: '', contextLimit: 128000, outputLimit: 8192 }); setCredential(''); setProbe(undefined); };
@@ -447,7 +459,7 @@ function App() {
     <aside className="inspector">
       <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}<button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button><button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}<button className={effectiveRightTab === 'browser' ? 'active' : ''} onClick={() => setRightTab('browser')}>Browser</button></div>
       {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} onClick={() => setRightTab('channel')}>Project channel</button>}
-      {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'files' ? <>
+      {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen || inspectorDragging} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
