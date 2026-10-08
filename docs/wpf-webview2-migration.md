@@ -111,6 +111,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
   credentials-v2\                  DPAPI vault (new)
   credentials\  browser-data\      Electron vault / Chromium profile: never read, never deleted
   webview2\ui  webview2\browser    new WebView2 user-data folders (protected ACL)
+  webview2\downloads               held browser downloads until the save dialog answers; swept at startup (protected ACL)
   adoption\adopt-<id>.json         adoption journal
   backups\ (protected ACL)         verified pre-adoption backup, kept until the user deletes it
   notification-preferences.json    reused
@@ -335,33 +336,75 @@ Host-to-page `PostWebMessageAsJson` is sent only after a `Source` check. A messa
 ### 6. Integrated browser
 
 **Environment and tabs**
-- A separate environment and UDF, `webview2\browser`, runs as a separate browser process and registers no custom scheme. Profile `workspace-browser-v1`, at most 20 tabs.
+- A separate environment and UDF, `webview2\browser`, runs as a separate browser process and registers no custom scheme. Every tab uses the named profile `workspace-browser-v1`, at most 20 tabs.
+- The environment starts with `--disable-blink-features=SharedWorker`, passed through the API, so pages have no shared workers. WebView2 cannot filter their requests (S5). Sites fall back as they do on platforms without shared workers.
+- The Evergreen runtime updates on its own, and a renamed feature or an injected switch could silently bring shared workers back. Attach is therefore refused unless `typeof SharedWorker === 'undefined'` in an isolated world of every frame of the tab.
+- `Target.setDiscoverTargets` reports every shared worker to any tab's session, which is the backstop: a reported shared worker ends every attachment and is logged.
 - One HWND WebView2 per tab, positioned at CSS px × the UI `ZoomFactor`, rounded per DPI.
 - Re-sync on `ZoomFactorChanged`, `RasterizationScaleChanged` and resize. Tabs hide during confirmations and dialogs (`BrowserPanel.tsx:63`).
+- `webview2\downloads` is swept at startup, because a crash can leave a held download's temporary file there.
 
 **Tab webviews.** `IsWebMessageEnabled=false`, no host objects, DevTools, menus, autofill or password save, and no document-created scripts. Pages have no host channel.
+- **`chrome.webview`:** WebView2 still defines it in every page and frame. With web messages off, nothing posted through it reaches the host, `postMessageWithAdditionalObjects` included (S5).
+- **Message handlers:** tab webviews register no `WebMessageReceived` handler.
+- **Reputation checking:** `IsReputationCheckingRequired` (SmartScreen) sends visited URLs to Microsoft. Electron had no equivalent, so the setting for tabs is Rudy's decision in P3.
 
 **Handlers**
-- `PermissionRequested` and `LaunchingExternalUriScheme`: deny.
+- `PermissionRequested` and `LaunchingExternalUriScheme`: deny. The denial includes `MultipleAutomaticDownloads`, so a page's second download without a fresh navigation is refused. Electron has no such limit.
 - `BasicAuthenticationRequested` and `ClientCertificateRequested`: cancel.
+- S5 did not trigger `LaunchingExternalUriScheme` or `ClientCertificateRequested`.
 - `ServerCertificateErrorDetected`: deny, no bypass.
-- `NavigationStarting`: redirect guards allow http/https only, no userinfo, and keep the `pendingOrigin` logic.
-- `NewWindowRequested`: with a deferral, adopt the popup as a tab via `NewWindow` (opener preserved).
-- `DownloadStarting`: with a deferral, show `SaveFileDialog`; cancel when the tab is attached.
+- **Navigation guard:**
+  - `NavigationStarting` reports every main-frame redirect hop and keeps the `pendingOrigin` logic. Cancelling a redirect there stops the document only after the redirected request has gone out (S5).
+  - The guard therefore runs first in the `WebResourceRequested` filter, which raises each document request before it is sent.
+  - It allows http or https only, without userinfo, judged on the URL as WebView2 reports it (Chromium's canonical form). A URL that does not parse is refused.
+  - File and data redirects never load.
+- `NewWindowRequested`:
+  - As `setWindowOpenHandler` did (`browser-manager.ts:120-122`), refuse a popup whose URL fails the navigation guard (`about:blank` excepted), one beyond 20 tabs, or one from a tab that is attaching.
+  - Otherwise, with a deferral, give the new webview the tab settings, filters and `IsWebMessageEnabled=false`, then adopt it via `NewWindow` (opener preserved).
+  - `WindowCloseRequested` closes the adopted tab.
+- `DownloadStarting`:
+  - With a deferral, show `SaveFileDialog`. Cancel the download when the tab is attached or attaching, and recheck the attachment after the dialog returns (`browser-manager.ts:94,105`).
+  - Attaching cancels the tab's in-progress and held downloads (`browser-manager.ts:203,263`).
+  - While the deferral is held, WebView2 already writes the download into the profile's default download folder as a temporary file, and removes it if the download is cancelled (S5). The host therefore sets `DefaultDownloadFolderPath` to `webview2\downloads`, so nothing reaches the user's Downloads folder before the user chooses.
 - `ProcessFailed`: detach and show the error.
 
 **CDP** via `CallDevToolsProtocolMethodAsync`:
 - `Page.createIsolatedWorld` with `grantUniveralAccess:false`, the protocol's spelling.
 - `Runtime.evaluate` of the fixed host-authored scripts only.
 - `Page.setInterceptFileChooserDialog`, with a receiver for `Page.fileChooserOpened`.
-- Per-origin clearing via `Storage.clearDataForOrigin` plus `CookieManager`. Whole-profile clearing via `ClearBrowsingDataAsync`.
+- Per-origin clearing via `Storage.clearDataForOrigin` (`storageTypes: all`), which also removes the origin's cookies. The host confirms with `CookieManager` that none remain, and clears the HTTP disk cache with `ClearBrowsingDataAsync(DiskCache)`, as Electron's `clearCache()` cleared the whole cache.
+- Whole-profile clearing via `ClearBrowsingDataAsync`.
+- `Target.setDiscoverTargets`, the shared-worker backstop above.
 
 **Upload control.** Source-level controls first:
 - file-chooser interception
 - the selected-file precheck (`browser-manager.ts:254-257`)
 - `AllowExternalDrop=false` while attached
+- no shared workers in the environment
 
-Second, a three-argument `WebResourceRequested` filter with `SourceKinds` blocks multipart and octet-stream bodies while attached. Worker kinds are registered on one webview per environment.
+Second, every tab registers a three-argument `WebResourceRequested` filter for `*`, with the `Document` and `ServiceWorker` source kinds, for its lifetime. A narrower URL pattern would fail open.
+- **What is raised (S5):**
+  - The tab's documents, dedicated workers, `sendBeacon` and `keepalive` requests arrive as `Document`, and service workers as `ServiceWorker`.
+  - Both hops of a 307 that keeps its body are raised.
+  - Service-worker requests were seen on every webview that registered the kind. Worker decisions are therefore environment-wide: blocked while any tab is attached.
+- **The rule:**
+  - WebView2 does not say whether a body came from a file or a blob. Even the DevTools `Fetch` domain returns typed blobs, `File` objects and disk files as plain bytes (S5).
+  - Electron blocked file and blob parts, and multipart or octet-stream bodies.
+  - While a tab is attached, the WebView2 rule blocks every request body whose type is missing or not text-like (`text/*`, JSON, or form-encoded). That stops an ordinary uploader sending a file with its own type, and refuses untyped binary bodies, multipart forms and blob beacons.
+  - **It is a heuristic, not a barrier.** The page chooses a body's type, so a hostile page can relabel a file as text, or encode its bytes into JSON.
+  - **Functional cost while attached:** multipart text forms and binary posts, such as protobuf, are refused.
+- **Residual, a regression from Electron, for P3's security review to accept or close:**
+  - A page may hold a raw `File` or `Blob` the user gave it earlier, through the chooser, a drop, a paste, the File System Access API, or stored data.
+  - It can upload that file after attachment as a text-typed body. Electron blocked raw file and blob bodies whatever their type.
+  - Both runtimes let a page send bytes it has read into a string.
+  - The real controls are the source-level ones above, plus the user not having handed the page a file. The precheck sees only file inputs.
+  - The text types that pass (for example `.txt`, `.csv`, `.json` and `.md` files) are also the likeliest to hold secrets.
+- **Shared workers:**
+  - The `SharedWorker` source kind is not used. Registered with `Document`, it stalls a page's shared workers after a reload (S5, pinned by a test).
+  - The spike also saw the stall persist after the filter was removed, and a filter added later miss shared workers that already existed.
+
+Unchanged from Electron, and not inspected in either: WebSocket, WebRTC and WebTransport payloads.
 
 **Agent/human input ladder.** Every layer must succeed, or the attach is refused:
 1. `EnableWindow(false)` on the tab host HWND.
@@ -539,7 +582,7 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 | S2 | Result (2026-10-08): `tests/Foundry.WebView2.Tests` runs a real WebView2 (SDK 1.0.4258.31, exact pin; Evergreen runtime 154.0.4258.62) on its own STA thread behind a hidden, non-activating window. It serves `foundry-app` pages from memory with real headers. A gate prototype applies the plan's steps 1, 2 and 6.<br>**Messages:** `Source` is the exact document URI. WebView2 delivers a 1 MiB + 1 string whole, so the host enforces the cap. The gate rejects exactly the oversized, malformed and `postMessage(object)` messages.<br>**CSP:** the custom-scheme header blocks `eval`, inline script (`script-src` violation) and `fetch` (`connect-src` violation).<br>**Popups:** `window.open` raises `NewWindowRequested`; handling it without a `NewWindow` returns null and opens nothing.<br>**Frames:** an iframe raises `FrameCreated`, and its `chrome.webview.postMessage` never reaches `CoreWebView2.WebMessageReceived`.<br>**Other origins:** after a redirect, messages carry the other origin's `Source` and fail the gate. Cancelling the foreign `NavigationStarting` keeps the app document.<br>**Lock-down:** `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port` opens the port despite API arguments, and is merged with them rather than replacing them. After the host clears the five variables, no port listens and no forbidden switch appears in the browser's or its children's command lines (WMI).<br>**Elevation:** the `windows-2025` runner runs as an administrator with UAC disabled, so the tests run elevated there. Neither the variable nor an HKCU `AdditionalBrowserArguments` policy reached that browser: no switch in the command lines, no listening port. `PolicyValues()` detected the policy before start-up. Policy keys are written only on that ephemeral runner, so a policy's effect on a non-elevated process is not exercised. | Met. The plan's gate order and lock-down hold as designed. The size cap is the host's job, since WebView2 does not cap. `FrameCreated` gives the host its "frame is fatal" hook. Refusing to start under any policy value, and refusing to run elevated, remain the controls; the command-line scan is the backstop. An elevated run proves nothing about the overrides, so the artifact audit's debug-port check runs non-elevated (section 5). |
 | S3 | Tab bounds under DPI and zoom | At most 1 device px of error at 100/125/150/200% and zoom 2; hidden behind modals |
 | S4 | Input ladder, driven by a separate harness (SendInput, InjectTouchInput, IME, Ctrl+V/Win+V, OLE drag, UIA `SetValue`) | Zero events reach the page except UIA (documented); detach under 100 ms; disabled HWND renders correctly. Otherwise apply decision 7. |
-| S5 | CDP and event parity: isolated worlds, file-chooser interception, `clearDataForOrigin`, request bodies and workers, `NewWindow` opener, `DownloadStarting` deferral, cert/auth denial | Every `browser.spec` scenario reproducible, or the gap recorded with a source-level control |
+| S5 | Result (2026-10-08): `BrowserParityTests` (12 tests) reproduces what both `browser.spec` scenarios and `browser-manager.ts` rely on, in webviews configured as the plan's tabs: web messages off, profile `workspace-browser-v1`, no shared workers. The targets are real loopback origins: `127.0.0.1` and `localhost` on one raw-socket server, plus a self-signed TLS variant. An independent security review (Sonnet, high, from its definition) returned NO-GO on the first version; its findings are addressed here and in section 6.<br>**As in Electron:**<br>• Cookies, local storage and IndexedDB survive a restart on the same user-data folder, read by a new browser process.<br>• A popup adopted through a `NewWindow` deferral keeps its opener and the profile's cookies, is configured like any tab, and its `window.close()` raises `WindowCloseRequested`.<br>• `Storage.clearDataForOrigin` clears one origin, cookies included, and spares the other; `ClearBrowsingDataAsync` clears both.<br>• `SNAPSHOT_SCRIPT`, run verbatim in an isolated world, reads the DOM without the page's globals or the password and hidden canaries. Its click runs the page's handler, and the page cannot see the host's targets.<br>• With interception on, a user-gesture click raises `Page.fileChooserOpened` instead of a dialog. A `DOM.setFileInputFiles` selection, as Playwright makes one, is visible to the precheck's isolated world.<br>• A held `DownloadStarting` saves where the host says. A download cancelled immediately, or after the save dialog, leaves nothing.<br>• Certificate errors are cancelled before any request. Basic authentication is cancelled without a prompt: 401, no `Authorization` header.<br>**Different:**<br>• `chrome.webview` exists in every page and frame. With web messages off, nothing posted through it reaches the host.<br>• A held download is already being written into the profile's default download folder as a temporary file.<br>• A second download without a fresh navigation raises `PermissionRequested` (`MultipleAutomaticDownloads`), which the deny refuses.<br>• Cancelling a redirect's `NavigationStarting` stops the document only after the redirected request was sent, without credentials. A document `WebResourceRequested` filter sees each hop first and can stop it. File and data redirects never load.<br>• WebView2 does not reveal whether a body came from a file or a blob. The DevTools `Fetch` domain also returns typed blobs, `File` objects and disk files as plain bytes, so a page-held file sent as text looks like any text body.<br>• Documents, dedicated workers, beacons and `keepalive` requests are raised as `Document`, service workers as `ServiceWorker`, and both hops of a 307 that keeps its body are raised.<br>• With the `SharedWorker` kind registered, a page's shared workers stall after a reload, which a test pins. `--disable-blink-features=SharedWorker` removes shared workers. `Target.setDiscoverTargets` reports existing shared workers to every tab's session, including workers other tabs created (seen in the spike). | Met, with the differences controlled in section 6:<br>• held downloads are staged in `webview2\downloads` and swept at startup;<br>• the navigation guard runs in a document request filter;<br>• the environment runs without shared workers, attach confirms their absence in every frame, and target discovery is the backstop;<br>• tabs filter `Document` and `ServiceWorker` for `*` and, while attached, block every body without a text-like type, a heuristic since the page chooses the type;<br>• the "no `chrome.webview`" negative becomes "nothing a tab or frame posts reaches the host".<br>**Residual for P3's security review to accept or close:** a raw page-held `File` or `Blob` uploaded after attachment as a text-typed body. Electron blocked it; both runtimes let a page send bytes it has read into a string.<br>Layout and dialog hiding (S3) and input take-over (S4) are outside this spike. |
 | S6 | Toast click activation from the unzipped exe and the installed exe | Works, or the fallback ships |
 | S7 | `JOB_LIST` + `HANDLE_LIST` in a nested job; tree death on runtime kill; decoy handle not inherited; `FinalPath` versus `realpathSync.native`; managed ACL equals the PowerShell SDDL; DPAPI atomic write | Process-cleanup tests (`security-audit.test.ts:799-855`) pass natively; corpus parity |
 | S7 | Result (2026-10-08): `tests/Foundry.Platform.Tests` (62 tests) proves the four `Foundry.Platform` primitives.<br>**`JobProcess`:** the TypeScript cleanup scenarios pass natively: terminate (the timeout and cancel path), a background grandchild after a normal exit, and dispose. Killing a real owner process (`Foundry.Platform.TestProbe`, which stands in for the runtime and runs inside an enclosing job) reclaims its nested tree while the enclosing job stays open. Cleanup verifies within 5 s. A decoy inheritable handle is not inherited, and concurrent launches never share pipe ends; a redirected `Process.Start` does inherit the decoy, so `System.Diagnostics.Process` is banned in all product code.<br>**`FinalPath`:** agrees with Node 24's `pathKey` on every corpus path, and its lowercase agrees with V8 on 1,092 vectors (see `path_key` above).<br>**`ProtectedDirectory`:** its on-disk owner, group and DACL (`D:PAI`) equal the result of `backup-protection.ts`'s PowerShell; extra, deny, uninherited and unprotected rules and junctions fail verification.<br>**`ProtectedSecret`:** an 8 KiB secret round-trips; other entropy, a tampered blob and a non-digest entropy fail; an injected failure and a locked target both keep the old file and leave no temporary file.<br>Removing `HANDLE_LIST` or `KILL_ON_JOB_CLOSE`, or checking cased before case-ignorable for the final sigma, fails the tests meant to catch it.<br>The independent security review (Sonnet, high) returned a conditional GO. Every condition is addressed in this result: the child pipe ends are inheritable only during `CreateProcess`, with the ban widened to all product code; `TryResolve` fails closed for scope checks; entropy must be a digest; the application must be an `.exe` with no NUL; the job closes first on dispose; the lowercase tables are pinned. | Met. **Adopt** the primitives. The interop is hand-written `LibraryImport` (the plan's fallback to CsWin32). The vault's owner-plus-SYSTEM descriptor (section 7) is a P3 parameter; S7 proved the mechanism with the backup descriptor. |
@@ -592,8 +635,14 @@ The evidence layers are independent; none substitutes for another.
      - oversized, malformed and duplicate-key messages, and messages before `hello`
      - `ProcessFailed`
      - canaries in logs, events, renderer messages, exports and stderr; legacy `credentials\` left untouched
-     - upload and download blocked while attached; no `chrome.webview` in tabs; external URIs denied; CDP unreachable in release
+     - upload and download blocked while attached; nothing a tab or frame posts through `chrome.webview` reaches the host; external URIs denied; CDP unreachable in release
      - decoy DLL; the `WEBVIEW2_*` env test
+     - section 6's prescriptions that S5 left untested:
+       - the popup guards;
+       - attach-time download cancellation and the recheck after the save dialog;
+       - the download-folder sweep and HTTP cache clearing;
+       - the attach-time `SharedWorker` check and the `chrome.webview` negative in cross-origin frames;
+       - service-worker requests raised on every webview that registered the kind.
    - Run against both hosts and both runtimes at each seam.
 6. **E2E.**
    - The 21 Playwright tests connect to `Foundry.E2E.exe` via `connectOverCDP`.

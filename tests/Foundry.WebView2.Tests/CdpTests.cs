@@ -45,7 +45,7 @@ public sealed class CdpTests
         Assert.Equal(Rig.AppUri, await app.SourceAsync()); // Detaching left the host's browser running.
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {

@@ -62,7 +62,30 @@ P0 deliverables so far:
 
 - Spike S9 (CI runner and CDP), decided. The `windows-2025` runner hosts WebView2, and Playwright's `connectOverCDP` attaches to two environments through API-only debug ports. The .NET workflow now installs the locked Node dependencies, so this attach runs on every pull request.
 
-Next: the host spikes S3–S6. S3, S4 and S6 change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
+- Spike S5 (integrated-browser parity), decided. `BrowserParityTests` (12 tests) reproduces against real loopback origins what both `browser.spec` scenarios and `browser-manager.ts` rely on:
+  - persistence across a restart, on the named profile;
+  - popup adoption with its opener, configured like any tab;
+  - per-origin and whole-profile clearing;
+  - `SNAPSHOT_SCRIPT` run verbatim in an isolated world;
+  - file-chooser interception and the selected-file precheck;
+  - held and cancelled downloads;
+  - certificate and basic-authentication refusal;
+  - upload blocking for documents, dedicated and service workers, beacons and redirected requests.
+
+  WebView2 differences changed the plan's browser design (section 6):
+  - **Downloads.** Held downloads are written early, so they are staged in a host folder that is swept at startup.
+  - **Redirects.** A cancelled redirect has already sent its request, so the navigation guard runs in a request filter.
+  - **Shared workers.** Their requests cannot be filtered: the filter kind stalls them after a reload. The integrated browser runs without shared workers, with target discovery as a backstop.
+  - **Upload bodies.** WebView2 does not reveal whether a body came from a file or a blob. While attached, every body without a text-like type is therefore blocked. This is a heuristic, because the page chooses the type. A raw page-held file or blob sent as text remains a residual for P3's security review to accept or close.
+  - **`chrome.webview`.** It exists in every page and frame, so the negative test checks that nothing posted through it reaches the host.
+
+  The independent security review (Sonnet, high, from its definition) returned NO-GO on the first version. It found overstated upload and shared-worker claims and several Electron guards the plan had not carried over. It returned GO on the fixes, and its two remaining recommendations are applied:
+  - the body rule is described as a heuristic;
+  - attach confirms that shared workers are absent in every frame.
+
+  Section 6's prescriptions that S5 left untested are listed among the plan's security tests.
+
+Next: the host spikes S3, S4 and S6. They change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
