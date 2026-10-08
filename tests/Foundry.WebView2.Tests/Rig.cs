@@ -22,9 +22,10 @@ internal sealed record Observation(string Kind, string Source, string? Text, boo
 /// <param name="UserDataFolder">An existing user-data folder to reuse instead of a fresh temporary one.</param>
 /// <param name="KeepUserDataFolder">Leave the user-data folder in place on disposal, so another rig can restart on it.</param>
 /// <param name="WebMessages">The webviews' <c>IsWebMessageEnabled</c>; the integrated browser's tabs turn it off.</param>
+/// <param name="ProfileName">A named WebView2 profile for every webview, as the integrated browser uses; the default profile otherwise.</param>
 internal sealed record RigOptions(
     string? AdditionalBrowserArguments = null, bool CancelForeignNavigation = false, bool AdoptPopups = false,
-    string? UserDataFolder = null, bool KeepUserDataFolder = false, bool WebMessages = true);
+    string? UserDataFolder = null, bool KeepUserDataFolder = false, bool WebMessages = true, string? ProfileName = null);
 
 /// <summary>How a navigation completed.</summary>
 internal sealed record Navigation(bool IsSuccess, CoreWebView2WebErrorStatus Status, int HttpStatusCode);
@@ -250,7 +251,18 @@ internal sealed class Rig : IAsyncDisposable
             ShowActivated = false, ShowInTaskbar = false, WindowStyle = WindowStyle.None,
         };
         window.Show();
-        var controller = await Environment.CreateCoreWebView2ControllerAsync(new WindowInteropHelper(window).Handle).WaitAsync(TimeSpan.FromSeconds(60));
+        var handle = new WindowInteropHelper(window).Handle;
+        CoreWebView2Controller controller;
+        if (options.ProfileName is { } profile)
+        {
+            var controllerOptions = Environment.CreateCoreWebView2ControllerOptions();
+            controllerOptions.ProfileName = profile;
+            controller = await Environment.CreateCoreWebView2ControllerAsync(handle, controllerOptions).WaitAsync(TimeSpan.FromSeconds(60));
+        }
+        else
+        {
+            controller = await Environment.CreateCoreWebView2ControllerAsync(handle).WaitAsync(TimeSpan.FromSeconds(60));
+        }
         controller.Bounds = new System.Drawing.Rectangle(0, 0, 640, 480);
         var core = controller.CoreWebView2;
         tabs.Add((window, controller, core));
@@ -265,6 +277,7 @@ internal sealed class Rig : IAsyncDisposable
         core.Settings.AreDefaultContextMenusEnabled = false;
         core.Settings.AreDefaultScriptDialogsEnabled = false;
         core.Settings.IsWebMessageEnabled = options.WebMessages;
+        core.Settings.IsReputationCheckingRequired = false; // No SmartScreen lookups of test URLs; the product's choice is open.
         core.AddWebResourceRequestedFilter($"{Scheme}://*", CoreWebView2WebResourceContext.All);
         core.WebResourceRequested += (_, e) =>
         {

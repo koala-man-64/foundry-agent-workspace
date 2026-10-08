@@ -28,22 +28,37 @@ internal static class BrowserSite
 
     private const string Send = "const send = async kind => { const data = new FormData(); data.append('fixture', new Blob([`worker upload fixture ${kind}`]), 'fixture.txt'); try { return (await fetch(`/upload?from=${kind}`, { method: 'POST', body: data })).status; } catch { return 'error'; } };\n";
 
+    /// <summary>
+    /// Uploads from the document, dedicated, shared and service workers, and request bodies of each kind the attached-tab
+    /// rule distinguishes. Each entry is a status, a beacon's queued flag, or "timeout", "error" or "unavailable".
+    /// </summary>
     private const string Workers = """
         <!doctype html><html><head><title>Workers fixture</title></head><body><p>Workers fixture</p>
         <script>
         const within = promise => Promise.race([promise, new Promise(resolve => setTimeout(() => resolve('timeout'), 5000))]);
-        const sendFromDocument = async () => { const data = new FormData(); data.append('fixture', new Blob(['document upload fixture']), 'fixture.txt'); try { return (await fetch('/upload?from=document', { method: 'POST', body: data })).status; } catch { return 'error'; } };
+        const post = (from, body, type) => fetch(`/upload?from=${from}`, { method: 'POST', body, headers: type ? { 'Content-Type': type } : {} }).then(response => response.status, () => 'error');
+        const form = () => { const data = new FormData(); data.append('fixture', new Blob(['document upload fixture']), 'fixture.txt'); return data; };
         const sendFromDedicated = () => new Promise(resolve => { const worker = new Worker('/dedicated.js'); worker.onmessage = event => { worker.terminate(); resolve(event.data); }; worker.postMessage('go'); });
-        const sendFromShared = () => new Promise(resolve => { const worker = new SharedWorker('/shared.js'); worker.port.onmessage = event => resolve(event.data); worker.port.start(); worker.port.postMessage('go'); });
+        const sendFromShared = () => typeof SharedWorker === 'undefined' ? Promise.resolve('unavailable') : new Promise(resolve => { const worker = new SharedWorker('/shared.js'); worker.port.onmessage = event => resolve(event.data); worker.port.start(); worker.port.postMessage('go'); });
         const sendFromService = async () => { const registration = await navigator.serviceWorker.register('/service.js'); await navigator.serviceWorker.ready; return new Promise(resolve => { navigator.serviceWorker.onmessage = event => resolve(event.data); registration.active.postMessage('go'); }); };
-        window.runUploads = async () => ({
-          document: await within(sendFromDocument()),
-          dedicated: await within(sendFromDedicated()),
-          shared: await within(sendFromShared()),
-          service: await within(sendFromService()),
-          blob: await within(fetch('/upload?from=blob', { method: 'POST', body: new Blob(['blob upload fixture'], { type: 'text/plain' }) }).then(response => response.status)),
-          urlencoded: await within(fetch('/echo', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'q=agent+text' }).then(response => response.status)),
-        });
+        window.runUploads = async () => {
+          const results = {
+            document: await within(post('document', form())),
+            dedicated: await within(sendFromDedicated()),
+            shared: await within(sendFromShared()),
+            service: await within(sendFromService()),
+            file: await within(post('file', new File(['file upload fixture'], 'fixture.pdf', { type: 'application/pdf' }))),
+            untyped: await within(post('untyped', new Uint8Array([1, 2, 3]).buffer)),
+            blob: await within(post('blob', new Blob(['blob upload fixture'], { type: 'text/plain' }))),
+            json: await within(post('json', '{"q":"agent"}', 'application/json')),
+            keepalive: await within(fetch('/upload?from=keepalive', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: 'keepalive upload fixture' }).then(response => response.status, () => 'error')),
+            redirected: await within(fetch(`/redirect307?to=${encodeURIComponent('/upload?from=redirected')}`, { method: 'POST', body: form() }).then(response => response.status, () => 'error')),
+            urlencoded: await within(fetch('/echo', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'q=agent+text' }).then(response => response.status)),
+            beacon: navigator.sendBeacon('/upload?from=beacon', new Blob(['beacon upload fixture'])),
+          };
+          await new Promise(resolve => setTimeout(resolve, 500)); // Let the beacon leave or be refused.
+          return results;
+        };
         </script></body></html>
         """;
 
@@ -55,6 +70,7 @@ internal static class BrowserSite
         "/auth" => new WebResponse(401, "text/html; charset=utf-8", "<p>Sign-in required</p>", new Dictionary<string, string> { ["WWW-Authenticate"] = "Basic realm=\"fixture\"" }),
         "/echo" => new WebResponse(200, "text/plain", Encoding.UTF8.GetString(request.Body)),
         "/redirect" => new WebResponse(302, "text/plain", "", new Dictionary<string, string> { ["Location"] = Uri.UnescapeDataString(request.Path.Split("?to=", 2)[1]) }),
+        "/redirect307" => new WebResponse(307, "text/plain", "", new Dictionary<string, string> { ["Location"] = Uri.UnescapeDataString(request.Path.Split("?to=", 2)[1]) }),
         "/workers.html" => WebResponse.Html(Workers),
         "/dedicated.js" => Script(Send + "onmessage = async () => postMessage(await send('dedicated'));"),
         "/shared.js" => Script(Send + "onconnect = event => { const port = event.ports[0]; port.onmessage = async () => port.postMessage(await send('shared')); port.start(); };"),

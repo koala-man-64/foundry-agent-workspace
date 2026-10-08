@@ -1,7 +1,6 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.Web.WebView2.Core;
 using Xunit;
 
@@ -9,34 +8,68 @@ namespace Foundry.WebView2.Tests;
 
 /// <summary>
 /// Spike S5: what the two <c>browser.spec</c> scenarios and <c>browser-manager.ts</c> rely on, reproduced on WebView2
-/// against real loopback origins. The webviews run as the plan's tabs do, with web messages off.
+/// against real loopback origins. The webviews run as the plan's tabs do: web messages off, the named profile, and an
+/// environment without shared workers.
 /// </summary>
 public sealed class BrowserParityTests
 {
-    private static readonly RigOptions Tab = new(WebMessages: false);
+    private static readonly RigOptions Tab = new(AdditionalBrowserArguments: "--disable-blink-features=SharedWorker", WebMessages: false, ProfileName: "workspace-browser-v1");
+
+    private const string TemporaryDownload = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.tmp$";
 
     [Fact]
     public async Task StorageSurvivesARestartOnTheSameUserDataFolder()
     {
         await using var server = new WebServer(BrowserSite.Route);
         var folder = Directory.CreateTempSubdirectory("foundry-webview2-").FullName;
-        uint firstProcess;
-        await using (var first = await Rig.StartAsync(Pages.All(), Tab with { UserDataFolder = folder, KeepUserDataFolder = true }))
+        try
         {
-            await first.NavigateAsync($"{server.Origin}/seed");
-            var seeded = await first.EvaluateAsync($"{BrowserSite.StoredValues}.then(values => ({{ ...values, node: typeof require, bridge: typeof window.workspace }}))");
-            AssertJson("""{"cookie":"fixture-login=remembered","stored":"persisted","indexed":"indexed-persisted","node":"undefined","bridge":"undefined"}""", seeded);
-            // WebView2 defines chrome.webview in every page; with web messages off, what a tab posts never reaches the host.
-            Assert.Equal("function", (await first.EvaluateAsync("globalThis.chrome.webview.postMessage('from-tab'), typeof globalThis.chrome.webview.postMessage")).GetString());
-            await Task.Delay(1000, TestContext.Current.CancellationToken);
-            Assert.Empty(first.Messages);
-            firstProcess = first.BrowserProcessId;
-        }
+            uint firstProcess;
+            await using (var first = await Rig.StartAsync(Pages.All(), Tab with { UserDataFolder = folder, KeepUserDataFolder = true }))
+            {
+                await first.NavigateAsync($"{server.Origin}/seed");
+                var seeded = await first.EvaluateAsync($"{BrowserSite.StoredValues}.then(values => ({{ ...values, node: typeof require, bridge: typeof window.workspace }}))");
+                AssertJson("""{"cookie":"fixture-login=remembered","stored":"persisted","indexed":"indexed-persisted","node":"undefined","bridge":"undefined"}""", seeded);
+                firstProcess = first.BrowserProcessId;
+            }
 
-        await using var second = await Rig.StartAsync(Pages.All(), Tab with { UserDataFolder = folder });
-        Assert.NotEqual(firstProcess, second.BrowserProcessId); // A new browser process read the profile from disk.
-        await second.NavigateAsync($"{server.Origin}/read");
-        AssertJson("""{"cookie":"fixture-login=remembered","stored":"persisted","indexed":"indexed-persisted"}""", await second.EvaluateAsync(BrowserSite.StoredValues));
+            await using var second = await Rig.StartAsync(Pages.All(), Tab with { UserDataFolder = folder });
+            Assert.NotEqual(firstProcess, second.BrowserProcessId); // A new browser process read the profile from disk.
+            await second.NavigateAsync($"{server.Origin}/read");
+            AssertJson("""{"cookie":"fixture-login=remembered","stored":"persisted","indexed":"indexed-persisted"}""", await second.EvaluateAsync(BrowserSite.StoredValues));
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true); // Normally gone already: the second rig deletes it.
+            }
+            catch (Exception error) when (error is DirectoryNotFoundException or IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public async Task NothingATabOrItsFramesPostReachesTheHost()
+    {
+        await using var server = new WebServer(BrowserSite.Route);
+        await using var rig = await Rig.StartAsync(Pages.All(), Tab);
+        await rig.NavigateAsync($"{server.Origin}/read");
+        // WebView2 defines chrome.webview in every page. With web messages off, nothing posted through it arrives.
+        var posted = await rig.EvaluateAsync("""
+            new Promise(resolve => {
+              chrome.webview.postMessage('from-tab');
+              chrome.webview.postMessageWithAdditionalObjects('from-tab-with-objects', []);
+              const frame = document.createElement('iframe');
+              frame.srcdoc = "<script>window.chrome?.webview?.postMessage('from-frame'); window.chrome?.webview?.postMessageWithAdditionalObjects('from-frame-with-objects', []); parent.framePosted = typeof window.chrome?.webview?.postMessage;</script>";
+              frame.onload = () => resolve({ tab: typeof chrome.webview.postMessage, frame: window.framePosted ?? 'not run' });
+              document.body.append(frame);
+            })
+            """);
+        AssertJson("""{"tab":"function","frame":"function"}""", posted);
+        await Task.Delay(1000, TestContext.Current.CancellationToken);
+        Assert.Empty(rig.Messages);
     }
 
     [Fact]
@@ -53,6 +86,10 @@ public sealed class BrowserParityTests
         var popup = await rig.EvaluateAsync("({ opener: window.opener?.location.href ?? null, cookie: document.cookie })", tab: 1);
         Assert.Equal($"{server.Origin}/seed", popup.GetProperty("opener").GetString()); // The login flow keeps its opener.
         Assert.Equal("fixture-login=remembered", popup.GetProperty("cookie").GetString());
+        // The adopted webview is configured like any tab before the deferral completes.
+        await rig.EvaluateAsync("chrome.webview.postMessage('from-popup'), true", tab: 1);
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        Assert.Empty(rig.Messages);
 
         await rig.EvaluateAsync("setTimeout(() => window.close(), 0), true", tab: 1);
         await rig.WaitForAsync(item => item.Kind == "window-close", "the popup's close request");
@@ -145,7 +182,7 @@ public sealed class BrowserParityTests
     }
 
     [Fact]
-    public async Task UploadsFromTheDocumentAndItsWorkersAreBlockedWhileAttached()
+    public async Task WhileAttachedEveryBodyWithoutATextTypeIsBlockedFromTheDocumentAndItsWorkers()
     {
         await using var server = new WebServer(BrowserSite.Route);
         await using var rig = await Rig.StartAsync(Pages.All(), Tab);
@@ -153,29 +190,30 @@ public sealed class BrowserParityTests
         rig.OnRequest = (e, environment) =>
         {
             rig.Record(new Observation("request", e.RequestedSourceKind.ToString(), $"{e.Request.Method} {e.Request.Uri}", false));
-            if (Volatile.Read(ref attached) && IsUpload(e.Request))
+            if (Volatile.Read(ref attached) && BlockedWhileAttached(e.Request))
             {
                 e.Response = environment.CreateWebResourceResponse(null, 403, "Forbidden", "Content-Type: text/plain");
             }
         };
-        // Registered for the tab's lifetime. The shared-worker kind is left out: see TheSharedWorkerKindStallsSharedWorkersAfterAReload.
+        // Registered for the tab's lifetime and every URL. The shared-worker kind is left out, and the environment runs
+        // without shared workers: see TheSharedWorkerKindStallsSharedWorkersAfterAReload.
         await rig.RunAsync(core =>
         {
-            core.AddWebResourceRequestedFilter($"{server.Origin}/*", CoreWebView2WebResourceContext.All, CoreWebView2WebResourceRequestSourceKinds.Document | CoreWebView2WebResourceRequestSourceKinds.ServiceWorker);
+            core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All, CoreWebView2WebResourceRequestSourceKinds.Document | CoreWebView2WebResourceRequestSourceKinds.ServiceWorker);
             return Task.CompletedTask;
         });
-        await rig.ListenAsync("Target.targetCreated");
-        await rig.CdpAsync("Target.setDiscoverTargets", new { discover = true });
 
         await rig.NavigateAsync($"{server.Origin}/workers.html");
-        AssertJson("""{"document":200,"dedicated":200,"shared":200,"service":200,"blob":200,"urlencoded":200}""", await rig.EvaluateAsync("runUploads()"));
-        Assert.Equal(5, Uploads(server));
+        AssertJson("""{"document":200,"dedicated":200,"shared":"unavailable","service":200,"file":200,"untyped":200,"blob":200,"json":200,"keepalive":200,"redirected":200,"urlencoded":200,"beacon":true}""", await rig.EvaluateAsync("runUploads()"));
+        Assert.Equal(10, Uploads(server));
         Assert.Equal("Document", RaisedAs(rig, server, "document"));
         Assert.Equal("Document", RaisedAs(rig, server, "dedicated"));
         Assert.Equal("ServiceWorker", RaisedAs(rig, server, "service"));
-        Assert.Null(RaisedAs(rig, server, "shared"));
-        // The page's own session reports the shared worker: the signal for the source-level control.
-        await rig.WaitForAsync(item => item.Kind == "cdp" && item.Source == "Target.targetCreated" && item.Text!.Contains("\"type\":\"shared_worker\"", StringComparison.Ordinal) && item.Text.Contains($"\"url\":\"{server.Origin}/shared.js\"", StringComparison.Ordinal), "the shared worker's target");
+        Assert.Equal("Document", RaisedAs(rig, server, "beacon"));
+        Assert.Equal("Document", RaisedAs(rig, server, "keepalive"));
+        // Both hops of a 307 that keeps its body are raised, so the rule applies to each.
+        Assert.Contains(rig.Observations, item => item.Kind == "request" && item.Text == $"POST {server.Origin}/redirect307?to=%2Fupload%3Ffrom%3Dredirected");
+        Assert.Equal("Document", RaisedAs(rig, server, "redirected"));
 
         // Attached on the loaded page, as attachment happens, and again after a reload.
         Volatile.Write(ref attached, true);
@@ -186,26 +224,31 @@ public sealed class BrowserParityTests
                 await rig.NavigateAsync($"{server.Origin}/workers.html");
             }
             var before = Uploads(server);
-            AssertJson("""{"document":403,"dedicated":403,"shared":200,"service":403,"blob":200,"urlencoded":200}""", await rig.EvaluateAsync("runUploads()"));
-            // The recorded gaps: the shared worker's upload, and a typed blob body, which WebView2 does not mark as a blob.
-            Assert.Equal(before + 2, Uploads(server));
+            AssertJson("""{"document":403,"dedicated":403,"shared":"unavailable","service":403,"file":403,"untyped":403,"blob":200,"json":200,"keepalive":200,"redirected":403,"urlencoded":200,"beacon":true}""", await rig.EvaluateAsync("runUploads()"));
+            // Only the text-typed bodies left, among them a blob sent as text: the residual the plan records.
+            Assert.Equal(before + 3, Uploads(server));
         }
     }
 
     [Fact]
     public async Task TheSharedWorkerKindStallsSharedWorkersAfterAReload()
     {
-        // Pins a WebView2 behavior that rules the shared-worker kind out; if this fails, the runtime changed and S5's
-        // upload decision can be revisited.
+        // Pins the WebView2 behavior that rules out filtering shared workers, which is why the integrated browser runs
+        // without them. If this fails, the runtime changed and S5's decision can be revisited.
         await using var server = new WebServer(BrowserSite.Route);
-        await using var rig = await Rig.StartAsync(Pages.All(), Tab);
+        await using var rig = await Rig.StartAsync(Pages.All(), Tab with { AdditionalBrowserArguments = null });
         await rig.RunAsync(core =>
         {
-            core.AddWebResourceRequestedFilter($"{server.Origin}/*", CoreWebView2WebResourceContext.All, CoreWebView2WebResourceRequestSourceKinds.All);
+            core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All, CoreWebView2WebResourceRequestSourceKinds.Document | CoreWebView2WebResourceRequestSourceKinds.SharedWorker);
             return Task.CompletedTask;
         });
+        await rig.ListenAsync("Target.targetCreated");
+        await rig.CdpAsync("Target.setDiscoverTargets", new { discover = true });
         await rig.NavigateAsync($"{server.Origin}/workers.html");
         Assert.Equal(200, (await rig.EvaluateAsync("runUploads()")).GetProperty("shared").GetInt32());
+        // The page's own session reports shared workers: the backstop that ends an attachment if one ever appears.
+        await rig.WaitForAsync(item => item.Kind == "cdp" && item.Source == "Target.targetCreated" && item.Text!.Contains("\"type\":\"shared_worker\"", StringComparison.Ordinal), "the shared worker's target");
+
         await rig.NavigateAsync($"{server.Origin}/workers.html");
         Assert.Equal("timeout", (await rig.EvaluateAsync("runUploads()")).GetProperty("shared").GetString());
         Assert.Equal(1, server.Requests.Count(request => request.Path == "/upload?from=shared")); // Nothing was blocked; the request never left.
@@ -239,7 +282,7 @@ public sealed class BrowserParityTests
             try
             {
                 await Task.Delay(500); // The save dialog.
-                rig.Record(new Observation("held", proposed, string.Join(",", Directory.EnumerateFileSystemEntries(rig.DownloadFolder).Select(Path.GetFileName)), false));
+                rig.Record(new Observation("held", proposed, Entries(rig.DownloadFolder), false));
                 e.ResultFilePath = chosen;
                 e.Handled = true;
                 var operation = e.DownloadOperation;
@@ -262,14 +305,39 @@ public sealed class BrowserParityTests
         var held = Assert.Single(rig.Observations, item => item.Kind == "held");
         Assert.Equal(rig.DownloadFolder, Path.GetDirectoryName(held.Source), ignoreCase: true); // The profile's default folder.
         // While held, the download is already being written there as a temporary file, which then moves to the chosen path.
-        Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.tmp$", held.Text);
+        Assert.Matches(TemporaryDownload, held.Text);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(rig.DownloadFolder));
+
+        // Manual control again: the user cancels the save dialog while the download is held, and the temporary file goes too.
+        await rig.NavigateAsync($"{server.Origin}/read");
+        var declined = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        rig.OnDownload = e => _ = DeclineAsync(e);
+        async Task DeclineAsync(CoreWebView2DownloadStartingEventArgs e)
+        {
+            var deferral = e.GetDeferral();
+            try
+            {
+                await Task.Delay(500); // The save dialog, cancelled.
+                rig.Record(new Observation("held-then-declined", e.ResultFilePath, Entries(rig.DownloadFolder), false));
+                e.Cancel = true;
+            }
+            finally
+            {
+                deferral.Complete();
+                declined.TrySetResult();
+            }
+        }
+        await rig.EvaluateAsync(click);
+        await declined.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await Task.Delay(1000, TestContext.Current.CancellationToken);
+        Assert.Matches(TemporaryDownload, Assert.Single(rig.Observations, item => item.Kind == "held-then-declined").Text);
         Assert.Empty(Directory.EnumerateFileSystemEntries(rig.DownloadFolder));
 
         // Without a fresh navigation, another download needs the multiple-downloads permission, which the rig denies.
         await rig.EvaluateAsync(click);
         await rig.WaitForAsync(item => item.Kind == "permission" && item.Text!.StartsWith("MultipleAutomaticDownloads", StringComparison.Ordinal), "the multiple-downloads permission request");
         await Task.Delay(1000, TestContext.Current.CancellationToken);
-        Assert.Equal(2, rig.Observations.Count(item => item.Kind == "download"));
+        Assert.Equal(3, rig.Observations.Count(item => item.Kind == "download"));
         Assert.Equal(["selected-download.txt"], Directory.EnumerateFiles(Path.GetDirectoryName(chosen)!).Select(Path.GetFileName));
         Assert.Empty(Directory.EnumerateFileSystemEntries(rig.DownloadFolder));
     }
@@ -279,12 +347,10 @@ public sealed class BrowserParityTests
     {
         await using var server = new WebServer(BrowserSite.Route);
         await using var rig = await Rig.StartAsync(Pages.All(), Tab);
-        // browser-manager.ts's safeUrl: HTTP or HTTPS, without user information.
-        static bool Unsafe(string uri)
-        {
-            var parsed = new Uri(uri);
-            return parsed.Scheme is not ("http" or "https") || parsed.UserInfo.Length > 0;
-        }
+        // browser-manager.ts's safeUrl on the URL as the browser canonicalized it: HTTP or HTTPS, without user
+        // information. A URL that does not parse counts as unsafe.
+        static bool Unsafe(string uri) =>
+            !Uri.TryCreate(uri, UriKind.Absolute, out var parsed) || parsed.Scheme is not ("http" or "https") || parsed.UserInfo.Length > 0;
         rig.OnNavigation = e =>
         {
             if (Unsafe(e.Uri))
@@ -320,6 +386,12 @@ public sealed class BrowserParityTests
         var second = $"http://user:secret@127.0.0.1:{server.Port}/unsafe-two";
         Assert.False((await rig.NavigateAsync(Redirect(server, second))).IsSuccess);
         Assert.DoesNotContain(server.Requests, request => request.Path == "/unsafe-two");
+
+        // Redirects to a local file or a data URL never load.
+        foreach (var target in new[] { "file:///C:/Windows/win.ini", "data:text/html,redirected" })
+        {
+            Assert.False((await rig.NavigateAsync(Redirect(server, target))).IsSuccess);
+        }
     }
 
     [Fact]
@@ -345,6 +417,23 @@ public sealed class BrowserParityTests
         Assert.False(Assert.Single(server.Requests).Headers.ContainsKey("Authorization"));
     }
 
+    /// <summary>
+    /// The attached-tab body rule. Electron blocked bodies with file or blob parts, and multipart or octet-stream bodies.
+    /// WebView2 does not say where a body came from, so every body without a text-like type is blocked instead.
+    /// </summary>
+    private static bool BlockedWhileAttached(CoreWebView2WebResourceRequest request)
+    {
+        if (request.Content is null)
+        {
+            return false;
+        }
+        var type = request.Headers.Contains("Content-Type") ? request.Headers.GetHeader("Content-Type").Split(';')[0].Trim() : "";
+        return !(type.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("application/json", StringComparison.OrdinalIgnoreCase)
+            || type.EndsWith("+json", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>The protocol returns properties in its own order, so values compare by name.</summary>
     private static void AssertJson(string expected, JsonElement actual)
     {
@@ -359,6 +448,8 @@ public sealed class BrowserParityTests
         _ => element.GetRawText(),
     };
 
+    private static string Entries(string folder) => string.Join(",", Directory.EnumerateFileSystemEntries(folder).Select(Path.GetFileName));
+
     private static string Redirect(WebServer server, string target) => $"{server.Origin}/redirect?to={Uri.EscapeDataString(target)}";
 
     private static int Uploads(WebServer server) => server.Requests.Count(request => request.Path.StartsWith("/upload", StringComparison.Ordinal));
@@ -366,11 +457,6 @@ public sealed class BrowserParityTests
     /// <summary>The source kind the host saw a page's first upload raised as, or null if the host never saw it.</summary>
     private static string? RaisedAs(Rig rig, WebServer server, string from) =>
         rig.Observations.FirstOrDefault(item => item.Kind == "request" && item.Text == $"POST {server.Origin}/upload?from={from}")?.Source;
-
-    /// <summary>Electron's rule: multipart and octet-stream bodies are uploads.</summary>
-    private static bool IsUpload(CoreWebView2WebResourceRequest request) =>
-        request.Headers.Contains("Content-Type")
-        && Regex.IsMatch(request.Headers.GetHeader("Content-Type"), "^(?:multipart/form-data|application/octet-stream)(?:;|$)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
 
     /// <summary>An isolated world in the main frame, created as <c>browser-manager.ts</c> does, with the protocol's spelling.</summary>
     private static async Task<int> IsolatedWorldAsync(Rig rig, string name)

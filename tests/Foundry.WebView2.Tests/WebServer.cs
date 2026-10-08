@@ -17,24 +17,36 @@ internal sealed record WebResponse(int Status, string ContentType, string Body, 
 }
 
 /// <summary>
-/// A minimal HTTP/1.1 server on the loopback address for the browser rig: one request per connection, answered by a
+/// A minimal HTTP/1.1 server on the loopback addresses for the browser rig: one request per connection, answered by a
 /// route function, every request recorded. With TLS it serves a fresh self-signed certificate that no browser trusts.
 /// </summary>
 internal sealed class WebServer : IAsyncDisposable
 {
-    private readonly TcpListener listener = new(IPAddress.Loopback, 0);
+    private const int MaxBody = 16 * 1024 * 1024;
+    private readonly List<TcpListener> listeners = [new(IPAddress.Loopback, 0)];
     private readonly Func<WebRequest, WebResponse> route;
     private readonly X509Certificate2? certificate;
     private readonly CancellationTokenSource stopping = new();
-    private readonly Task accepting;
+    private readonly Task[] accepting;
 
     public WebServer(Func<WebRequest, WebResponse> route, bool tls = false)
     {
         this.route = route;
         certificate = tls ? SelfSigned() : null;
-        listener.Start();
-        Port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        accepting = Task.Run(AcceptAsync);
+        listeners[0].Start();
+        Port = ((IPEndPoint)listeners[0].LocalEndpoint).Port;
+        // localhost may resolve to ::1 first; listening there too spares the browser a refused connection and its retries.
+        var ipv6 = new TcpListener(IPAddress.IPv6Loopback, Port);
+        try
+        {
+            ipv6.Start();
+            listeners.Add(ipv6);
+        }
+        catch (SocketException)
+        {
+            // The port is taken on ::1 or IPv6 is off; the browser falls back to 127.0.0.1.
+        }
+        accepting = [.. listeners.Select(listener => Task.Run(() => AcceptAsync(listener)))];
     }
 
     public int Port { get; }
@@ -49,10 +61,13 @@ internal sealed class WebServer : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await stopping.CancelAsync();
-        listener.Stop();
+        foreach (var listener in listeners)
+        {
+            listener.Stop();
+        }
         try
         {
-            await accepting;
+            await Task.WhenAll(accepting);
         }
         catch (Exception error) when (error is OperationCanceledException or ObjectDisposedException or SocketException)
         {
@@ -61,7 +76,7 @@ internal sealed class WebServer : IAsyncDisposable
         stopping.Dispose();
     }
 
-    private async Task AcceptAsync()
+    private async Task AcceptAsync(TcpListener listener)
     {
         while (!stopping.IsCancellationRequested)
         {
@@ -133,7 +148,12 @@ internal sealed class WebServer : IAsyncDisposable
             .Select(line => line.Split(':', 2))
             .GroupBy(parts => parts[0].Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Last()[1].Trim(), StringComparer.OrdinalIgnoreCase);
-        var body = new byte[headers.TryGetValue("Content-Length", out var length) ? int.Parse(length, System.Globalization.CultureInfo.InvariantCulture) : 0];
+        var size = headers.TryGetValue("Content-Length", out var length) ? int.Parse(length, System.Globalization.CultureInfo.InvariantCulture) : 0;
+        if (size is < 0 or > MaxBody)
+        {
+            return null;
+        }
+        var body = new byte[size];
         await stream.ReadExactlyAsync(body);
         return new WebRequest(start[0], start.Length > 1 ? start[1] : "/", headers, body);
     }
