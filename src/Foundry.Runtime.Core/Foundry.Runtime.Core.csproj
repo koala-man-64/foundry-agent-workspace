@@ -11,8 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Enforces the single-thread RuntimeLoop model; see BannedSymbols.txt. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <!-- Enforces the single-thread RuntimeLoop model; see BannedSymbols.txt. The analyzer comes from src/Directory.Build.props. -->
     <AdditionalFiles Include="BannedSymbols.txt" />
   </ItemGroup>
 </Project>

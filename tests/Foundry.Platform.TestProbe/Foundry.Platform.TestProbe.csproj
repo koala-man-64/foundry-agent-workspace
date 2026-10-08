@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Owns a JobProcess the way Foundry.Runtime.exe will, so Foundry.Platform.Tests can kill the owner. Test-only. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Foundry.Platform\Foundry.Platform.csproj" />
+  </ItemGroup>
+</Project>

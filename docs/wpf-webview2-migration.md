@@ -67,7 +67,7 @@ Foundry.exe  (WPF host, .NET 10)                         Foundry.Runtime.exe  (h
 | Project | Responsibility | May reference |
 |---|---|---|
 | `Foundry.Protocol` | records, validators, framing (byte-capped LineReader), JSON options, `JsJson` (ECMAScript-exact stringify), `Clock.Iso` | — |
-| `Foundry.Platform` | CsWin32 P/Invoke with `unsafe` confined here: `JobProcess`, `FinalPath`, ACL, DPAPI, file primitives | — |
+| `Foundry.Platform` | Hand-written `LibraryImport` P/Invoke with `unsafe` confined here: `JobProcess`, `FinalPath`, `ProtectedDirectory`, `ProtectedSecret` (spike S7) | — |
 | `Foundry.Providers` | Responses / Chat Completions / Anthropic adapters, SSE, shipped fixtures (fake, orchestration, browser) | Protocol |
 | `Foundry.Runtime.Core` | `RuntimeLoop`, `Store`, all runtime modules (namespace `Foundry.Runtime`) | Protocol, Providers, Platform, Microsoft.Data.Sqlite |
 | `Foundry.Runtime` | ~30 LOC stdio entry; builds `Foundry.Runtime.exe` | Runtime.Core |
@@ -82,7 +82,7 @@ The architecture tests read every source `.csproj` and fail on:
 - a project reference outside the allowed graph;
 - `Desktop` or `Host` reaching `Runtime.Core`, `Runtime` or `Providers`, even transitively;
 - `Runtime.Core` or `Runtime` reaching `Host` or `Desktop`, even transitively;
-- WebView2, SQLite or CsWin32 packages outside their owning project;
+- WebView2, SQLite or DPAPI packages outside their owning project;
 - WPF outside `Desktop`, Windows Forms anywhere, unsafe code outside `Platform`, or raw assembly references.
 
 **Root configuration**
@@ -95,7 +95,8 @@ The architecture tests read every source `.csproj` and fail on:
 **Dependencies** (each justified)
 - `Microsoft.Web.WebView2`, exact pin.
 - `Microsoft.Data.Sqlite` 10.0.12 with its default `SQLitePCLRaw.bundle_e_sqlite3` 2.1.12 (SQLite 3.53.3), chosen by spike S8a. It returns better-sqlite3's results on every era fixture, so the newer 3.0.5 bundle is not needed.
-- Build-time only: `Microsoft.Windows.CsWin32`, `Microsoft.CodeAnalysis.BannedApiAnalyzers`.
+- `System.Security.Cryptography.ProtectedData` 10.0.12 (Microsoft, MIT) for DPAPI, confined to `Platform`: the supported wrapper over `CryptProtectData`, rather than marshaling it by hand.
+- Build-time only: `Microsoft.CodeAnalysis.BannedApiAnalyzers`, in every product project. Spike S7 replaced the planned CsWin32 generator with the plan's fallback: eighteen hand-written kernel32 `LibraryImport` declarations, loaded from System32 only, so no generator package is needed.
 - Tests only: xUnit v3, FsCheck.
 - Toasts use the WinRT projection via the `net10.0-windows10.0.19041.0` TFM, with no extra package.
 
@@ -191,9 +192,22 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
   - Case-insensitive matching never maps a non-ASCII character to ASCII, so the Kelvin sign does not match `k`.
   - Neither .NET's default regex nor `RegexOptions.ECMAScript` matches all of this, so `tests/golden/data/redaction.json` is the oracle.
   - A mismatch either leaks a token or quarantines extra MCP servers on adoption (`mcp-config.ts:25-32` clears args and env).
-- **`path_key`** (`store.ts:24-25`):
-  - Computed as `CreateFile(BACKUP_SEMANTICS)` plus `GetFinalPathNameByHandleW(VOLUME_NAME_DOS)`, applying libuv's `\\?\` stripping, then en-US lowercase, with the same fallback.
-  - Checked against a Node-generated corpus: case, 8.3, junction, symlink, subst, UNC, `\\?\`, more than 260 characters, a missing path, non-ASCII, Turkish İ, trailing dot or space.
+- **`path_key`** (`store.ts:24-25`), computed exactly as Node 24 in Electron 44 does (spike S7):
+  - A port of `path.win32.resolve`, then Node's `\\?\` namespacing of drive and UNC paths, applied in C++ before libuv. Trailing dots and spaces are therefore not stripped, and MAX_PATH does not apply.
+  - `CreateFile(BACKUP_SEMANTICS)` plus `GetFinalPathNameByHandleW(VOLUME_NAME_DOS)` with libuv's prefix stripping, falling back to the resolved path.
+  - JavaScript lowercase: ICU full case mapping in the root locale. .NET's `ToLower` maps characters one to one, so it differs for `İ` (JavaScript gives `i̇`) and the final sigma.
+    - The port ships Electron 44's Unicode 17.0 data in `src/Foundry.Platform/EcmaScriptLowercase.json`: 1,488 mappings, plus the Cased and Case_Ignorable sets the final sigma needs. `tests/golden/ecmascript-case.test.ts` generates the file and checks it for drift.
+    - The system ICU is not used, because Windows' ICU 72.1 (Unicode 15.1) lowercases 55 of those code points differently. With pinned tables, keys never move when Windows updates its ICU.
+  - Checked against `scripts/golden-path-key.mjs` under Node 24 on a real tree:
+    - case, `..`, forward slashes, and trailing separators, dots and spaces;
+    - 8.3 names, junctions, symlinks (where they can be created), UNC, `\\?\` and `\\.\` (including a pipe);
+    - paths over 260 characters, missing paths, NUL;
+    - non-ASCII, NFD, Turkish İ and the final sigma.
+    Not covered: subst (a global drive mapping) and drive-relative input, which depends on hidden `=C:` variables.
+  - Scope and containment checks use `FinalPath.TryResolve`. It has the `fs.promises.realpath` semantics of the TypeScript checks and fails closed. `Canonical` and `Key` keep `pathKey`'s lexical fallback.
+  - Residual, inherited from the TypeScript runtime:
+    - Lowercasing can give distinct directories one key, for example the Kelvin sign and `k`, or names in a case-sensitive directory.
+    - Computing a key opens the path, so a UNC path reaches the network.
 - **Schedules**:
   - `resolveLocalInstant` (`automation.ts:548-563`) is ported verbatim on `TimeZoneInfo.GetUtcOffset`. Keys stay `${revision}:${localDate}`. Keep ICU (no `InvariantGlobalization`).
   - Checked against a golden grid from Node: New_York gap and fold, Lord_Howe, Kolkata, Apia, Dublin, Casablanca, and an unknown zone.
@@ -209,7 +223,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 | `entry.ts` | `Foundry.Runtime` (exe) + `StdioTransport` | S / low |
 | `service.ts`, `execution-slots`, `feature-admission` | `RuntimeService`, `RpcRouter` | L / high |
 | `store`, `schema`, `automation-schema`, `continuity-schema`, ledgers, `usage-accounting` | `Runtime.Data` (reuse `Store.recover()` `store.ts:423-464` and `upgradeToCurrent` `store.ts:98-147` semantics verbatim) | L / high |
-| `backup-protection` | `Platform.Acl`: managed, atomic `FileSystemAclExtensions.Create`, same SDDL and verification as `backup-protection.ts:33-40` | S / med |
+| `backup-protection` | `Platform.ProtectedDirectory`: `CreateDirectoryW` with the descriptor, so no inherited-access window exists; the DACL is re-stamped for the auto-inherited flag; same SDDL and verification as `backup-protection.ts:33-40` | S / med |
 | `workspace-queries`, `workspace-operations`, `continuity`, `mcp-config`, `mcp-repair`, `profile-fingerprint` | `Runtime.Queries`, `Operations`, `Continuity` (SQL text reused verbatim) | L / high |
 | `repository`, `git-operations`, `git-environment`, `scope` | `Runtime.Git`, `Runtime.Files` (git CLI via `JobProcess`, `FinalPath`, reparse checks) | XL / high |
 | `command-runner` + `job-runner.ps1` | `Runtime.Exec` + `Platform.JobProcess` | M / high |
@@ -365,9 +379,11 @@ Accepted residuals: UIA invocations bypass the ladder, and screen-reader users c
 ### 7. Credential vault
 
 **Storage**
-- DPAPI `ProtectedData` (CurrentUser), with entropy = SHA-256(id‖binding).
-- Files at `credentials-v2\<uuid>.bin` containing `{value, binding}`. The binding is re-checked after decrypt.
-- Write: `CreateNew` temp file, `Flush(true)`, then `Move(overwrite)`.
+- DPAPI `ProtectedData` (CurrentUser). The entropy is a SHA-256 over a domain tag and the length-prefixed id and binding, so the fields cannot run into each other. `ProtectedSecret` rejects anything but 32 bytes.
+- Files at `credentials-v2\<uuid>.bin` containing `{value, binding}`. The binding is re-checked after decrypt, which also rejects a substituted machine-scoped blob: DPAPI decrypts those too, and entropy binds context without authenticating anything.
+- Write: `ProtectedSecret.WriteAtomically`, which creates a temporary file with `CreateNew`, calls `Flush(true)`, then renames it over the target with a write-through `MoveFileEx`.
+  - The vault verifies its directory before writing.
+  - At startup it sweeps orphaned `.<name>.*.tmp` files.
 - An explicit protected DACL (owner plus SYSTEM) is verified; the vault fails closed if it doesn't hold.
 
 **Handling**
@@ -381,6 +397,9 @@ Accepted residuals: UIA invocations bypass the ladder, and screen-reader users c
 - KILL_ON_JOB_CLOSE, no breakaway.
 - The runtime owns the job handles, so the kernel kills the trees if the runtime dies. This replaces the 50 ms polling.
 - Timeout and cancel go through `TerminateJobObject`. Cleanup counts as verified when `ActiveProcesses==0` within 5 s, as today.
+- Every launch goes through `JobProcess`. `System.Diagnostics.Process` is banned in every product project (`src/BannedSymbols.Launch.txt`). A redirected `Process.Start` inherits every inheritable handle, including the child pipe ends, which `JobProcess` makes inheritable only for the duration of `CreateProcess` (proven in spike S7).
+- `JobProcess` launches only an `.exe` given by a fully qualified path, and rejects NUL in any string. `CreateProcessW` hands `.bat` and `.cmd` files to `cmd.exe`, whose parsing differs from the caller's quoting, so a batch file needs an explicit `cmd.exe` command line with cmd escaping. The MCP configuration already requires an absolute `.exe` (`mcp.ts:300`).
+- "Cleanup verified" means the job is empty. Work handed to COM, WMI, Task Scheduler or a service runs outside any job.
 
 **Commands**
 - Commands keep Windows PowerShell 5.1 and `-EncodedCommand` exactly as reviewed (`command-runner.ts:170-178`).
@@ -517,6 +536,7 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 | S5 | CDP and event parity: isolated worlds, file-chooser interception, `clearDataForOrigin`, request bodies and workers, `NewWindow` opener, `DownloadStarting` deferral, cert/auth denial | Every `browser.spec` scenario reproducible, or the gap recorded with a source-level control |
 | S6 | Toast click activation from the unzipped exe and the installed exe | Works, or the fallback ships |
 | S7 | `JOB_LIST` + `HANDLE_LIST` in a nested job; tree death on runtime kill; decoy handle not inherited; `FinalPath` versus `realpathSync.native`; managed ACL equals the PowerShell SDDL; DPAPI atomic write | Process-cleanup tests (`security-audit.test.ts:799-855`) pass natively; corpus parity |
+| S7 | Result (2026-10-08): `tests/Foundry.Platform.Tests` (62 tests) proves the four `Foundry.Platform` primitives.<br>**`JobProcess`:** the TypeScript cleanup scenarios pass natively: terminate (the timeout and cancel path), a background grandchild after a normal exit, and dispose. Killing a real owner process (`Foundry.Platform.TestProbe`, which stands in for the runtime and runs inside an enclosing job) reclaims its nested tree while the enclosing job stays open. Cleanup verifies within 5 s. A decoy inheritable handle is not inherited, and concurrent launches never share pipe ends; a redirected `Process.Start` does inherit the decoy, so `System.Diagnostics.Process` is banned in all product code.<br>**`FinalPath`:** agrees with Node 24's `pathKey` on every corpus path, and its lowercase agrees with V8 on 1,092 vectors (see `path_key` above).<br>**`ProtectedDirectory`:** its on-disk owner, group and DACL (`D:PAI`) equal the result of `backup-protection.ts`'s PowerShell; extra, deny, uninherited and unprotected rules and junctions fail verification.<br>**`ProtectedSecret`:** an 8 KiB secret round-trips; other entropy, a tampered blob and a non-digest entropy fail; an injected failure and a locked target both keep the old file and leave no temporary file.<br>Removing `HANDLE_LIST` or `KILL_ON_JOB_CLOSE`, or checking cased before case-ignorable for the final sigma, fails the tests meant to catch it.<br>The independent security review (Sonnet, high) returned a conditional GO. Every condition is addressed in this result: the child pipe ends are inheritable only during `CreateProcess`, with the ban widened to all product code; `TryResolve` fails closed for scope checks; entropy must be a digest; the application must be an `.exe` with no NUL; the job closes first on dispose; the lowercase tables are pinned. | Met. **Adopt** the primitives. The interop is hand-written `LibraryImport` (the plan's fallback to CsWin32). The vault's owner-plus-SYSTEM descriptor (section 7) is a P3 parameter; S7 proved the mechanism with the backup descriptor. |
 | S8 | SQLite parity: compile options and version, FTS5, the `json_extract` expression index, ~280 captured statements, `BackupDatabase` on a WAL DB, read-only open with a leftover `-wal`; STJ option set plus the parser-differential corpus | Identical results; backups verify |
 | S8a | Result (2026-10-08): `tests/Foundry.Runtime.Tests` runs every query recorded by `tests/golden/sqlite-engine.test.ts` against copies of all six era fixtures and gets identical rows. Covered: the real search statement, FTS5 `unicode61` (CJK, prefix, accent folding), both index plans (`intents_task_json`, `tasks_root_created`), JSON, number and date functions, and the double-quoted-literal error. Also verified: `BackupDatabase` of a live WAL database, and a read-only open that sees committed WAL pages. The only semantic compile-option difference is `DEFAULT_WAL_SYNCHRONOUS` (FULL versus NORMAL), made moot by the explicit `synchronous=FULL`. better-sqlite3 hands integers above 2^53 to TypeScript rounded, so parity compares numbers as doubles; the runtime stores no such values. The captured-statement replay moves to the P1 Store tests, which execute the real SQL. | Met. **Adopt** Microsoft.Data.Sqlite 10.0.12 with its default bundle. |
 | S8b | Result (2026-10-08): `tests/Foundry.Protocol.Tests` runs all 15 cases in `rpc-wire.json` through the candidate strict reader on both host paths (bridge strings, stdio UTF-8 bytes). Rejected: duplicate keys, `__proto__`, nesting deeper than 32, numeric ids, BOM, trailing comma, comment, `NaN` and top-level arrays, and the three cases this spike decided (`4.0`, `4e0`, lone-surrogate escapes). Accepted: an escaped method name. A test pins why the stdio path checks the BOM explicitly: stream reads skip it. | Met. The corpus records every decision; no case remains open. |

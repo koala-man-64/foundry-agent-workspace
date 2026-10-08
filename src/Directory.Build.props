@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Product code launches processes only through Foundry.Platform.JobProcess (docs/wpf-webview2-migration.md,
+       "Process execution"). Any other launcher in the same process could inherit the pipe ends JobProcess marks
+       inheritable for the moment of launch, so the ban covers every assembly that shares the runtime or host process. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.Launch.txt" />
+  </ItemGroup>
+</Project>

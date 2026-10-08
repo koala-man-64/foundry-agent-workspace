@@ -1,0 +1,2 @@
+T:System.Diagnostics.Process;Launch through Foundry.Platform.JobProcess: Process.Start inherits every inheritable handle and leaves no job
+T:System.Diagnostics.ProcessStartInfo;Launch through Foundry.Platform.JobProcess: Process.Start inherits every inheritable handle and leaves no job

@@ -21,6 +21,9 @@ Each file has the shape `{ "generator": {...}, "content": ... }`. `generator` re
 | `rpc-corpus.json` | For every protocol schema (RPC methods, bridge channels, non-RPC frames): seeds and mutations with zod's verdict, normalized output or issue paths | `Foundry.Protocol` validators (P1 exit gate: 100% agreement) |
 | `sqlite-engine.json` | better-sqlite3's engine identity, compile options and results for the SQL the schema depends on, across all era fixtures | `tests/Foundry.Runtime.Tests` (spike S8a) |
 | `rpc-wire.json` | JSON text where `JSON.parse` and a strict parser can disagree, with the decided host behavior for each case (spike S8b decided the last three). `tests/Foundry.Protocol.Tests` proves it on both host paths. | host and runtime JSON readers |
+| `ecmascript-lowercase.json` | `toLocaleLowerCase('en-US')` for final-sigma contexts, every mapped code point and seeded random strings. Generated only on Unicode 17.0, as in Electron 44. | `EcmaScriptCase` (spike S7) |
+
+`ecmascript-case.test.ts` also generates `src/Foundry.Platform/EcmaScriptLowercase.json` and checks it for drift. It holds the lowercase tables that the C# `path_key` ships, so keys never depend on the system ICU.
 
 Values JSON cannot carry use the tags documented in `encoding.ts`: `$undefined`, `$number` (`-0`, `NaN`, `Infinity`, `-Infinity`), `$utf16` (strings with lone surrogates), `$object` (authored key order), `$repeat` (long single-character strings) and `$blob` (binary data, base64).
 
