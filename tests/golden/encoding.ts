@@ -8,6 +8,7 @@
  * - { "$object": [[key, value], ...] }        an object built from entries in authored order (JavaScript
  *                                             then moves array-index keys first, which JsJson must match)
  * - { "$repeat": [unit, count] }              a long string of one repeated unit (keeps boundary cases small)
+ * - { "$blob": base64 }                       binary data, such as a SQLite BLOB value
  */
 export type Tagged =
   | null | boolean | number | string | Tagged[]
@@ -16,6 +17,7 @@ export type Tagged =
   | { $utf16: number[] }
   | { $object: [string, Tagged][] }
   | { $repeat: [string, number] }
+  | { $blob: string }
   | { [key: string]: Tagged };
 
 const REPEAT_THRESHOLD = 64;
@@ -37,6 +39,8 @@ export function encode(value: unknown): Tagged {
     if (value.length >= REPEAT_THRESHOLD && value === value[0]!.repeat(value.length) && !hasLoneSurrogate(value[0]!)) return { $repeat: [value[0]!, value.length] };
     return hasLoneSurrogate(value) ? { $utf16: Array.from({ length: value.length }, (_, index) => value.charCodeAt(index)) } : value;
   }
+  if (Buffer.isBuffer(value)) return { $blob: value.toString('base64') };
+  if (typeof value === 'bigint') throw new Error('BigInt values are not used by the runtime; refusing to encode one.');
   if (Array.isArray(value)) return Array.from(value, item => encode(item));
   if (typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, encode(item)]));
   throw new Error(`Cannot encode a ${typeof value} value.`);
@@ -50,6 +54,7 @@ export function build(input: Tagged): unknown {
   if ('$number' in input) return input.$number === '-0' ? -0 : Number(input.$number);
   if ('$utf16' in input) return String.fromCharCode(...(input.$utf16 as number[]));
   if ('$repeat' in input) { const [unit, count] = input.$repeat as [string, number]; return unit.repeat(count); }
+  if ('$blob' in input) return Buffer.from(input.$blob as string, 'base64');
   if ('$object' in input) return Object.fromEntries((input.$object as [string, Tagged][]).map(([key, item]) => [key, build(item)]));
   return Object.fromEntries(Object.entries(input).map(([key, item]) => [key, build(item as Tagged)]));
 }

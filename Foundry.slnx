@@ -10,5 +10,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Foundry.Architecture.Tests/Foundry.Architecture.Tests.csproj" />
+    <Project Path="tests/Foundry.Runtime.Tests/Foundry.Runtime.Tests.csproj" />
   </Folder>
 </Solution>

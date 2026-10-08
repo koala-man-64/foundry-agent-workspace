@@ -94,7 +94,7 @@ The architecture tests read every source `.csproj` and fail on:
 
 **Dependencies** (each justified)
 - `Microsoft.Web.WebView2`, exact pin.
-- `Microsoft.Data.Sqlite` plus `SQLitePCLRaw.bundle_e_sqlite3`. The version is chosen by spike S8, so FTS5 and JSON1 match better-sqlite3's SQLite.
+- `Microsoft.Data.Sqlite` 10.0.12 with its default `SQLitePCLRaw.bundle_e_sqlite3` 2.1.12 (SQLite 3.53.3), chosen by spike S8a. It returns better-sqlite3's results on every era fixture, so the newer 3.0.5 bundle is not needed.
 - Build-time only: `Microsoft.Windows.CsWin32`, `Microsoft.CodeAnalysis.BannedApiAnalyzers`.
 - Tests only: xUnit v3, FsCheck.
 - Toasts use the WinRT projection via the `net10.0-windows10.0.19041.0` TFM, with no extra package.
@@ -136,7 +136,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 - `Task.Yield()` appears only at the two JS microtask-deferral sites (`service.ts:515,648`).
 
 **Store**
-- One hidden connection with `Pooling=False`.
+- One hidden connection with `Pooling=False`. It also disables double-quoted string literals (`sqlite3_db_config` `DQS_DML`/`DQS_DDL` = 0), matching better-sqlite3's `DQS=0` build, so a stray `"literal"` stays an error on both engines. The candidate is in `tests/Foundry.Runtime.Tests/CandidateConnection.cs`.
 - Pragmas: `journal_mode=WAL`, `foreign_keys=ON`, `busy_timeout=5000`, and `synchronous=FULL`. FULL is a deliberate durability upgrade so "persist intent first" holds across power loss.
 - Read `user_version` on a read-only connection before touching `journal_mode`. Today `store.ts:35` sets WAL first. Refuse any version newer than current.
 - DDL is copied byte-identical into embedded `.sql` files, applied in today's order (`store.ts:46`), with a SHA-256 manifest test.
@@ -513,6 +513,7 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 | S6 | Toast click activation from the unzipped exe and the installed exe | Works, or the fallback ships |
 | S7 | `JOB_LIST` + `HANDLE_LIST` in a nested job; tree death on runtime kill; decoy handle not inherited; `FinalPath` versus `realpathSync.native`; managed ACL equals the PowerShell SDDL; DPAPI atomic write | Process-cleanup tests (`security-audit.test.ts:799-855`) pass natively; corpus parity |
 | S8 | SQLite parity: compile options and version, FTS5, the `json_extract` expression index, ~280 captured statements, `BackupDatabase` on a WAL DB, read-only open with a leftover `-wal`; STJ option set plus the parser-differential corpus | Identical results; backups verify |
+| S8a | Result (2026-10-08): `tests/Foundry.Runtime.Tests` runs every query recorded by `tests/golden/sqlite-engine.test.ts` against copies of all six era fixtures and gets identical rows. Covered: the real search statement, FTS5 `unicode61` (CJK, prefix, accent folding), both index plans (`intents_task_json`, `tasks_root_created`), JSON, number and date functions, and the double-quoted-literal error. Also verified: `BackupDatabase` of a live WAL database, and a read-only open that sees committed WAL pages. The only semantic compile-option difference is `DEFAULT_WAL_SYNCHRONOUS` (FULL versus NORMAL), made moot by the explicit `synchronous=FULL`. better-sqlite3 hands integers above 2^53 to TypeScript rounded, so parity compares numbers as doubles; the runtime stores no such values. The captured-statement replay moves to the P1 Store tests, which execute the real SQL. | Met. **Adopt** Microsoft.Data.Sqlite 10.0.12 with its default bundle. |
 | S9 | Does `windows-2025` have the WebView2 runtime? Can Playwright `connectOverCDP` attach to both environments? | A green E2E skeleton in CI |
 | S10 | `FileShare.None` probe against a live idle Node holder; Chromium lockfile behavior; `ClearAllPools` and restore on Windows; Inno Setup in CI (preinstalled, or a pinned and hash-verified install) | "Busy" reliably detected; restore works; installer builds |
 
