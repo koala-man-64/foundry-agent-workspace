@@ -1,0 +1,217 @@
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+using Foundry.Platform;
+using Microsoft.Win32;
+using Xunit;
+
+namespace Foundry.WebView2.Tests;
+
+/// <summary>
+/// Spike S2: the plan's lock-down (section 5). Environment variables and policies override the API's arguments, so the
+/// host clears the variables before the first WebView2 call and refuses to start under a policy.
+/// </summary>
+public sealed class LockdownTests
+{
+    private const string Benign = "--disable-background-networking";
+
+    [Fact]
+    public async Task AnEnvironmentVariableOpensADebugPortUnlessTheHostClearsIt()
+    {
+        var port = FreePort();
+        Environment.SetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", $"--remote-debugging-port={port}");
+        try
+        {
+            await using (var exposed = await Rig.StartAsync(Pages.All(), new RigOptions(Benign)))
+            {
+                await exposed.NavigateAsync(Rig.AppUri);
+                var (carried, listening, lines) = await Override(exposed, port);
+                TestContext.Current.TestOutputHelper?.WriteLine($"elevated {Elevated()}: switch carried {carried}, port listening {listening}, API switch kept {lines.Any(line => line.Contains(Benign, StringComparison.Ordinal))}");
+                if (Elevated())
+                {
+                    // An elevated process (a CI runner) does not take the override; the shipped host refuses to run elevated.
+                    Assert.False(carried || listening, $"An elevated process took the override:\n{string.Join("\n", lines)}");
+                }
+                else
+                {
+                    Assert.True(carried && listening, $"With nothing cleared, the variable should override the API arguments and open a debug port:\n{string.Join("\n", lines)}");
+                }
+            }
+
+            Assert.Equal(["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"], Lockdown.ClearEnvironment());
+            await using var locked = await Rig.StartAsync(Pages.All(), new RigOptions(Benign));
+            await locked.NavigateAsync(Rig.AppUri);
+            Assert.False(await Listening(port, attempts: 2), "After the host clears the variable, no debug port may listen.");
+            var cleared = await CommandLines(locked.BrowserProcessId);
+            Assert.NotEmpty(cleared);
+            Assert.Contains(cleared, line => line.Contains(Benign, StringComparison.Ordinal));
+            var forbidden = cleared.SelectMany(line => Lockdown.ForbiddenSwitches.Where(item => line.Contains(item, StringComparison.OrdinalIgnoreCase))).ToList();
+            Assert.True(forbidden.Count == 0, $"Forbidden switches in the browser processes: {string.Join(", ", forbidden)}");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", null);
+        }
+    }
+
+    [Fact]
+    public async Task APolicyOverridesTheApiArgumentsSoTheHostMustRefuseIt()
+    {
+        // Writing a WebView2 policy changes the machine's configuration, so this runs only on an ephemeral CI runner.
+        Assert.SkipUnless(string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.Ordinal), "Writes a WebView2 policy key; runs only on an ephemeral CI runner.");
+        var port = FreePort();
+        const string policyRoot = @"Software\Policies\Microsoft\Edge\WebView2";
+        Assert.Empty(Lockdown.PolicyValues());
+        using (var key = Registry.CurrentUser.CreateSubKey($@"{policyRoot}\AdditionalBrowserArguments"))
+        {
+            key.SetValue(Path.GetFileName(Environment.ProcessPath!), $"--remote-debugging-port={port}");
+        }
+        try
+        {
+            Assert.NotEmpty(Lockdown.PolicyValues()); // What the release host checks before starting.
+            Lockdown.ClearEnvironment();
+            await using var rig = await Rig.StartAsync(Pages.All(), new RigOptions(Benign));
+            await rig.NavigateAsync(Rig.AppUri);
+            var (carried, listening, lines) = await Override(rig, port);
+            TestContext.Current.TestOutputHelper?.WriteLine($"elevated {Elevated()}: switch carried {carried}, port listening {listening}");
+            if (Elevated())
+            {
+                Assert.False(carried || listening, $"An elevated process took the policy's arguments:\n{string.Join("\n", lines)}");
+            }
+            else
+            {
+                Assert.True(carried && listening, $"A policy should override the API arguments even with the variables cleared:\n{string.Join("\n", lines)}");
+            }
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(policyRoot, throwOnMissingSubKey: false);
+        }
+    }
+
+    /// <summary>Whether the debug-port switch reached the browser processes, and whether the port listens.</summary>
+    private static async Task<(bool Carried, bool Listening, List<string> Lines)> Override(Rig rig, int port)
+    {
+        var lines = await CommandLines(rig.BrowserProcessId);
+        var carried = lines.Any(line => line.Contains($"--remote-debugging-port={port}", StringComparison.Ordinal));
+        return (carried, await Listening(port, attempts: carried ? 10 : 2), lines);
+    }
+
+    /// <summary>An elevated token (UAC filters an administrator's token unless the process was elevated).</summary>
+    private static bool Elevated()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
+
+    internal static int FreePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
+    /// <summary>Whether something accepts connections on the loopback port. A refused connect on Windows takes about two
+    /// seconds of retries, so a negative check uses few attempts.</summary>
+    private static async Task<bool> Listening(int port, int attempts = 10)
+    {
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            using var client = new TcpClient();
+            try
+            {
+                await client.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+                return true;
+            }
+            catch (Exception error) when (error is SocketException or TimeoutException)
+            {
+                await Task.Delay(300, TestContext.Current.CancellationToken);
+            }
+        }
+        return false;
+    }
+
+    /// <summary>The browser process's command line and its children's, through WMI in Windows PowerShell.</summary>
+    private static async Task<List<string>> CommandLines(uint browserProcessId)
+    {
+        var powerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+        var script = $"Get-CimInstance Win32_Process -Filter 'ProcessId={browserProcessId} OR ParentProcessId={browserProcessId}' | ForEach-Object {{ $_.CommandLine }} | ConvertTo-Json -Compress";
+        var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in new[] { "SystemRoot", "WINDIR", "PATH", "TEMP", "TMP", "USERPROFILE" })
+        {
+            if (Environment.GetEnvironmentVariable(name) is { } value)
+            {
+                environment[name] = value;
+            }
+        }
+        using var job = JobProcess.Start(new ProcessSpec(powerShell, $"\"{powerShell}\" -NoLogo -NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}", Path.GetTempPath(), environment));
+        await job.StandardInput.DisposeAsync();
+        var output = await new StreamReader(job.StandardOutput).ReadToEndAsync(TestContext.Current.CancellationToken);
+        await job.WaitForExitAsync(TestContext.Current.CancellationToken);
+        using var document = JsonDocument.Parse(output);
+        return document.RootElement.ValueKind == JsonValueKind.Array
+            ? document.RootElement.EnumerateArray().Select(item => item.GetString() ?? string.Empty).ToList()
+            : [document.RootElement.GetString() ?? string.Empty];
+    }
+}
+
+/// <summary>A prototype of the plan's lock-down steps (section 5).</summary>
+internal static class Lockdown
+{
+    public static readonly string[] Variables =
+    [
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "WEBVIEW2_USER_DATA_FOLDER", "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER",
+        "WEBVIEW2_RELEASE_CHANNEL_PREFERENCE", "WEBVIEW2_CHANNEL_SEARCH_KIND",
+    ];
+
+    public static readonly string[] ForbiddenSwitches =
+    [
+        "remote-debugging", "remote-allow-origins", "auto-open-devtools-for-tabs", "disable-web-security", "no-sandbox",
+        "disable-site-isolation-trials", "ignore-certificate-errors", "allow-running-insecure-content", "allow-insecure-localhost",
+        "allow-file-access-from-files", "unsafely-treat-insecure-origin-as-secure", "log-net-log", "net-log-capture-mode",
+        "enable-logging", "proxy-server",
+    ];
+
+    /// <summary>Read and clear every WebView2 override variable before the first WebView2 call; return the names that were set.</summary>
+    public static List<string> ClearEnvironment()
+    {
+        var set = Variables.Where(name => Environment.GetEnvironmentVariable(name) is not null).ToList();
+        foreach (var name in set)
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+        return set;
+    }
+
+    /// <summary>Every value under the WebView2 policy keys in either hive; a release host refuses to start if any exist.</summary>
+    public static List<string> PolicyValues()
+    {
+        var found = new List<string>();
+        foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
+        {
+            using var root = hive.OpenSubKey(@"Software\Policies\Microsoft\Edge\WebView2");
+            if (root is not null)
+            {
+                Collect(root, found);
+            }
+        }
+        return found;
+    }
+
+    private static void Collect(RegistryKey key, List<string> found)
+    {
+        found.AddRange(key.GetValueNames().Select(name => $@"{key.Name}\{name}"));
+        foreach (var child in key.GetSubKeyNames())
+        {
+            using var subKey = key.OpenSubKey(child);
+            if (subKey is not null)
+            {
+                Collect(subKey, found);
+            }
+        }
+    }
+}

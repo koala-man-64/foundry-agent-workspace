@@ -54,7 +54,15 @@ P0 deliverables so far:
   - **Restore hazard.** Copying a backup over a database that a connection still holds succeeds and is then silently undone by that connection's close-time checkpoint, so the rollback runbook now restores by rename. The rename is refused while any holder exists.
   - **Installer.** The `windows-2025` runner compiles a per-user Inno Setup installer with no install step.
 
-Next: the host spikes S2–S6 and S9.
+- Spike S2 (bridge and lock-down), decided. `tests/Foundry.WebView2.Tests` runs a real WebView2 serving the `foundry-app` scheme with header CSP, and a prototype of the plan's gate.
+  - **Gate.** The prototype accepts the app document's well-formed messages and rejects exactly the oversized, malformed, non-string and foreign-origin ones. WebView2 delivers oversized strings whole, so the host enforces the 1 MiB cap.
+  - **CSP.** The header blocks `eval`, inline script and `fetch`.
+  - **Frames and popups.** Frames never reach the host's message handler, and a handled `NewWindowRequested` opens nothing.
+  - **Lock-down.** `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` opens a debug port for a non-elevated host, and clearing the five variables closes it. Elevated processes, including the CI runner's, ignore both the variable and an HKCU policy. The artifact audit's debug-port check must therefore launch non-elevated; the plan records this.
+
+- Spike S9 (CI runner and CDP), decided. The `windows-2025` runner hosts WebView2, and Playwright's `connectOverCDP` attaches to two environments through API-only debug ports. The .NET workflow now installs the locked Node dependencies, so this attach runs on every pull request.
+
+Next: the host spikes S3–S6. S3, S4 and S6 change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
