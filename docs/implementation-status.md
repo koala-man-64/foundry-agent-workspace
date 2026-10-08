@@ -62,7 +62,23 @@ P0 deliverables so far:
 
 - Spike S9 (CI runner and CDP), decided. The `windows-2025` runner hosts WebView2, and Playwright's `connectOverCDP` attaches to two environments through API-only debug ports. The .NET workflow now installs the locked Node dependencies, so this attach runs on every pull request.
 
-Next: the host spikes S3–S6. S3, S4 and S6 change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
+- Spike S5 (integrated-browser parity), decided. `BrowserParityTests` reproduces against real loopback origins what both `browser.spec` scenarios and `browser-manager.ts` rely on:
+  - persistence across a restart;
+  - popup adoption with its opener;
+  - per-origin and whole-profile clearing;
+  - `SNAPSHOT_SCRIPT` run verbatim in an isolated world;
+  - file-chooser interception and the selected-file precheck;
+  - held and cancelled downloads;
+  - certificate and basic-authentication refusal;
+  - upload blocking for documents and dedicated and service workers.
+
+  Four WebView2 differences changed the plan's browser design (section 6):
+  - **Downloads.** Held downloads are written early, so they are staged in a host folder.
+  - **Redirects.** A cancelled redirect has already sent its request, so the redirect guard also runs in a request filter.
+  - **Shared workers.** The shared-worker filter kind stalls shared workers after a reload, so shared-worker uploads are covered by refusing attachment while a shared worker exists.
+  - **`chrome.webview`.** It exists in every tab, so the negative test checks that nothing a tab posts reaches the host.
+
+Next: the host spikes S3, S4 and S6. They change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
