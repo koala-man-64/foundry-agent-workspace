@@ -44,7 +44,12 @@ P0 deliverables so far:
   - The renderer bundle drops from 1,503,829 to 1,289,682 bytes and holds no zod.
   - The golden RPC corpus shows every schema verdict unchanged. All 21 Electron E2E tests pass.
 
-Next: the host spikes S1–S6, S9 and S10.
+- Spike S1 (publish layout), decided.
+  - The runtime starts without WPF.
+  - Two self-contained apphosts can share a folder, but their closures disagree on two files: a facade versus WPF's `WindowsBase.dll`, and the `ProtectedData` package versus WindowsDesktop's copy. Publish's newest-file copy then leaves each app a file its deps.json did not select.
+  - P4 therefore publishes the runtime into its own subfolder: 34 MB more zipped (94 MB in total) for no reconciliation. The plan records sizes and start-up times.
+
+Next: the host spikes S2–S6, S9 and S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
