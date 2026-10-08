@@ -2,6 +2,13 @@
 
 The product baseline is `docs/foundry-agent-workspace-plan.html`. Implementation status and open gates are in `docs/implementation-status.md`; the plan's acceptance criteria are not evidence that a feature exists.
 
+## WPF + WebView2 migration
+
+`docs/wpf-webview2-migration.md` is the approved plan for replacing Electron and Node. Until its P5 cutover, the Electron app and the TypeScript runtime remain the shipping product and the behavioral authority. The plan's acceptance criteria are not evidence that a migration phase exists.
+
+- Protocol and runtime features are frozen except for the plan's planned P4 deltas. Land security and data-loss fixes in both the TypeScript and C# implementations, and list them in `docs/implementation-status.md`.
+- Never open the real application data directory with the .NET runtime before adoption. Use isolated fixtures, or backup-API copies with repository, git and command execution disabled.
+
 ## Boundaries
 
 - `apps/desktop/src/renderer`: React UI only. No Node, filesystem, database, credentials retained in state, direct model calls, or arbitrary IPC.
