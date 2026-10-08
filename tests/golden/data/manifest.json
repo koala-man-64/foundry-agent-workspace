@@ -1,0 +1,79 @@
+{
+  "generator": {"node":"24.14.0","icu":"78.2","tz":"2025c","unicode":"17.0"},
+  "content": [
+    {
+      "name": "single entry",
+      "entries": [
+        {"path":"README.md","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":"README.md","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "b45d7f702ceade15ecf320b7e6cc7d6d90aba6fe0ec2eeeb3f2cb6c828b06acd"
+    },
+    {
+      "name": "uppercase sorts before lowercase",
+      "entries": [
+        {"path":"a.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"B.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":"B.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"a.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "4ecfa9d6c92f3695cc1438422394462dcc9117046659b93a29b5ca9863763d25"
+    },
+    {
+      "name": "hyphen sorts before slash",
+      "entries": [
+        {"path":"dir/a","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"dir-a","status":"A","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":"dir-a","status":"A","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"dir/a","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "6b1c00497da93b33ca33e692122107612b61d373ba074f4c60728a378d274fbe"
+    },
+    {
+      "name": "non-ASCII sorts after ASCII",
+      "entries": [
+        {"path":"é.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"z.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":"z.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"é.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "12bbac7326b634e05506bcd89e736bbc3a2fe6949483dc8f1b922d21c64dfab1"
+    },
+    {
+      "name": "UTF-8 order differs from UTF-16 order",
+      "entries": [
+        {"path":"😀.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":".txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":".txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"😀.txt","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "bbdd5b0878f316f539feb6948a57d2a8fff45dd92f7b71435d8f5a522fb5ab86"
+    },
+    {
+      "name": "all statuses",
+      "entries": [
+        {"path":"d","status":"D","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"t","status":"T","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"a","status":"A","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"m","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sorted": [
+        {"path":"a","status":"A","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"d","status":"D","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"m","status":"M","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"path":"t","status":"T","oldMode":"100644","newMode":"100644","oldBlob":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","newBlob":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "sha256": "90e52991dc304729556471062f1e977f453dc2c9cf8f42b6aa396ee574bf3c91"
+    }
+  ]
+}

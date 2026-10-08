@@ -174,12 +174,18 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
   - `workspace-queries.ts:18`
   - both `profileFingerprint` variants
 - Sort orders that feed a persisted and recompared hash are replicated exactly. Elsewhere use Ordinal: the `localeCompare` sorts at `command-runner.ts:167` and `mcp.ts:345` are session-scoped.
-- Golden vectors are generated from Node in P0, plus a no-ambiguity test.
+  - Handoff manifest entries are sorted by **UTF-8 bytes** (`Buffer.compare`, `git-operations.ts:812`). That is not UTF-16 ordinal, which orders U+E000 after an astral character.
+  - The providers' `profileFingerprint` hashes the WHATWG URL serialization of the endpoint.
+- Golden vectors generated from Node live in `tests/golden/data` (see `tests/golden/README.md`). A no-ambiguity test is still to come.
 
 **Other parity rules**
 - **`Clock.Iso()`**: exactly `yyyy-MM-ddTHH:mm:ss.fffZ`. Text ordering at ~73 sites depends on it.
 - **Collation**: Ordinal for ISO timestamps and UUIDs. Current-culture `CompareInfo` for display-name sorts, with the ICU-version divergence documented. Legacy `toLocaleLowerCase` becomes `ToLowerInvariant`. Title-search SQL is unchanged.
-- **Regex**: `Redactor` and the MCP checks use `RegexOptions.ECMAScript` or explicit ASCII classes, since JS `\b`, `\w` and `\s` are ASCII. Otherwise adoption could quarantine extra MCP servers (`mcp-config.ts:25-32` clears args and env).
+- **Regex**: `Redactor` and the MCP checks reproduce JavaScript semantics with explicit character classes.
+  - In JavaScript, `\b` and `\w` are ASCII, so `ésk-…` is still redacted. `\s`, however, is Unicode: it includes U+00A0 and U+FEFF and excludes U+0085.
+  - Case-insensitive matching never maps a non-ASCII character to ASCII, so the Kelvin sign does not match `k`.
+  - Neither .NET's default regex nor `RegexOptions.ECMAScript` matches all of this, so `tests/golden/data/redaction.json` is the oracle.
+  - A mismatch either leaks a token or quarantines extra MCP servers on adoption (`mcp-config.ts:25-32` clears args and env).
 - **`path_key`** (`store.ts:24-25`):
   - Computed as `CreateFile(BACKUP_SEMANTICS)` plus `GetFinalPathNameByHandleW(VOLUME_NAME_DOS)`, applying libuv's `\\?\` stripping, then en-US lowercase, with the same fallback.
   - Checked against a Node-generated corpus: case, 8.3, junction, symlink, subst, UNC, `\\?\`, more than 260 characters, a missing path, non-ASCII, Turkish İ, trailing dot or space.

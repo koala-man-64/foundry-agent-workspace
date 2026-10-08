@@ -561,3 +561,6 @@ function resolveLocalInstant(formatter: Intl.DateTimeFormat, date: string, time:
   while (low + 1 < high) { const middle = Math.floor((low + high) / 2); if (localStamp(formatter, middle * 60_000) < wall) low = middle; else high = middle; }
   return high * 60_000;
 }
+
+/** Exported only for the WPF migration golden vectors (tests/golden); not a runtime API. */
+export const scheduleInternals = { scheduleFormatter, localStamp, resolveLocalInstant, dueOccurrence } as const;

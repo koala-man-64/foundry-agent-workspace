@@ -1,0 +1,64 @@
+{
+  "generator": {"node":"24.14.0","icu":"78.2","tz":"2025c","unicode":"17.0"},
+  "content": [
+    {"name":"null","input":null,"output":"null","sha256":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"},
+    {"name":"true","input":true,"output":"true","sha256":"b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"},
+    {"name":"false","input":false,"output":"false","sha256":"fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"},
+    {"name":"zero","input":0,"output":"0","sha256":"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"},
+    {"name":"negative zero","input":{"$number":"-0"},"output":"0","sha256":"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"},
+    {"name":"one","input":1,"output":"1","sha256":"6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"},
+    {"name":"minus one","input":-1,"output":"-1","sha256":"1bad6b8cf97131fceab8543e81f7757195fbb1d36b376ee994ad1cf17699c464"},
+    {"name":"one and a half","input":1.5,"output":"1.5","sha256":"9f29a130438b81170b92a42650f9a94291ecad60bd47af2a3886e75f7f728725"},
+    {"name":"binary fraction sum","input":0.30000000000000004,"output":"0.30000000000000004","sha256":"06bad31060c1212ae832de4c031f7b31e3b48aed57858294478cb19450cf34ca"},
+    {"name":"one hundred","input":100,"output":"100","sha256":"ad57366865126e55649ecb23ae1d48887544976efea46a48eb5d85a6eeb4d306"},
+    {"name":"1e20","input":100000000000000000000,"output":"100000000000000000000","sha256":"c344e9487bfbd5c4e03c9fb90d62a5dde5e00b54d55c46e9f4a803aea162b80c"},
+    {"name":"1e21","input":1e+21,"output":"1e+21","sha256":"241c4643fa70b1dcde1205b71be4e3bebb17e9f880c8e1a33d0ead6c27271d3c"},
+    {"name":"1e-6","input":0.000001,"output":"0.000001","sha256":"159fb29a827ad04b260aa6c8ab6d8637f8f2b38af5c4f3cb49d6a21205e040f8"},
+    {"name":"1e-7","input":1e-7,"output":"1e-7","sha256":"5b33e02f2c5103a05d32f6ba9cb058294452bfbf393967f68bb30c1bdcbbab22"},
+    {"name":"1.23e-18","input":1.23e-18,"output":"1.23e-18","sha256":"215795364cea430fa4fdb6c2b3ce62b9c3bf2f6984f946a85c4f501c08077a98"},
+    {"name":"max safe integer","input":9007199254740991,"output":"9007199254740991","sha256":"f40b423c2dd95ff2b2f027e22208f438cf7242862e5e746860e697308c9add26"},
+    {"name":"2^53","input":9007199254740992,"output":"9007199254740992","sha256":"c681da39d7273a6a24c15c9cac3a75526ff2ecf8ba4ee60346a0c70c8163bdb2"},
+    {"name":"2^64","input":18446744073709552000,"output":"18446744073709552000","sha256":"edacbbb2252b28815fa8983aad4682ab7718badd58a7e92c6b65b4292f308225"},
+    {"name":"max value","input":1.7976931348623157e+308,"output":"1.7976931348623157e+308","sha256":"c2784e1abd6317452708f3fbf9641c16b959561bc621a1d408c23a20aa2cb585"},
+    {"name":"min positive value","input":5e-324,"output":"5e-324","sha256":"c46e7ca1be4c8734f373a56530787288fa2058d73d07855e9247e949f811a42a"},
+    {"name":"NaN","input":{"$number":"NaN"},"output":"null","sha256":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"},
+    {"name":"Infinity","input":{"$number":"Infinity"},"output":"null","sha256":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"},
+    {"name":"-Infinity","input":{"$number":"-Infinity"},"output":"null","sha256":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"},
+    {"name":"empty string","input":"","output":"\"\"","sha256":"12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"},
+    {"name":"plain string","input":"plain","output":"\"plain\"","sha256":"945603a8f587786b463c3f94fce115c0fae88fac2728cc96ddf5981cf7f61741"},
+    {"name":"quote and backslash","input":"\"\\","output":"\"\\\"\\\\\"","sha256":"c7061f0fe2692c517003ff6f2a463fc36aab70e30ea6a45f97fcf7b5611aec74"},
+    {"name":"C0 controls","input":"\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f","output":"\"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f\"","sha256":"f144bcffbdbaea0a670956fb0a3edd44ce6bc4dedc77c30cfc14f40034044739"},
+    {"name":"DEL","input":"","output":"\"\"","sha256":"6fe76740e12a93d5598fe685cb6ad3d3c94e44609065a56866b69647772026ec"},
+    {"name":"line and paragraph separators","input":"  ","output":"\"  \"","sha256":"e3a0e2262ac7790f4df36b522a8fbdd4ee3370d568eb15dc25c5f1775f14ed6c"},
+    {"name":"HTML-sensitive characters","input":"<>&'","output":"\"<>&'\"","sha256":"ca5bda9247e326be48b4d7f72e21b9cd3fd7ca4759c510b9c163448eae412b0e"},
+    {"name":"Latin-1","input":"é ñ ü ß","output":"\"é ñ ü ß\"","sha256":"05e3c836ac26186fc748561f46c2ad8e9897e22e0fb44158f44d7f44b94f7ab5"},
+    {"name":"CJK","input":"日本語","output":"\"日本語\"","sha256":"d2b94e6e664483bbf04d80902abc235527ab68cecf488e8abe22112a6dd62bd4"},
+    {"name":"astral emoji","input":"😀","output":"\"😀\"","sha256":"7a0c50b92434b015545fe93ab723db2d4b2cdd14a441405624a9ce8be29f1d5a"},
+    {"name":"byte order mark","input":"﻿","output":"\"﻿\"","sha256":"b839e4168b1e2225296aa76599e3ada57bf459000ffb0a192f211b1eeb23e9a8"},
+    {"name":"lone high surrogate","input":{"$utf16":[55296]},"output":"\"\\ud800\"","sha256":"8c0c59dd0d275aadcd462a5fe12eb352cbdfeaf961eae4f85a4660521df7d2f5"},
+    {"name":"lone low surrogate","input":{"$utf16":[56320]},"output":"\"\\udc00\"","sha256":"353c7370beca95e64c258c908edac60c2ab30d355ca1b5b7fc31c5bce4a4c65a"},
+    {"name":"reversed surrogate pair","input":{"$utf16":[56320,55296]},"output":"\"\\udc00\\ud800\"","sha256":"21b59caaa12b2965ce063778289864b88a44d120c1a47f639d6fb9f6c3ad7a78"},
+    {"name":"high surrogate at end","input":{"$utf16":[97,55357]},"output":"\"a\\ud83d\"","sha256":"3920d6dcb0c6458cc1444c3075fd9f1dc63b0ef3be1966553fe0adc816c18860"},
+    {"name":"empty array","input":[],"output":"[]","sha256":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"},
+    {"name":"nested arrays","input":[1,[2,[3,[]]]],"output":"[1,[2,[3,[]]]]","sha256":"2ae49150ac570d8d71784d5c84619d21a59e217faf3c632b0ef7a5477b61eb4d"},
+    {"name":"undefined in array","input":[{"$undefined":true},1],"output":"[null,1]","sha256":"a6336ae0a33a235e9cca062e513b1dd5583b938f2dbaba32d71383377eb2b523"},
+    {
+      "name": "NaN in array",
+      "input": [
+        {"$number":"NaN"}
+      ],
+      "output": "[null]",
+      "sha256": "1d8fc6ceb1f94c6326d6d5483d258fcb2e179e9869325b245d105c2219bf69fd"
+    },
+    {"name":"empty object","input":{"$object":[]},"output":"{}","sha256":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},
+    {"name":"insertion order kept","input":{"$object":[["b",1],["a",2]]},"output":"{\"b\":1,\"a\":2}","sha256":"a1d46c3cdb4e5795c8d637f80daeb578ebb1a9a65dc1ed5f11f51794c3c89f3a"},
+    {"name":"array-index keys move first","input":{"$object":[["b",1],["2","x"],["1","y"],["a","z"]]},"output":"{\"1\":\"y\",\"2\":\"x\",\"b\":1,\"a\":\"z\"}","sha256":"22dfe6d5e7fa3cc051d875c1104c3fd93d902aca81a18b143c6eb1512fd6850b"},
+    {"name":"non-index numeric keys keep order","input":{"$object":[["b",1],["01","x"],["1.5","y"],["-1","z"],["4294967295","w"],["4294967294","v"]]},"output":"{\"4294967294\":\"v\",\"b\":1,\"01\":\"x\",\"1.5\":\"y\",\"-1\":\"z\",\"4294967295\":\"w\"}","sha256":"a3ab1b6f434e4b7561d20c5dfde16461d2d845378a3f202822d8e2a2fef33a8e"},
+    {"name":"undefined property omitted","input":{"$object":[["a",{"$undefined":true}],["b",1]]},"output":"{\"b\":1}","sha256":"eb8ed3ccb5023093b56f490a46501e88d09736687e609fdbc1c71b3df8b9ccd3"},
+    {"name":"null property kept","input":{"$object":[["a",null]]},"output":"{\"a\":null}","sha256":"d091f9c83c091f79652fe8786375b3fe4ce0861a56f5bfbafedbe431877ff0e8"},
+    {"name":"NaN property becomes null","input":{"$object":[["a",{"$number":"NaN"}]]},"output":"{\"a\":null}","sha256":"d091f9c83c091f79652fe8786375b3fe4ce0861a56f5bfbafedbe431877ff0e8"},
+    {"name":"keys needing escapes","input":{"$object":[["quo\"te",1],["new\nline",2],["😀",3],[" ",4]]},"output":"{\"quo\\\"te\":1,\"new\\nline\":2,\"😀\":3,\" \":4}","sha256":"7d9dad57f34ae8d2ad9e1b3724a9c0d01619b61684f43eb8905c22b2b34e75e2"},
+    {"name":"nested objects and arrays","input":{"$object":[["outer",{"$object":[["z",[{"$object":[["k","v"]]}]],["a",{"$undefined":true}]]}],["n",-0.5]]},"output":"{\"outer\":{\"z\":[{\"k\":\"v\"}]},\"n\":-0.5}","sha256":"58e5035c2be85bbe8a2770e5c8235cbc76f543a11445bc147ab691b4c014334c"},
+    {"name":"top-level undefined","input":{"$undefined":true},"output":null,"sha256":null}
+  ]
+}
