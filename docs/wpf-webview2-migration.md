@@ -156,7 +156,12 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 - This fixes publish-inside-transaction at `orchestrator.ts:333,374,467,475,484`, a documented intentional divergence.
 
 **JSON**
-- Incoming RPC uses strict records: `UnmappedMemberHandling.Disallow`, MaxDepth 32, duplicate keys rejected, and UUIDs kept as strings checked by a strict regex. Validators reproduce zod's `.default()`, `.trim()` and int semantics.
+- Incoming RPC uses strict records: `UnmappedMemberHandling.Disallow`, `MaxDepth` 32, duplicate keys rejected (`AllowDuplicateProperties = false`, available in .NET 10), and UUIDs kept as strings checked by a strict regex. Validators reproduce zod's `.default()` and `.trim()` semantics.
+  - Spike S8b decided the parser differentials, and both boundaries (bridge strings and stdio bytes) reject:
+    - integers written as `4.0` or `4e0`. Only canonical spellings are accepted; JSON.stringify never emits these, although zod would accept the integer 4.
+    - lone-surrogate escapes (malformed UTF-16), which JSON.parse would keep.
+    - a leading byte order mark. The span reader rejects it, but stream reads skip it, so the framing checks it explicitly.
+  - The candidate options are in `tests/Foundry.Protocol.Tests/CandidateJson.cs`.
 - Persisted documents (`tasks.data`, `intents.data`, approvals) use a round-trip-preserving `JsonNode` or `[JsonExtensionData]`, so unmodeled properties survive `saveTask` (`store.ts:195`).
 - Provider continuation blobs stay raw.
 
@@ -514,6 +519,7 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 | S7 | `JOB_LIST` + `HANDLE_LIST` in a nested job; tree death on runtime kill; decoy handle not inherited; `FinalPath` versus `realpathSync.native`; managed ACL equals the PowerShell SDDL; DPAPI atomic write | Process-cleanup tests (`security-audit.test.ts:799-855`) pass natively; corpus parity |
 | S8 | SQLite parity: compile options and version, FTS5, the `json_extract` expression index, ~280 captured statements, `BackupDatabase` on a WAL DB, read-only open with a leftover `-wal`; STJ option set plus the parser-differential corpus | Identical results; backups verify |
 | S8a | Result (2026-10-08): `tests/Foundry.Runtime.Tests` runs every query recorded by `tests/golden/sqlite-engine.test.ts` against copies of all six era fixtures and gets identical rows. Covered: the real search statement, FTS5 `unicode61` (CJK, prefix, accent folding), both index plans (`intents_task_json`, `tasks_root_created`), JSON, number and date functions, and the double-quoted-literal error. Also verified: `BackupDatabase` of a live WAL database, and a read-only open that sees committed WAL pages. The only semantic compile-option difference is `DEFAULT_WAL_SYNCHRONOUS` (FULL versus NORMAL), made moot by the explicit `synchronous=FULL`. better-sqlite3 hands integers above 2^53 to TypeScript rounded, so parity compares numbers as doubles; the runtime stores no such values. The captured-statement replay moves to the P1 Store tests, which execute the real SQL. | Met. **Adopt** Microsoft.Data.Sqlite 10.0.12 with its default bundle. |
+| S8b | Result (2026-10-08): `tests/Foundry.Protocol.Tests` runs all 15 cases in `rpc-wire.json` through the candidate strict reader on both host paths (bridge strings, stdio UTF-8 bytes). Rejected: duplicate keys, `__proto__`, nesting deeper than 32, numeric ids, BOM, trailing comma, comment, `NaN` and top-level arrays, and the three cases this spike decided (`4.0`, `4e0`, lone-surrogate escapes). Accepted: an escaped method name. A test pins why the stdio path checks the BOM explicitly: stream reads skip it. | Met. The corpus records every decision; no case remains open. |
 | S9 | Does `windows-2025` have the WebView2 runtime? Can Playwright `connectOverCDP` attach to both environments? | A green E2E skeleton in CI |
 | S10 | `FileShare.None` probe against a live idle Node holder; Chromium lockfile behavior; `ClearAllPools` and restore on Windows; Inno Setup in CI (preinstalled, or a pinned and hash-verified install) | "Busy" reliably detected; restore works; installer builds |
 

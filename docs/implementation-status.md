@@ -22,7 +22,9 @@ P0 deliverables so far:
 
 - Spike S8a (SQLite parity), adopted. Microsoft.Data.Sqlite 10.0.12 (SQLite 3.53.3) returns better-sqlite3 13.0.3's (SQLite 3.53.4) results for every recorded query on all six fixtures. That includes the real search SQL, FTS5, both expression and descending indexes, and JSON, number and date functions. A live WAL database backs up and verifies, and read-only opens see WAL pages. `tests/Foundry.Runtime.Tests` keeps the parity under test; the decision is recorded in the plan.
 
-Next: S8b (strict JSON reader options), S7 (Win32 primitives), the trace recorder, the zod-free limits module, and the host spikes S1–S6, S9 and S10.
+- Spike S8b (strict JSON reader), decided. Both host boundaries reject non-canonical integers (`4.0`, `4e0`), lone-surrogate escapes and a leading BOM, in addition to the plan's duplicate-key, depth and unknown-property rules. `tests/Foundry.Protocol.Tests` proves all 15 wire cases on the bridge-string and stdio-byte paths. `rpc-wire.json` now records a decision for every case.
+
+Next: S7 (Win32 primitives; it blocks P1, together with the now-complete S8), the trace recorder, the zod-free limits module, and the host spikes S1–S6, S9 and S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

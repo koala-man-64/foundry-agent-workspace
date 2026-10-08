@@ -19,8 +19,9 @@ Each file has the shape `{ "generator": {...}, "content": ... }`. `generator` re
 | `redaction.json` | `Redactor` output, including JavaScript regex semantics: `\b` and `\w` are ASCII, `\s` is Unicode | redaction port |
 | `mcp-config.json` | MCP admission: forbidden and reserved environment names, secret-screened fields | MCP configuration port |
 | `rpc-corpus.json` | For every protocol schema (RPC methods, bridge channels, non-RPC frames): seeds and mutations with zod's verdict, normalized output or issue paths | `Foundry.Protocol` validators (P1 exit gate: 100% agreement) |
-| `rpc-wire.json` | JSON text where `JSON.parse` and a strict parser can disagree. `host` is the decided host behavior; `decide in S8` cases are fixed by spike S8. | host and runtime JSON readers |
+| `sqlite-engine.json` | better-sqlite3's engine identity, compile options and results for the SQL the schema depends on, across all era fixtures | `tests/Foundry.Runtime.Tests` (spike S8a) |
+| `rpc-wire.json` | JSON text where `JSON.parse` and a strict parser can disagree, with the decided host behavior for each case (spike S8b decided the last three). `tests/Foundry.Protocol.Tests` proves it on both host paths. | host and runtime JSON readers |
 
-Values JSON cannot carry use the tags documented in `encoding.ts`: `$undefined`, `$number` (`-0`, `NaN`, `Infinity`, `-Infinity`), `$utf16` (strings with lone surrogates), `$object` (authored key order) and `$repeat` (long single-character strings).
+Values JSON cannot carry use the tags documented in `encoding.ts`: `$undefined`, `$number` (`-0`, `NaN`, `Infinity`, `-Infinity`), `$utf16` (strings with lone surrogates), `$object` (authored key order), `$repeat` (long single-character strings) and `$blob` (binary data, base64).
 
 `path_key` values depend on the machine, so they are not checked in. The C# port runs `scripts/golden-path-key.mjs`, which reads a JSON array of paths on stdin, against a scratch tree, and compares the keys. `path-key.test.ts` proves that the script still matches the runtime's `pathKey`.
