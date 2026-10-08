@@ -49,7 +49,12 @@ P0 deliverables so far:
   - Two self-contained apphosts can share a folder, but their closures disagree on two files: a facade versus WPF's `WindowsBase.dll`, and the `ProtectedData` package versus WindowsDesktop's copy. Publish's newest-file copy then leaves each app a file its deps.json did not select.
   - P4 therefore publishes the runtime into its own subfolder: 34 MB more zipped (94 MB in total) for no reconciliation. The plan records sizes and start-up times.
 
-Next: the host spikes S2–S6, S9 and S10.
+- Spike S10 (exclusion, restore, installer), decided.
+  - **Exclusion signals.** The `FileShare.None` probe reads the database, WAL and shared memory as busy while an idle TypeScript runtime holds them, without changing them. Electron's Chromium `lockfile` is held while the app runs, so both signals are verified.
+  - **Restore hazard.** Copying a backup over a database that a connection still holds succeeds and is then silently undone by that connection's close-time checkpoint, so the rollback runbook now restores by rename. The rename is refused while any holder exists.
+  - **Installer.** The `windows-2025` runner compiles a per-user Inno Setup installer with no install step.
+
+Next: the host spikes S2–S6 and S9.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
