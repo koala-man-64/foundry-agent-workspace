@@ -16,8 +16,9 @@ P0 deliverables so far:
 - `BannedSymbols.txt` enforcing the runtime loop model. Each of its 41 entries was shown to fire with a temporary probe.
 - `Foundry.Architecture.Tests` enforcing the dependency graph and trust boundaries. Injected violations were shown to fail.
 - The `.NET build` workflow: locked restore, build with warnings as errors, and test on every pull request.
+- Golden vectors (`tests/golden`) that pin TypeScript behavior for the port: `JSON.stringify` edges and hashes, both profile fingerprints, UTF-8-ordered handoff manifests, schedule gaps and folds, redaction regex semantics, and MCP admission. The RPC corpus covers 99 schemas (RPC methods, bridge channels and non-RPC frames) with 4,149 seeded and mutated cases and zod's verdicts, plus 15 wire-level parser cases. The unit tests fail on drift. `scripts/golden-path-key.mjs` mirrors `pathKey` for machine-local cross-language checks and is proven equal to the runtime's.
 
-Next: Node-generated golden vectors and the RPC corpus, fixture databases, the trace recorder, the zod-free limits module, and spikes S1–S10.
+Next: fixture databases, the trace recorder, the zod-free limits module, and spikes S1–S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

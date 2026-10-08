@@ -1,0 +1,54 @@
+{
+  "generator": {"node":"24.14.0","icu":"78.2","tz":"2025c","unicode":"17.0"},
+  "content": {
+    "secrets": ["hunter2-correct-horse","quote\"back\\slash\nnewline-secret","ünïcødé-sëcret"],
+    "cases": [
+      {"input":"before hunter2-correct-horse after","output":"before [REDACTED] after"},
+      {"input":"json quote\\\"back\\\\slash\\nnewline-secret","output":"json [REDACTED]"},
+      {"input":"json twice quote\\\\\\\"back\\\\\\\\slash\\\\nnewline-secret","output":"json twice [REDACTED]"},
+      {"input":"unicode ünïcødé-sëcret","output":"unicode [REDACTED]"},
+      {"input":"too short abc","output":"too short abc"},
+      {"input":"-----BEGIN RSA PRIVATE KEY-----\nMIIB\n-----END RSA PRIVATE KEY----- tail","output":"[REDACTED PRIVATE KEY] tail"},
+      {"input":"-----BEGIN PRIVATE KEY-----\nunterminated to end of input","output":"[REDACTED PRIVATE KEY]"},
+      {"input":"sk-abcdefghijklmnop","output":"[REDACTED]"},
+      {"input":"sk-bcdefghijklmnop","output":"sk-bcdefghijklmnop"},
+      {"input":"ésk-abcdefghijklmnop","output":"é[REDACTED]"},
+      {"input":"_sk-abcdefghijklmnop","output":"_sk-abcdefghijklmnop"},
+      {"input":"sk-abcdefghijklmnopé","output":"[REDACTED]é"},
+      {"input":"x sk-abcdefghijklmnop-_ y","output":"x [REDACTED] y"},
+      {"input":"ghp_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"gho_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"ghu_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"ghs_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"ghr_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"ghx_abcdefghijklmnopabcd","output":"ghx_abcdefghijklmnopabcd"},
+      {"input":"github_pat_abcdefghijklmnopabcd","output":"[REDACTED]"},
+      {"input":"Authorization: Bearer abc.def","output":"Authorization: Bearer [REDACTED]"},
+      {"input":"authorization=bearer  xyz","output":"authorization=bearer  [REDACTED]"},
+      {"input":"AUTHORIZATION:token123","output":"AUTHORIZATION:[REDACTED]"},
+      {"input":"Authorization: Bearer nbsp-token","output":"Authorization: Bearer [REDACTED]"},
+      {"input":"Authorization:﻿bom-token","output":"Authorization:﻿[REDACTED]"},
+      {"input":"Authorization:nel-token","output":"Authorization:[REDACTED]"},
+      {"input":"Authorization: ls-token","output":"Authorization: [REDACTED]"},
+      {"input":"api_key=abc","output":"api_key=[REDACTED]"},
+      {"input":"api-key: abc","output":"api-key: [REDACTED]"},
+      {"input":"apikey=abc","output":"apikey=[REDACTED]"},
+      {"input":"API_KEY = abc","output":"API_KEY = [REDACTED]"},
+      {"input":"password=hunter","output":"password=[REDACTED]"},
+      {"input":"Password=hunter","output":"Password=[REDACTED]"},
+      {"input":"pAsSwOrD=hunter","output":"pAsSwOrD=[REDACTED]"},
+      {"input":"client_secret: shh","output":"client_secret: [REDACTED]"},
+      {"input":"access_token=tok,next","output":"access_token=[REDACTED],next"},
+      {"input":"password=value;next","output":"password=[REDACTED];next"},
+      {"input":"password=\"quoted\"","output":"password=\"quoted\""},
+      {"input":"password='single'","output":"password='single'"},
+      {"input":"password=a b","output":"password=[REDACTED] b"},
+      {"input":"api_Key=kelvin","output":"api_Key=kelvin"},
+      {"input":"éapi_key=x","output":"éapi_key=[REDACTED]"},
+      {"input":"bearer abcdefghijklmnop","output":"bearer [REDACTED]"},
+      {"input":"Bearer abcdefghijklmnop==","output":"bearer [REDACTED]"},
+      {"input":"bearer bcdefghijklmnop","output":"bearer bcdefghijklmnop"},
+      {"input":"bearer abcdefghijklmnop","output":"bearer [REDACTED]"}
+    ]
+  }
+}
