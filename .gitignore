@@ -17,3 +17,6 @@ obj/
 .vs/
 *.user
 TestResults/
+
+# Fixture databases for the WPF migration (scripts/fixtures/generate-fixture-databases.mjs).
+!tests/fixtures/databases/**
