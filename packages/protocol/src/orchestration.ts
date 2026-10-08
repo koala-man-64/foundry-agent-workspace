@@ -1,25 +1,7 @@
 import { z } from 'zod';
+import { ORCHESTRATION_LIMITS } from './limits';
 
-/**
- * Shared, tested orchestration bounds. Store, runtime and renderer use these
- * constants; nothing in repository text or model output can raise them.
- */
-export const ORCHESTRATION_LIMITS = {
-  maxAssignmentRevisions: 8,
-  maxAdmittedChildren: 2,
-  childSummariesPerPage: 8,
-  eventsPerPage: 50,
-  summaryTextBytes: 4 * 1024,
-  childReportBytes: 16 * 1024,
-  responseBytes: 256 * 1024,
-  maxScopePaths: 32,
-  maxDependencies: 8,
-  maxAcceptanceItems: 16,
-  maxChildProfiles: 4,
-  protectedCoordinatorPercent: 20,
-  budgetWarningPercent: 80,
-  patchBytes: 128 * 1024
-} as const;
+export { ORCHESTRATION_LIMITS };
 
 /**
  * Coordinated mode is enabled after the approved increments passed local tests, E2E, packaged smoke

@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { CHANNEL_LIMITS } from './limits';
 
-export const CHANNEL_LIMITS = { messageBytes: 2048, pageSize: 20, participants: 50, messagesPerTask: 1000 } as const;
+export { CHANNEL_LIMITS };
 export const ChannelMessageInput = z.object({
   recipientTaskId: z.string().uuid().nullable().default(null),
   content: z.string().trim().min(1).max(CHANNEL_LIMITS.messageBytes).refine(value => new TextEncoder().encode(value).length <= CHANNEL_LIMITS.messageBytes, 'Message exceeds the UTF-8 byte limit.')

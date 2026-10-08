@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { CHANNEL_LIMITS, type ChannelView, type DesktopApi } from '../../../../packages/protocol/src/index';
+import type { ChannelView, DesktopApi } from '../../../../packages/protocol/src/index';
+import { CHANNEL_LIMITS } from '../../../../packages/protocol/src/limits';
 
 export function AgentChannelPanel({ api, taskId }: { api: DesktopApi; taskId: string }): React.JSX.Element {
   const [view, setView] = useState<ChannelView>();
