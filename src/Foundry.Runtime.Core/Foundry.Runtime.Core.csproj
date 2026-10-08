@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The runtime library. Foundry.Runtime (the exe) owns the assembly name Foundry.Runtime. -->
+    <RootNamespace>Foundry.Runtime</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Protocol\Foundry.Protocol.csproj" />
+    <ProjectReference Include="..\Foundry.Providers\Foundry.Providers.csproj" />
+    <ProjectReference Include="..\Foundry.Platform\Foundry.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Enforces the single-thread RuntimeLoop model; see BannedSymbols.txt. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Protocol\Foundry.Protocol.csproj" />
+  </ItemGroup>
+</Project>

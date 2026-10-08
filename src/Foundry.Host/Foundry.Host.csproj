@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Non-WPF host policy: RuntimeSupervisor, BridgeGate, vault, browser policy. No WPF or WebView2 here. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Protocol\Foundry.Protocol.csproj" />
+    <ProjectReference Include="..\Foundry.Platform\Foundry.Platform.csproj" />
+  </ItemGroup>
+</Project>

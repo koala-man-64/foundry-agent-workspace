@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Every dependency is listed and justified in docs/wpf-webview2-migration.md ("Dependencies"). -->
+  <ItemGroup Label="Build-time analyzers">
+    <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
+  </ItemGroup>
+
+  <!-- xunit.v3 runs on Microsoft.Testing.Platform (global.json "test.runner"); no VSTest packages are needed. -->
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+</Project>

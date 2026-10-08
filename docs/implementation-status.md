@@ -1,13 +1,23 @@
 # Implementation status
 
-## WPF + WebView2 migration — approved plan, not started
+## WPF + WebView2 migration — phase P0 in progress
 
 Recorded 8 October 2026. The [migration plan](wpf-webview2-migration.md) replaces Electron and Node with three parts, delivered in a single cutover:
 - a WPF host on .NET 10;
 - WebView2 hosting the existing React UI;
 - a C# runtime.
 
-**No migration code exists yet.** The Electron application and the TypeScript runtime remain the product and the behavioral authority. Phase P0 (foundations and spikes S1–S10) is next.
+**No product behavior has moved.** The Electron application and the TypeScript runtime remain the product and the behavioral authority.
+
+P0 deliverables so far:
+- The approved plan (#12).
+- The .NET solution skeleton (`Foundry.slnx`): the seven projects of the plan's layout, with placeholder entry points that exit non-zero; `global.json` (SDK 10.0.300, no roll-forward); central package management; lock files restored in locked mode in CI; nuget.org-only source mapping; NuGet audit with warnings as errors.
+- Culture-sensitive string analyzers (CA1304, CA1305, CA1309, CA1310, CA1311) as errors.
+- `BannedSymbols.txt` enforcing the runtime loop model. Each of its 41 entries was shown to fire with a temporary probe.
+- `Foundry.Architecture.Tests` enforcing the dependency graph and trust boundaries. Injected violations were shown to fail.
+- The `.NET build` workflow: locked restore, build with warnings as errors, and test on every pull request.
+
+Next: Node-generated golden vectors and the RPC corpus, fixture databases, the trace recorder, the zod-free limits module, and spikes S1–S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Win32 primitives (JobProcess, FinalPath, ACL, DPAPI). The only project that may enable unsafe code. -->
+</Project>

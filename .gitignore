@@ -10,3 +10,10 @@ playwright-report/
 /qualification-report.json
 .env*
 !.env.example
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+TestResults/
