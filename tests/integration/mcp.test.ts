@@ -112,6 +112,10 @@ describe('MCP servers under runtime policy', () => {
     await expect(runtime.dispatch('mcp.save', config({ key: 'other', command: 'node' }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('absolute path') });
     await expect(runtime.dispatch('mcp.save', config({ key: 'fixture', id: randomUUID() }))).rejects.toThrow('already uses the key');
     await expect(runtime.dispatch('mcp.save', config({ key: 'env', environment: { API_KEY: 'x' } }))).rejects.toThrow('not permitted');
+    // Network paths are refused before any realpath or stat (decision 8). Loopback shares, so a regression fails fast.
+    await expect(runtime.dispatch('mcp.save', config({ key: 'unc-command', command: '\\\\127.0.0.1\\foundry-unc-test\\server.exe' }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('command must not be on a network share') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'unc-cwd', cwd: '//127.0.0.1/foundry-unc-test' }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('working directory must not be on a network share') });
+    await expect(runtime.dispatch('mcp.save', config({ key: 'unc-argument', arguments: ['\\\\?\\UNC\\127.0.0.1\\foundry-unc-test\\script.js'] }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not reference network shares') });
     const worktreeRoot = join(directory, 'worktrees');
     await mkdir(worktreeRoot, { recursive: true });
     await expect(runtime.dispatch('mcp.save', config({ key: 'worktree-cwd', cwd: worktreeRoot }))).resolves.toMatchObject({ tools: [], lastError: expect.stringContaining('must not live inside app-owned worktrees') });

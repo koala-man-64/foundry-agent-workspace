@@ -16,6 +16,7 @@ import { WorkspaceOperations } from './workspace-operations';
 import { admitRequest, measuredUsage, type MeasuredUsage, type ResponseMetadata } from './usage-accounting';
 import { dirname, isAbsolute, join } from 'node:path';
 import { statSync } from 'node:fs';
+import { isNetworkOrDevicePath } from './network-path';
 import type { BrowserHost } from '../../protocol/src/index';
 import { profileFingerprint } from './profile-fingerprint';
 export { profileFingerprint } from './profile-fingerprint';
@@ -208,7 +209,10 @@ export class RuntimeService {
         this.store.requireProjects();
         const raw = (params as { path: string }).path;
         if (!isAbsolute(raw)) throw new Error('Select an absolute folder path.');
+        // Before canonicalPath or stat: touching a network path makes Windows authenticate to its server.
+        if (isNetworkOrDevicePath(raw)) throw new Error('Projects on network shares are not supported.');
         const path = canonicalPath(raw);
+        if (isNetworkOrDevicePath(path)) throw new Error('Projects on network drives are not supported.');
         if (!statSync(path).isDirectory()) throw new Error('Select a folder.');
         const previous = this.store.projectByPath(path);
         if (previous) return previous;
@@ -297,6 +301,9 @@ export class RuntimeService {
       }
       case 'task.create': {
         const p = params as { title: string; projectPath: string; profileId: string; tokenBudget: number; mode: 'chat' | 'coding' | 'coordinated'; coordination?: CoordinationConfig };
+        // Before canonicalPath or Git: touching a network path makes Windows authenticate to its server.
+        if (isNetworkOrDevicePath(p.projectPath)) throw new Error('Projects on network shares are not supported.');
+        if (isNetworkOrDevicePath(canonicalPath(p.projectPath))) throw new Error('Projects on network drives are not supported.');
         const selected = this.store.profile(p.profileId);
         if (!selected) throw new Error('Select an existing model profile.');
         if (p.mode !== 'coordinated' && p.coordination) throw new Error('Coordination settings apply only to coordinated tasks.');

@@ -8,6 +8,7 @@ import type { McpServerConfig, McpTool, ToolDefinition } from '../../protocol/sr
 import type { StoredMcpServer } from './mcp-config';
 import { LineDecoder } from '../../protocol/src/framing';
 import { Redactor } from './redaction';
+import { isNetworkOrDevicePath } from './network-path';
 
 /**
  * Model Context Protocol (stdio) under the runtime's execution policy.
@@ -298,6 +299,10 @@ export class McpManager {
   /** Secret screening of stored values happens when the configuration is authored; a launch re-checks only the filesystem facts. */
   private async validate(config: McpServerConfig, screenSecrets: boolean): Promise<void> {
     if (!path.isAbsolute(config.command) || !/\.exe$/i.test(config.command)) throw new McpError('The server command must be an absolute path to an .exe file; pass scripts as arguments to their interpreter.');
+    // Before any realpath or stat: touching a network path makes Windows authenticate to its server.
+    if (isNetworkOrDevicePath(config.command)) throw new McpError('The server command must not be on a network share.');
+    if (config.cwd && isNetworkOrDevicePath(config.cwd)) throw new McpError('The server working directory must not be on a network share.');
+    if (config.arguments.some(argument => path.isAbsolute(argument) && isNetworkOrDevicePath(argument))) throw new McpError('Server arguments must not reference network shares.');
     const command = await fs.realpath(config.command).catch(() => { throw new McpError('The server command was not found.'); });
     if (!(await fs.stat(command)).isFile()) throw new McpError('The server command must be a file.');
     const forbidden = await Promise.all((this.options.forbiddenRoots?.() ?? []).map(async root => {

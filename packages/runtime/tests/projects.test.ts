@@ -46,6 +46,17 @@ describe('saved projects and first-send creation', () => {
     expect(snapshot.projects[0]).toMatchObject({ kind: 'unavailable', unavailableReason: expect.any(String) });
   });
 
+  it('refuses network-share projects before touching the filesystem (decision 8)', async () => {
+    // Loopback shares, so a regression fails fast instead of reaching another host. The message proves the check ran
+    // before canonicalization: a resolved network path reports "network drives".
+    for (const path of ['\\\\127.0.0.1\\foundry-unc-test\\notes', '//127.0.0.1/foundry-unc-test/notes', '\\\\?\\UNC\\127.0.0.1\\foundry-unc-test\\notes', '\\??\\UNC\\127.0.0.1\\foundry-unc-test\\notes']) {
+      await expect(runtime.dispatch('project.add', { path })).rejects.toThrow('Projects on network shares are not supported.');
+      await expect(runtime.dispatch('task.create', { title: 'Network', projectPath: path, profileId: FAKE_PROFILE_ID, tokenBudget: 100000, mode: 'chat' })).rejects.toThrow('Projects on network shares are not supported.');
+    }
+    expect((store.db.prepare('SELECT COUNT(*) AS count FROM intents').get() as { count: number }).count).toBe(0);
+    expect((await runtime.dispatch('workspace.summary', {}) as { projects: Project[] }).projects).toEqual([]);
+  });
+
   it('keeps same-named folders distinct and rejects invalid preference references', async () => {
     const other = join(directory, 'other', 'notes'); await mkdir(other, { recursive: true });
     const first = await runtime.dispatch('project.add', { path: folder }) as Project;

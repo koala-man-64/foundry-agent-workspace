@@ -96,7 +96,11 @@ These program rules hold until the P5 cutover:
 - The .NET runtime never opens the real data directory before adoption.
 
 Dual-landed fixes:
-- Refusing UNC project paths (plan decision 8) is approved. It lands in the TypeScript runtime first, then in the C# runtime when that is ported.
+- **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
+  - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
+  - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
+  - **Mapped drives:** a project whose canonical path is a network drive is refused.
+  - **Saved projects:** projects saved earlier keep working.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |

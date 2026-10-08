@@ -6,6 +6,7 @@ import type { Store } from './store';
 import type { Redactor } from './redaction';
 import { POWERSHELL_LAUNCHER_SHA256, sha256File, WindowsHookRunner, type HookExecutor } from './hook-runner';
 import { ToolArguments } from './tool-definitions';
+import { isNetworkOrDevicePath } from './network-path';
 
 type RegistrationRow = { registration: ScriptRegistration; revision: ScriptRevision };
 type EventSource = Pick<WorkspaceEvent, 'sequence' | 'type' | 'taskId' | 'createdAt' | 'data'>;
@@ -140,6 +141,7 @@ export class AutomationService {
     if (Buffer.byteLength(JSON.stringify(registration.source), 'utf8') > 128 * 1024) throw new Error('Hook source exceeds the serialized review limit.');
     if (registration.language === 'powershell' && registration.source.startsWith('\uFEFF')) throw new Error('PowerShell source must omit a transport BOM; the runtime adds it to the pinned snapshot.');
     if (!this.script(registration.id) && (this.store.db.prepare('SELECT COUNT(*) AS count FROM automation_scripts').get() as { count: number }).count >= 100) throw new Error('At most 100 scripts may be registered.');
+    if (isNetworkOrDevicePath(registration.cwd)) throw new Error('Hook working directory must not be on a network share.');
     if (!path.isAbsolute(registration.cwd) || !(await fs.stat(registration.cwd).catch(() => undefined))?.isDirectory()) throw new Error('Hook working directory must be an existing absolute directory.');
     const interpreter = await (this.options.resolveInterpreter ?? defaultInterpreter)(registration.language);
     const realInterpreter = await fs.realpath(interpreter.path);

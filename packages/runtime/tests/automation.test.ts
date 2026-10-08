@@ -333,6 +333,14 @@ describe('automation authority and recovery', () => {
     expect(automation.view().drafts).toHaveLength(3);
   });
 
+  it('refuses a hook working directory on a network share before touching it (decision 8)', async () => {
+    // Loopback shares, so a regression fails fast; a stat of a missing share would report a different message.
+    for (const cwd of ['\\\\127.0.0.1\\foundry-unc-test', '//127.0.0.1/foundry-unc-test', '\\\\?\\UNC\\127.0.0.1\\foundry-unc-test']) {
+      await expect(automation.dispatch('automation.script.register', { ...script(), cwd })).rejects.toThrow('Hook working directory must not be on a network share.');
+    }
+    expect(automation.view().scripts).toHaveLength(0);
+  });
+
   it('rejects hook source above the UTF-8 byte budget even when its character count fits', async () => {
     await expect(automation.dispatch('automation.script.register', { ...script(), source: '😀'.repeat(20_000) })).rejects.toThrow('64 KiB');
     await expect(automation.dispatch('automation.script.register', { ...script(), source: '\u0000'.repeat(40_000) })).rejects.toThrow('serialized review limit');
