@@ -151,8 +151,9 @@ internal sealed class Rig : IAsyncDisposable
         // The registration exists only if passed to the constructor; the property is null otherwise.
         var environmentOptions = new CoreWebView2EnvironmentOptions(options.AdditionalBrowserArguments,
             customSchemeRegistrations: [new CoreWebView2CustomSchemeRegistration(Scheme) { TreatAsSecure = true, HasAuthorityComponent = true }]);
-        var environment = await CoreWebView2Environment.CreateAsync(browserExecutableFolder: null, UserDataFolder, environmentOptions);
-        controller = await environment.CreateCoreWebView2ControllerAsync(handle);
+        // Bounded, so that a machine that cannot host WebView2 fails the test instead of hanging the run.
+        var environment = await CoreWebView2Environment.CreateAsync(browserExecutableFolder: null, UserDataFolder, environmentOptions).WaitAsync(TimeSpan.FromSeconds(60));
+        controller = await environment.CreateCoreWebView2ControllerAsync(handle).WaitAsync(TimeSpan.FromSeconds(60));
         controller.Bounds = new System.Drawing.Rectangle(0, 0, 640, 480);
         BrowserProcessId = Core.BrowserProcessId;
 

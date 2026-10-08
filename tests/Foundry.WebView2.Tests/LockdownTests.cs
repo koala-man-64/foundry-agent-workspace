@@ -75,7 +75,7 @@ public sealed class LockdownTests
         }
     }
 
-    private static int FreePort()
+    internal static int FreePort()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
