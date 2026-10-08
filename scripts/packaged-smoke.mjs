@@ -9,6 +9,7 @@ import { setTimeout, clearTimeout } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
 import console from 'node:console';
 import { verifyExpansion } from './expansion-smoke.mjs';
+import { traceRuntime } from './runtime-trace.mjs';
 
 const directory = await mkdtemp(join(tmpdir(), 'foundry-package-smoke-'));
 const executable = resolve('release/win-unpacked/Foundry Agent Workspace.exe');
@@ -19,9 +20,13 @@ for (const key of ['SystemRoot', 'PATH', 'TEMP', 'TMP', 'LOCALAPPDATA', 'USERPRO
 const VALIDATION = { command: "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)", cwd: '', timeoutMs: 60000 };
 let child; let exit; let errors = ''; let sequence = 0; let watchdog; let failure;
 const pending = new Map();
+// FOUNDRY_RUNTIME_TRACE=<prefix> records each runtime launch to a new <prefix>.<n>.jsonl for the migration's differential
+// tests; use a git-ignored location such as test-results/traces/smoke.
+const traces = [];
 const launchRuntime = () => {
   const launched = spawn(executable, [runtime], { env: environment, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   child = launched;
+  if (process.env.FOUNDRY_RUNTIME_TRACE) traces.push(traceRuntime(launched, `${process.env.FOUNDRY_RUNTIME_TRACE}.${traces.length + 1}.jsonl`, { roots: [directory] }));
   let buffer = '';
   launched.stdout.setEncoding('utf8'); launched.stderr.setEncoding('utf8');
   launched.stdin.on('error', error => { errors += `Runtime stdin failed: ${error.message}\n`; });
@@ -234,6 +239,10 @@ try {
       try { await exit; } finally { clearTimeout(stopTimer); }
     }
   } catch (error) { failure ??= error; console.error('Runtime shutdown failed:', error); }
+  for (const trace of traces) {
+    const traceError = trace.close();
+    if (traceError) { failure ??= traceError; console.error('Runtime trace failed:', traceError); }
+  }
   try { await rm(directory, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 }); }
   catch (error) { failure ??= error; console.error(`Fixture cleanup failed; retained at ${directory}:`, error); }
 }
