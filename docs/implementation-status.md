@@ -18,7 +18,9 @@ P0 deliverables so far:
 - The `.NET build` workflow: locked restore, build with warnings as errors, and test on every pull request.
 - Golden vectors (`tests/golden`) that pin TypeScript behavior for the port: `JSON.stringify` edges and hashes, both profile fingerprints, UTF-8-ordered handoff manifests, schedule gaps and folds, redaction regex semantics, and MCP admission. The RPC corpus covers 99 schemas (RPC methods, bridge channels and non-RPC frames) with 4,149 seeded and mutated cases and zod's verdicts, plus 15 wire-level parser cases. The unit tests fail on drift. `scripts/golden-path-key.mjs` mirrors `pathKey` for machine-local cross-language checks and is proven equal to the runtime's.
 
-Next: fixture databases, the trace recorder, the zod-free limits module, and spikes S1–S10.
+- Fixture databases (`tests/fixtures/databases`): six real databases written by each schema era’s own runtime (`f75d1ed`, `2b42bb7`, `cdec0a3`, `0212982`, current main), driven over stdio through one shared profile and each era’s confirmed upgrade, so later fixtures hold every earlier era’s row shapes. They include an abruptly stopped v5 with an uncheckpointed WAL and a response in flight. Each fixture’s `expected-after-open.json` pins what the current `Store` changes on open (the `user_version` stamp, the DDL that re-runs on every open, and `recover()`’s transitions); the unit tests keep it current. Paths come from a name-free scratch root, and the generator rejects any output containing the user name or profile path.
+
+Next: the trace recorder, the zod-free limits module, and spikes S1–S10 (S7 and S8 block P1).
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
