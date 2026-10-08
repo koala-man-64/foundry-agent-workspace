@@ -1,6 +1,6 @@
 # WPF + WebView2 migration plan (.NET 10)
 
-**Status:** approved 2026-10-08. Phase P0 has not started, and no migration code exists yet. Electron remains the shipping product until the P5 cutover. Progress and gates are tracked in [implementation-status.md](implementation-status.md).
+**Status:** approved 2026-10-08; phase P0 is in progress. No product behavior has moved yet. Electron remains the shipping product until the P5 cutover. Progress and gates are tracked in [implementation-status.md](implementation-status.md).
 
 ## Context
 
@@ -69,14 +69,21 @@ Foundry.exe  (WPF host, .NET 10)                         Foundry.Runtime.exe  (h
 | `Foundry.Protocol` | records, validators, framing (byte-capped LineReader), JSON options, `JsJson` (ECMAScript-exact stringify), `Clock.Iso` | — |
 | `Foundry.Platform` | CsWin32 P/Invoke with `unsafe` confined here: `JobProcess`, `FinalPath`, ACL, DPAPI, file primitives | — |
 | `Foundry.Providers` | Responses / Chat Completions / Anthropic adapters, SSE, shipped fixtures (fake, orchestration, browser) | Protocol |
-| `Foundry.Runtime` | `RuntimeLoop`, `Store`, all runtime modules | Protocol, Providers, Platform, Microsoft.Data.Sqlite |
-| `Foundry.Runtime.Exe` | ~30 LOC stdio entry; builds `Foundry.Runtime.exe` | Runtime |
+| `Foundry.Runtime.Core` | `RuntimeLoop`, `Store`, all runtime modules (namespace `Foundry.Runtime`) | Protocol, Providers, Platform, Microsoft.Data.Sqlite |
+| `Foundry.Runtime` | ~30 LOC stdio entry; builds `Foundry.Runtime.exe` | Runtime.Core |
 | `Foundry.Host` | non-WPF policy: `RuntimeSupervisor`, `BridgeGate`, vault, browser policy/state machine, preferences | Protocol, Platform |
 | `Foundry.Desktop` | WPF shell, WebView2 adapters (`IBrowserSurface`, the only new abstraction), embedded `ui/dist`; builds `Foundry.exe` | Host |
 
-Test projects: `Protocol.Tests`, `Platform.Tests`, `Runtime.Tests`, `Host.Tests`, `Conformance`, and `Architecture.Tests`. The architecture tests use reflection and assert:
-- `Desktop` does not reference `Runtime` or `Providers`.
-- `Runtime` does not reference `WebView2` or `Host`.
+The runtime library is `Foundry.Runtime.Core` because the `Foundry.Runtime.exe` entry point owns the assembly name `Foundry.Runtime`; two assemblies with one name would collide in a shared publish folder.
+
+Test projects: `Protocol.Tests`, `Platform.Tests`, `Runtime.Tests`, `Host.Tests`, `Conformance`, and `Architecture.Tests`. Each is added with its first code. They use xunit.v3 on Microsoft.Testing.Platform; `global.json` opts `dotnet test` into that runner, so no VSTest packages are needed.
+
+The architecture tests read every source `.csproj` and fail on:
+- a project reference outside the allowed graph;
+- `Desktop` or `Host` reaching `Runtime.Core`, `Runtime` or `Providers`, even transitively;
+- `Runtime.Core` or `Runtime` reaching `Host` or `Desktop`, even transitively;
+- WebView2, SQLite or CsWin32 packages outside their owning project;
+- WPF outside `Desktop`, Windows Forms anywhere, unsafe code outside `Platform`, or raw assembly references.
 
 **Root configuration**
 - `global.json`: SDK 10.0.x, `rollForward: disable`.
@@ -110,12 +117,19 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 
 ## Component design
 
-### 1. Runtime execution model (`Foundry.Runtime`). Today's atomicity comes from Node's single thread.
+### 1. Runtime execution model (`Foundry.Runtime.Core`). Today's atomicity comes from Node's single thread.
 
 **RuntimeLoop.** One dedicated thread runs a FIFO `SynchronizationContext` (`Send` throws). The stdin reader posts each line, and each handler is its own task, as in `entry.ts:84-95`. All state lives on the loop and continuations return to it, so code between awaits stays atomic. Seat C counted about 45–60 dependent sites: admission gates, per-task flags, `ExecutionSlots`, the `waiting` approval map and ~40 synchronous transactions.
 
 **Enforcement**
-- BannedApiAnalyzers bans `ConfigureAwait(false)`, `lock`, `.Result`/`.Wait()`, `async void`, `System.Threading.Timer`, and `DateTime.ToString("O")`.
+- BannedApiAnalyzers (`src/Foundry.Runtime.Core/BannedSymbols.txt`) bans:
+  - every `ConfigureAwait` overload;
+  - blocking waits (`.Result`, `.Wait()`, `GetAwaiter().GetResult()`);
+  - `Task.Run`, `Task.Factory`, `ThreadPool`, `Parallel` and `Thread`, so work goes through `Offload()` and the loop owns its thread with a local suppression;
+  - `Task.Yield`, allowed only at the two deferral sites with a local suppression;
+  - both timer types, `Monitor` and `Lock`;
+  - `DateTime`/`DateTimeOffset.ToString(format)`.
+- The `lock` statement and `async void` are language constructs that an analyzer list cannot name. An architecture test scans the runtime sources for them.
 - CA1305, CA1309 and CA1310 are errors, and the default thread culture is invariant.
 - `Store` and the ledgers assert `RuntimeLoop.IsCurrent`.
 - `Offload()` (Task.Run returning plain data) is allowed only for state-free CPU or blocking work.
@@ -181,7 +195,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 
 | TS module(s) | C# target | Size / risk |
 |---|---|---|
-| `entry.ts` | `Runtime.Exe` + `StdioTransport` | S / low |
+| `entry.ts` | `Foundry.Runtime` (exe) + `StdioTransport` | S / low |
 | `service.ts`, `execution-slots`, `feature-admission` | `RuntimeService`, `RpcRouter` | L / high |
 | `store`, `schema`, `automation-schema`, `continuity-schema`, ledgers, `usage-accounting` | `Runtime.Data` (reuse `Store.recover()` `store.ts:423-464` and `upgradeToCurrent` `store.ts:98-147` semantics verbatim) | L / high |
 | `backup-protection` | `Platform.Acl`: managed, atomic `FileSystemAclExtensions.Create`, same SDDL and verification as `backup-protection.ts:33-40` | S / med |

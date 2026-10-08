@@ -1,0 +1,41 @@
+M:System.Threading.Tasks.Task.ConfigureAwait(System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.Task.ConfigureAwait(System.Threading.Tasks.ConfigureAwaitOptions);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.Task`1.ConfigureAwait(System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.Task`1.ConfigureAwait(System.Threading.Tasks.ConfigureAwaitOptions);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.ValueTask.ConfigureAwait(System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.ValueTask`1.ConfigureAwait(System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.TaskAsyncEnumerableExtensions.ConfigureAwait(System.IAsyncDisposable,System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+M:System.Threading.Tasks.TaskAsyncEnumerableExtensions.ConfigureAwait``1(System.Collections.Generic.IAsyncEnumerable{``0},System.Boolean);RuntimeLoop: continuations must resume on the loop thread
+P:System.Threading.Tasks.Task`1.Result;RuntimeLoop: a blocking wait deadlocks the loop thread
+P:System.Threading.Tasks.ValueTask`1.Result;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait(System.Int32);RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan);RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait(System.Threading.CancellationToken);RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait(System.Int32,System.Threading.CancellationToken);RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan,System.Threading.CancellationToken);RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Runtime.CompilerServices.ValueTaskAwaiter.GetResult;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Runtime.CompilerServices.ValueTaskAwaiter`1.GetResult;RuntimeLoop: a blocking wait deadlocks the loop thread
+M:System.Threading.Tasks.Task.Run(System.Action);RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run(System.Action,System.Threading.CancellationToken);RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run(System.Func{System.Threading.Tasks.Task});RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run(System.Func{System.Threading.Tasks.Task},System.Threading.CancellationToken);RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run``1(System.Func{``0});RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run``1(System.Func{``0},System.Threading.CancellationToken);RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run``1(System.Func{System.Threading.Tasks.Task{``0}});RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Run``1(System.Func{System.Threading.Tasks.Task{``0}},System.Threading.CancellationToken);RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+P:System.Threading.Tasks.Task.Factory;RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+M:System.Threading.Tasks.Task.Yield;RuntimeLoop: allowed only at the two JavaScript microtask-deferral sites, with a local suppression
+T:System.Threading.ThreadPool;RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+T:System.Threading.Tasks.Parallel;RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
+T:System.Threading.Thread;RuntimeLoop: only RuntimeLoop owns a thread, with a local suppression
+T:System.Threading.Timer;RuntimeLoop: use loop timers so callbacks run on the loop thread
+T:System.Timers.Timer;RuntimeLoop: use loop timers so callbacks run on the loop thread
+T:System.Threading.Monitor;RuntimeLoop: state is loop-affine; locks hide affinity bugs
+T:System.Threading.Lock;RuntimeLoop: state is loop-affine; locks hide affinity bugs
+M:System.DateTime.ToString(System.String);Persisted timestamps use Clock.Iso (exactly three fractional digits)
+M:System.DateTime.ToString(System.String,System.IFormatProvider);Persisted timestamps use Clock.Iso (exactly three fractional digits)
+M:System.DateTimeOffset.ToString(System.String);Persisted timestamps use Clock.Iso (exactly three fractional digits)
+M:System.DateTimeOffset.ToString(System.String,System.IFormatProvider);Persisted timestamps use Clock.Iso (exactly three fractional digits)

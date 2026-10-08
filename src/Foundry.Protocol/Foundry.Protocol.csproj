@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Records, validators, framing, JsJson and Clock.Iso. References nothing else in the solution. -->
+</Project>

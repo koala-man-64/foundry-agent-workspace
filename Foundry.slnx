@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Foundry.Desktop/Foundry.Desktop.csproj" />
+    <Project Path="src/Foundry.Host/Foundry.Host.csproj" />
+    <Project Path="src/Foundry.Platform/Foundry.Platform.csproj" />
+    <Project Path="src/Foundry.Protocol/Foundry.Protocol.csproj" />
+    <Project Path="src/Foundry.Providers/Foundry.Providers.csproj" />
+    <Project Path="src/Foundry.Runtime.Core/Foundry.Runtime.Core.csproj" />
+    <Project Path="src/Foundry.Runtime/Foundry.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Foundry.Architecture.Tests/Foundry.Architecture.Tests.csproj" />
+  </Folder>
+</Solution>

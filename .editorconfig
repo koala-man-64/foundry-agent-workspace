@@ -1,0 +1,10 @@
+root = true
+
+[*.cs]
+# Culture-sensitive string operations are errors: persisted keys, hashes and orderings
+# must not depend on the machine culture (docs/wpf-webview2-migration.md, "Other parity rules").
+dotnet_diagnostic.CA1304.severity = error
+dotnet_diagnostic.CA1305.severity = error
+dotnet_diagnostic.CA1309.severity = error
+dotnet_diagnostic.CA1310.severity = error
+dotnet_diagnostic.CA1311.severity = error
