@@ -507,6 +507,7 @@ export class RuntimeService {
   private fileRoot(task: Task): string {
     if (isGitTask(task)) return task.worktreePath;
     if (task.workspaceKind === 'folder') {
+      if (isNetworkOrDevicePath(task.projectPath)) throw new Error('Projects on network shares are not supported.');
       const same = process.platform === 'win32'
         ? canonicalPath(task.projectPath).toLowerCase() === task.projectPath.toLowerCase()
         : canonicalPath(task.projectPath) === task.projectPath;
@@ -549,6 +550,7 @@ export class RuntimeService {
     if (p.projectId && !project) throw new Error('Project not found.');
     if (project?.hidden) throw new Error('Restore this project before starting a chat.');
     if (project) {
+      if (isNetworkOrDevicePath(project.path)) throw new Error('Projects on network shares are not supported.');
       try {
         if (!statSync(project.path).isDirectory()) throw new Error();
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;

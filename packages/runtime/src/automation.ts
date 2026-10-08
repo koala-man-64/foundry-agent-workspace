@@ -351,6 +351,8 @@ export class AutomationService {
     if (count.count >= grant.maxRunsPer24h) { this.setRun(run, 'cancelled', 'Trust grant daily run limit reached.'); return; }
     this.scriptBusy = true;
     try {
+      // Registrations saved before network paths were refused are re-checked before anything touches their files.
+      if (isNetworkOrDevicePath(row.registration.cwd)) { this.setRun(run, 'cancelled', 'Hook working directory must not be on a network share.'); return; }
       await this.validateRevision(row);
       const currentGrant = this.grantFor(row.revision.id);
       if (!currentGrant || Date.parse(currentGrant.expiresAt) <= this.now().getTime()) { this.setRun(run, 'cancelled', 'Trust grant was revoked or expired.'); return; }

@@ -198,7 +198,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
 - **Network paths (decision 8):** UNC, device and NT-namespace paths from the renderer are refused before anything touches the filesystem.
   - **Where:** project folders (`project.add`, `task.create`), hook working directories, and MCP server commands, working directories and absolute arguments (`network-path.ts`).
   - **Mapped drives:** a project whose canonical path is a network drive is refused too.
-  - **Saved projects:** projects saved before the fix keep working; the user chose their server.
+  - **Saved before the fix:** a project or task saved on a share is reported unavailable and never probed, and Git operations on it are refused. Hooks and MCP servers saved with network paths are refused at launch.
   - **Port:** the TypeScript tests' cases carry over to the C# runtime.
 - **`path_key`** (`store.ts:24-25`), computed exactly as Node 24 in Electron 44 does (spike S7):
   - A port of `path.win32.resolve`, then Node's `\\?\` namespacing of drive and UNC paths, applied in C++ before libuv. Trailing dots and spaces are therefore not stripped, and MAX_PATH does not apply.
@@ -215,7 +215,7 @@ Explicitly not added: EF Core, a DI container or Generic Host, a logging framewo
   - Scope and containment checks use `FinalPath.TryResolve`. It has the `fs.promises.realpath` semantics of the TypeScript checks and fails closed. `Canonical` and `Key` keep `pathKey`'s lexical fallback.
   - Residual, inherited from the TypeScript runtime:
     - Lowercasing can give distinct directories one key, for example the Kelvin sign and `k`, or names in a case-sensitive directory.
-    - Computing a key opens the path. Renderer-supplied network paths are refused first (decision 8), so only saved project paths and mapped drives still reach the network, and those name servers the user chose.
+    - Computing a key opens the path. Network paths are refused before that (decision 8); only a mapped drive still resolves through the network, to a server the user chose.
 - **Schedules**:
   - `resolveLocalInstant` (`automation.ts:548-563`) is ported verbatim on `TimeZoneInfo.GetUtcOffset`. Keys stay `${revision}:${localDate}`. Keep ICU (no `InvariantGlobalization`).
   - Checked against a golden grid from Node: New_York gap and fold, Lord_Howe, Kolkata, Apia, Dublin, Casablanca, and an unknown zone.

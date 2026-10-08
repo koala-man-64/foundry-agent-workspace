@@ -2,6 +2,7 @@ import { execFile as execFileCallback } from 'node:child_process';
 import { randomUUID, createHash } from 'node:crypto';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { isNetworkOrDevicePath } from './network-path';
 import { promisify } from 'node:util';
 import { gitEnvironment } from './git-environment';
 
@@ -905,6 +906,7 @@ export class GitOperations {
 
   private async requireRoot(candidate: string): Promise<string> {
     if (!candidate || !path.isAbsolute(candidate)) throw new Error('Path must be an absolute path.');
+    if (isNetworkOrDevicePath(candidate)) throw new Error('Projects on network shares are not supported.');
     const root = await fs.realpath(candidate);
     const stat = await fs.stat(root);
     if (!stat.isDirectory() || path.basename(root).toLowerCase() === '.git') throw new Error('Path must be a working directory.');

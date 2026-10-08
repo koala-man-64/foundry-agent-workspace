@@ -341,6 +341,20 @@ describe('automation authority and recovery', () => {
     expect(automation.view().scripts).toHaveLength(0);
   });
 
+  it('cancels a run whose saved working directory is on a network share before touching it (decision 8)', async () => {
+    const registration = script();
+    const revision = await automation.dispatch('automation.script.register', registration) as { id: string };
+    await automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: '2026-09-28T15:00:00.000Z', maxRunsPer24h: 100 });
+    // A registration saved before network paths were refused.
+    const stored = store.db.prepare('SELECT data FROM automation_scripts WHERE id = ?').get(registration.id) as { data: string };
+    const row = JSON.parse(stored.data) as { registration: ScriptRegistration };
+    row.registration.cwd = '\\\\127.0.0.1\\foundry-unc-test';
+    store.db.prepare('UPDATE automation_scripts SET data = ? WHERE id = ?').run(JSON.stringify(row), registration.id);
+    await automation.onEvent(store.event('task.completed', {}, undefined));
+    expect(executor.calls).toHaveLength(0);
+    expect(automation.view().runs).toEqual([expect.objectContaining({ state: 'cancelled', detail: 'Hook working directory must not be on a network share.' })]);
+  });
+
   it('rejects hook source above the UTF-8 byte budget even when its character count fits', async () => {
     await expect(automation.dispatch('automation.script.register', { ...script(), source: '😀'.repeat(20_000) })).rejects.toThrow('64 KiB');
     await expect(automation.dispatch('automation.script.register', { ...script(), source: '\u0000'.repeat(40_000) })).rejects.toThrow('serialized review limit');
