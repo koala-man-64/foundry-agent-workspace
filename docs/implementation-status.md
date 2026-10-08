@@ -39,7 +39,12 @@ P0 deliverables so far:
   - Two traced runs diverge after 139 normalized records: polls observe racing states, concurrent children interleave events, and the event count varies. P2's differential traces therefore need deterministic scenarios; the plan records this.
   - The independent review (Sonnet, high, from its definition) returned NO-GO on the first version. The findings were redaction gaps for malformed, batched and encoded frames; tap failures that could reach the driver; and a listener that changed when the driver read. All are fixed. Tests inject each case, and mutations show that each test fails without its fix.
 
-Next: the zod-free limits module and the host spikes S1–S6, S9 and S10.
+- The zod-free limits module (`packages/protocol/src/limits.ts`). It imports nothing and holds the three values the renderer used from the protocol package: `CHANNEL_LIMITS`, `ORCHESTRATION_LIMITS` and `supportedEfforts`. The zod modules build on it and re-export it, so the package's public API is unchanged.
+  - An ESLint rule keeps every other renderer import from the protocol type-only.
+  - The renderer bundle drops from 1,503,829 to 1,289,682 bytes and holds no zod.
+  - The golden RPC corpus shows every schema verdict unchanged. All 21 Electron E2E tests pass.
+
+Next: the host spikes S1–S6, S9 and S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

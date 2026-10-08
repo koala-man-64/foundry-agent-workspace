@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, McpStatusPage, ModelProfile, ProbeResult, Project, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
-import { ORCHESTRATION_LIMITS, supportedEfforts } from '../../../../packages/protocol/src/index';
+import { ORCHESTRATION_LIMITS, supportedEfforts } from '../../../../packages/protocol/src/limits';
 import { CoordinatedTaskView } from './Orchestration';
 import { AgentChannelPanel } from './AgentChannel';
 import { McpSettings } from './McpSettings';

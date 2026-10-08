@@ -1,14 +1,9 @@
 import { z } from 'zod';
+import { EFFORTS, supportedEfforts } from './limits';
 
-export const EffortSchema = z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+export const EffortSchema = z.enum(EFFORTS);
 export type Effort = z.infer<typeof EffortSchema>;
-export function supportedEfforts(apiKind: string): Effort[] {
-  if (apiKind === 'responses') return [...EffortSchema.options];
-  // Azure max effort is Responses-only; deployment-specific support still requires probing.
-  if (apiKind === 'chat-completions') return EffortSchema.options.filter(effort => effort !== 'max');
-  if (apiKind === 'anthropic') return ['low', 'medium', 'high', 'xhigh', 'max'];
-  return [];
-}
+export { supportedEfforts };
 // SQLite stores canonical UTC strings; normalize RPC offsets before comparisons.
 const Timestamp = z.iso.datetime({ offset: true }).transform(value => new Date(value).toISOString());
 export const UsageFiltersSchema = z.object({
