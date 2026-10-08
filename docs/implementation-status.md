@@ -34,7 +34,12 @@ P0 deliverables so far:
 
   S7 and S8, the two spikes that gate P1 code, are now both complete.
 
-Next: the trace recorder, the zod-free limits module, and the host spikes S1–S6, S9 and S10.
+- The stdio trace recorder (`scripts/runtime-trace.mjs`) taps a driver's runtime child from inside the driver. It records both directions, stderr and exit as JSON lines, never writes credential values, never throws into or delays the driver, and provides a normalizer and a `compare` command for differential runs.
+  - `pnpm smoke:package` records each runtime launch when `FOUNDRY_RUNTIME_TRACE` is set. Traced and untraced runs pass against the packaged runtime.
+  - Two traced runs diverge after 139 normalized records: polls observe racing states, concurrent children interleave events, and the event count varies. P2's differential traces therefore need deterministic scenarios; the plan records this.
+  - The independent review (Sonnet, high, from its definition) returned NO-GO on the first version. The findings were redaction gaps for malformed, batched and encoded frames; tap failures that could reach the driver; and a listener that changed when the driver read. All are fixed. Tests inject each case, and mutations show that each test fails without its fix.
+
+Next: the zod-free limits module and the host spikes S1–S6, S9 and S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

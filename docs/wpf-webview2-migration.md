@@ -557,6 +557,21 @@ The evidence layers are independent; none substitutes for another.
    - `scripts/packaged-smoke.mjs` and `expansion-smoke.mjs` run unchanged except for the launcher.
    - The ~120 tests in `tests/integration` become stdio scenarios run against both runtimes.
    - Comparison is normalized: ids and timestamps masked, JSON canonicalized, committed `events` rows compared. Rollback scenarios are .NET-only.
+   - `scripts/runtime-trace.mjs` (P0) records a driver's stdio conversation in both directions, plus stderr and exit, as JSON lines. It is a tap inside the driver rather than a proxy process, so killing the child still kills the runtime.
+     - It observes what the driver writes to a live stream and what the driver reads, by wrapping `emit` rather than adding a listener, so it never changes when the driver reads.
+     - It never throws into the driver. The first failure stops recording, and `close()` returns it.
+     - Credential values never reach the file:
+       - `runtime.credential` frames are redacted, with the binding kept only as a digest;
+       - host lines that do not parse are recorded by size only;
+       - any later echo of a credential value is scrubbed.
+     - It writes a new file only (never appending to an earlier run), for example under the git-ignored `test-results/`.
+     - `normalizeTrace` and `node scripts/runtime-trace.mjs compare` drop timings. They number UUIDs, digests and git object ids by first appearance, mask millisecond timestamps (another precision stays visible) and scratch roots, and sort keys. Hash values themselves are pinned by `tests/golden`, not by traces. `compare` refuses an empty trace, or one without the runtime's exit.
+     - `FOUNDRY_RUNTIME_TRACE=<prefix> pnpm smoke:package` records one trace per runtime launch.
+   - P0 finding: two runs of the packaged smoke against the same TypeScript runtime diverge after 139 normalized records.
+     - Polls observe racing intermediate states.
+     - Concurrent children interleave their events.
+     - The event count itself varies (324 versus 325).
+     So trace equality is defined only for deterministic scenarios: sequential steps that wait on events rather than polling, one active child at a time or per-task event streams, and fixed fixture names and tokens. Timing-dependent suites compare committed rows.
 4. **Data.**
    - Fixture DBs v1–v5 and the WAL fixture through open, upgrade and fence; structure diff; `expected-after-open.json` contracts (`tests/fixtures/databases`).
    - Fault points: after intent, before commit, mid-backup, mid-adoption. Process-kill tests.
