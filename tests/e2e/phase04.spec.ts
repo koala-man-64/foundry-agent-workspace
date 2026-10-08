@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile, readFile, stat } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createFixtureTask } from './fixtures';
+import { createFixtureTask, notice, waitForRuntimeReady } from './fixtures';
 
 test('compaction, MCP under approval, diagnostics export, explicit commit and safe retirement through the desktop UI', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-phase04-e2e-'));
@@ -18,7 +18,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
   try {
     const page = await app.firstWindow();
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
+    await waitForRuntimeReady(page);
     const createTask = async (title: string, mode: 'chat' | 'coding'): Promise<{ id: string; worktreePath: string; branch: string }> => {
       return createFixtureTask(page, project, title, mode);
     };
@@ -33,7 +33,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     const first = 'first direction '.repeat(30).trim();
     for (const content of [first, 'second direction '.repeat(30).trim(), 'third direction '.repeat(30).trim()]) await send(content);
     await page.getByRole('button', { name: 'Compact context', exact: true }).first().click();
-    await expect(page.getByRole('status')).toContainText('Compacted 2 earlier messages');
+    await expect(notice(page)).toContainText('Compacted 2 earlier messages');
     await expect(page.locator('article.compaction-summary')).toHaveCount(1);
     await expect(page.locator('article.compaction-summary')).toContainText('runtime-generated');
     await expect(page.locator('article.message.compacted')).toHaveCount(2);
@@ -54,7 +54,7 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await settings.getByLabel('MCP arguments').fill(resolve('tests/fixtures/mcp-fixture-server.mjs'));
     await settings.getByLabel('MCP environment').fill(`MCP_FIXTURE_NOTES=${notes}`);
     await settings.getByRole('button', { name: 'Connect and save server', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('listed 7 tool(s)');
+    await expect(notice(page)).toContainText('listed 7 tool(s)');
     const server = settings.getByTestId('mcp-server-fixture');
     await expect(server).toContainText('foundry-fixture 1.0.0');
     // The allowlist is stored by the runtime (a save re-launches and relists the server); the checkbox reflects the saved state.
@@ -93,8 +93,8 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await settings.getByRole('button', { name: 'Save profile', exact: true }).click();
     await expect(settings).not.toBeVisible();
     await page.getByRole('button', { name: /Export diagnostics/ }).click();
-    await expect(page.getByRole('status')).toContainText('Sanitized diagnostics written to');
-    const noticeText = await page.getByRole('status').textContent();
+    await expect(notice(page)).toContainText('Sanitized diagnostics written to');
+    const noticeText = await notice(page).textContent();
     const exported = /written to (.+?\.json)/.exec(noticeText ?? '')?.[1];
     expect(exported).toBeTruthy();
     const bundle = await readFile(exported!, 'utf8');
@@ -108,12 +108,12 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await page.getByTestId('publish-panel').getByLabel('Commit message').fill('Offline MCP demo change');
     await page.getByRole('button', { name: 'Commit all changes', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('Committed');
+    await expect(notice(page)).toContainText('Committed');
     expect(execFileSync('git', ['-C', coding.worktreePath, 'log', '-1', '--format=%s'], { encoding: 'utf8', windowsHide: true }).trim()).toBe('Offline MCP demo change');
     expect(execFileSync('git', ['-C', coding.worktreePath, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true }).trim()).toBe('');
     await page.getByRole('button', { name: 'Retire worktree…', exact: true }).click();
     await page.getByRole('button', { name: 'Confirm retire (clean worktrees only)', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('Retired 1 clean worktree');
+    await expect(notice(page)).toContainText('Retired 1 clean worktree');
     await expect(stat(coding.worktreePath)).rejects.toThrow();
     expect(git('rev-parse', '--verify', coding.branch)).toHaveLength(40);
     await expect(page.locator('.task-row', { hasText: 'MCP demo task' })).toContainText('Retired');

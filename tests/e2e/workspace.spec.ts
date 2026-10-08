@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile, readdir, readFile } from 'node:fs/promis
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createFixtureTask } from './fixtures';
+import { createFixtureTask, notice, waitForRuntimeReady } from './fixtures';
 
 test('isolated task, offline conversation, file inspection and restart history', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-e2e-'));
@@ -21,7 +21,7 @@ test('isolated task, offline conversation, file inspection and restart history',
     let page = await app.firstWindow();
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
+    await waitForRuntimeReady(page);
     expect(await page.evaluate(() => 'require' in window)).toBe(false);
     const createdTask = await createFixtureTask(page, project, 'Offline acceptance task', 'chat');
     await page.getByLabel('Task message').fill('Explain the project briefly.');
@@ -51,7 +51,7 @@ test('isolated task, offline conversation, file inspection and restart history',
     await page.getByLabel('Task message').fill('cancel fixture '.repeat(500));
     await page.getByRole('button', { name: 'Send' }).click();
     await page.getByRole('button', { name: 'Cancel task' }).click();
-    await expect(page.getByRole('status')).toContainText('cancelled');
+    await expect(notice(page)).toContainText('cancelled');
     await page.getByRole('button', { name: /Model settings/ }).click();
     await page.getByRole('button', { name: 'New profile', exact: true }).click();
     const settings = page.getByRole('dialog');
@@ -98,7 +98,7 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
   let app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
   try {
     let page = await app.firstWindow();
-    await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
+    await waitForRuntimeReady(page);
     const createCodingTask = async (title: string): Promise<{ id: string; worktreePath: string }> => {
       await createFixtureTask(page, project, title, 'coding');
       return page.evaluate(async (taskTitle) => {

@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promise
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { notice, RUNTIME_READY_TIMEOUT } from './fixtures';
 
 const profileId = '00000000-0000-4000-8000-000000000001';
 
@@ -16,7 +17,7 @@ async function launch(state: string) {
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await expect.poll(() => page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).toMatchObject({ runtime: 'ready' });
+  await expect.poll(() => page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) })), { timeout: RUNTIME_READY_TIMEOUT }).toMatchObject({ runtime: 'ready' });
   return { app, page, errors };
 }
 
@@ -166,7 +167,7 @@ test('Git draft first send creates one isolated worktree and missing folder erro
     await page.getByLabel('Chat message', { exact: true }).fill('Keep this text if the folder disappears.');
     await rename(plainFolder, join(fixture, 'MovedNotes'));
     await page.getByRole('button', { name: /^Send/ }).click();
-    await expect(page.getByRole('status')).toContainText(/could not|unavailable|folder|directory/i);
+    await expect(notice(page)).toContainText(/could not|unavailable|folder|directory/i);
     await expect(page.getByLabel('Chat message', { exact: true })).toHaveValue('Keep this text if the folder disappears.');
     expect((await page.evaluate(async () => ({ ...await window.workspace.invoke('workspace.summary', {}), ...await window.workspace.invoke('workspace.tasks', { visibility: 'all', limit: 50 }) }))).tasks).toHaveLength(1);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
