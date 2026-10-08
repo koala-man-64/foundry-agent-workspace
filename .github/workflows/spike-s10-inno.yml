@@ -1,0 +1,41 @@
+# Temporary (spike S10): proves the windows-2025 image compiles a per-user Inno Setup installer. Removed before merge.
+name: Spike S10 Inno Setup
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  inno:
+    name: Compile a per-user Inno Setup installer
+    runs-on: windows-2025
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Compile and inspect
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc)) { throw "ISCC.exe not found at $iscc" }
+          (Get-Item -LiteralPath $iscc).VersionInfo | Format-List FileVersion, ProductVersion
+          $work = Join-Path $env:RUNNER_TEMP 'inno'
+          New-Item -ItemType Directory -Path $work | Out-Null
+          Set-Content -LiteralPath (Join-Path $work 'payload.txt') -Value 'spike payload'
+          @'
+          [Setup]
+          AppName=Foundry Spike
+          AppVersion=0.0.1
+          DefaultDirName={autopf}\FoundrySpike
+          PrivilegesRequired=lowest
+          OutputDir=out
+          OutputBaseFilename=foundry-spike-setup
+          [Files]
+          Source: "payload.txt"; DestDir: "{app}"
+          '@ | Set-Content -LiteralPath (Join-Path $work 'spike.iss')
+          & $iscc /Q (Join-Path $work 'spike.iss')
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          $installer = Get-Item -LiteralPath (Join-Path $work 'out\foundry-spike-setup.exe')
+          "Built $($installer.Name): $($installer.Length) bytes"

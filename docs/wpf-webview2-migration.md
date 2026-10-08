@@ -448,8 +448,8 @@ Classification:
 ### Exclusion
 
 Any "busy" signal blocks adoption.
-1. A `FileShare.None` open probe of `workspace.db`, `-wal` and `-shm`. Non-mutating; spike S10.
-2. Chromium's `lockfile` in the data directory. Advisory, UNVERIFIED.
+1. A `FileShare.None` open probe of `workspace.db`, `-wal` and `-shm`. Spike S10 proved it non-mutating, and busy for all three while an idle TypeScript runtime holds them.
+2. Chromium's `lockfile` in the data directory. Spike S10 found it held exclusively while the Electron app runs, and deleted when the app closes.
 3. A scan for Electron processes. Advisory.
 4. An exclusive locking-mode probe. Corroborating only.
 
@@ -491,9 +491,13 @@ Each phase writes the journal `adoption\adopt-<id>.json` via temp file, fsync an
 - v5 or lower means the transaction rolled back: keep the verified backup and return to pending.
 
 ### Rollback
-1. Close the app and call `ClearAllPools`.
-2. Restore the verified backup and delete `-wal` and `-shm`.
-3. Reinstall the last Electron build.
+1. Close the app. Confirm that nothing holds the database: the exclusion probe must find `workspace.db`, `-wal` and `-shm` free. A restore inside the process calls `ClearAllPools` first.
+2. Delete `-wal` and `-shm`, then stage the verified backup beside the database and rename it over `workspace.db` (`MoveFileEx` with `REPLACE_EXISTING`). Never copy over the file. Spike S10 found two things:
+   - A copy succeeds through SQLite's write sharing even while a connection is open, and that connection's close-time checkpoint then silently undoes the restore. The result passes `integrity_check`.
+   - The rename is refused while any process holds the file.
+   Deleting a crashed run's WAL first keeps its frames from replaying onto the backup's pages.
+3. Verify `integrity_check` and the backup hash.
+4. Reinstall the last Electron build.
 
 Data created after the cutover is lost by design (decision 3). Worktrees created after the cutover are listed for manual cleanup and are never auto-retired. Backups stay under the protected ACL until the user deletes them.
 
@@ -542,6 +546,7 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 | S8b | Result (2026-10-08): `tests/Foundry.Protocol.Tests` runs all 15 cases in `rpc-wire.json` through the candidate strict reader on both host paths (bridge strings, stdio UTF-8 bytes). Rejected: duplicate keys, `__proto__`, nesting deeper than 32, numeric ids, BOM, trailing comma, comment, `NaN` and top-level arrays, and the three cases this spike decided (`4.0`, `4e0`, lone-surrogate escapes). Accepted: an escaped method name. A test pins why the stdio path checks the BOM explicitly: stream reads skip it. | Met. The corpus records every decision; no case remains open. |
 | S9 | Does `windows-2025` have the WebView2 runtime? Can Playwright `connectOverCDP` attach to both environments? | A green E2E skeleton in CI |
 | S10 | `FileShare.None` probe against a live idle Node holder; Chromium lockfile behavior; `ClearAllPools` and restore on Windows; Inno Setup in CI (preinstalled, or a pinned and hash-verified install) | "Busy" reliably detected; restore works; installer builds |
+| S10 | Result (2026-10-08), from scratch experiments with isolated data directories:<br>**Probe:** against the built TypeScript runtime, idle after a request, `workspace.db`, `-wal` and `-shm` all read busy (`0x80070020`), and sizes and timestamps are unchanged afterwards. After a graceful exit SQLite has checkpointed (4 KB grew to 573 KB) and deleted the side files, and the probe reads free. After a kill the 4 KB database, a 581 KB WAL and the shared memory remain and read free, so the backup must read through the WAL (the backup API, spike S8a).<br>**Lockfile:** the Electron app holds Chromium's `lockfile` in the data directory exclusively while it runs (busy, alongside the database), and deletes it on close.<br>**Restore:** `File.Copy` over a database that a pooled connection still holds succeeds, because SQLite shares write access. The later `ClearAllPools` checkpoints the old WAL into the restored file: it passes `integrity_check` but holds the post-backup table and 2,000 rows. Renaming a staged backup over the file is refused while it is held (`0x80070005`); after the holder closes, the rename yields exactly the backup.<br>**Inno Setup:** the windows-2025 image (20260927) lists Inno Setup 6.7.1; INNO_RESULT. | Met. The exclusion probe and the lockfile are reliable busy signals. The rollback runbook restores by rename after a free probe, never by copy (see "Rollback"). The installer needs no install step in CI. |
 
 ## Verification strategy
 
