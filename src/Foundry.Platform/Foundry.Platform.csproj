@@ -1,3 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Win32 primitives (JobProcess, FinalPath, ACL, DPAPI). The only project that may enable unsafe code. -->
+  <!-- Win32 primitives (JobProcess, FinalPath, ProtectedDirectory, ProtectedSecret). The only project that may enable unsafe code. -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Platform.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Electron 44's Unicode 17.0 lowercase tables for path_key; tests/golden/ecmascript-case.test.ts regenerates them. -->
+    <EmbeddedResource Include="EcmaScriptLowercase.json" LogicalName="Foundry.Platform.EcmaScriptLowercase.json" />
+  </ItemGroup>
 </Project>

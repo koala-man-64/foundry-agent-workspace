@@ -53,7 +53,7 @@ public sealed class DependencyRulesTests
     [Theory]
     [InlineData("Microsoft.Web.WebView2", "Foundry.Desktop")]
     [InlineData("Microsoft.Data.Sqlite", "Foundry.Runtime.Core")]
-    [InlineData("Microsoft.Windows.CsWin32", "Foundry.Platform")]
+    [InlineData("System.Security.Cryptography.ProtectedData", "Foundry.Platform")]
     public void ConfinedPackagesStayInTheirProject(string package, string owner)
     {
         var users = SourceProjects.All.Values

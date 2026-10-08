@@ -37,6 +37,12 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The FinalPath tests compare with Node's realpath; Electron 44, which computed every persisted key, runs Node 24.
+      - name: Set up the Node.js oracle
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
       - name: Restore from lock files
         run: dotnet restore Foundry.slnx --locked-mode
 

@@ -13,7 +13,7 @@ P0 deliverables so far:
 - The approved plan (#12).
 - The .NET solution skeleton (`Foundry.slnx`): the seven projects of the plan's layout, with placeholder entry points that exit non-zero; `global.json` (SDK 10.0.300, no roll-forward); central package management; lock files restored in locked mode in CI; nuget.org-only source mapping; NuGet audit with warnings as errors.
 - Culture-sensitive string analyzers (CA1304, CA1305, CA1309, CA1310, CA1311) as errors.
-- `BannedSymbols.txt` enforcing the runtime loop model. Each of its 41 entries was shown to fire with a temporary probe.
+- `BannedSymbols.txt` enforcing the runtime loop model (41 entries) and, since S7, `BannedSymbols.Launch.txt` in every product project, so processes launch only through `JobProcess` (2 entries). Each entry was shown to fire with a temporary probe.
 - `Foundry.Architecture.Tests` enforcing the dependency graph and trust boundaries. Injected violations were shown to fail.
 - The `.NET build` workflow: locked restore, build with warnings as errors, and test on every pull request.
 - Golden vectors (`tests/golden`) that pin TypeScript behavior for the port: `JSON.stringify` edges and hashes, both profile fingerprints, UTF-8-ordered handoff manifests, schedule gaps and folds, redaction regex semantics, and MCP admission. The RPC corpus covers 99 schemas (RPC methods, bridge channels and non-RPC frames) with 4,149 seeded and mutated cases and zod's verdicts, plus 15 wire-level parser cases. The unit tests fail on drift. `scripts/golden-path-key.mjs` mirrors `pathKey` for machine-local cross-language checks and is proven equal to the runtime's.
@@ -24,7 +24,17 @@ P0 deliverables so far:
 
 - Spike S8b (strict JSON reader), decided. Both host boundaries reject non-canonical integers (`4.0`, `4e0`), lone-surrogate escapes and a leading BOM, in addition to the plan's duplicate-key, depth and unknown-property rules. `tests/Foundry.Protocol.Tests` proves all 15 wire cases on the bridge-string and stdio-byte paths. `rpc-wire.json` now records a decision for every case.
 
-Next: S7 (Win32 primitives; it blocks P1, together with the now-complete S8), the trace recorder, the zod-free limits module, and the host spikes S1–S6, S9 and S10.
+- Spike S7 (Win32 primitives), adopted. `Foundry.Platform` now holds `JobProcess`, `FinalPath`, `ProtectedDirectory` and `ProtectedSecret` on hand-written `LibraryImport` interop. `tests/Foundry.Platform.Tests` (62 tests) proves them:
+  - **Process trees.** The TypeScript process-cleanup scenarios pass natively. Killing a real job owner reclaims its nested tree. A decoy inheritable handle stays out of the child, and concurrent launches never share pipe ends. Because a redirected `Process.Start` does inherit that handle, all product code now bans `System.Diagnostics.Process`.
+  - **Path keys.** `FinalPath` matches Node 24's `pathKey` across a real-tree corpus. The spike found two Node behaviors that the port now reproduces: realpath namespacing (trailing dots, trailing spaces and long paths) and full-case lowercasing (`İ` and the final sigma). The lowercase ships as Electron 44's Unicode 17 tables, so keys do not move with Windows' older ICU. Scope checks get a no-fallback `TryResolve`.
+  - **Protected directories.** The on-disk descriptor equals the PowerShell result.
+  - **DPAPI writes.** Entropy must be a digest, and the write-through atomic write keeps the old file on failure.
+
+  The independent security review (Sonnet, high, from its definition) returned a conditional GO. Every condition is addressed and covered by tests.
+
+  S7 and S8, the two spikes that gate P1 code, are now both complete.
+
+Next: the trace recorder, the zod-free limits module, and the host spikes S1–S6, S9 and S10.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
