@@ -76,10 +76,14 @@ P0 deliverables so far:
   - **Downloads.** Held downloads are written early, so they are staged in a host folder that is swept at startup.
   - **Redirects.** A cancelled redirect has already sent its request, so the navigation guard runs in a request filter.
   - **Shared workers.** Their requests cannot be filtered: the filter kind stalls them after a reload. The integrated browser runs without shared workers, with target discovery as a backstop.
-  - **Upload bodies.** WebView2 does not reveal whether a body came from a file or a blob. While attached, every body without a text-like type is therefore blocked. A page-held file sent as text remains a residual for P3's security review to accept or close.
+  - **Upload bodies.** WebView2 does not reveal whether a body came from a file or a blob. While attached, every body without a text-like type is therefore blocked. This is a heuristic, because the page chooses the type. A raw page-held file or blob sent as text remains a residual for P3's security review to accept or close.
   - **`chrome.webview`.** It exists in every page and frame, so the negative test checks that nothing posted through it reaches the host.
 
-  The independent security review (Sonnet, high, from its definition) returned NO-GO on the first version. It found overstated upload and shared-worker claims and several Electron guards the plan had not carried over. Every finding is now fixed, tested or recorded.
+  The independent security review (Sonnet, high, from its definition) returned NO-GO on the first version. It found overstated upload and shared-worker claims and several Electron guards the plan had not carried over. It returned GO on the fixes, and its two remaining recommendations are applied:
+  - the body rule is described as a heuristic;
+  - attach confirms that shared workers are absent in every frame.
+
+  Section 6's prescriptions that S5 left untested are listed among the plan's security tests.
 
 Next: the host spikes S3, S4 and S6. They change display scaling, inject input or raise notifications on the desktop, so they wait for Rudy's go-ahead.
 
