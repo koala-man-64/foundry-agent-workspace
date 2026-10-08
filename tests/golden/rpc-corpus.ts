@@ -184,22 +184,23 @@ export function rpcCorpus(): { entries: CorpusEntry[]; unseeded: string[] } {
 }
 
 /**
- * JSON text where JSON.parse and a strict host parser can disagree. "host" is the decided host behavior:
- * the plan fixes duplicate-key, depth and unknown-property rejection; the remaining cases are decided in spike S8.
+ * JSON text where JSON.parse and a strict host parser can disagree. "host" is the decided host behavior on both trust
+ * boundaries (bridge strings and stdio bytes), proven by tests/Foundry.Protocol.Tests: the plan fixes duplicate-key,
+ * depth and unknown-property rejection, and spike S8b decided the rest (docs/wpf-webview2-migration.md).
  */
 export function wireCases() {
   const id = '00000000-0000-4000-8000-0000000000d1';
   const other = '00000000-0000-4000-8000-0000000000d2';
   const deep = `${'{"a":'.repeat(40)}1${'}'.repeat(40)}`;
-  const cases: { name: string; text: string; host: 'reject' | 'accept' | 'decide in S8'; basis: string }[] = [
+  const cases: { name: string; text: string; host: 'reject' | 'accept'; basis: string }[] = [
     { name: 'duplicate key inside params', text: `{"jsonrpc":"2.0","id":"1","method":"task.cancel","params":{"taskId":"${id}","taskId":"${other}"}}`, host: 'reject', basis: 'plan: duplicate keys rejected' },
     { name: 'duplicate method in envelope', text: `{"jsonrpc":"2.0","id":"1","method":"task.cancel","method":"task.retire","params":{"taskId":"${id}"}}`, host: 'reject', basis: 'plan: duplicate keys rejected' },
     { name: '__proto__ property', text: `{"jsonrpc":"2.0","id":"1","method":"task.cancel","params":{"taskId":"${id}","__proto__":{"admin":true}}}`, host: 'reject', basis: 'strict objects reject unknown properties' },
     { name: 'nesting deeper than 32 levels', text: `{"jsonrpc":"2.0","id":"1","method":"task.cancel","params":${deep}}`, host: 'reject', basis: 'plan: MaxDepth 32' },
-    { name: 'integer written with a fraction', text: `{"jsonrpc":"2.0","id":"1","method":"task.compact","params":{"taskId":"${id}","keepRecent":4.0}}`, host: 'decide in S8', basis: 'zod sees the integer 4' },
-    { name: 'integer written with an exponent', text: `{"jsonrpc":"2.0","id":"1","method":"task.compact","params":{"taskId":"${id}","keepRecent":4e0}}`, host: 'decide in S8', basis: 'zod sees the integer 4' },
+    { name: 'integer written with a fraction', text: `{"jsonrpc":"2.0","id":"1","method":"task.compact","params":{"taskId":"${id}","keepRecent":4.0}}`, host: 'reject', basis: 'S8b: only canonical integer spellings; JSON.stringify never emits 4.0 (zod would accept the integer 4)' },
+    { name: 'integer written with an exponent', text: `{"jsonrpc":"2.0","id":"1","method":"task.compact","params":{"taskId":"${id}","keepRecent":4e0}}`, host: 'reject', basis: 'S8b: only canonical integer spellings; JSON.stringify never emits 4e0 (zod would accept the integer 4)' },
     { name: 'integer beyond 2^53', text: `{"jsonrpc":"2.0","id":"1","method":"task.compact","params":{"taskId":"${id}","keepRecent":9007199254740993}}`, host: 'reject', basis: 'outside the declared range in either reading' },
-    { name: 'lone surrogate escape in free text', text: `{"jsonrpc":"2.0","id":"1","method":"task.send","params":{"taskId":"${id}","content":"broken \\ud800 text"}}`, host: 'decide in S8', basis: 'JSON.parse keeps a lone surrogate; strict UTF-16 readers reject it' },
+    { name: 'lone surrogate escape in free text', text: `{"jsonrpc":"2.0","id":"1","method":"task.send","params":{"taskId":"${id}","content":"broken \\ud800 text"}}`, host: 'reject', basis: 'S8b: malformed UTF-16 is refused at both boundaries; JSON.parse would keep the lone surrogate' },
     { name: 'escaped characters in the method name', text: `{"jsonrpc":"2.0","id":"1","method":"task\\u002ecancel","params":{"taskId":"${id}"}}`, host: 'accept', basis: 'both parsers decode escapes before comparison' },
     { name: 'numeric id', text: `{"jsonrpc":"2.0","id":1,"method":"task.cancel","params":{"taskId":"${id}"}}`, host: 'reject', basis: 'ids are strings' },
     { name: 'byte order mark before the message', text: `\uFEFF{"jsonrpc":"2.0","id":"1","method":"task.cancel","params":{"taskId":"${id}"}}`, host: 'reject', basis: 'JSON.parse rejects a leading BOM' },
