@@ -1,5 +1,29 @@
 # Implementation status
 
+## WPF + WebView2 migration — approved plan, not started
+
+Recorded 8 October 2026. The [migration plan](wpf-webview2-migration.md) replaces Electron and Node with three parts, delivered in a single cutover:
+- a WPF host on .NET 10;
+- WebView2 hosting the existing React UI;
+- a C# runtime.
+
+**No migration code exists yet.** The Electron application and the TypeScript runtime remain the product and the behavioral authority. Phase P0 (foundations and spikes S1–S10) is next.
+
+These program rules hold until the P5 cutover:
+- Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
+- Security and data-loss fixes land in both implementations and are listed below.
+- The .NET runtime never opens the real data directory before adoption.
+
+Dual-landed fixes: none yet.
+
+| Seat | Model / effort | Selection source | Routing reason |
+| --- | --- | --- | --- |
+| Architecture and delivery (`architecture-review-agent`) | Sonnet / high | Agent definition frontmatter | Independent architecture view; parallel reading of main, protocol, runtime and providers |
+| Security (`cloud-security-vulnerability-expert`) | Sonnet / high | Agent definition frontmatter | Required independent review for credential, IPC, filesystem and process changes |
+| Data integrity and concurrency (`db-steward`) | Sonnet / high | Agent definition frontmatter | In-place adoption and the Node-to-.NET concurrency model carry the highest-consequence risk |
+
+The owner (Claude Opus 5.5, max effort) chaired two review rounds and kept the test strategy and synthesis. The owner also verified the disputed facts, for example the CDP `grantUniveralAccess` spelling and that `setCredential` clears profile verification. The review produced a plan, not an implementation; its acceptance criteria are not evidence that any migration phase exists.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
