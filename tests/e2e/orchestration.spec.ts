@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
-import { createFixtureTask } from './fixtures';
+import { createFixtureTask, waitForRuntimeReady } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 const VALIDATION_COMMAND = "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)";
@@ -22,7 +22,7 @@ async function launch(stateDirectory: string): Promise<{ app: ElectronApplicatio
   const app = await electron.launch({ args: [resolve('out/main/index.js')], env: baseEnvironment(stateDirectory) });
   const page = await app.firstWindow();
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
-  await expect.poll(() => page.evaluate(() => window.workspace.invoke('workspace.summary', {}))).toMatchObject({ runtime: 'ready' });
+  await waitForRuntimeReady(page);
   return { app, page, errors };
 }
 
