@@ -27,10 +27,17 @@ public sealed class LockdownTests
             await using (var exposed = await Rig.StartAsync(Pages.All(), new RigOptions(Benign)))
             {
                 await exposed.NavigateAsync(Rig.AppUri);
-                Assert.True(await Listening(port), "With nothing cleared, the variable overrides the API arguments and opens a debug port.");
-                var lines = await CommandLines(exposed.BrowserProcessId);
-                Assert.Contains(lines, line => line.Contains($"--remote-debugging-port={port}", StringComparison.Ordinal));
-                TestContext.Current.TestOutputHelper?.WriteLine($"API switch kept under the variable: {lines.Any(line => line.Contains(Benign, StringComparison.Ordinal))}");
+                var (carried, listening, lines) = await Override(exposed, port);
+                TestContext.Current.TestOutputHelper?.WriteLine($"elevated {Elevated()}: switch carried {carried}, port listening {listening}, API switch kept {lines.Any(line => line.Contains(Benign, StringComparison.Ordinal))}");
+                if (Elevated())
+                {
+                    // An elevated process (a CI runner) does not take the override; the shipped host refuses to run elevated.
+                    Assert.False(carried || listening, $"An elevated process took the override:\n{string.Join("\n", lines)}");
+                }
+                else
+                {
+                    Assert.True(carried && listening, $"With nothing cleared, the variable should override the API arguments and open a debug port:\n{string.Join("\n", lines)}");
+                }
             }
 
             Assert.Equal(["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"], Lockdown.ClearEnvironment());
@@ -67,12 +74,36 @@ public sealed class LockdownTests
             Lockdown.ClearEnvironment();
             await using var rig = await Rig.StartAsync(Pages.All(), new RigOptions(Benign));
             await rig.NavigateAsync(Rig.AppUri);
-            Assert.True(await Listening(port), "A policy overrides the API arguments even with the variables cleared.");
+            var (carried, listening, lines) = await Override(rig, port);
+            TestContext.Current.TestOutputHelper?.WriteLine($"elevated {Elevated()}: switch carried {carried}, port listening {listening}");
+            if (Elevated())
+            {
+                Assert.False(carried || listening, $"An elevated process took the policy's arguments:\n{string.Join("\n", lines)}");
+            }
+            else
+            {
+                Assert.True(carried && listening, $"A policy should override the API arguments even with the variables cleared:\n{string.Join("\n", lines)}");
+            }
         }
         finally
         {
             Registry.CurrentUser.DeleteSubKeyTree(policyRoot, throwOnMissingSubKey: false);
         }
+    }
+
+    /// <summary>Whether the debug-port switch reached the browser processes, and whether the port listens.</summary>
+    private static async Task<(bool Carried, bool Listening, List<string> Lines)> Override(Rig rig, int port)
+    {
+        var lines = await CommandLines(rig.BrowserProcessId);
+        var carried = lines.Any(line => line.Contains($"--remote-debugging-port={port}", StringComparison.Ordinal));
+        return (carried, await Listening(port, attempts: carried ? 10 : 2), lines);
+    }
+
+    /// <summary>An elevated token (UAC filters an administrator's token unless the process was elevated).</summary>
+    private static bool Elevated()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
     }
 
     internal static int FreePort()
