@@ -6,6 +6,8 @@
 
 **How it runs (Rudy's choice, 8 October 2026):** the harness measures while Rudy changes Windows display scaling himself. It never changes a system setting.
 
+**Status (9 October 2026): not run, by Rudy's decision.** The preview below is S3's only evidence. Real-DPI verification falls to P3's exit gate, which runs `browser.spec` at 100/150/200% DPI and zoom 2. The plan's S3 row holds the open inset decision. The harness stays available.
+
 ## What the harness does
 
 `tests/Foundry.Spikes.BrowserSurface` builds the plan's browser surface (section 6) on a real, visible window:
