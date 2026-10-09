@@ -73,11 +73,12 @@ internal sealed class ToastSpike
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8),
         });
         AddStep(panel, "banner-minimized", "1. Click the banner while this window is minimized",
-            "Press Start. A banner appears and this window minimizes itself. Click the banner's text (not its close button). Expected: this window comes back to the front by itself.",
+            "Press Start. This window minimizes itself, then a banner appears. Click the banner's text (not its close button). Expected: this window comes back to the front by itself.",
             ["Did the banner appear?", "Did this window come to the front by itself?"], step =>
             {
-                Show(step, "Click this banner.");
-                Later(TimeSpan.FromSeconds(1.5), () => Window.WindowState = WindowState.Minimized);
+                // Minimized before the banner exists, so even a quick click is a valid trial.
+                Window.WindowState = WindowState.Minimized;
+                Later(TimeSpan.FromSeconds(1), () => Show(step, "Click this banner."));
             });
         AddStep(panel, "banner-background", "2. Click the banner while another window is in front",
             "Press Start, then within 5 seconds click another window (File Explorer, or a browser) so this one is behind it. A banner appears after 5 seconds. Click it. Expected: this window comes to the front.",
