@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Spike S6: toast click activation from the unzipped exe and the per-user installed exe. Rudy runs it with
+       Run-S6.ps1 (docs/spikes/s6-toast-activation.md); it is never shipped. -->
+  <PropertyGroup>
+    <!-- A GUI-subsystem exe like the product's Foundry.exe, so the toast path is the one the product will take. -->
+    <OutputType>WinExe</OutputType>
+    <!-- The WinRT projection for toasts through the TFM, as the plan's host uses; no extra package. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <!-- LibraryImport's generated marshalling. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Run-S6.ps1 publishes self-contained for win-x64, as P4 publishes the product. -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+</Project>

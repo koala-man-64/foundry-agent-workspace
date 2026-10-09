@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>S3 tab bounds</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #102040; }
+  #status { position: absolute; left: 6px; top: 3px; font: 11px/14px 'Segoe UI', sans-serif; color: #fff; white-space: nowrap; }
+  /* The browser area BrowserPanel measures. Solid magenta, so the harness finds its painted edges on screen. */
+  .browser-content { position: absolute; background: #ff00ff; }
+  #confirm { position: fixed; inset: 0; display: none; background: rgba(0, 0, 0, 0.55); }
+  #confirm.open { display: block; }
+  #confirm div { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 16px; background: #fff; color: #000; font: 13px 'Segoe UI', sans-serif; }
+</style>
+<div id="status">S3 tab bounds</div>
+<div class="browser-content"></div>
+<div id="confirm" role="dialog" aria-modal="true"><div>Attach this tab to the chat?</div></div>
+<script>
+  // Two layouts of the browser area: every edge on a whole CSS pixel, or every edge on a fraction of one (as a dragged
+  // inspector width or a zoomed flex layout produces). Both scale with the viewport so they fit at zoom 2 and 200%.
+  const layouts = {
+    aligned: (w, h) => ({ left: Math.round(w * 0.2), top: Math.max(28, Math.round(h * 0.18)), width: Math.floor(w * 0.6), height: Math.floor(h * 0.6) }),
+    fractional: (w, h) => ({ left: Math.round(w * 0.2) + 0.37, top: Math.max(28, Math.round(h * 0.18)) + 0.61, width: Math.floor(w * 0.6) + 0.29, height: Math.floor(h * 0.6) + 0.43 }),
+  };
+  let layout = 'aligned';
+  function applyLayout() {
+    const box = layouts[layout](document.documentElement.clientWidth, document.documentElement.clientHeight);
+    const style = document.querySelector('.browser-content').style;
+    style.left = `${box.left}px`; style.top = `${box.top}px`; style.width = `${box.width}px`; style.height = `${box.height}px`;
+  }
+  window.addEventListener('resize', applyLayout);
+  applyLayout();
+</script>
+<script>
+/*BROWSER-PANEL*/
+</script>
+<script>
+  const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+  chrome.webview.addEventListener('message', async event => {
+    const message = event.data;
+    if (message.kind === 'layout') { layout = message.name; applyLayout(); }
+    else if (message.kind === 'confirm') { document.getElementById('confirm').classList.toggle('open', message.open); setConfirmation(message.open ? 'attach' : null); }
+    else if (message.kind === 'status') { document.getElementById('status').textContent = message.text; }
+    else if (message.kind === 'measure') {
+      await frame(); await frame();
+      const r = content.getBoundingClientRect();
+      post({ kind: 'area', seq: message.seq, layout, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, innerWidth: window.innerWidth, innerHeight: window.innerHeight, dpr: window.devicePixelRatio });
+    }
+  });
+</script>

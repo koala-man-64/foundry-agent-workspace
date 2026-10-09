@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>S4 test page</title>
+<style>
+  body { margin: 0; padding: 12px 16px; background: #f6f5ef; color: #111; font: 14px/1.4 'Segoe UI', sans-serif; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  #count { font-size: 44px; font-weight: 700; line-height: 1.1; }
+  #count.hit { color: #c62828; }
+  #types, #last { font: 12px/1.35 Consolas, monospace; color: #444; min-height: 1.4em; }
+  .row { display: flex; align-items: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
+  #spinner { width: 22px; height: 22px; background: #2e7d5b; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 8px 16px; margin-top: 8px; }
+  input, textarea, select, button { font: inherit; }
+  textarea { height: 44px; }
+  #editable { border: 1px solid #888; padding: 4px; min-height: 22px; background: #fff; }
+  #drop { border: 2px dashed #888; padding: 10px; text-align: center; color: #555; }
+  #scroller { height: 70px; overflow: auto; border: 1px solid #888; background: #fff; }
+  #agent { margin-top: 12px; padding: 8px; background: #e7efe9; }
+</style>
+<h1>Human input that reached this page</h1>
+<div id="count">0</div>
+<div id="types">no human input yet</div>
+<div id="last"></div>
+<div class="row"><div id="spinner" title="Keeps turning while the page renders"></div><span>Frames rendered: <b id="frames">0</b></span><span>Page clock: <b id="clock">-</b></span></div>
+<div class="grid">
+  <label>Text field <input id="text" autocomplete="off"></label>
+  <label>Text area <textarea id="area"></textarea></label>
+  <div id="editable" contenteditable="true">Editable text</div>
+  <button id="button" type="button">Button · clicked <span id="clicks">0</span></button>
+  <a id="link" href="#section">A link on this page</a>
+  <select id="select"><option>First</option><option>Second</option></select>
+  <label><input id="check" type="checkbox"> Checkbox</label>
+  <div id="drop">Drop files or text here</div>
+  <div id="scroller"><div style="height: 600px; padding: 4px;">Scroll inside this box</div></div>
+  <div id="section">Anchor target</div>
+</div>
+<div id="agent">
+  <b>Agent</b> (acts through host scripts while attached; these are not human input)
+  <div class="row"><button id="agent-button" type="button">Agent clicks: <span id="agent-clicks">0</span></button><input id="agent-field" readonly placeholder="The agent types here" size="32"></div>
+</div>
+<script>
+  // Every input-related event type. Only trusted events are human (or OS) input; the agent's host scripts dispatch
+  // untrusted ones, which are counted apart.
+  const types = ['pointerdown', 'pointerup', 'pointermove', 'pointerover', 'pointerout', 'pointerenter', 'pointerleave', 'pointercancel',
+    'gotpointercapture', 'lostpointercapture', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave',
+    'click', 'dblclick', 'auxclick', 'contextmenu', 'wheel', 'keydown', 'keyup', 'keypress', 'beforeinput', 'input', 'change',
+    'compositionstart', 'compositionupdate', 'compositionend', 'paste', 'copy', 'cut', 'select', 'dragstart', 'drag', 'dragend',
+    'dragenter', 'dragover', 'dragleave', 'drop', 'touchstart', 'touchmove', 'touchend', 'touchcancel', 'focus', 'blur',
+    'focusin', 'focusout', 'scroll'];
+  const state = { trusted: 0, synthetic: 0, byType: {}, last: [] };
+  const render = () => {
+    const count = document.getElementById('count');
+    count.textContent = String(state.trusted);
+    count.className = state.trusted > 0 ? 'hit' : '';
+    document.getElementById('types').textContent = state.trusted ? Object.entries(state.byType).map(([type, n]) => `${type} ${n}`).join(' · ') : 'no human input yet';
+    document.getElementById('last').textContent = state.last.join('  ');
+  };
+  const record = event => {
+    if (!event.isTrusted) { state.synthetic++; return; }
+    state.trusted++;
+    state.byType[event.type] = (state.byType[event.type] ?? 0) + 1;
+    state.last.unshift(`${new Date().toISOString().slice(11, 23)} ${event.type}`);
+    state.last.length = Math.min(state.last.length, 6);
+    render();
+  };
+  // Capture listeners on the window see every event dispatched in the document, bubbling or not.
+  for (const type of types) window.addEventListener(type, record, { capture: true, passive: true });
+  // Accept drops, so a drop that does reach the page is counted rather than navigating the tab away.
+  for (const type of ['dragover', 'drop']) window.addEventListener(type, event => event.preventDefault());
+  let clicks = 0;
+  document.getElementById('button').addEventListener('click', () => { document.getElementById('clicks').textContent = String(++clicks); });
+  let agentClicks = 0;
+  document.getElementById('agent-button').addEventListener('click', () => { document.getElementById('agent-clicks').textContent = String(++agentClicks); });
+  let frames = 0;
+  const tick = () => {
+    frames++;
+    document.getElementById('frames').textContent = String(frames);
+    document.getElementById('clock').textContent = new Date().toISOString().slice(11, 21);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  // The host reads and resets these through the DevTools protocol; the tab has no web-message channel.
+  window.__s4 = {
+    reset() { state.trusted = 0; state.synthetic = 0; state.byType = {}; state.last = []; render(); return true; },
+    snapshot() { return { trusted: state.trusted, synthetic: state.synthetic, byType: { ...state.byType }, last: [...state.last], frames, agentClicks }; },
+  };
+</script>

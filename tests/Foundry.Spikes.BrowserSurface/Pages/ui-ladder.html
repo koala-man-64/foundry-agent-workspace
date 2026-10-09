@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>S4 input ladder</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #142723; color: #e8efe9; font: 13px/1.4 'Segoe UI', sans-serif; }
+  header { position: absolute; left: 0; right: 0; top: 0; height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #0d1b18; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #badge { padding: 2px 10px; border-radius: 10px; background: #355; font-weight: 600; }
+  #badge.attached { background: #b5651d; }
+  aside { position: absolute; left: 0; top: 40px; bottom: 0; width: 330px; padding: 10px 12px; overflow: auto; box-sizing: border-box; }
+  aside button { font: inherit; padding: 6px 12px; margin: 0 6px 8px 0; }
+  dl { margin: 0; display: grid; grid-template-columns: 128px 1fr; gap: 3px 8px; }
+  dt { color: #9bb3aa; }
+  dd { margin: 0; word-break: break-word; }
+  .bad { color: #ff8a80; font-weight: 600; }
+  .good { color: #9be7a1; }
+  #log { margin-top: 10px; font: 11px/1.35 Consolas, monospace; white-space: pre-wrap; color: #c8d6cf; }
+  /* The area BrowserPanel measures; the tab covers it. */
+  .browser-content { position: absolute; left: 342px; top: 52px; right: 12px; bottom: 12px; background: #31403c; }
+</style>
+<header><h1>S4 input ladder</h1><span id="badge">Manual</span><span id="hint">Follow docs/spikes/s4-input-ladder.md</span></header>
+<aside>
+  <button id="attach" type="button">Attach to chat</button><button id="take" type="button">Take control</button>
+  <dl>
+    <dt>State</dt><dd id="state">Manual browsing</dd>
+    <dt>Layers</dt><dd id="layers">-</dd>
+    <dt>Agent actions</dt><dd id="agent">0</dd>
+    <dt>Human input on page</dt><dd id="trusted">0</dd>
+    <dt>Rendering</dt><dd id="rendering">-</dd>
+    <dt>Last takeover</dt><dd id="takeover">-</dd>
+    <dt>Breaches</dt><dd id="breaches">0</dd>
+    <dt>Takeovers</dt><dd id="takeovers">0</dd>
+  </dl>
+  <div id="log"></div>
+</aside>
+<div class="browser-content"></div>
+<script>
+/*BROWSER-PANEL*/
+</script>
+<script>
+  document.getElementById('attach').addEventListener('click', () => post({ kind: 'attach' }));
+  document.getElementById('take').addEventListener('click', () => post({ kind: 'takeControl' }));
+  const set = (id, text, cls) => { const node = document.getElementById(id); node.textContent = text; node.className = cls ?? ''; };
+  chrome.webview.addEventListener('message', event => {
+    const s = event.data;
+    if (s.kind !== 'state') return;
+    const badge = document.getElementById('badge');
+    badge.textContent = s.attached ? `Attached · generation ${s.generation}` : 'Manual';
+    badge.className = s.attached ? 'attached' : '';
+    set('state', s.state);
+    set('layers', s.layers, s.layersOk === false ? 'bad' : s.layersOk ? 'good' : '');
+    set('agent', String(s.agentActions));
+    set('trusted', s.trustedText, s.trusted > 0 ? 'bad' : 'good');
+    set('rendering', s.rendering, s.renderingOk === false ? 'bad' : s.renderingOk ? 'good' : '');
+    set('takeover', s.takeover, s.takeoverOk === false ? 'bad' : s.takeoverOk ? 'good' : '');
+    set('breaches', String(s.breaches), s.breaches > 0 ? 'bad' : '');
+    set('takeovers', s.takeovers);
+    document.getElementById('log').textContent = s.log.join('\n');
+  });
+</script>

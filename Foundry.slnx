@@ -14,6 +14,8 @@
     <Project Path="tests/Foundry.Platform.Tests/Foundry.Platform.Tests.csproj" />
     <Project Path="tests/Foundry.Protocol.Tests/Foundry.Protocol.Tests.csproj" />
     <Project Path="tests/Foundry.Runtime.Tests/Foundry.Runtime.Tests.csproj" />
+    <Project Path="tests/Foundry.Spikes.BrowserSurface/Foundry.Spikes.BrowserSurface.csproj" />
+    <Project Path="tests/Foundry.Spikes.Toast/Foundry.Spikes.Toast.csproj" />
     <Project Path="tests/Foundry.WebView2.Tests/Foundry.WebView2.Tests.csproj" />
   </Folder>
 </Solution>
