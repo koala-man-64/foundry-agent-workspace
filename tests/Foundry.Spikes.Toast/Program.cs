@@ -17,7 +17,8 @@ internal static class Program
     {
         var command = args.Length > 0 ? args[0] : string.Empty;
         var results = Option(args, "--results");
-        if (results is not null && !Path.IsPathFullyQualified(results))
+        // A local, fully qualified folder only: never a network share or device path (decision 8's rule).
+        if (results is not null && (!Path.IsPathFullyQualified(results) || results.StartsWith(@"\\", StringComparison.Ordinal) || results.StartsWith("//", StringComparison.Ordinal)))
         {
             results = null;
         }
@@ -48,7 +49,12 @@ internal static class Program
     {
         var folder = Path.Combine(Path.GetTempPath(), Registration.Aumid);
         Directory.CreateDirectory(folder);
-        var shown = string.Join(" ", args.Select(arg => $"[{(arg.Length > 300 ? arg[..300] + "…" : arg)}]"));
+        // Bounded and on one line, so arguments cannot forge log lines or grow the log without limit.
+        var shown = string.Join(" ", args.Take(20).Select(arg => $"[{(arg.Length > 300 ? arg[..300] + "..." : arg).ReplaceLineEndings(@"\n")}]"));
+        if (args.Length > 20)
+        {
+            shown += $" and {args.Length - 20} more";
+        }
         File.AppendAllText(Path.Combine(folder, "launches.log"), $"{Stamp()} pid {Environment.ProcessId} {Environment.ProcessPath} arguments {shown}{Environment.NewLine}");
         MessageBox.Show($"Windows started this spike with the arguments {shown}.\n\nThey were recorded; nothing else happens. Close this message.", Registration.DisplayName);
         return 0;

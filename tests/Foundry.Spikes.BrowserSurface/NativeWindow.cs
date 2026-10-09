@@ -34,12 +34,12 @@ internal sealed unsafe class NativeWindow : IDisposable
 
     public void Dispose()
     {
-        if (Handle != 0)
+        // A child window dies with its parent; then its handle may already belong to another window.
+        if (Handle != 0 && Live.Remove(Handle))
         {
             Native.DestroyWindow(Handle);
-            Live.Remove(Handle);
-            Handle = 0;
         }
+        Handle = 0;
     }
 
     private static void EnsureClass()
@@ -67,6 +67,7 @@ internal sealed unsafe class NativeWindow : IDisposable
     }
 
     [UnmanagedCallersOnly]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "An exception must never unwind into the native window procedure; that would end the process.")]
     private static nint Procedure(nint window, uint message, nint wParam, nint lParam)
     {
         if (Live.TryGetValue(window, out var owner) && owner.OnMessage is { } handler)
@@ -78,9 +79,16 @@ internal sealed unsafe class NativeWindow : IDisposable
                     return result;
                 }
             }
-            catch (Exception error) when (OnError is not null)
+            catch (Exception error)
             {
-                OnError(error);
+                try
+                {
+                    OnError?.Invoke(error);
+                }
+                catch (Exception)
+                {
+                    // Reporting failed too; dropping the error is all that is left.
+                }
             }
         }
         if (message == Native.WmNcDestroy)

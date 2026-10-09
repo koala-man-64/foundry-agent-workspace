@@ -16,25 +16,52 @@ internal readonly record struct Scale(uint Dpi, int Percent, bool Simulated)
     public override string ToString() => Simulated ? $"{Percent}% (simulated)" : $"{Percent}%";
 }
 
+/// <summary>How a measurement came out. An obstructed measurement says nothing about the tab and leaves its scale incomplete.</summary>
+internal static class Outcome
+{
+    public const string Pass = "pass";
+    public const string Fail = "FAIL";
+    public const string Obstructed = "obstructed";
+}
+
 /// <summary>One placement of the tab, measured on screen.</summary>
+/// <param name="Expected">Where the design puts the tab: the CSS rectangle × zoom × scale, edges rounded, in screen pixels.</param>
+/// <param name="PlacedByEvents">For the design's placement: whether the tab host was already there before the harness synced anything.</param>
 internal sealed record BoundsRecord(
-    string Kind, DateTimeOffset Time, uint Dpi, int ScalePercent, bool Simulated, double RasterizationScale, double TabRasterizationScale,
-    double Zoom, double DevicePixelRatio, string Window, string Layout, string Placement, DeviceRect Client, CssRect Css,
-    CssBounds Renderer, DeviceRect Computed, DeviceRect TabHost, DeviceRect? Painted, DeviceRect? Tab, EdgeErrors? Errors,
-    int GapPixels, int OverflowPixels, bool Disturbed, bool Pass);
+    string Kind, int Pass, DateTimeOffset Time, uint Dpi, int ScalePercent, bool Simulated, double RasterizationScale,
+    double TabRasterizationScale, double Zoom, double DevicePixelRatio, string Window, string Layout, string Placement,
+    DeviceRect Client, CssRect Css, CssBounds Renderer, DeviceRect Expected, DeviceRect TabHost, bool? PlacedByEvents,
+    DeviceRect? Painted, DeviceRect? Tab, EdgeErrors? Errors, int GapPixels, int OverflowPixels, string Outcome, string? Reason);
 
 /// <summary>Whether the tab hid while a modal was open and came back where it was.</summary>
 internal sealed record ModalRecord(
-    string Kind, DateTimeOffset Time, uint Dpi, int ScalePercent, bool Simulated, string Modal, bool HiddenWhileOpen, int TabPixelsWhileOpen,
-    DeviceRect? TabBefore, DeviceRect? TabAfter, bool Restored, bool Disturbed, bool Pass);
+    string Kind, int Pass, DateTimeOffset Time, uint Dpi, int ScalePercent, bool Simulated, string Modal, bool HiddenWhileOpen,
+    int TabPixelsWhileOpen, DeviceRect? TabBefore, DeviceRect? TabAfter, string Outcome, string? Reason);
+
+/// <summary>Every measurement of one pass at one scale. A pass is kept only if it ran to the end at the same scale.</summary>
+internal sealed record ScalePass(int Number, Scale Scale, IReadOnlyList<BoundsRecord> Placements, IReadOnlyList<ModalRecord> Modals)
+{
+    /// <summary>"As left", then 2 window sizes × 2 layouts × 2 zooms; each placed as designed and from the exact rectangle.</summary>
+    public const int ExpectedPlacements = 18;
+
+    public bool Complete => Placements.Count == ExpectedPlacements && Modals.Count == 2
+        && Placements.All(item => item.Outcome != Outcome.Obstructed) && Modals.All(item => item.Outcome != Outcome.Obstructed);
+
+    /// <summary>A failure of the design decides the scale even when something else was obstructed.</summary>
+    public string Verdict =>
+        Placements.Any(item => item.Placement == nameof(Placement.Renderer) && item.Outcome == Outcome.Fail) || Modals.Any(item => item.Outcome == Outcome.Fail)
+            ? "not met" : Complete ? "met" : "incomplete";
+}
 
 /// <summary>
-/// Spike S3: tab bounds under display scaling and zoom. At each display scale it measures every combination of two
-/// window sizes, two layouts of the browser area (whole and fractional CSS pixels) and UI zoom 1 and 2. For each it
-/// photographs the area the UI painted (tab hidden) and then the tab (placed as designed, then from the exact
-/// fractional rectangle), and compares their edges in device pixels. It also checks that the tab hides behind the
-/// UI's confirmation dialog and a native dialog. Rudy changes Windows display scaling himself; the harness notices and
-/// measures again. It never changes a system setting. <c>--simulate</c> runs the same sequence at simulated scales.
+/// Spike S3: tab bounds under display scaling and zoom. Each pass first photographs the tab exactly where the host's
+/// own event handling left it after the last change ("as left"), then every combination of two window sizes, two
+/// layouts of the browser area (whole CSS pixels, and edges a hair past a whole pixel, the near-worst case for the
+/// UI's inward rounding) and UI zoom 1 and 2. For each it photographs the tab where the host's events put it, the area
+/// the UI painted (tab hidden), and the tab placed from the page's exact fractional rectangle, and compares edges in
+/// device pixels. It also checks the tab hides behind the UI's confirmation dialog and around a native dialog.
+/// Rudy changes Windows display scaling himself; the harness notices and measures again. It never changes a system
+/// setting. <c>--simulate</c> runs the same passes at simulated scales.
 /// </summary>
 internal sealed class BoundsSpike : IDisposable
 {
@@ -51,13 +78,12 @@ internal sealed class BoundsSpike : IDisposable
     private readonly bool once;
     private readonly IReadOnlyList<int> simulate;
     private readonly Window window;
-    private readonly List<BoundsRecord> measurements = [];
-    private readonly List<ModalRecord> modals = [];
-    private readonly SortedSet<int> scalesMeasured = [];
+    private readonly List<ScalePass> passes = [];
     private readonly TaskCompletionSource<int> finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Surface? surface;
     private CancellationTokenSource? measuring;
     private int sequence;
+    private int passNumber;
     private bool closing;
 
     /// <param name="once">Measure the current scale, then exit.</param>
@@ -93,29 +119,38 @@ internal sealed class BoundsSpike : IDisposable
     {
         results.Log($"S3 tab bounds. Results: {results.Directory}");
         results.Log(Results.Describe());
-        surface = await Surface.StartAsync(window, new SurfaceOptions(Pages.Load("ui-bounds.html"), TabPage, Navy, Green), results.Log);
-        if (simulate.Count > 0)
+        try
         {
-            _ = SimulateAsync();
-        }
-        else
-        {
-            Host.Ui.RasterizationScaleChanged += (_, _) => Schedule("the display scale changed");
-            window.DpiChanged += (_, _) => Schedule("the window's DPI changed");
-            if (!once && !Console.IsInputRedirected)
+            surface = await Surface.StartAsync(window, new SurfaceOptions(Pages.Load("ui-bounds.html"), TabPage, Navy, Green), results.Log);
+            if (simulate.Count > 0)
             {
-                ReadConsole();
+                _ = SimulateAsync();
             }
-            Schedule("start");
+            else
+            {
+                Host.Ui.RasterizationScaleChanged += (_, _) => Schedule("the display scale changed");
+                window.DpiChanged += (_, _) => Schedule("the window's DPI changed");
+                if (!once && !Console.IsInputRedirected)
+                {
+                    ReadConsole();
+                }
+                Schedule("start");
+            }
+            var code = await finished.Task;
+            measuring?.Cancel();
+            return code;
         }
-        var code = await finished.Task;
-        measuring?.Cancel();
-        WriteSummary();
-        await Host.DisposeAsync();
-        closing = true;
-        window.Close();
-        results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
-        return code;
+        finally
+        {
+            WriteSummary();
+            if (surface is not null)
+            {
+                await surface.DisposeAsync();
+            }
+            closing = true;
+            window.Close();
+            results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
+        }
     }
 
     private void ReadConsole()
@@ -156,15 +191,15 @@ internal sealed class BoundsSpike : IDisposable
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(2), token);
-            await MeasureScaleAsync(new Scale(Host.Dpi, Percent(Host.Dpi), false), token);
+            var pass = await MeasureScaleAsync(new Scale(Host.Dpi, Percent(Host.Dpi), false), token);
             if (once)
             {
-                finished.TrySetResult(AnyDisturbed ? 3 : 0);
+                finished.TrySetResult(pass is { Complete: true } ? 0 : 3);
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            results.Log("Measurement interrupted; it restarts when things settle.");
+            results.Log("Measurement interrupted; its partial results were discarded. It starts again when things settle.");
         }
         catch (Exception error) when (error is InvalidOperationException or TimeoutException or System.Runtime.InteropServices.COMException or JsonException)
         {
@@ -176,21 +211,21 @@ internal sealed class BoundsSpike : IDisposable
         }
     }
 
-    private bool AnyDisturbed => measurements.Any(item => item.Disturbed) || modals.Any(item => item.Disturbed);
-
     private async Task SimulateAsync()
     {
         try
         {
             Host.Ui.ShouldDetectMonitorScaleChanges = false;
             Host.Tab.ShouldDetectMonitorScaleChanges = false;
+            var complete = true;
             foreach (var percent in simulate)
             {
                 Host.Ui.RasterizationScale = percent / 100.0;
                 Host.Tab.RasterizationScale = percent / 100.0;
-                await MeasureScaleAsync(new Scale(Host.Dpi, percent, true), CancellationToken.None);
+                var pass = await MeasureScaleAsync(new Scale(Host.Dpi, percent, true), CancellationToken.None);
+                complete &= pass is { Complete: true };
             }
-            finished.TrySetResult(AnyDisturbed ? 3 : 0);
+            finished.TrySetResult(complete ? 0 : 3);
         }
         catch (Exception error) when (error is InvalidOperationException or TimeoutException or System.Runtime.InteropServices.COMException or JsonException)
         {
@@ -199,13 +234,19 @@ internal sealed class BoundsSpike : IDisposable
         }
     }
 
-    private async Task MeasureScaleAsync(Scale scale, CancellationToken token)
+    /// <summary>One pass at the current scale. Its records are kept only if it runs to the end at that scale.</summary>
+    private async Task<ScalePass?> MeasureScaleAsync(Scale scale, CancellationToken token)
     {
-        results.Log($"Measuring at {scale} (DPI {scale.Dpi}, rasterization scale {Host.Ui.RasterizationScale}). Do not touch the window for about half a minute.");
-        Status($"S3 · {scale}% · measuring, do not touch");
+        var number = ++passNumber;
+        var placements = new List<BoundsRecord>();
+        var modals = new List<ModalRecord>();
+        results.Log($"Pass {number}: measuring at {scale} (DPI {scale.Dpi}, rasterization scale {Host.Ui.RasterizationScale}). Do not touch the window for about half a minute.");
+        Status($"S3 · {scale} · measuring, do not touch");
         window.Topmost = true; // Captures must see this window, whatever Settings or anything else covers.
         try
         {
+            // First, the tab exactly as the last change left it, before the harness moves, resizes or zooms anything.
+            await MeasureAsync(number, scale, placements, Host.Ui.ZoomFactor, "as left", token);
             for (var size = 0; size < 2; size++)
             {
                 Resize(size);
@@ -215,15 +256,15 @@ internal sealed class BoundsSpike : IDisposable
                     foreach (var zoom in Zooms)
                     {
                         Host.Ui.ZoomFactor = zoom;
-                        await MeasureAsync(scale, zoom, layout, size == 0 ? "standard" : "odd", token);
+                        await MeasureAsync(number, scale, placements, zoom, size == 0 ? "standard" : "odd", token);
                     }
                 }
             }
             Resize(0);
             Host.Post(new { kind = "layout", name = "fractional" });
             Host.Ui.ZoomFactor = 1;
-            await ConfirmationAsync(scale, token);
-            await NativeDialogAsync(scale, token);
+            modals.Add(await ConfirmationAsync(number, scale, token));
+            modals.Add(await NativeDialogAsync(number, scale, token));
         }
         finally
         {
@@ -231,101 +272,192 @@ internal sealed class BoundsSpike : IDisposable
             Host.Post(new { kind = "layout", name = "aligned" });
             window.Topmost = false;
         }
-        if (!scale.Simulated && TargetScales.Contains(scale.Percent))
+        if (!scale.Simulated && Host.Dpi != scale.Dpi)
         {
-            scalesMeasured.Add(scale.Percent);
+            results.Log($"The display scale changed during pass {number}; its results were discarded.");
+            return null;
+        }
+        var pass = new ScalePass(number, scale, placements, modals);
+        passes.Add(pass);
+        foreach (var record in placements)
+        {
+            results.Record(record);
+        }
+        foreach (var record in modals)
+        {
+            results.Record(record);
         }
         WriteSummary();
-        foreach (var line in ScaleSummary(scale))
+        foreach (var line in PassSummary(pass))
         {
             results.Log(line);
         }
-        if (scale.Simulated)
+        if (!scale.Simulated)
         {
-            return;
+            Prompt(pass);
         }
-        var remaining = TargetScales.Where(item => !scalesMeasured.Contains(item)).ToList();
-        var next = remaining.Count == 0
-            ? "All four scales are measured. Restore your usual scaling, then type q and Enter (or close the window)."
-            : $"Next: set Windows display scaling to {remaining[0]}% (Settings > System > Display > Scale). The harness measures again about 2 s after the change. Still to do: {string.Join(", ", remaining.Select(item => $"{item}%"))}. Enter re-measures now; q finishes.";
-        results.Log(next);
-        Status(remaining.Count == 0 ? "S3 · all scales measured · type q in the console" : $"S3 · {scale}% done · next {remaining[0]}%");
+        return pass;
     }
 
-    private async Task MeasureAsync(Scale scale, double zoom, string layout, string size, CancellationToken token)
+    private void Prompt(ScalePass pass)
     {
+        if (pass.Verdict == "incomplete")
+        {
+            results.Log($"Some measurements at {pass.Scale} were obstructed. Keep this window unobstructed and press Enter to measure again.");
+            Status($"S3 · {pass.Scale} incomplete · press Enter in the console");
+            return;
+        }
+        var remaining = TargetScales.Where(item => Latest(item) is not { Verdict: "met" or "not met" }).ToList();
+        results.Log(remaining.Count == 0
+            ? "All four scales are measured. Restore your usual scaling, then type q and Enter (or close the window)."
+            : $"Next: set Windows display scaling to {remaining[0]}% (Settings > System > Display > Scale). The harness measures again about 2 s after the change. Still to do: {string.Join(", ", remaining.Select(item => $"{item}%"))}. Enter re-measures now; q finishes.");
+        Status(remaining.Count == 0 ? "S3 · all scales measured · type q in the console" : $"S3 · {pass.Scale} done · next {remaining[0]}%");
+    }
+
+    private ScalePass? Latest(int percent, bool simulated = false) =>
+        passes.LastOrDefault(item => item.Scale.Percent == percent && item.Scale.Simulated == simulated);
+
+    private async Task MeasureAsync(int number, Scale scale, List<BoundsRecord> placements, double zoom, string window, CancellationToken token)
+    {
+        bool? placedByEvents = null;
         for (var attempt = 1; ; attempt++)
         {
             var area = await SettleAsync(zoom, token);
             var client = Host.ClientScreen;
             var rasterization = Host.Ui.RasterizationScale;
-            var expected = TabGeometry.ToDevice(area.Rect, zoom, rasterization).Offset(client.Left, client.Top);
-            var zone = expected.Inflate(ZoneMargin).Intersect(client);
+            var designed = Expected(Host.Bounds.ToRect(), zoom, rasterization, client);
+            var exact = Expected(area.Rect, zoom, rasterization, client);
+            var zone = TabGeometry.ToDevice(area.Rect, zoom, rasterization).Offset(client.Left, client.Top).Inflate(ZoneMargin).Intersect(client);
 
-            // The area the UI painted, photographed with the tab hidden.
-            Host.Placement = Placement.Renderer;
+            // 1. The tab where the host's own event handling put it. The harness has not synced it since the last
+            //    change, so a missed ZoomFactorChanged, RasterizationScaleChanged or resize shows here. A retry follows
+            //    the harness's own syncs, so the first attempt's answer stands.
+            placedByEvents ??= Host.TabScreen == designed;
+            var designedHost = Host.TabScreen;
+            var shownDesigned = await StableAsync(zone, token);
+
+            // 2. The area the UI painted, photographed with the tab hidden.
             Host.Hide(true);
             await Surface.PaintedAsync(Host.Ui.CoreWebView2);
-            var beneath = ScreenCapture.Take(zone);
+            var beneath = await StableAsync(zone, token);
             Host.Hide(false);
-            var painted = beneath.Bounds(Paint.Area, zone);
-            var disturbed = painted is not { } area0 || !beneath.IsSolid(Paint.Area, area0) || beneath.Count(Paint.Other, zone) > 0 || beneath.Count(Paint.Tab, zone) > 0;
 
-            var records = new List<BoundsRecord>();
-            foreach (var placement in new[] { Placement.Renderer, Placement.Exact })
-            {
-                Host.Placement = placement;
-                Host.Sync();
-                await Surface.PaintedAsync(Host.Tab.CoreWebView2);
-                await Task.Delay(100, token);
-                Native.FlushComposition();
-                var shown = ScreenCapture.Take(zone);
-                var tab = shown.Bounds(Paint.Tab, zone);
-                var bad = disturbed || tab is not { } tab0 || !shown.IsSolid(Paint.Tab, tab0) || shown.Count(Paint.Other, zone) > 0;
-                var errors = painted is { } p && tab is { } t ? TabGeometry.Compare(p, t) : (EdgeErrors?)null;
-                records.Add(new BoundsRecord("measurement", DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, rasterization, Host.Tab.RasterizationScale,
-                    zoom, area.DevicePixelRatio, size, layout, placement.ToString(), client, area.Rect, Host.Bounds,
-                    Host.TabRect.Offset(client.Left, client.Top), Host.TabScreen, painted, tab, errors,
-                    shown.Count(Paint.Area, zone), painted is { } p2 ? shown.Count(Paint.Tab, zone, except: p2) : 0,
-                    bad, !bad && errors is { Max: <= 1 }));
-            }
+            // 3. A diagnostic: the tab placed from the page's fractional rectangle.
+            Host.Placement = Placement.Exact;
+            Host.Sync();
+            await Surface.PaintedAsync(Host.Tab.CoreWebView2);
+            var exactHost = Host.TabScreen;
+            var shownExact = await StableAsync(zone, token);
             Host.Placement = Placement.Renderer;
             Host.Sync();
-            if (records.Any(item => item.Disturbed) && attempt < Attempts)
+
+            var consistent = scale.Simulated || (Host.Dpi == scale.Dpi && Math.Abs(Host.Tab.RasterizationScale - rasterization) < 0.001);
+            var painted = beneath?.Bounds(Paint.Area, zone);
+            var obstruction = !consistent ? "the scale changed, or the tab's scale differs from the UI's"
+                : beneath is null ? "the area beneath the tab kept changing"
+                : painted is not { } box || !beneath.IsSolid(Paint.Area, box) || beneath.Count(Paint.Other, zone) > 0 || beneath.Count(Paint.Tab, zone) > 0
+                    ? "something else covered the painted area"
+                : null;
+            BoundsRecord Record(Placement placement, DeviceRect expected, DeviceRect host, bool? byEvents, ScreenCapture? shown)
             {
-                results.Log($"Something covered or changed the measured area ({size}, {layout}, zoom {zoom}); retrying.");
+                var (tab, errors, gap, overflow, outcome, reason) = Judge(painted, shown, zone, byEvents, obstruction);
+                return new BoundsRecord("placement", number, DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, rasterization,
+                    Host.Tab.RasterizationScale, zoom, area.DevicePixelRatio, window, area.Layout, placement.ToString(), client, area.Rect,
+                    Host.Bounds, expected, host, byEvents, painted, tab, errors, gap, overflow, outcome, reason);
+            }
+            var records = new[] { Record(Placement.Renderer, designed, designedHost, placedByEvents, shownDesigned), Record(Placement.Exact, exact, exactHost, null, shownExact) };
+            if (records.Any(item => item.Outcome == Outcome.Obstructed) && attempt < Attempts)
+            {
+                results.Log($"Something covered or changed the measured area ({window}, {area.Layout}, zoom {zoom}); retrying.");
                 await Task.Delay(1000, token);
                 continue;
             }
+            placements.AddRange(records);
             foreach (var record in records)
             {
-                measurements.Add(record);
-                results.Record(record);
-                results.Log($"{scale} zoom {zoom} {size} {layout} {record.Placement}: {(record.Disturbed ? "DISTURBED" : $"{record.Errors} → {(record.Pass ? "pass" : "FAIL")}")} (painted {record.Painted}, tab {record.Tab})");
+                results.Log($"{scale} zoom {zoom} {window} {area.Layout} {record.Placement}: {record.Errors?.ToString() ?? "-"} → {record.Outcome}{(record.Reason is null ? string.Empty : $" ({record.Reason})")} (painted {record.Painted}, tab {record.Tab})");
             }
             return;
         }
     }
 
-    /// <summary>Hide the tab behind the UI's confirmation dialog, as BrowserPanel's <c>visible: !confirmation</c> asks.</summary>
-    private async Task ConfirmationAsync(Scale scale, CancellationToken token)
+    /// <summary>
+    /// Judge one photograph of the tab against the painted area. Something on screen that is not the UI, the area or
+    /// the tab means an obstruction (no verdict), unless it lies along the tab's own edge, where it is a seam the tab
+    /// left (a failure). A missing, holed or misplaced tab is a failure.
+    /// </summary>
+    private static (DeviceRect? Tab, EdgeErrors? Errors, int Gap, int Overflow, string Outcome, string? Reason) Judge(
+        DeviceRect? painted, ScreenCapture? shown, DeviceRect zone, bool? placedByEvents, string? obstruction)
+    {
+        if (obstruction is not null || painted is not { } area)
+        {
+            return (null, null, 0, 0, Outcome.Obstructed, obstruction ?? "no painted area in view");
+        }
+        if (shown is null)
+        {
+            return (null, null, 0, 0, Outcome.Obstructed, "the tab kept changing");
+        }
+        if (shown.Bounds(Paint.Tab, zone) is not { } tab)
+        {
+            return (null, null, 0, 0, Outcome.Fail, "no tab in view");
+        }
+        var errors = TabGeometry.Compare(area, tab);
+        var gap = shown.Count(Paint.Area, zone);
+        var overflow = shown.Count(Paint.Tab, zone, except: area);
+        var nearEdge = shown.Count(Paint.Other, tab.Inflate(1)) - (tab.Width > 2 && tab.Height > 2 ? shown.Count(Paint.Other, tab.Inflate(-1)) : 0);
+        var elsewhere = shown.Count(Paint.Other, zone) - nearEdge;
+        var (outcome, reason) =
+            elsewhere > 0 ? (Outcome.Obstructed, $"{elsewhere} pixels of something else in view")
+            : nearEdge > 0 ? (Outcome.Fail, $"{nearEdge} pixels of neither UI, area nor tab along the tab's edge")
+            : !shown.IsSolid(Paint.Tab, tab) ? (Outcome.Fail, "the tab is not one solid rectangle")
+            : placedByEvents == false ? (Outcome.Fail, "the host had not re-synced the tab by itself")
+            : errors.Max > 1 ? (Outcome.Fail, $"an edge is {errors.Max} device px off")
+            : (Outcome.Pass, (string?)null);
+        return (tab, errors, gap, overflow, outcome, reason);
+    }
+
+    private static DeviceRect Expected(CssRect css, double zoom, double scale, DeviceRect client) =>
+        TabGeometry.Clamp(TabGeometry.ToDevice(css, zoom, scale), client.Width, client.Height).Offset(client.Left, client.Top);
+
+    /// <summary>Photograph twice, a frame apart, until two photographs agree; null if the screen keeps changing.</summary>
+    private static async Task<ScreenCapture?> StableAsync(DeviceRect zone, CancellationToken token)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            Native.FlushComposition();
+            var first = ScreenCapture.Take(zone);
+            await Task.Delay(60, token);
+            Native.FlushComposition();
+            var second = ScreenCapture.Take(zone);
+            if (first.SameAs(second))
+            {
+                return second;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>The tab hides behind the UI's confirmation dialog, as BrowserPanel's <c>visible: !confirmation</c> asks.</summary>
+    private async Task<ModalRecord> ConfirmationAsync(int number, Scale scale, CancellationToken token)
     {
         var before = await TabOnScreenAsync(token);
         Host.Post(new { kind = "confirm", open = true });
         await UntilAsync(() => !Host.TabShown, "the tab to hide for the confirmation", token);
         await Surface.PaintedAsync(Host.Ui.CoreWebView2);
         var client = Host.ClientScreen;
-        var during = ScreenCapture.Take(client).Count(Paint.Tab, client);
+        var during = (await StableAsync(client, token))?.Count(Paint.Tab, client) ?? -1;
         var hidden = !Host.TabShown && !Native.IsWindowVisible(Host.TabHostHwnd) && during == 0;
         Host.Post(new { kind = "confirm", open = false });
         await UntilAsync(() => Host.TabShown, "the tab to come back after the confirmation", token);
         var after = await TabOnScreenAsync(token);
-        AddModal(new ModalRecord("modal", DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, "confirmation", hidden, during, before, after,
-            before is not null && before == after, before is null || after is null, hidden && before is not null && before == after));
+        return Modal(number, scale, "confirmation", hidden, during, before, after);
     }
 
-    /// <summary>Hide the tab while a native folder dialog is open (index.ts:151). The dialog is closed by the harness.</summary>
-    private async Task NativeDialogAsync(Scale scale, CancellationToken token)
+    /// <summary>
+    /// The host's rule around native dialogs (index.ts:151): it hides the tab while one is open. This checks that the
+    /// hidden tab stays off screen during the dialog's modal loop and comes back in place. The harness closes the dialog.
+    /// </summary>
+    private async Task<ModalRecord> NativeDialogAsync(int number, Scale scale, CancellationToken token)
     {
         var before = await TabOnScreenAsync(token);
         var during = -1;
@@ -372,27 +504,39 @@ internal sealed class BoundsSpike : IDisposable
         }
         await UntilAsync(() => Host.TabShown, "the tab to come back after the dialog", token);
         var after = await TabOnScreenAsync(token);
-        var hidden = during == 0 && !visibleDuring;
-        AddModal(new ModalRecord("modal", DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, "native folder dialog", hidden, during, before, after,
-            before is not null && before == after, before is null || after is null, hidden && before is not null && before == after));
+        return Modal(number, scale, "native folder dialog", during == 0 && !visibleDuring, during, before, after);
     }
 
-    private void AddModal(ModalRecord record)
+    private ModalRecord Modal(int number, Scale scale, string modal, bool hidden, int during, (DeviceRect? Rect, string? Obstruction) before, (DeviceRect? Rect, string? Obstruction) after)
     {
-        modals.Add(record);
-        results.Record(record);
-        results.Log($"{new Scale(record.Dpi, record.ScalePercent, record.Simulated)} {record.Modal}: hidden while open {record.HiddenWhileOpen} ({record.TabPixelsWhileOpen} tab pixels), restored {record.Restored} → {(record.Pass ? "pass" : "FAIL")}");
+        var (outcome, reason) =
+            during < 0 ? (Outcome.Obstructed, "the screen kept changing while the modal was open")
+            : before.Obstruction is not null || after.Obstruction is not null ? (Outcome.Obstructed, before.Obstruction ?? after.Obstruction)
+            : !hidden ? (Outcome.Fail, $"the tab stayed visible ({during} tab pixels)")
+            : before.Rect is null ? (Outcome.Fail, "no tab in view before the modal")
+            : before.Rect != after.Rect ? (Outcome.Fail, $"the tab came back at {after.Rect?.ToString() ?? "nowhere"}, not {before.Rect}")
+            : (Outcome.Pass, (string?)null);
+        var record = new ModalRecord("modal", number, DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, modal, hidden, during, before.Rect, after.Rect, outcome, reason);
+        results.Log($"{scale} {modal}: hidden while open {hidden} ({during} tab pixels), back at {after.Rect?.ToString() ?? "-"} → {outcome}{(reason is null ? string.Empty : $" ({reason})")}");
+        return record;
     }
 
-    /// <summary>The tab's visible rectangle on screen, or null if something else covers the area.</summary>
-    private async Task<DeviceRect?> TabOnScreenAsync(CancellationToken token)
+    /// <summary>The tab's visible rectangle on screen, or why it could not be seen.</summary>
+    private async Task<(DeviceRect? Rect, string? Obstruction)> TabOnScreenAsync(CancellationToken token)
     {
         var area = await SettleAsync(Host.Ui.ZoomFactor, token);
         var client = Host.ClientScreen;
         var zone = TabGeometry.ToDevice(area.Rect, Host.Ui.ZoomFactor, Host.Ui.RasterizationScale).Offset(client.Left, client.Top).Inflate(ZoneMargin).Intersect(client);
-        var capture = ScreenCapture.Take(zone);
-        var tab = capture.Bounds(Paint.Tab, zone);
-        return tab is { } rect && capture.IsSolid(Paint.Tab, rect) && capture.Count(Paint.Other, zone) == 0 ? rect : null;
+        if (await StableAsync(zone, token) is not { } capture)
+        {
+            return (null, "the screen kept changing");
+        }
+        if (capture.Bounds(Paint.Tab, zone) is not { } tab)
+        {
+            return (null, null);
+        }
+        var nearEdge = capture.Count(Paint.Other, tab.Inflate(1)) - (tab.Width > 2 && tab.Height > 2 ? capture.Count(Paint.Other, tab.Inflate(-1)) : 0);
+        return capture.Count(Paint.Other, zone) - nearEdge > 0 ? (null, "something else covered the tab") : (tab, null);
     }
 
     /// <summary>
@@ -460,18 +604,17 @@ internal sealed class BoundsSpike : IDisposable
 
     private static int Percent(uint dpi) => (int)Math.Round(dpi * 100.0 / 96, MidpointRounding.AwayFromZero);
 
-    private IEnumerable<string> ScaleSummary(Scale scale)
+    private static IEnumerable<string> PassSummary(ScalePass pass)
     {
-        var rows = measurements.Where(item => item.ScalePercent == scale.Percent && item.Simulated == scale.Simulated && !item.Disturbed).ToList();
-        foreach (var placement in new[] { "Renderer", "Exact" })
+        foreach (var placement in new[] { nameof(Placement.Renderer), nameof(Placement.Exact) })
         {
-            var selected = rows.Where(item => item.Placement == placement).ToList();
-            if (selected.Count > 0)
-            {
-                var worst = selected.Max(item => item.Errors?.Max ?? int.MaxValue);
-                yield return $"{scale} {placement}: worst edge error {worst} device px over {selected.Count} placements → {(selected.All(item => item.Pass) ? "pass" : "FAIL")}";
-            }
+            var selected = pass.Placements.Where(item => item.Placement == placement).ToList();
+            var judged = selected.Where(item => item.Outcome != Outcome.Obstructed).ToList();
+            var worst = judged.Count == 0 ? "-" : judged.Max(item => item.Errors?.Max ?? 0).ToString(CultureInfo.InvariantCulture);
+            yield return $"{pass.Scale} {placement}: {judged.Count(item => item.Outcome == Outcome.Pass)} of {selected.Count} placements pass, {selected.Count(item => item.Outcome == Outcome.Fail)} fail, {selected.Count - judged.Count} obstructed; worst edge error {worst} device px";
         }
+        yield return $"{pass.Scale} modals: {string.Join("; ", pass.Modals.Select(item => $"{item.Modal} {item.Outcome}"))}";
+        yield return $"{pass.Scale}: S3 as designed {pass.Verdict} at this scale (pass {pass.Number}).";
     }
 
     private void WriteSummary()
@@ -481,58 +624,65 @@ internal sealed class BoundsSpike : IDisposable
         text.AppendLine("# Spike S3: tab bounds under display scaling and zoom").AppendLine();
         text.AppendLine(invariant, $"Run {DateTimeOffset.Now:yyyy-MM-dd HH:mm zzz}. {Results.Describe()}.").AppendLine();
         text.AppendLine("Exit criterion: at most 1 device px of error at 100/125/150/200% and zoom 2; hidden behind modals.").AppendLine();
-        var missing = TargetScales.Where(item => !scalesMeasured.Contains(item)).ToList();
+        text.AppendLine("A scale is **met** when its latest pass ran completely and every placement of the design (the UI's whole-pixel bounds) and both modal checks passed; **not met** when any of them failed; **incomplete** when something obstructed the screen. Obstructed measurements are never counted as passes.").AppendLine();
         foreach (var simulated in new[] { false, true })
         {
-            var rows = measurements.Where(item => item.Simulated == simulated).ToList();
-            var checks = modals.Where(item => item.Simulated == simulated).ToList();
-            if (rows.Count == 0 && simulated)
+            var latest = passes.Where(item => item.Scale.Simulated == simulated).GroupBy(item => item.Scale.Percent).Select(group => group.Last()).OrderBy(item => item.Scale.Percent).ToList();
+            if (latest.Count == 0 && simulated)
             {
                 continue;
             }
-            var valid = rows.Where(item => !item.Disturbed).ToList();
             text.AppendLine(simulated ? "## Simulated scales (an arithmetic check; never evidence for the exit criterion)" : "## Verdict").AppendLine();
-            text.AppendLine(invariant, $"- Scales measured: {string.Join(", ", rows.Select(item => item.ScalePercent).Distinct().Order().Select(item => $"{item}%"))}{(!simulated && missing.Count > 0 ? $" (still missing: {string.Join(", ", missing.Select(item => $"{item}%"))})" : string.Empty)}.");
-            foreach (var (placement, meaning) in new[] { ("Renderer", "As designed: the UI's whole-pixel bounds × zoom × scale"), ("Exact", "Diagnostic: the page's fractional rectangle × zoom × scale (needs a protocol change)") })
-            {
-                var selected = valid.Where(item => item.Placement == placement).ToList();
-                var worst = selected.Count == 0 ? "n/a" : selected.Max(item => item.Errors?.Max ?? int.MaxValue).ToString(invariant);
-                text.AppendLine(invariant, $"- {meaning}: worst edge error {worst} device px; {selected.Count(item => !item.Pass)} of {selected.Count} placements over 1 px.");
-            }
-            text.AppendLine(invariant, $"- Hidden behind modals: {checks.Count(item => item.Pass)} of {checks.Count} checks passed.");
-            text.AppendLine(invariant, $"- Disturbed measurements (not judged): {rows.Count(item => item.Disturbed) + checks.Count(item => item.Disturbed)}.");
             if (!simulated)
             {
-                var met = missing.Count == 0 && valid.Where(item => item.Placement == "Renderer").All(item => item.Pass) && checks.Count > 0 && checks.All(item => item.Pass);
-                text.AppendLine(invariant, $"- **S3 as designed: {(missing.Count > 0 ? "incomplete" : met ? "met" : "not met")}.**");
-            }
-            text.AppendLine().AppendLine("| Scale | Zoom | Renderer, aligned | Renderer, fractional | Exact, aligned | Exact, fractional |");
-            text.AppendLine("|---|---|---|---|---|---|");
-            foreach (var group in valid.GroupBy(item => (item.ScalePercent, item.Zoom)).OrderBy(group => group.Key))
-            {
-                string Worst(string placement, string layout)
+                var verdicts = TargetScales.Select(percent => (percent, verdict: Latest(percent)?.Verdict ?? "not measured")).ToList();
+                var overall = verdicts.Any(item => item.verdict == "not met") ? "not met" : verdicts.All(item => item.verdict == "met") ? "met" : "incomplete";
+                text.AppendLine(invariant, $"- **S3 as designed: {overall}.** {string.Join("; ", verdicts.Select(item => $"{item.percent}% {item.verdict}"))}.");
+                var exact = latest.SelectMany(item => item.Placements).Where(item => item.Placement == nameof(Placement.Exact) && item.Outcome != Outcome.Obstructed).ToList();
+                text.AppendLine(invariant, $"- Diagnostic, placed from the page's fractional rectangle (needs a protocol change): {exact.Count(item => item.Outcome == Outcome.Pass)} of {exact.Count} judged placements pass; worst edge error {(exact.Count == 0 ? "-" : exact.Max(item => item.Errors?.Max ?? 0).ToString(invariant))} device px.");
+                var rescaled = latest.Select(item => item.Placements.FirstOrDefault(record => record.Window == "as left" && record.Placement == nameof(Placement.Renderer))).OfType<BoundsRecord>().ToList();
+                text.AppendLine(invariant, $"- After each scale change, before the harness moved anything, the host had re-synced the tab by itself at {rescaled.Count(item => item.PlacedByEvents == true)} of {rescaled.Count} scales.");
+                foreach (var item in latest.Where(item => item.Placements.Count > 0 && Math.Abs((item.Placements[0].RasterizationScale * 100) - item.Scale.Percent) > 0.5))
                 {
-                    var errors = group.Where(item => item.Placement == placement && item.Layout == layout).Select(item => item.Errors?.Max ?? int.MaxValue).ToList();
-                    return errors.Count == 0 ? "-" : $"{errors.Max()} px";
+                    text.AppendLine(invariant, $"- At {item.Scale} the UI's rasterization scale was {item.Placements[0].RasterizationScale}: text scaling or a DPI the webview had not caught up with.");
                 }
-                text.AppendLine(invariant, $"| {group.Key.ScalePercent}% | {group.Key.Zoom} | {Worst("Renderer", "aligned")} | {Worst("Renderer", "fractional")} | {Worst("Exact", "aligned")} | {Worst("Exact", "fractional")} |");
+            }
+            text.AppendLine().AppendLine("| Scale | Pass | Verdict | Zoom | Renderer, aligned | Renderer, fractional | Exact, aligned | Exact, fractional |");
+            text.AppendLine("|---|---|---|---|---|---|---|---|");
+            foreach (var pass in latest)
+            {
+                foreach (var zoom in Zooms)
+                {
+                    string Cell(string placement, string layout)
+                    {
+                        var rows = pass.Placements.Where(item => item.Zoom == zoom && item.Placement == placement && item.Layout == layout && item.Window != "as left").ToList();
+                        if (rows.Count == 0)
+                        {
+                            return "-";
+                        }
+                        var judged = rows.Where(item => item.Outcome != Outcome.Obstructed).ToList();
+                        var worst = judged.Count == 0 ? "obstructed" : $"{judged.Max(item => item.Errors?.Max ?? 0)} px";
+                        return rows.Any(item => item.Outcome == Outcome.Fail) ? $"{worst} FAIL" : judged.Count < rows.Count ? $"{worst}, part obstructed" : worst;
+                    }
+                    text.AppendLine(invariant, $"| {pass.Scale.Percent}% | {pass.Number} | {pass.Verdict} | {zoom} | {Cell("Renderer", "aligned")} | {Cell("Renderer", "fractional")} | {Cell("Exact", "aligned")} | {Cell("Exact", "fractional")} |");
+                }
             }
             text.AppendLine();
         }
-        text.AppendLine("Errors are signed per edge: positive where the tab stops short of the painted area, negative where it overlaps past it. The worst-error tables take the largest absolute edge error over both window sizes.").AppendLine();
+        text.AppendLine("Errors are signed per edge: positive where the tab stops short of the painted area, negative where it overlaps past it. The worst-error table takes the largest absolute edge error over both window sizes. The fractional layout puts each edge a hair past a whole CSS pixel, the near-worst case for the UI's inward rounding, so the design's error there approaches zoom × scale device px.").AppendLine();
         text.AppendLine("## Placements").AppendLine();
-        text.AppendLine("| Scale | Zoom | Window | Layout | Placement | CSS bounds (renderer) | Errors | Max | Gap px | Overflow px | Result |");
-        text.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
-        foreach (var item in measurements)
+        text.AppendLine("| Pass | Scale | Zoom | Window | Layout | Placement | CSS bounds (renderer) | Placed by events | Errors | Max | Gap px | Overflow px | Outcome |");
+        text.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+        foreach (var item in passes.SelectMany(pass => pass.Placements))
         {
-            text.AppendLine(invariant, $"| {item.ScalePercent}%{(item.Simulated ? " sim" : string.Empty)} | {item.Zoom} | {item.Window} | {item.Layout} | {item.Placement} | {item.Renderer.X},{item.Renderer.Y} {item.Renderer.Width}x{item.Renderer.Height} | {item.Errors?.ToString() ?? "-"} | {item.Errors?.Max.ToString(invariant) ?? "-"} | {item.GapPixels} | {item.OverflowPixels} | {(item.Disturbed ? "disturbed" : item.Pass ? "pass" : "FAIL")} |");
+            text.AppendLine(invariant, $"| {item.Pass} | {item.ScalePercent}%{(item.Simulated ? " sim" : string.Empty)} | {item.Zoom} | {item.Window} | {item.Layout} | {item.Placement} | {item.Renderer.X},{item.Renderer.Y} {item.Renderer.Width}x{item.Renderer.Height} | {item.PlacedByEvents?.ToString() ?? "-"} | {item.Errors?.ToString() ?? "-"} | {item.Errors?.Max.ToString(invariant) ?? "-"} | {item.GapPixels} | {item.OverflowPixels} | {item.Outcome}{(item.Reason is null ? string.Empty : $": {item.Reason}")} |");
         }
         text.AppendLine().AppendLine("## Modals").AppendLine();
-        text.AppendLine("| Scale | Modal | Hidden while open | Tab pixels while open | Restored | Result |");
-        text.AppendLine("|---|---|---|---|---|---|");
-        foreach (var item in modals)
+        text.AppendLine("| Pass | Scale | Modal | Hidden while open | Tab pixels while open | Before | After | Outcome |");
+        text.AppendLine("|---|---|---|---|---|---|---|---|");
+        foreach (var item in passes.SelectMany(pass => pass.Modals))
         {
-            text.AppendLine(invariant, $"| {item.ScalePercent}%{(item.Simulated ? " sim" : string.Empty)} | {item.Modal} | {item.HiddenWhileOpen} | {item.TabPixelsWhileOpen} | {item.Restored} | {(item.Disturbed ? "disturbed" : item.Pass ? "pass" : "FAIL")} |");
+            text.AppendLine(invariant, $"| {item.Pass} | {item.ScalePercent}%{(item.Simulated ? " sim" : string.Empty)} | {item.Modal} | {item.HiddenWhileOpen} | {item.TabPixelsWhileOpen} | {item.TabBefore?.ToString() ?? "-"} | {item.TabAfter?.ToString() ?? "-"} | {item.Outcome}{(item.Reason is null ? string.Empty : $": {item.Reason}")} |");
         }
         results.Write("summary.md", text.ToString());
     }

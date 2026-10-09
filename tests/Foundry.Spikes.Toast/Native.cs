@@ -31,6 +31,27 @@ internal static partial class Native
     [LibraryImport("user32.dll")]
     public static partial nint GetForegroundWindow();
 
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint window, out uint processId);
+
+    /// <summary>The name of the process that owns a window, or null.</summary>
+    public static string? ProcessName(nint window)
+    {
+        if (window == 0 || GetWindowThreadProcessId(window, out var processId) == 0)
+        {
+            return null;
+        }
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById((int)processId);
+            return process.ProcessName;
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException)
+        {
+            return null; // The process has gone.
+        }
+    }
+
     [LibraryImport("user32.dll", EntryPoint = "FlashWindowEx")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool FlashWindow(ref FlashInfo info);

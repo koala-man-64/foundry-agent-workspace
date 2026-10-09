@@ -113,5 +113,16 @@ public sealed class TabGeometryTests
         Assert.Null(capture.Bounds(Paint.Other, area));
     }
 
+    [Fact]
+    public void TwoCapturesAgreeOnlyWhenEveryPixelClassifiesTheSame()
+    {
+        var area = new DeviceRect(0, 0, 2, 1);
+        var first = new ScreenCapture(area, [Bgra(0x10, 0x20, 0x40), Bgra(0x00, 0xFF, 0x00)]);
+
+        Assert.True(first.SameAs(new ScreenCapture(area, [Bgra(0x12, 0x22, 0x40), Bgra(0x00, 0xF0, 0x00)]))); // Within tolerance.
+        Assert.False(first.SameAs(new ScreenCapture(area, [Bgra(0x10, 0x20, 0x40), Bgra(0xFF, 0x00, 0xFF)])));
+        Assert.False(first.SameAs(new ScreenCapture(new DeviceRect(1, 0, 3, 1), [Bgra(0x10, 0x20, 0x40), Bgra(0x00, 0xFF, 0x00)])));
+    }
+
     private static uint Bgra(int red, int green, int blue) => (uint)((0xFF << 24) | (red << 16) | (green << 8) | blue);
 }

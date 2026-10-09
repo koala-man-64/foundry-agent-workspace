@@ -6,7 +6,7 @@
   h1 { font-size: 16px; margin: 0 0 4px; }
   #count { font-size: 44px; font-weight: 700; line-height: 1.1; }
   #count.hit { color: #c62828; }
-  #types, #last { font: 12px/1.35 Consolas, monospace; color: #444; min-height: 1.4em; }
+  #types, #hover, #last { font: 12px/1.35 Consolas, monospace; color: #444; min-height: 1.4em; }
   .row { display: flex; align-items: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
   #spinner { width: 22px; height: 22px; background: #2e7d5b; animation: spin 1.2s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -16,13 +16,18 @@
   #editable { border: 1px solid #888; padding: 4px; min-height: 22px; background: #fff; }
   #drop { border: 2px dashed #888; padding: 10px; text-align: center; color: #555; }
   #scroller { height: 70px; overflow: auto; border: 1px solid #888; background: #fff; }
+  /* Visible hover feedback, so a hover that reaches the page shows (step 5). */
+  button:hover, a:hover, #drop:hover, #editable:hover { background: #ffe08a; }
+  .frames { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 8px; }
+  iframe { width: 100%; height: 64px; border: 1px solid #888; background: #fff; }
   #agent { margin-top: 12px; padding: 8px; background: #e7efe9; }
 </style>
-<h1>Human input that reached this page</h1>
+<h1 id="title">Human input that reached this page (manual browsing)</h1>
 <div id="count">0</div>
 <div id="types">no human input yet</div>
+<div id="hover"></div>
 <div id="last"></div>
-<div class="row"><div id="spinner" title="Keeps turning while the page renders"></div><span>Frames rendered: <b id="frames">0</b></span><span>Page clock: <b id="clock">-</b></span></div>
+<div class="row"><div id="spinner" title="Keeps turning while the page renders"></div><span>Frames rendered: <b id="rendered">0</b></span><span>Page clock: <b id="clock">-</b></span></div>
 <div class="grid">
   <label>Text field <input id="text" autocomplete="off"></label>
   <label>Text area <textarea id="area"></textarea></label>
@@ -35,54 +40,97 @@
   <div id="scroller"><div style="height: 600px; padding: 4px;">Scroll inside this box</div></div>
   <div id="section">Anchor target</div>
 </div>
+<div class="frames">
+  <label>Same-origin frame <iframe src="/frame?name=same-origin-frame" title="Same-origin frame"></iframe></label>
+  <label>Cross-site frame (its own process) <iframe src="{{OTHER}}/frame?name=cross-site-frame" title="Cross-site frame"></iframe></label>
+</div>
 <div id="agent">
   <b>Agent</b> (acts through host scripts while attached; these are not human input)
   <div class="row"><button id="agent-button" type="button">Agent clicks: <span id="agent-clicks">0</span></button><input id="agent-field" readonly placeholder="The agent types here" size="32"></div>
 </div>
 <script>
-  // Every input-related event type. Only trusted events are human (or OS) input; the agent's host scripts dispatch
-  // untrusted ones, which are counted apart.
-  const types = ['pointerdown', 'pointerup', 'pointermove', 'pointerover', 'pointerout', 'pointerenter', 'pointerleave', 'pointercancel',
-    'gotpointercapture', 'lostpointercapture', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave',
-    'click', 'dblclick', 'auxclick', 'contextmenu', 'wheel', 'keydown', 'keyup', 'keypress', 'beforeinput', 'input', 'change',
-    'compositionstart', 'compositionupdate', 'compositionend', 'paste', 'copy', 'cut', 'select', 'dragstart', 'drag', 'dragend',
-    'dragenter', 'dragover', 'dragleave', 'drop', 'touchstart', 'touchmove', 'touchend', 'touchcancel', 'focus', 'blur',
-    'focusin', 'focusout', 'scroll'];
-  const state = { trusted: 0, synthetic: 0, byType: {}, last: [] };
-  const render = () => {
+  const S4_NAME = 'page';
+  const loadId = crypto.randomUUID();
+  const frames = {};
+  function s4Changed() { render(); }
+</script>
+<script>
+/*RECORDER*/
+</script>
+<script>
+  // Each frame reports its own counts here; the totals cover the page and every frame.
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (data && typeof data.s4frame === 'string' && data.recorder) { frames[data.s4frame] = data.recorder; render(); }
+  });
+  const add = (into, from) => { for (const [type, n] of Object.entries(from)) into[type] = (into[type] ?? 0) + n; return into; };
+  const sum = counts => Object.values(counts).reduce((total, n) => total + n, 0);
+  function totals() {
+    const all = [recorder, ...Object.values(frames)];
+    return {
+      input: all.reduce((into, item) => add(into, item.input), {}),
+      hover: all.reduce((into, item) => add(into, item.hover), {}),
+      synthetic: all.reduce((total, item) => total + item.synthetic, 0),
+      last: all.flatMap(item => item.last).sort().reverse().slice(0, 6),
+    };
+  }
+  const minus = (now, then) => Object.fromEntries(Object.entries(now).map(([type, n]) => [type, n - (then[type] ?? 0)]).filter(([, n]) => n > 0));
+  const view = { phase: 'manual', baseline: null, frozen: null };
+  function shown() {
+    const now = totals();
+    if (view.phase === 'after') return view.frozen;
+    if (view.phase === 'attached' && view.baseline) return { input: minus(now.input, view.baseline.input), hover: minus(now.hover, view.baseline.hover), last: now.last };
+    return now;
+  }
+  const describe = counts => Object.entries(counts).map(([type, n]) => `${type} ${n}`).join(' · ');
+  function render() {
+    const counts = shown();
     const count = document.getElementById('count');
-    count.textContent = String(state.trusted);
-    count.className = state.trusted > 0 ? 'hit' : '';
-    document.getElementById('types').textContent = state.trusted ? Object.entries(state.byType).map(([type, n]) => `${type} ${n}`).join(' · ') : 'no human input yet';
-    document.getElementById('last').textContent = state.last.join('  ');
-  };
-  const record = event => {
-    if (!event.isTrusted) { state.synthetic++; return; }
-    state.trusted++;
-    state.byType[event.type] = (state.byType[event.type] ?? 0) + 1;
-    state.last.unshift(`${new Date().toISOString().slice(11, 23)} ${event.type}`);
-    state.last.length = Math.min(state.last.length, 6);
-    render();
-  };
-  // Capture listeners on the window see every event dispatched in the document, bubbling or not.
-  for (const type of types) window.addEventListener(type, record, { capture: true, passive: true });
-  // Accept drops, so a drop that does reach the page is counted rather than navigating the tab away.
-  for (const type of ['dragover', 'drop']) window.addEventListener(type, event => event.preventDefault());
+    document.getElementById('title').textContent = view.phase === 'attached' ? 'Human input that reached this page while attached'
+      : view.phase === 'after' ? 'Human input while attached (frozen at the takeover)' : 'Human input that reached this page (manual browsing)';
+    count.textContent = String(sum(counts.input));
+    count.className = sum(counts.input) > 0 ? 'hit' : '';
+    document.getElementById('types').textContent = sum(counts.input) ? describe(counts.input) : 'no human input';
+    document.getElementById('hover').textContent = sum(counts.hover) ? `hover, focus and scroll events: ${describe(counts.hover)}` : '';
+    document.getElementById('last').textContent = (counts.last ?? []).join('  ');
+  }
   let clicks = 0;
   document.getElementById('button').addEventListener('click', () => { document.getElementById('clicks').textContent = String(++clicks); });
+  // Every agent effect is timestamped, so the host can tell when the agent last changed the page.
   let agentClicks = 0;
-  document.getElementById('agent-button').addEventListener('click', () => { document.getElementById('agent-clicks').textContent = String(++agentClicks); });
-  let frames = 0;
+  const agentTimes = [];
+  const agentEffect = () => { agentTimes.push(Date.now()); if (agentTimes.length > 50) agentTimes.shift(); };
+  document.getElementById('agent-button').addEventListener('click', event => {
+    document.getElementById('agent-clicks').textContent = String(++agentClicks);
+    if (!event.isTrusted) agentEffect();
+  });
+  document.getElementById('agent-field').addEventListener('input', event => { if (!event.isTrusted) agentEffect(); });
+  let rendered = 0;
   const tick = () => {
-    frames++;
-    document.getElementById('frames').textContent = String(frames);
+    rendered++;
+    document.getElementById('rendered').textContent = String(rendered);
     document.getElementById('clock').textContent = new Date().toISOString().slice(11, 21);
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
-  // The host reads and resets these through the DevTools protocol; the tab has no web-message channel.
+  const element = node => node ? `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}` : 'none';
+  // The host reads these through the DevTools protocol; the tab has no web-message channel.
   window.__s4 = {
-    reset() { state.trusted = 0; state.synthetic = 0; state.byType = {}; state.last = []; render(); return true; },
-    snapshot() { return { trusted: state.trusted, synthetic: state.synthetic, byType: { ...state.byType }, last: [...state.last], frames, agentClicks }; },
+    snapshot() {
+      const now = totals();
+      return {
+        loadId, input: now.input, hover: now.hover, synthetic: now.synthetic, last: now.last, frames: Object.keys(frames),
+        rendered, agentClicks, agentTimes: [...agentTimes],
+        state: { hasFocus: document.hasFocus(), active: element(document.activeElement), scrollX, scrollY, href: location.href, history: history.length },
+      };
+    },
+    mark(phase) {
+      if (phase === 'attached') { view.baseline = totals(); view.frozen = null; }
+      if (phase === 'after') { const now = totals(), then = view.baseline ?? { input: {}, hover: {} }; view.frozen = { input: minus(now.input, then.input), hover: minus(now.hover, then.hover), last: now.last }; }
+      view.phase = phase;
+      render();
+      return true;
+    },
   };
+  render();
 </script>

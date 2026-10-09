@@ -66,7 +66,8 @@ internal static class Pages
     public static string Load(string name)
     {
         var text = Read(name);
-        return text.Replace("/*BROWSER-PANEL*/", Read("browser-panel.js"), StringComparison.Ordinal);
+        return text.Replace("/*BROWSER-PANEL*/", Read("browser-panel.js"), StringComparison.Ordinal)
+            .Replace("/*RECORDER*/", Read("recorder.js"), StringComparison.Ordinal);
     }
 
     private static string Read(string name)

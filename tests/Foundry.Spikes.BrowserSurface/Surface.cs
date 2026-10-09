@@ -19,7 +19,8 @@ internal enum Placement
 internal sealed record AreaReport(int Sequence, string Layout, CssRect Rect, double InnerWidth, double InnerHeight, double DevicePixelRatio);
 
 /// <summary>What the spike's pages need from the host.</summary>
-internal sealed record SurfaceOptions(string UiPage, string TabPage, System.Drawing.Color UiBackground, System.Drawing.Color TabBackground);
+/// <param name="TabPage">The tab's HTML, loaded as a string, or with <paramref name="TabUri"/> the address the tab opens.</param>
+internal sealed record SurfaceOptions(string UiPage, string TabPage, System.Drawing.Color UiBackground, System.Drawing.Color TabBackground, Uri? TabUri = null);
 
 /// <summary>
 /// The plan's browser surface (section 6) on a real window: the app UI in one WebView2 environment, and one tab in a
@@ -80,7 +81,15 @@ internal sealed class Surface : IAsyncDisposable
     public static async Task<Surface> StartAsync(Window window, SurfaceOptions options, Action<string> log)
     {
         var surface = new Surface(window, log);
-        await surface.CreateAsync(options);
+        try
+        {
+            await surface.CreateAsync(options);
+        }
+        catch
+        {
+            await surface.DisposeAsync(); // A half-built surface still owns its temporary user-data folders.
+            throw;
+        }
         return surface;
     }
 
@@ -227,7 +236,7 @@ internal sealed class Surface : IAsyncDisposable
         tab.CoreWebView2.ProcessFailed += (_, e) => log($"Tab process failed: {e.ProcessFailedKind}");
 
         Sync();
-        await Task.WhenAll(NavigateAsync(ui.CoreWebView2, options.UiPage), NavigateAsync(tab.CoreWebView2, options.TabPage));
+        await Task.WhenAll(NavigateAsync(ui.CoreWebView2, options.UiPage), NavigateAsync(tab.CoreWebView2, options.TabPage, options.TabUri));
     }
 
     private async Task<CoreWebView2Environment> EnvironmentAsync(string prefix, CoreWebView2EnvironmentOptions options)
@@ -240,14 +249,21 @@ internal sealed class Surface : IAsyncDisposable
         return environment;
     }
 
-    private static async Task NavigateAsync(CoreWebView2 core, string html)
+    private static async Task NavigateAsync(CoreWebView2 core, string html, Uri? uri = null)
     {
         var completed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         void OnCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e) => completed.TrySetResult(e.IsSuccess);
         core.NavigationCompleted += OnCompleted;
         try
         {
-            core.NavigateToString(html);
+            if (uri is not null)
+            {
+                core.Navigate(uri.AbsoluteUri);
+            }
+            else
+            {
+                core.NavigateToString(html);
+            }
             if (!await completed.Task.WaitAsync(TimeSpan.FromSeconds(30)))
             {
                 throw new InvalidOperationException("A spike page failed to load.");

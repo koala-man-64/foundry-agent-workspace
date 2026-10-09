@@ -15,10 +15,13 @@
 <div id="confirm" role="dialog" aria-modal="true"><div>Attach this tab to the chat?</div></div>
 <script>
   // Two layouts of the browser area: every edge on a whole CSS pixel, or every edge on a fraction of one (as a dragged
-  // inspector width or a zoomed flex layout produces). Both scale with the viewport so they fit at zoom 2 and 200%.
+  // inspector width or a zoomed flex layout produces). The fractions are the near-worst case for BrowserPanel's inward
+  // rounding: the left and right edges sit 0.02 and 0.97 past a whole pixel, so rounding inward loses almost a whole
+  // CSS pixel there; the top and bottom lose about half of one. Both layouts scale with the viewport, so they fit at
+  // zoom 2 and 200%.
   const layouts = {
     aligned: (w, h) => ({ left: Math.round(w * 0.2), top: Math.max(28, Math.round(h * 0.18)), width: Math.floor(w * 0.6), height: Math.floor(h * 0.6) }),
-    fractional: (w, h) => ({ left: Math.round(w * 0.2) + 0.37, top: Math.max(28, Math.round(h * 0.18)) + 0.61, width: Math.floor(w * 0.6) + 0.29, height: Math.floor(h * 0.6) + 0.43 }),
+    fractional: (w, h) => ({ left: Math.round(w * 0.2) + 0.02, top: Math.max(28, Math.round(h * 0.18)) + 0.52, width: Math.floor(w * 0.6) + 0.95, height: Math.floor(h * 0.6) + 0.95 }),
   };
   let layout = 'aligned';
   function applyLayout() {

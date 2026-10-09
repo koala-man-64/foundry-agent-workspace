@@ -35,6 +35,12 @@ Each phase opens a window with five steps:
 Each step has yes/no questions for what you see, and an optional note.
 
 "Really came to the front" is measured: `GetForegroundWindow` 800 ms after activation. Windows may refuse to let a background app take the foreground and flash its taskbar button instead; that is exactly what this spike needs to know.
+- **Valid trials only.** A trial counts only if the window was *not* in front when you clicked the toast. Otherwise "in front" proves nothing; the step then says so and asks you to start again. Only the first activation of each toast counts.
+- **Who kept the foreground.** When the window does not come forward, the app records which program kept the foreground.
+
+The spike activates the window the plan's way: in process, the way Electron's `window.show(); window.focus()` does. If that cannot take the foreground, a COM toast activator is the untested alternative before the fallback ships. With a COM activator, Windows starts or calls the app out of process and lets it come forward.
+
+**Out of scope:** the spike's ZIP is extracted with .NET, so its files carry no mark-of-the-web. A ZIP downloaded with a browser and unzipped with Explorer does carry it. That affects SmartScreen when the app first starts, not toast activation.
 
 Step 5 is informational. If Windows restarts the spike from the toast, the spike treats the arguments as untrusted, as the plan requires: it records them, shows a message, and does nothing else.
 
@@ -49,16 +55,29 @@ Step 5 is informational. If Windows restarts the spike from the toast, the spike
 | The spike, if Windows restarts it from a toast | `%TEMP%\Foundry.Spikes.S6Toast\launches.log` | The script, after copying it into the results |
 | The build | The published app, the ZIP and the installer, under `test-results` | The script; logs and results stay |
 
-Cleanup runs whatever happens, including after an error, and touches only these exact names. Afterwards the script prints `Nothing was left behind`, or a `LEFT BEHIND` line for each item that remains.
+Cleanup runs whatever happens, including after an error, and touches only these exact names:
+- Each cleanup step runs on its own, so one failure cannot skip the others, the residue check or the summary.
+- The script checks twice, 3 seconds apart, because Windows can write the per-app notification settings just after the last toast.
+- Afterwards it prints `Nothing was left behind`, or a `LEFT BEHIND` line for each item that remains, plus any cleanup problem.
+- Windows' own records of apps it has seen are not checked: the notification database, jump lists and app-usage history.
 
-If a run is interrupted, for example by closing the terminal, run it again with `-CleanupOnly`.
+**One run at a time.** A second copy of the script refuses to start while one is running; a lock file under `test-results` holds it. It also refuses to start, before creating anything, when an earlier run left something behind.
+
+If a run is interrupted, for example by closing the terminal, run it again with `-CleanupOnly`. That also deletes the build outputs that every earlier run left under `test-results`.
+
+An app ID key without the spike's marker was not made by the spike. The script leaves it alone and reports it; remove it by hand only if it is yours to remove.
 
 **Check by hand afterwards:** look at **Settings > System > Notifications**. If *Foundry S6 toast spike* is still listed, record it. That list comes from Windows' own notification store, which the script does not edit.
 
 ## Before you start
 
 - **A normal PowerShell window.** Not *Run as administrator*: the script refuses to run elevated, because it tests a per-user install.
-- **Inno Setup 6 (`ISCC.exe`)**, which phase B needs to build the installer. It was not installed on this machine on 8 October 2026. Installing it is your call; for example, `winget install --id JRSoftware.InnoSetup -e`. Then the script finds it on `PATH` or in its default folders, or you pass `-IsccPath`.
+- **Inno Setup 6.3 or later (`ISCC.exe`)**, which phase B needs to build the installer. It was not installed on this machine on 8 October 2026, and installing it is your call:
+  - Inno Setup's own installer offers *Install for me only*, a per-user install without elevation.
+  - `winget install --id JRSoftware.InnoSetup -e` installs it for all users, behind a UAC prompt.
+  - Either way the script finds it on `PATH` or in its default folders, or you pass `-IsccPath`.
+  - The script never installs or removes Inno Setup itself.
+  - The installer script itself is proven: CI compiled it on the `windows-2025` runner, with no install step, on 9 October 2026.
 - **Notifications on, Do not disturb off.** Otherwise banners do not appear. The spike's window shows what Windows reports, and every record includes it.
 - About 15 minutes.
 
@@ -90,7 +109,13 @@ Other options:
 
 ## Verdict
 
-For each phase, `summary.md` reports steps 1 to 3 as *activated, window in front*, *activated, window NOT in front*, or *not activated*.
-- **S6 is met** if all three steps show *activated, window in front* in both phases, and your answers agree.
-- **Otherwise the fallback ships:** the in-app Inbox plus a taskbar flash. Step 4 shows whether the flash works.
-- **Step 5 is informational.** Electron's click handler also lives only in the running process (`index.ts:63`).
+For each phase, `summary.md` reports each of steps 1 to 3 over its valid trials:
+- *activated, window in front (n of n valid trials)*;
+- *activated, window NOT in front in k of n valid trials*, with the program that kept the foreground;
+- *no valid trial*;
+- *not activated*.
+
+Next to the measurement, it reports your answers to "Did this window come to the front by itself?".
+- **S6 is met** if all three steps show *activated, window in front* in both phases, and your answers agree. If they disagree, the summary says so; the disagreement is a decision for Rudy, not resolved by the script.
+- **Otherwise the fallback ships:** the in-app Inbox plus a taskbar flash. Step 4 shows whether the flash works. Before shipping it, consider the untested COM activator described above.
+- **Step 5 is informational.** Electron's click handler also lives only in the running process (`index.ts:63`). The summary says whether Windows restarted the spike, either with the toast's arguments or through the Start menu shortcut.

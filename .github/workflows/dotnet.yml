@@ -62,8 +62,3 @@ jobs:
 
       - name: Test
         run: dotnet test --solution Foundry.slnx --configuration Release --no-build
-
-      # Temporary, removed before merge (as spike S10 did): proves Run-S6.ps1 publishes the toast spike, zips it and
-      # compiles its per-user installer with the runner's Inno Setup. Nothing is installed or registered.
-      - name: Build the S6 toast spike and its installer (temporary)
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tests/Foundry.Spikes.Toast/Run-S6.ps1 -BuildOnly

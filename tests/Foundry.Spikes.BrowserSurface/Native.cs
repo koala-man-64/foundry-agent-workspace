@@ -217,7 +217,7 @@ internal static unsafe partial class Native
     [LibraryImport("gdi32.dll")]
     private static partial nint SelectObject(nint deviceContext, nint gdiObject);
 
-    [LibraryImport("gdi32.dll")]
+    [LibraryImport("gdi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool BitBlt(nint destination, int x, int y, int width, int height, nint source, int sourceX, int sourceY, uint operation);
 

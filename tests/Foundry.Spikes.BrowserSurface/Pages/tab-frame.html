@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>S4 frame</title>
+<style>
+  body { margin: 0; padding: 6px 8px; background: #fbfbf7; font: 13px 'Segoe UI', sans-serif; }
+  input, button { font: inherit; }
+  button:hover { background: #ffe08a; }
+</style>
+<label>Field <input id="text" autocomplete="off" size="14"></label> <button id="button" type="button">Button</button>
+<script>
+  const S4_NAME = new URLSearchParams(location.search).get('name') ?? 'frame';
+  // The page totals what every frame reports; a cross-site frame can reach its parent only through postMessage.
+  function s4Changed() { parent.postMessage({ s4frame: S4_NAME, recorder }, '*'); }
+</script>
+<script>
+/*RECORDER*/
+</script>
+<script>s4Changed();</script>

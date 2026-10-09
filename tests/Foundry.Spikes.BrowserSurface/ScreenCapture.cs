@@ -91,6 +91,9 @@ internal sealed class ScreenCapture
     /// <summary>Whether a rectangle is filled with one paint and nothing else.</summary>
     public bool IsSolid(Paint kind, DeviceRect rect) => !rect.IsEmpty && Count(kind, rect) == rect.Width * rect.Height;
 
+    /// <summary>Whether another capture of the same area classified every pixel the same way.</summary>
+    public bool SameAs(ScreenCapture other) => Area == other.Area && paint.AsSpan().SequenceEqual(other.paint);
+
     private static bool Near(int red, int green, int blue, int r, int g, int b) =>
         Math.Abs(red - r) <= Tolerance && Math.Abs(green - g) <= Tolerance && Math.Abs(blue - b) <= Tolerance;
 }

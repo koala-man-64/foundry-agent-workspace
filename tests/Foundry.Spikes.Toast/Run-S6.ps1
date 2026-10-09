@@ -167,10 +167,22 @@ function Read-Phase([string]$Label) {
 }
 
 function Get-Activation($Records, [string]$Step) {
-    $hits = @($Records | Where-Object { $_.kind -eq 'activated' -and $_.data.step -eq $Step })
-    if ($hits.Count -eq 0) { return 'not activated' }
-    if (@($hits | Where-Object { $_.data.inFrontAfter800ms }).Count -gt 0) { return 'activated, window in front' }
-    return 'activated, window NOT in front'
+    # One trial per toast (its first activation). A trial counts only if the window was not already in front when the
+    # toast was clicked; otherwise "in front" proves nothing. Every valid trial must have brought the window forward.
+    $first = @($Records | Where-Object { $_.kind -eq 'activated' -and $_.data.step -eq $Step } | Group-Object { $_.data.nonce } | ForEach-Object { $_.Group[0] })
+    if ($first.Count -eq 0) { return 'not activated' }
+    $valid = @($first | Where-Object { -not $_.data.wasInFront })
+    if ($valid.Count -eq 0) { return 'no valid trial (the window was already in front)' }
+    $inFront = @($valid | Where-Object { $_.data.inFrontAfter800ms }).Count
+    if ($inFront -eq $valid.Count) { return "activated, window in front ($inFront of $($valid.Count) valid trials)" }
+    $holders = @($valid | Where-Object { -not $_.data.inFrontAfter800ms } | ForEach-Object { $_.data.foregroundProcess } | Where-Object { $_ } | Select-Object -Unique)
+    return "activated, window NOT in front in $($valid.Count - $inFront) of $($valid.Count) valid trials$(if ($holders.Count -gt 0) { " ($($holders -join ', ') kept the foreground)" })"
+}
+
+function Get-Answer($Records, [string]$Step, [string]$Question) {
+    $answer = @($Records | Where-Object { $_.kind -eq 'answer' -and $_.data.step -eq $Step -and $_.data.question -eq $Question }) | Select-Object -Last 1
+    if ($answer) { return $answer.data.answer }
+    return 'no answer'
 }
 
 function Wait-SpikeProcess([string]$ExePath) {
@@ -194,13 +206,18 @@ function Invoke-Phase([string]$Label, [string]$ExePath, [scriptblock]$Launch) {
     $logLines = 0
     $logFile = Join-Path $launchFolder 'launches.log'
     if (Test-Path -LiteralPath $logFile) { $logLines = @(Get-Content -LiteralPath $logFile).Count }
+    $startsBefore = @($records | Where-Object { $_.kind -eq 'start' }).Count
     Write-Host ''
     Write-Host 'Step 5: the spike has closed and left a toast. Open Notification Center (Windows+N, or click the clock)'
     Write-Host 'and click the toast titled "Foundry S6: 5. Click a toast after the app has closed".'
     Read-Host 'Press Enter here after clicking it' | Out-Null
     Start-Sleep -Seconds 3
+    # Windows can restart the spike two ways: with the toast's arguments (recorded in launches.log), or through the
+    # Start menu shortcut, whose own arguments open a second interactive window (a new start record).
     $relaunches = @()
     if (Test-Path -LiteralPath $logFile) { $relaunches = @(Get-Content -LiteralPath $logFile | Select-Object -Skip $logLines) }
+    $after = Read-Phase $Label
+    $restarts = @($after | Where-Object { $_.kind -eq 'start' }).Count - $startsBefore
     $running = @(Get-SpikeProcesses).Count
     $answer = Read-Host 'What happened? Type n (nothing), s (the spike opened or showed a message), or describe it'
     $text = @(
@@ -208,14 +225,15 @@ function Invoke-Phase([string]$Label, [string]$ExePath, [scriptblock]$Launch) {
         '',
         "- Rudy: $answer",
         "- Spike processes running 3 s after the click: $running",
-        "- Launches the spike recorded: $(if ($relaunches.Count -gt 0) { $relaunches -join ' / ' } else { 'none' })",
+        "- Launches with arguments the spike did not choose: $(if ($relaunches.Count -gt 0) { $relaunches -join ' / ' } else { 'none' })",
+        "- Interactive restarts (new start records): $restarts",
         ''
     )
     Set-Content -LiteralPath (Join-Path $out "step5-$Label.md") -Value $text -Encoding UTF8
     Stop-SpikeProcesses
 }
 
-function Write-Summary([string[]]$Residue, [string]$Failure) {
+function Write-Summary([string[]]$Residue, [string]$Failure, [string[]]$Errors) {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('# Spike S6: toast click activation')
     $lines.Add('')
@@ -232,10 +250,17 @@ function Write-Summary([string[]]$Residue, [string]$Failure) {
             continue
         }
         $start = $records | Where-Object { $_.kind -eq 'start' } | Select-Object -First 1
-        $steps = @('banner-minimized', 'banner-background', 'notification-center') | ForEach-Object { Get-Activation $records $_ }
-        $works = @($steps | Where-Object { $_ -ne 'activated, window in front' }).Count -eq 0
+        $names = @('banner-minimized', 'banner-background', 'notification-center')
+        $steps = @($names | ForEach-Object { Get-Activation $records $_ })
+        $works = @($steps | Where-Object { -not $_.StartsWith('activated, window in front') }).Count -eq 0
+        # Rudy's own answers must agree with the measurement; a disagreement is reported, not resolved.
+        $answers = @($names | ForEach-Object { Get-Answer $records $_ 'Did this window come to the front by itself?' })
+        $agree = @($answers | Where-Object { $_ -ne 'Yes' }).Count -eq 0
         $setting = if ($start) { "notifier $($start.data.notifier), Windows said '$($start.data.notifications)'" } else { 'no start record' }
-        $lines.Add("- **$label exe ($setting):** banner while minimized: $($steps[0]); banner while behind another window: $($steps[1]); Notification Center: $($steps[2]). Click activation **$(if ($works) { 'works' } else { 'does not fully work' })**.")
+        $verdict = if ($works -and $agree) { 'works' } elseif ($works) { 'measured to work, but your answers disagree' } else { 'does not fully work' }
+        $lines.Add("- **$label exe ($setting):** banner while minimized: $($steps[0]); banner while behind another window: $($steps[1]); Notification Center: $($steps[2]). Your answers to 'came to the front by itself': $($answers -join ', '). Click activation **$verdict**.")
+        $flash = Get-Answer $records 'taskbar-flash' 'Did the taskbar button flash?'
+        $lines.Add("  The fallback's taskbar flash, by your answer: $flash.")
     }
     if ($Failure) { $lines.Add("- The run stopped early: $Failure") }
     $lines.Add('')
@@ -258,68 +283,103 @@ function Write-Summary([string[]]$Residue, [string]$Failure) {
     }
     $lines.Add('## Cleanup')
     $lines.Add('')
-    if ($Residue.Count -eq 0) {
-        $lines.Add('Nothing was left behind: no install folder, uninstall entry, Start menu shortcut, app ID registration, notification settings or launch log.')
+    if ($Residue.Count -eq 0 -and $Errors.Count -eq 0) {
+        $lines.Add('Nothing checked was left behind: no install folder, uninstall entry, Start menu shortcut, app ID registration, notification settings or launch log.')
     }
-    else {
-        foreach ($item in $Residue) { $lines.Add("- LEFT BEHIND: $item") }
-    }
+    foreach ($item in $Residue) { $lines.Add("- LEFT BEHIND: $item") }
+    foreach ($item in $Errors) { $lines.Add("- Cleanup problem: $item") }
+    $lines.Add('')
+    $lines.Add('Not checked: records Windows keeps about apps it has seen, such as its notification database, jump lists and app-usage history.')
     Set-Content -LiteralPath (Join-Path $out 'summary.md') -Value $lines -Encoding UTF8
+}
+
+function Invoke-Safely([string]$What, [scriptblock]$Do) {
+    # One failing cleanup step must not stop the others, the residue check or the summary.
+    try { & $Do }
+    catch {
+        $message = "$What failed: $($_.Exception.Message)"
+        $cleanupErrors.Add($message)
+        Write-Warning $message
+    }
+}
+
+# One run at a time: a second run's cleanup would otherwise remove the first run's install mid-phase. The handle is
+# released when this process ends, however it ends, so a closed terminal leaves no stale lock.
+New-Item -ItemType Directory -Force -Path $runsRoot | Out-Null
+try {
+    $lock = [IO.File]::Open((Join-Path $runsRoot 'run.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+}
+catch {
+    Write-Host 'Another Run-S6.ps1 is running. Let it finish, then try again.' -ForegroundColor Red
+    exit 1
+}
+if (-not $BuildOnly -and -not $CleanupOnly) {
+    # Refusals happen before anything is created, so they never trigger the cleanup below.
+    $refusal = $null
+    $before = Get-Residue
+    if (Test-Elevated) {
+        $refusal = 'Run this from a normal PowerShell window, not as administrator: the spike tests a per-user install.'
+    }
+    elseif ($before.Count -gt 0) {
+        $before | ForEach-Object { Write-Host "Found from an earlier run: $_" }
+        $refusal = 'An earlier run left things behind. Run .\Run-S6.ps1 -CleanupOnly first. An app ID key without the spike''s marker was not made by the spike; remove it by hand if it is yours to remove.'
+    }
+    if ($refusal) {
+        Write-Host $refusal -ForegroundColor Red
+        $lock.Dispose()
+        exit 1
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 Start-Transcript -LiteralPath (Join-Path $out 'console.log') | Out-Null
 $failure = $null
 $residue = @()
+$cleanupErrors = New-Object System.Collections.Generic.List[string]
 try {
     if ($CleanupOnly) {
         Write-Step 'Removing what an earlier run left behind'
-        return # The finally block below does the work.
     }
-    if (-not $BuildOnly -and (Test-Elevated)) {
-        throw 'Run this from a normal PowerShell window, not as administrator: the spike tests a per-user install.'
-    }
-    $before = Get-Residue
-    if (-not $BuildOnly -and $before.Count -gt 0) {
-        $before | ForEach-Object { Write-Host "Found from an earlier run: $_" }
-        throw 'An earlier run left things behind. Run .\Run-S6.ps1 -CleanupOnly first.'
-    }
-    $iscc = Find-Iscc
+    else {
+        $iscc = Find-Iscc
 
-    Write-Step 'Publishing the spike self-contained for win-x64'
-    & dotnet publish $project -c Release -r win-x64 --self-contained -o $publish -p:DebugType=none --nologo
-    if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+        Write-Step 'Publishing the spike self-contained for win-x64'
+        & dotnet publish $project -c Release -r win-x64 --self-contained -o $publish -p:DebugType=none --nologo
+        if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 
-    Write-Step 'Zipping and unzipping it, as a user would'
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [IO.Compression.ZipFile]::CreateFromDirectory($publish, $zip)
-    [IO.Compression.ZipFile]::ExtractToDirectory($zip, $unzipped)
+        Write-Step 'Zipping and unzipping it, as a user would'
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::CreateFromDirectory($publish, $zip)
+        [IO.Compression.ZipFile]::ExtractToDirectory($zip, $unzipped)
 
-    Write-Step 'Compiling the per-user installer'
-    & $iscc /Qp "/O$out" "/DSourceDir=$publish" "/DResults=$out" $setupScript
-    if ($LASTEXITCODE -ne 0) { throw 'ISCC failed.' }
-    if ($BuildOnly) {
-        Write-Host "Built $zip and $setup. Nothing was installed, registered or started."
-        return
-    }
+        Write-Step 'Compiling the per-user installer'
+        & $iscc /Qp "/O$out" "/DSourceDir=$publish" "/DResults=$out" $setupScript
+        if ($LASTEXITCODE -ne 0) { throw 'ISCC failed.' }
 
-    $unzippedExe = Join-Path $unzipped $exeName
-    Invoke-Phase 'unzipped' $unzippedExe {
-        Start-Process -FilePath $unzippedExe -ArgumentList @('run', '--label', 'unzipped', '--results', "`"$out`"") | Out-Null
-    }
-    # Phase B starts without phase A's registration or toasts, so it shows what the installed exe does on its own.
-    Clear-SpikeRegistration
+        if ($BuildOnly) {
+            Write-Host "Built $zip and $setup. Nothing was installed, registered or started."
+        }
+        else {
+            $unzippedExe = Join-Path $unzipped $exeName
+            Invoke-Phase 'unzipped' $unzippedExe {
+                Start-Process -FilePath $unzippedExe -ArgumentList @('run', '--label', 'unzipped', '--results', "`"$out`"") | Out-Null
+            }
+            # Phase B starts without phase A's registration or toasts, so it shows what the installed exe does on its own.
+            Clear-SpikeRegistration
 
-    Write-Step 'Installing the spike for this user only'
-    $installLog = Join-Path $out 'install.log'
-    $installer = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/LOG=`"$installLog`"") -Wait -PassThru
-    $installedExe = Join-Path $installDir $exeName
-    if ($installer.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $installedExe) -or -not (Test-Path -LiteralPath $shortcut)) {
-        throw "The installer failed (exit code $($installer.ExitCode)); see $installLog."
-    }
-    Invoke-Phase 'installed' $installedExe {
-        # From the Start menu shortcut, as a user starts an installed app; the shortcut carries the spike's AUMID.
-        Start-Process -FilePath $shortcut | Out-Null
+            Write-Step 'Installing the spike for this user only'
+            $installLog = Join-Path $out 'install.log'
+            # Per-user because s6.iss sets PrivilegesRequired=lowest; no override switch is needed.
+            $installer = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$installLog`"") -Wait -PassThru
+            $installedExe = Join-Path $installDir $exeName
+            if ($installer.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $installedExe) -or -not (Test-Path -LiteralPath $shortcut)) {
+                throw "The installer failed (exit code $($installer.ExitCode)); see $installLog."
+            }
+            Invoke-Phase 'installed' $installedExe {
+                # From the Start menu shortcut, as a user starts an installed app; the shortcut carries the spike's AUMID.
+                Start-Process -FilePath $shortcut | Out-Null
+            }
+        }
     }
 }
 catch {
@@ -329,24 +389,36 @@ catch {
 finally {
     if (-not $BuildOnly) {
         Write-Step 'Cleaning up: the spike, its app ID registration, its toasts and the test install'
-        Stop-SpikeProcesses
-        Clear-SpikeRegistration
-        Remove-TestInstall
-        $logFile = Join-Path $launchFolder 'launches.log'
-        if (Test-Path -LiteralPath $logFile) { Copy-Item -LiteralPath $logFile -Destination (Join-Path $out 'launches.log') }
-        if (Test-Path -LiteralPath $launchFolder) { Remove-Item -LiteralPath $launchFolder -Recurse -Force }
-        foreach ($binary in @($publish, $unzipped, $zip, $setup)) {
-            if (Test-Path -LiteralPath $binary) { Remove-Item -LiteralPath $binary -Recurse -Force }
+        Invoke-Safely 'Closing the spike' { Stop-SpikeProcesses }
+        Invoke-Safely 'Clearing the app ID registration and toasts' { Clear-SpikeRegistration }
+        Invoke-Safely 'Removing the test install' { Remove-TestInstall }
+        Invoke-Safely 'Collecting the launch log' {
+            $logFile = Join-Path $launchFolder 'launches.log'
+            if (Test-Path -LiteralPath $logFile) { Copy-Item -LiteralPath $logFile -Destination (Join-Path $out 'launches.log') }
+            if (Test-Path -LiteralPath $launchFolder) { Remove-Item -LiteralPath $launchFolder -Recurse -Force }
         }
+        Invoke-Safely 'Removing build outputs' {
+            # This run's and any interrupted run's: fixed names under the spike's own results folder. Logs stay.
+            foreach ($run in @(Get-ChildItem -LiteralPath $runsRoot -Directory)) {
+                foreach ($name in @('publish', 'unzipped', 'FoundryS6ToastSpike.zip', 'FoundryS6ToastSpikeSetup.exe')) {
+                    $binary = Join-Path $run.FullName $name
+                    if (Test-Path -LiteralPath $binary) { Remove-Item -LiteralPath $binary -Recurse -Force }
+                }
+            }
+        }
+        # Windows may write the per-app notification settings shortly after the last toast; look twice.
+        Start-Sleep -Seconds 3
+        Invoke-Safely 'Clearing the app ID registration and toasts again' { Clear-SpikeRegistration }
         $residue = Get-Residue
-        if ($residue.Count -eq 0) { Write-Host 'Nothing was left behind.' -ForegroundColor Green }
-        else { $residue | ForEach-Object { Write-Host "LEFT BEHIND: $_" -ForegroundColor Red } }
+        if ($residue.Count -eq 0 -and $cleanupErrors.Count -eq 0) { Write-Host 'Nothing was left behind.' -ForegroundColor Green }
+        $residue | ForEach-Object { Write-Host "LEFT BEHIND: $_" -ForegroundColor Red }
         if (-not $CleanupOnly) {
-            Write-Summary $residue $failure
+            Invoke-Safely 'Writing the summary' { Write-Summary $residue $failure $cleanupErrors.ToArray() }
             Write-Host "Summary: $(Join-Path $out 'summary.md')"
         }
     }
     Stop-Transcript | Out-Null
+    $lock.Dispose()
 }
-if ($failure -or $residue.Count -gt 0) { exit 1 }
+if ($failure -or $residue.Count -gt 0 -or $cleanupErrors.Count -gt 0) { exit 1 }
 exit 0

@@ -173,9 +173,14 @@ internal sealed class ToastSpike
         step.Status($"Activated {(DateTimeOffset.Now - shownAt).TotalSeconds:0.0} s after the toast was shown{(matches ? "" : $", with unexpected arguments '{arguments}'")}. Checking whether this window is in front…");
         Later(TimeSpan.FromMilliseconds(800), () =>
         {
-            var inFront = Native.GetForegroundWindow() == Handle;
-            step.Fact(string.Create(CultureInfo.InvariantCulture, $"activated {(DateTimeOffset.Now - shownAt).TotalSeconds:0.0} s after showing{(matches ? "" : " with unexpected arguments")}; window {(inFront ? "IN FRONT" : "NOT in front")} (measured)"));
-            Record("activated", new { step = step.Id, nonce, arguments, argumentsMatch = matches, stateBefore = before.ToString(), wasInFront, activateReturned, inFrontAfter800ms = inFront, secondsAfterShown = (DateTimeOffset.Now - shownAt).TotalSeconds });
+            var foreground = Native.GetForegroundWindow();
+            var inFront = foreground == Handle;
+            // When Windows kept another window in front, name it: the evidence for what refused the foreground.
+            var holder = inFront ? null : Native.ProcessName(foreground);
+            step.Fact(wasInFront
+                ? "the window was already in front when the toast was clicked, so this trial does not count: click another window first and start the step again"
+                : string.Create(CultureInfo.InvariantCulture, $"activated {(DateTimeOffset.Now - shownAt).TotalSeconds:0.0} s after showing{(matches ? "" : " with unexpected arguments")}; window {(inFront ? "IN FRONT" : $"NOT in front ({holder ?? "no window"} is)")} (measured)"));
+            Record("activated", new { step = step.Id, nonce, arguments, argumentsMatch = matches, stateBefore = before.ToString(), wasInFront, activateReturned, inFrontAfter800ms = inFront, foregroundProcess = holder, secondsAfterShown = (DateTimeOffset.Now - shownAt).TotalSeconds });
         });
     }
 

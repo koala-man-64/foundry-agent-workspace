@@ -39,7 +39,8 @@
 </script>
 <script>
   document.getElementById('attach').addEventListener('click', () => post({ kind: 'attach' }));
-  document.getElementById('take').addEventListener('click', () => post({ kind: 'takeControl' }));
+  // The click's time goes with the request, so the host measures the button's takeover from the click itself.
+  document.getElementById('take').addEventListener('click', () => post({ kind: 'takeControl', at: Date.now() }));
   const set = (id, text, cls) => { const node = document.getElementById(id); node.textContent = text; node.className = cls ?? ''; };
   chrome.webview.addEventListener('message', event => {
     const s = event.data;
