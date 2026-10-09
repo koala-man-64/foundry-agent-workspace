@@ -6,7 +6,9 @@
 
 **How it runs (Rudy's choice, 8 October 2026):** the harness measures while Rudy changes Windows display scaling himself. It never changes a system setting.
 
-**Status (9 October 2026): not run, by Rudy's decision.** The preview below is S3's only evidence. Real-DPI verification falls to P3's exit gate, which runs `browser.spec` at 100/150/200% DPI and zoom 2. The plan's S3 row holds the open inset decision. The harness stays available.
+**Status (9 October 2026): not run, by Rudy's decision, and decided.** The preview below is S3's only evidence.
+
+Rudy took option 1 of the choices at the end of this page: accept the inset, with no protocol change. The criterion is restated as "within the UI's whole-pixel rounding, never over the UI". P3's exit gate checks it with `browser.spec` at 100/150/200% DPI and zoom 2. The harness stays available.
 
 ## What the harness does
 

@@ -98,13 +98,14 @@ P0 deliverables so far:
   - **Reviews.** Independent reviews of security and of test validity reshaped all three. After its findings were fixed, the security review gave GO for running S6 on Rudy's machine. The test-validity review's findings are all resolved.
 
 Next, as Rudy decided on 9 October 2026:
-- **S3: not run, by Rudy's decision.**
-  - The preview is S3's only evidence. Real-DPI verification falls to P3's exit gate, which already runs `browser.spec` at 100/150/200% DPI and zoom 2.
-  - **Open for Rudy:** whether P3 accepts the UI's whole-pixel inset or adds fractional bounds as a planned protocol delta.
+- **S3: decided without a run, by Rudy's decision.**
+  - The preview is S3's only evidence.
+  - Rudy accepted the UI's whole-pixel inset with no protocol change. The criterion is restated as "within the UI's whole-pixel rounding, never over the UI".
+  - P3's exit gate checks it with `browser.spec` at 100/150/200% DPI and zoom 2.
 - **S4:** Rudy runs the manual test script on 10 October 2026 ([script](spikes/s4-input-ladder.md)). Decision 7 is the fallback.
 - **S6:** Rudy runs it on 9 October 2026 ([guide](spikes/s6-toast-activation.md)), with Inno Setup installed per-user.
 
-The S4 and S6 results and decisions then go into the plan; with S3's inset decision, that completes P0's exit gate.
+With S3 decided, the S4 and S6 results and decisions complete P0's exit gate when they go into the plan.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
