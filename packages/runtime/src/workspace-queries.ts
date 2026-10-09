@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import { WorkspaceRpc, type ActionItem, type ActionPage, type ApprovalContentChunk, type ApprovalPage, type ApprovalRead, type CompactionContentChunk, type CompactionPage, type CompactionSummary, type EventPage, type MessageContentChunk, type MessagePage, type ProfilePage, type ProjectPage, type SearchCursor, type SearchHit, type TaskCursor, type TaskPage, type TimelinePage, type UsageRecordPage, type UsageTrendPage, type WorkspaceMethod } from '../../protocol/src/workspace';
 import type { Redactor } from './redaction';
 import { canonicalPath, type Store } from './store';
+import { isNetworkOrDevicePath } from './network-path';
 
 const PAGE_BYTES = 256 * 1024;
 const PAGE_ITEMS_BYTES = PAGE_BYTES - 1024; // Leave room for cursors, counts, and response metadata.
@@ -99,7 +100,9 @@ export class WorkspaceQueries {
     for (const row of rows) {
       if (projects.length >= limit) break;
       let project = JSON.parse(row.data) as Project;
-      try {
+      // A project saved before network paths were refused is reported without being probed.
+      if (isNetworkOrDevicePath(project.path)) project = { ...project, kind: 'unavailable', unavailableReason: 'Projects on network shares are not supported.' };
+      else try {
         if (!statSync(project.path).isDirectory()) throw new Error('Folder unavailable.');
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
         if (!same) throw new Error('Folder now resolves to a different location.');

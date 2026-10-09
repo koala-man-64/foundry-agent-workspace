@@ -96,7 +96,12 @@ These program rules hold until the P5 cutover:
 - The .NET runtime never opens the real data directory before adoption.
 
 Dual-landed fixes:
-- Refusing UNC project paths (plan decision 8) is approved. It lands in the TypeScript runtime first, then in the C# runtime when that is ported.
+- **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
+  - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
+  - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
+  - **Mapped drives:** a project whose canonical path is a network drive is refused.
+  - **Saved before the fix:** a project or task saved on a share is reported unavailable and never probed, and Git operations on it are refused. Hooks and MCP servers saved with network paths are refused at launch.
+  - **Review:** the independent security review (Sonnet, high, from its definition) returned GO. Its follow-ups are applied: a spy proves no share is resolved before the check, and saved paths are no longer probed. Removing any one of the 13 checks makes a test fail.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |

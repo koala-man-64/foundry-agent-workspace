@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { ChannelMessageInput, ChannelTools, CHANNEL_LIMITS, isGitTask, type AgentMessage, type ChannelPage, type ChannelParticipant, type ChannelView, type ProviderRequest, type Task, type ToolCall } from '../../protocol/src/index';
 import type { Store } from './store';
 import type { Redactor } from './redaction';
+import { isNetworkOrDevicePath } from './network-path';
 
 interface MessageRow { sequence: number; task_id: string; data: string; created_at: string }
 interface MessageData { project: string; callId: string; senderTitle: string; actor: 'agent' | 'user'; recipientTaskId: string | null; content: string }
@@ -42,6 +43,7 @@ export class AgentChannel {
   private project(task: Task): string {
     if (!isGitTask(task)) throw new Error('Project channel requires a Git worktree.');
     // Task creation validates the root. Resolve aliases for older tasks as well; never accept a model-supplied project.
+    if (isNetworkOrDevicePath(task.projectPath)) throw new Error('Projects on network shares are not supported.');
     let canonical = realpathSync.native(task.projectPath);
     while (!existsSync(join(canonical, '.git'))) {
       const parent = dirname(canonical);

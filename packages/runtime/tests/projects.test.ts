@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { Project, Task } from '../../protocol/src/index';
 import { AgentChannel } from '../src/agent-channel';
 import { prepareRequest } from '../src/agent-loop';
+import { GitOperations } from '../src/git-operations';
 import { Redactor } from '../src/redaction';
 import { RepositoryService } from '../src/repository';
 import { RuntimeService } from '../src/service';
@@ -16,6 +18,8 @@ let directory: string;
 let folder: string;
 let store: Store;
 let runtime: RuntimeService;
+/** The calls that resolved one of the tests' network shares. */
+const touched = (spy: MockInstance): unknown[][] => spy.mock.calls.filter(([candidate]) => String(candidate).includes('foundry-unc-test'));
 const start = (projectId: string | null, requestId = randomUUID()) => runtime.dispatch('task.start', {
   requestId, projectId, content: 'A first line\nmore detail', profileId: FAKE_PROFILE_ID, mode: 'chat', tokenBudget: 100000
 }) as Promise<Task>;
@@ -44,6 +48,43 @@ describe('saved projects and first-send creation', () => {
     await rm(folder, { recursive: true });
     snapshot = await runtime.dispatch('workspace.summary', {}) as typeof snapshot;
     expect(snapshot.projects[0]).toMatchObject({ kind: 'unavailable', unavailableReason: expect.any(String) });
+  });
+
+  it('refuses network-share projects before touching the filesystem (decision 8)', async () => {
+    // Loopback shares, so a regression fails fast instead of reaching another host.
+    const realpath = vi.spyOn(realpathSync, 'native');
+    try {
+      for (const path of ['\\\\127.0.0.1\\foundry-unc-test\\notes', '//127.0.0.1/foundry-unc-test/notes', '\\\\?\\UNC\\127.0.0.1\\foundry-unc-test\\notes', '\\??\\UNC\\127.0.0.1\\foundry-unc-test\\notes']) {
+        await expect(runtime.dispatch('project.add', { path })).rejects.toThrow('Projects on network shares are not supported.');
+        await expect(runtime.dispatch('task.create', { title: 'Network', projectPath: path, profileId: FAKE_PROFILE_ID, tokenBudget: 100000, mode: 'chat' })).rejects.toThrow('Projects on network shares are not supported.');
+      }
+      expect(touched(realpath)).toEqual([]); // canonicalPath never resolved a share.
+      await runtime.dispatch('project.add', { path: folder });
+      expect(realpath).toHaveBeenCalled(); // The spy does see canonicalPath.
+    } finally { realpath.mockRestore(); }
+    expect((store.db.prepare('SELECT COUNT(*) AS count FROM intents').get() as { count: number }).count).toBe(0);
+    expect((await runtime.dispatch('workspace.summary', {}) as { projects: Project[] }).projects.map(project => project.path)).toEqual([realpathSync.native(folder)]);
+  });
+
+  it('stops probing projects and tasks saved on a network share before the fix (decision 8)', async () => {
+    const now = new Date().toISOString();
+    const saved: Project = { id: randomUUID(), path: '\\\\127.0.0.1\\foundry-unc-test\\saved', name: 'saved', hidden: false, kind: 'folder', createdAt: now, updatedAt: now };
+    store.db.prepare('INSERT INTO projects(id, path_key, data) VALUES (?, ?, ?)').run(saved.id, saved.path.toLowerCase(), JSON.stringify(saved));
+    const task = { id: randomUUID(), title: 'Saved', projectId: saved.id, profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: 100000, usedTokens: 0, mode: 'chat', workspaceKind: 'folder', projectPath: saved.path } as Task;
+    store.saveTask(task);
+    const gitTask = { ...task, id: randomUUID(), workspaceKind: 'git', worktreePath: join(directory, 'worktrees', 'saved'), branch: 'foundry/saved', baseCommit: '0'.repeat(40) } as Task;
+    store.saveTask(gitTask);
+    const realpath = vi.spyOn(realpathSync, 'native');
+    try {
+      const summary = await runtime.dispatch('workspace.summary', {}) as { projects: Project[] };
+      expect(summary.projects.find(project => project.id === saved.id)).toMatchObject({ kind: 'unavailable', unavailableReason: 'Projects on network shares are not supported.' });
+      await expect(start(saved.id)).rejects.toThrow('Projects on network shares are not supported.');
+      await expect(runtime.dispatch('files.list', { taskId: task.id, path: '' })).rejects.toThrow('Projects on network shares are not supported.');
+      expect(() => new AgentChannel(store, new Redactor(), () => {}).participants(gitTask.id)).toThrow('Projects on network shares are not supported.');
+      await expect(new RepositoryService(join(directory, 'worktrees')).createTaskWorktree(saved.path, randomUUID())).rejects.toThrow('Projects on network shares are not supported.');
+      await expect(new GitOperations(join(directory, 'worktrees')).createChildWorktree(saved.path, randomUUID(), '0'.repeat(40))).rejects.toThrow('Projects on network shares are not supported.');
+      expect(touched(realpath)).toEqual([]);
+    } finally { realpath.mockRestore(); }
   });
 
   it('keeps same-named folders distinct and rejects invalid preference references', async () => {
