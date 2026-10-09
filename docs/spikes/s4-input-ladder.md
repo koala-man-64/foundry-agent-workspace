@@ -107,7 +107,7 @@ The test page shows, in order:
 | Layers | each layer with ✓ or ✗; attach is refused unless all are ✓ | all ✓ |
 | Agent actions | the stand-in agent's clicks and typing | rising |
 | Human input on page | input events in the page and its frames since attaching, then any hover and focus events | **0** input events |
-| Rendering | frames per second, pixels changed in a second and brightness shift, measured after attaching; or *not judged on screen* if the window was not fully in view | at least 20 frames/s (normally your display's refresh rate), pixels changing, shift under 4 |
+| Rendering | frames per second, pixels changed in a second and brightness shift, measured after attaching; or *the screen was not checked* if the window was not fully in view (then judge it by eye) | at least 20 frames/s (normally your display's refresh rate), pixels changing, shift under 4 |
 | Last takeover | trigger, detach time, restore time, human events during that attachment, and any agent effect after your input | detach under 100 ms; 0 human events; no agent effect after the input |
 | Breaches | focus or a key reaching an attached tab | **0** |
 
