@@ -13,5 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Foundry.Platform\Foundry.Platform.csproj" />
+    <!-- Spike S3's harness: its bounds arithmetic and pixel classification are unit-tested here. -->
+    <ProjectReference Include="..\Foundry.Spikes.BrowserSurface\Foundry.Spikes.BrowserSurface.csproj" />
   </ItemGroup>
 </Project>

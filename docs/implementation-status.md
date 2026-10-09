@@ -85,10 +85,23 @@ P0 deliverables so far:
 
   Section 6's prescriptions that S5 left untested are listed among the plan's security tests.
 
-Next: the host spikes S3, S4 and S6, run as Rudy chose on 8 October 2026:
-- S4 drives its synthetic input on the ephemeral CI runner. Anything the runner cannot produce goes back to Rudy.
-- S3 measures while Rudy switches display scaling.
-- S6 runs on Rudy's desktop with him present.
+- Run-ready harnesses for the three host spikes that Rudy runs himself ([docs/spikes](spikes/)). None of them changes a system setting.
+  - **S3 (tab bounds).** `tests/Foundry.Spikes.BrowserSurface` measures on screen while Rudy switches display scaling. Its arithmetic and pixel classification are unit-tested.
+    - A preview at 100%, with 125 to 200% simulated, shows exact placement, re-synced by the host on its own.
+    - It also shows the UI's whole-pixel bounds missing near-worst fractional layouts by up to zoom × scale: 4 px at 200% and zoom 2. That is a decision for Rudy after the real run.
+  - **S4 (input ladder).** The same app implements section 6's five-layer ladder as the subject of a manual test script; nothing generates input.
+    - The test page has a same-origin and a cross-site frame.
+    - Detach is judged by when the agent last changed the page.
+    - Its self-check passed.
+  - **S6 (toasts).** `tests/Foundry.Spikes.Toast` and `Run-S6.ps1` test the unzipped exe and a per-user Inno Setup install, then remove the registration and the install and verify that nothing is left. CI compiled the installer.
+  - **Reviews.** Independent reviews of security and of test validity reshaped all three before Rudy runs them. The security review gave a conditional GO for running S6 on his machine, and its conditions are addressed.
+
+Next: Rudy runs the three host spikes, as he chose on 8 October 2026:
+- S3: the harness measures while he switches display scaling ([guide](spikes/s3-tab-bounds.md)).
+- S4: he follows the manual test script against the ladder app ([script](spikes/s4-input-ladder.md)). Decision 7 is the fallback.
+- S6: at his desktop, the unzipped and the per-user installed exe ([guide](spikes/s6-toast-activation.md)). Phase B needs Inno Setup 6, which this machine does not have.
+
+Their results and decisions then go into the plan, completing P0's exit gate.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
