@@ -36,7 +36,7 @@ Each step has yes/no questions for what you see, and an optional note.
 
 "Really came to the front" is measured: `GetForegroundWindow` 800 ms after activation. Windows may refuse to let a background app take the foreground and flash its taskbar button instead; that is exactly what this spike needs to know.
 - **Valid trials only.** A trial counts only if the window was *not* in front when you clicked the toast. Otherwise "in front" proves nothing; the step then says so and asks you to start again. Only the first activation of each toast counts.
-- **Who kept the foreground.** When the window does not come forward, the app records which program kept the foreground.
+- **Who kept the foreground.** When the window does not come forward, the app records which program kept the foreground. It records the program's name only, in the local results; mind that if you share the summary.
 
 The spike activates the window the plan's way: in process, the way Electron's `window.show(); window.focus()` does. If that cannot take the foreground, a COM toast activator is the untested alternative before the fallback ships. With a COM activator, Windows starts or calls the app out of process and lets it come forward.
 
@@ -112,10 +112,11 @@ Other options:
 For each phase, `summary.md` reports each of steps 1 to 3 over its valid trials:
 - *activated, window in front (n of n valid trials)*;
 - *activated, window NOT in front in k of n valid trials*, with the program that kept the foreground;
-- *no valid trial*;
-- *not activated*.
+- *not activated*, when you answered that you clicked the toast and the window did not come forward;
+- *inconclusive*, when the step was not run, the toast was never clicked, or every trial was invalid. The step is to be repeated; an inconclusive step never counts as a failure.
 
 Next to the measurement, it reports your answers to "Did this window come to the front by itself?".
 - **S6 is met** if all three steps show *activated, window in front* in both phases, and your answers agree. If they disagree, the summary says so; the disagreement is a decision for Rudy, not resolved by the script.
+- **A phase with an inconclusive step and no failure** reads *inconclusive: repeat the steps marked so*.
 - **Otherwise the fallback ships:** the in-app Inbox plus a taskbar flash. Step 4 shows whether the flash works. Before shipping it, consider the untested COM activator described above.
 - **Step 5 is informational.** Electron's click handler also lives only in the running process (`index.ts:63`). The summary says whether Windows restarted the spike, either with the toast's arguments or through the Start menu shortcut.

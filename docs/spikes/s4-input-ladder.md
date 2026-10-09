@@ -157,7 +157,8 @@ Copy this table into a note. For each input class write **pass**, **fail** or **
 - The square keeps turning and *Frames rendered* keeps rising.
 - The page looks exactly as before: not dimmed, not grayed, not frozen.
 - After about 1.5 s, **Rendering** shows its measurements.
-- The log may list a few events that arrived while attaching, such as the tab's `blur`. Those are reported with the attachment, not counted against it.
+- The log may list hover and focus events that arrived while attaching, such as the tab's `blur`. Those are reported with the attachment, not counted against it. Input events count from the moment the attach begins, before any layer engages, so input that slips in while the layers engage does count against it.
+- The log line ends with how many frames Chromium runs in their own process. It should be 1: the cross-site frame.
 
 **Record:** the Layers and Rendering lines, and whether the page looked normal.
 
@@ -289,7 +290,7 @@ After the three drags, click the tab to take control and check that **Last takeo
 Attach, then:
 1. Press Alt+Tab to another app, then Alt+Tab back.
 2. Minimize the window from its title bar, then restore it from the taskbar.
-3. Click in the left panel, then press Tab about 20 times. When focus reaches the end of the UI, the host would normally move it into the tab. While attached it refuses, and the log says *Tab-key traversal into the attached tab was refused*.
+3. Click in the left panel, then press Tab about 20 times. When focus reaches the end of the UI, the host would normally move it into the tab. While attached it refuses, and the log says *Tab-key traversal into the attached tab was refused*. This checks the host's own traversal rule, which the product must also implement. The platform's share of the evidence is that a disabled window cannot take focus.
 4. Press Windows+D twice: to the desktop and back.
 
 **Observe:**
@@ -362,7 +363,7 @@ The results are in `test-results/spikes/s4-input-ladder/<time>/`:
 - **No human input:** every attached step except 15 shows 0 input events in the page and its frames, 0 breaches, no page state change, and no reaction in the tab.
 - **Fast detach:** every takeover in steps 6, 7, 8, 9 and 13 detached in under 100 ms, with no agent effect later than 100 ms after the input.
 - **Correct rendering:** step 1 shows the page rendering normally while attached, and step 14 shows it fully usable afterwards.
-- **Known counts:** no takeover's counts are *unknown*. A page that reloaded or could not be read counts as a failure.
+- **Known counts:** no takeover's counts are *unknown*. A page or frame that reloaded, a frame that stopped reporting, or a page that could not be read counts as a failure. The left panel shows *UNKNOWN* in red when that happens.
 
 **Classes marked *not tested* must be named in the decision.** These are typically touch, pen, an IME or clipboard history. This run gives no evidence for them; Rudy decides whether that is enough or whether decision 7 applies.
 

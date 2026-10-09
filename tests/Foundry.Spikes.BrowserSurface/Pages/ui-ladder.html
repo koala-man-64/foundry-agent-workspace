@@ -51,7 +51,8 @@
     set('state', s.state);
     set('layers', s.layers, s.layersOk === false ? 'bad' : s.layersOk ? 'good' : '');
     set('agent', String(s.agentActions));
-    set('trusted', s.trustedText, s.trusted > 0 ? 'bad' : 'good');
+    // Unknown counts (-1) are as bad as human input: they cannot show that nothing reached the page.
+    set('trusted', s.trustedText, s.trusted !== 0 ? 'bad' : 'good');
     set('rendering', s.rendering, s.renderingOk === false ? 'bad' : s.renderingOk ? 'good' : '');
     set('takeover', s.takeover, s.takeoverOk === false ? 'bad' : s.takeoverOk ? 'good' : '');
     set('breaches', String(s.breaches), s.breaches > 0 ? 'bad' : '');

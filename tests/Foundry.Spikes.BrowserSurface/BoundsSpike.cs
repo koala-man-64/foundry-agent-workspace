@@ -26,12 +26,13 @@ internal static class Outcome
 
 /// <summary>One placement of the tab, measured on screen.</summary>
 /// <param name="Expected">Where the design puts the tab: the CSS rectangle × zoom × scale, edges rounded, in screen pixels.</param>
-/// <param name="PlacedByEvents">For the design's placement: whether the tab host was already there before the harness synced anything.</param>
+/// <param name="PlacedByEvents">For the design's placement: whether the host's own event handling put the tab there, before the harness synced anything.</param>
+/// <param name="SyncWaitMilliseconds">How long after the UI settled the host's own re-sync arrived (0 if it already had).</param>
 internal sealed record BoundsRecord(
     string Kind, int Pass, DateTimeOffset Time, uint Dpi, int ScalePercent, bool Simulated, double RasterizationScale,
     double TabRasterizationScale, double Zoom, double DevicePixelRatio, string Window, string Layout, string Placement,
     DeviceRect Client, CssRect Css, CssBounds Renderer, DeviceRect Expected, DeviceRect TabHost, bool? PlacedByEvents,
-    DeviceRect? Painted, DeviceRect? Tab, EdgeErrors? Errors, int GapPixels, int OverflowPixels, string Outcome, string? Reason);
+    int? SyncWaitMilliseconds, DeviceRect? Painted, DeviceRect? Tab, EdgeErrors? Errors, int GapPixels, int OverflowPixels, string Outcome, string? Reason);
 
 /// <summary>Whether the tab hid while a modal was open and came back where it was.</summary>
 internal sealed record ModalRecord(
@@ -39,8 +40,11 @@ internal sealed record ModalRecord(
     int TabPixelsWhileOpen, DeviceRect? TabBefore, DeviceRect? TabAfter, string Outcome, string? Reason);
 
 /// <summary>Every measurement of one pass at one scale. A pass is kept only if it ran to the end at the same scale.</summary>
-internal sealed record ScalePass(int Number, Scale Scale, IReadOnlyList<BoundsRecord> Placements, IReadOnlyList<ModalRecord> Modals)
+/// <param name="Reason">What started the pass: the start, a request, or a (simulated) scale change.</param>
+internal sealed record ScalePass(int Number, Scale Scale, string Reason, IReadOnlyList<BoundsRecord> Placements, IReadOnlyList<ModalRecord> Modals)
 {
+    public const string ScaleChange = "the display scale changed";
+
     /// <summary>"As left", then 2 window sizes × 2 layouts × 2 zooms; each placed as designed and from the exact rectangle.</summary>
     public const int ExpectedPlacements = 18;
 
@@ -84,6 +88,7 @@ internal sealed class BoundsSpike : IDisposable
     private CancellationTokenSource? measuring;
     private int sequence;
     private int passNumber;
+    private string pendingReason = "start";
     private bool closing;
 
     /// <param name="once">Measure the current scale, then exit.</param>
@@ -128,8 +133,8 @@ internal sealed class BoundsSpike : IDisposable
             }
             else
             {
-                Host.Ui.RasterizationScaleChanged += (_, _) => Schedule("the display scale changed");
-                window.DpiChanged += (_, _) => Schedule("the window's DPI changed");
+                Host.Ui.RasterizationScaleChanged += (_, _) => Schedule(ScalePass.ScaleChange);
+                window.DpiChanged += (_, _) => Schedule(ScalePass.ScaleChange);
                 if (!once && !Console.IsInputRedirected)
                 {
                     ReadConsole();
@@ -142,14 +147,21 @@ internal sealed class BoundsSpike : IDisposable
         }
         finally
         {
-            WriteSummary();
-            if (surface is not null)
+            // Release the webviews' temporary profiles even if the summary cannot be written.
+            try
             {
-                await surface.DisposeAsync();
+                WriteSummary();
             }
-            closing = true;
-            window.Close();
-            results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
+            finally
+            {
+                if (surface is not null)
+                {
+                    await surface.DisposeAsync();
+                }
+                closing = true;
+                window.Close();
+                results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
+            }
         }
     }
 
@@ -183,6 +195,8 @@ internal sealed class BoundsSpike : IDisposable
         measuring?.Dispose();
         measuring = new CancellationTokenSource();
         results.Log($"Measuring in 2 s: {reason}.");
+        // A scale change stays the reason until a pass completes, even if a request or another event restarts the wait.
+        pendingReason = reason == ScalePass.ScaleChange || pendingReason != ScalePass.ScaleChange ? reason : pendingReason;
         _ = MeasureLaterAsync(measuring.Token);
     }
 
@@ -191,7 +205,8 @@ internal sealed class BoundsSpike : IDisposable
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(2), token);
-            var pass = await MeasureScaleAsync(new Scale(Host.Dpi, Percent(Host.Dpi), false), token);
+            var pass = await MeasureScaleAsync(new Scale(Host.Dpi, Percent(Host.Dpi), false), pendingReason, token);
+            pendingReason = "requested";
             if (once)
             {
                 finished.TrySetResult(pass is { Complete: true } ? 0 : 3);
@@ -222,7 +237,7 @@ internal sealed class BoundsSpike : IDisposable
             {
                 Host.Ui.RasterizationScale = percent / 100.0;
                 Host.Tab.RasterizationScale = percent / 100.0;
-                var pass = await MeasureScaleAsync(new Scale(Host.Dpi, percent, true), CancellationToken.None);
+                var pass = await MeasureScaleAsync(new Scale(Host.Dpi, percent, true), ScalePass.ScaleChange, CancellationToken.None);
                 complete &= pass is { Complete: true };
             }
             finished.TrySetResult(complete ? 0 : 3);
@@ -235,7 +250,7 @@ internal sealed class BoundsSpike : IDisposable
     }
 
     /// <summary>One pass at the current scale. Its records are kept only if it runs to the end at that scale.</summary>
-    private async Task<ScalePass?> MeasureScaleAsync(Scale scale, CancellationToken token)
+    private async Task<ScalePass?> MeasureScaleAsync(Scale scale, string reason, CancellationToken token)
     {
         var number = ++passNumber;
         var placements = new List<BoundsRecord>();
@@ -277,7 +292,7 @@ internal sealed class BoundsSpike : IDisposable
             results.Log($"The display scale changed during pass {number}; its results were discarded.");
             return null;
         }
-        var pass = new ScalePass(number, scale, placements, modals);
+        var pass = new ScalePass(number, scale, reason, placements, modals);
         passes.Add(pass);
         foreach (var record in placements)
         {
@@ -320,6 +335,7 @@ internal sealed class BoundsSpike : IDisposable
     private async Task MeasureAsync(int number, Scale scale, List<BoundsRecord> placements, double zoom, string window, CancellationToken token)
     {
         bool? placedByEvents = null;
+        int? syncWait = null;
         for (var attempt = 1; ; attempt++)
         {
             var area = await SettleAsync(zoom, token);
@@ -332,7 +348,17 @@ internal sealed class BoundsSpike : IDisposable
             // 1. The tab where the host's own event handling put it. The harness has not synced it since the last
             //    change, so a missed ZoomFactorChanged, RasterizationScaleChanged or resize shows here. A retry follows
             //    the harness's own syncs, so the first attempt's answer stands.
-            placedByEvents ??= Host.TabScreen == designed;
+            if (placedByEvents is null)
+            {
+                var waited = 0;
+                while (Host.TabScreen != designed && waited < 500)
+                {
+                    await Task.Delay(25, token);
+                    waited += 25;
+                }
+                placedByEvents = Host.TabScreen == designed;
+                syncWait = placedByEvents == true ? waited : null;
+            }
             var designedHost = Host.TabScreen;
             var shownDesigned = await StableAsync(zone, token);
 
@@ -363,7 +389,7 @@ internal sealed class BoundsSpike : IDisposable
                 var (tab, errors, gap, overflow, outcome, reason) = Judge(painted, shown, zone, byEvents, obstruction);
                 return new BoundsRecord("placement", number, DateTimeOffset.Now, scale.Dpi, scale.Percent, scale.Simulated, rasterization,
                     Host.Tab.RasterizationScale, zoom, area.DevicePixelRatio, window, area.Layout, placement.ToString(), client, area.Rect,
-                    Host.Bounds, expected, host, byEvents, painted, tab, errors, gap, overflow, outcome, reason);
+                    Host.Bounds, expected, host, byEvents, byEvents is null ? null : syncWait, painted, tab, errors, gap, overflow, outcome, reason);
             }
             var records = new[] { Record(Placement.Renderer, designed, designedHost, placedByEvents, shownDesigned), Record(Placement.Exact, exact, exactHost, null, shownExact) };
             if (records.Any(item => item.Outcome == Outcome.Obstructed) && attempt < Attempts)
@@ -386,7 +412,7 @@ internal sealed class BoundsSpike : IDisposable
     /// the tab means an obstruction (no verdict), unless it lies along the tab's own edge, where it is a seam the tab
     /// left (a failure). A missing, holed or misplaced tab is a failure.
     /// </summary>
-    private static (DeviceRect? Tab, EdgeErrors? Errors, int Gap, int Overflow, string Outcome, string? Reason) Judge(
+    internal static (DeviceRect? Tab, EdgeErrors? Errors, int Gap, int Overflow, string Outcome, string? Reason) Judge(
         DeviceRect? painted, ScreenCapture? shown, DeviceRect zone, bool? placedByEvents, string? obstruction)
     {
         if (obstruction is not null || painted is not { } area)
@@ -399,7 +425,9 @@ internal sealed class BoundsSpike : IDisposable
         }
         if (shown.Bounds(Paint.Tab, zone) is not { } tab)
         {
-            return (null, null, 0, 0, Outcome.Fail, "no tab in view");
+            return shown.Count(Paint.Other, zone) > 0
+                ? (null, null, 0, 0, Outcome.Obstructed, "something else covered the tab")
+                : (null, null, 0, 0, Outcome.Fail, "no tab in view");
         }
         var errors = TabGeometry.Compare(area, tab);
         var gap = shown.Count(Paint.Area, zone);
@@ -533,7 +561,7 @@ internal sealed class BoundsSpike : IDisposable
         }
         if (capture.Bounds(Paint.Tab, zone) is not { } tab)
         {
-            return (null, null);
+            return capture.Count(Paint.Other, zone) > 0 ? (null, "something else covered the tab") : (null, null);
         }
         var nearEdge = capture.Count(Paint.Other, tab.Inflate(1)) - (tab.Width > 2 && tab.Height > 2 ? capture.Count(Paint.Other, tab.Inflate(-1)) : 0);
         return capture.Count(Paint.Other, zone) - nearEdge > 0 ? (null, "something else covered the tab") : (tab, null);
@@ -638,13 +666,22 @@ internal sealed class BoundsSpike : IDisposable
                 var verdicts = TargetScales.Select(percent => (percent, verdict: Latest(percent)?.Verdict ?? "not measured")).ToList();
                 var overall = verdicts.Any(item => item.verdict == "not met") ? "not met" : verdicts.All(item => item.verdict == "met") ? "met" : "incomplete";
                 text.AppendLine(invariant, $"- **S3 as designed: {overall}.** {string.Join("; ", verdicts.Select(item => $"{item.percent}% {item.verdict}"))}.");
+                foreach (var percent in TargetScales)
+                {
+                    var all = passes.Where(item => item.Scale.Percent == percent && !item.Scale.Simulated).ToList();
+                    if (all.Count > 1 && all.Select(item => item.Verdict).Distinct().Count() > 1)
+                    {
+                        text.AppendLine(invariant, $"- **Passes disagree at {percent}%:** {string.Join(", ", all.Select(item => $"pass {item.Number} {item.Verdict}"))}. The verdict above uses the latest; decide deliberately whether an earlier result stands.");
+                    }
+                }
                 var exact = latest.SelectMany(item => item.Placements).Where(item => item.Placement == nameof(Placement.Exact) && item.Outcome != Outcome.Obstructed).ToList();
                 text.AppendLine(invariant, $"- Diagnostic, placed from the page's fractional rectangle (needs a protocol change): {exact.Count(item => item.Outcome == Outcome.Pass)} of {exact.Count} judged placements pass; worst edge error {(exact.Count == 0 ? "-" : exact.Max(item => item.Errors?.Max ?? 0).ToString(invariant))} device px.");
-                var rescaled = latest.Select(item => item.Placements.FirstOrDefault(record => record.Window == "as left" && record.Placement == nameof(Placement.Renderer))).OfType<BoundsRecord>().ToList();
-                text.AppendLine(invariant, $"- After each scale change, before the harness moved anything, the host had re-synced the tab by itself at {rescaled.Count(item => item.PlacedByEvents == true)} of {rescaled.Count} scales.");
+                var rescaled = passes.Where(item => !item.Scale.Simulated && item.Reason == ScalePass.ScaleChange)
+                    .Select(item => item.Placements.FirstOrDefault(record => record.Window == "as left" && record.Placement == nameof(Placement.Renderer))).OfType<BoundsRecord>().ToList();
+                text.AppendLine(invariant, $"- After a display-scale change, before the harness moved anything, the host had re-synced the tab by itself in {rescaled.Count(item => item.PlacedByEvents == true)} of {rescaled.Count} passes{(rescaled.Count == 0 ? string.Empty : $" (slowest {rescaled.Where(item => item.SyncWaitMilliseconds is not null).Select(item => item.SyncWaitMilliseconds!.Value).DefaultIfEmpty(0).Max()} ms after the UI settled)")}. Passes started otherwise do not count here.");
                 foreach (var item in latest.Where(item => item.Placements.Count > 0 && Math.Abs((item.Placements[0].RasterizationScale * 100) - item.Scale.Percent) > 0.5))
                 {
-                    text.AppendLine(invariant, $"- At {item.Scale} the UI's rasterization scale was {item.Placements[0].RasterizationScale}: text scaling or a DPI the webview had not caught up with.");
+                    text.AppendLine(invariant, $"- **Warning:** at {item.Scale} the UI's rasterization scale was {item.Placements[0].RasterizationScale}, not {item.Scale.Percent / 100.0}: text scaling, or a DPI the webview had not caught up with. The scale label may not describe what was measured.");
                 }
             }
             text.AppendLine().AppendLine("| Scale | Pass | Verdict | Zoom | Renderer, aligned | Renderer, fractional | Exact, aligned | Exact, fractional |");

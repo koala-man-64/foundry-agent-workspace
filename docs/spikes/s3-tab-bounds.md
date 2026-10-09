@@ -28,7 +28,7 @@ Each pass, at the current display scale, measures:
 ### For each combination
 
 The UI paints the browser area solid magenta; the tab is solid green. The harness photographs the screen three times, each photograph taken twice and kept only when both agree:
-1. **The tab as designed**, where the host's events put it. The harness has not synced it itself, so a missed event shows as an error, and the host's rectangle is also checked against the design's arithmetic.
+1. **The tab as designed**, where the host's events put it. The harness has not synced it itself, so a missed event shows as an error. The host's rectangle is also checked against the design's arithmetic: its own re-sync may take up to 500 ms after the UI settles, and the record keeps how long it took.
 2. **The painted area**, with the tab hidden.
 3. **A diagnostic:** the tab placed from the page's fractional rectangle. It separates the UI's rounding from the platform's placement.
 
@@ -51,6 +51,11 @@ A scale is:
 - **incomplete** otherwise.
 
 A pass whose display scale changed midway is discarded. S3 as designed is met only when all four scales are met.
+
+The summary also reports:
+- **Earlier passes at the same scale.** The verdict uses the latest pass, but the summary lists any earlier pass that came out differently, so a failure is never quietly replaced by a later clean pass.
+- **The host's re-sync.** It counts only the passes that a display-scale change started.
+- **A rasterization-scale warning.** It warns when the UI's rasterization scale differs from the display scale (text scaling, for example).
 
 `TabGeometryTests` (in `Foundry.WebView2.Tests`) pins the arithmetic and the pixel classification.
 

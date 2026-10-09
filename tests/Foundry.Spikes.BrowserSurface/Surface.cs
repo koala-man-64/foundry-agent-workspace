@@ -87,7 +87,16 @@ internal sealed class Surface : IAsyncDisposable
         }
         catch
         {
-            await surface.DisposeAsync(); // A half-built surface still owns its temporary user-data folders.
+            // A half-built surface still owns its temporary user-data folders; a failure to release them must not hide
+            // why the surface did not start.
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+            {
+                log($"Releasing the half-built surface also failed: {cleanup.Message}");
+            }
             throw;
         }
         return surface;

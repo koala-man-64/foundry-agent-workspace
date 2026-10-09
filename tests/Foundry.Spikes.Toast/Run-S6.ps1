@@ -166,17 +166,23 @@ function Read-Phase([string]$Label) {
     return , @(Get-Content -LiteralPath $file -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
 }
 
-function Get-Activation($Records, [string]$Step) {
+function Get-Activation($Records, [string]$Step, [string]$Answer) {
     # One trial per toast (its first activation). A trial counts only if the window was not already in front when the
     # toast was clicked; otherwise "in front" proves nothing. Every valid trial must have brought the window forward.
+    # A step that was not run properly is inconclusive, never a failure: it is to be repeated.
+    $shown = @($Records | Where-Object { $_.kind -eq 'shown' -and $_.data.step -eq $Step }).Count
     $first = @($Records | Where-Object { $_.kind -eq 'activated' -and $_.data.step -eq $Step } | Group-Object { $_.data.nonce } | ForEach-Object { $_.Group[0] })
-    if ($first.Count -eq 0) { return 'not activated' }
+    if ($shown -eq 0) { return [pscustomobject]@{ Result = 'inconclusive'; Text = 'not run' } }
+    if ($first.Count -eq 0) {
+        if ($Answer -eq 'No') { return [pscustomobject]@{ Result = 'fail'; Text = 'not activated, although you answered that you clicked it and the window did not come forward' } }
+        return [pscustomobject]@{ Result = 'inconclusive'; Text = 'shown but never activated: repeat the step and click the toast' }
+    }
     $valid = @($first | Where-Object { -not $_.data.wasInFront })
-    if ($valid.Count -eq 0) { return 'no valid trial (the window was already in front)' }
+    if ($valid.Count -eq 0) { return [pscustomobject]@{ Result = 'inconclusive'; Text = 'no valid trial (the window was already in front): repeat the step' } }
     $inFront = @($valid | Where-Object { $_.data.inFrontAfter800ms }).Count
-    if ($inFront -eq $valid.Count) { return "activated, window in front ($inFront of $($valid.Count) valid trials)" }
+    if ($inFront -eq $valid.Count) { return [pscustomobject]@{ Result = 'pass'; Text = "activated, window in front ($inFront of $($valid.Count) valid trials)" } }
     $holders = @($valid | Where-Object { -not $_.data.inFrontAfter800ms } | ForEach-Object { $_.data.foregroundProcess } | Where-Object { $_ } | Select-Object -Unique)
-    return "activated, window NOT in front in $($valid.Count - $inFront) of $($valid.Count) valid trials$(if ($holders.Count -gt 0) { " ($($holders -join ', ') kept the foreground)" })"
+    return [pscustomobject]@{ Result = 'fail'; Text = "activated, window NOT in front in $($valid.Count - $inFront) of $($valid.Count) valid trials$(if ($holders.Count -gt 0) { " ($($holders -join ', ') kept the foreground)" })" }
 }
 
 function Get-Answer($Records, [string]$Step, [string]$Question) {
@@ -251,14 +257,18 @@ function Write-Summary([string[]]$Residue, [string]$Failure, [string[]]$Errors) 
         }
         $start = $records | Where-Object { $_.kind -eq 'start' } | Select-Object -First 1
         $names = @('banner-minimized', 'banner-background', 'notification-center')
-        $steps = @($names | ForEach-Object { Get-Activation $records $_ })
-        $works = @($steps | Where-Object { -not $_.StartsWith('activated, window in front') }).Count -eq 0
         # Rudy's own answers must agree with the measurement; a disagreement is reported, not resolved.
         $answers = @($names | ForEach-Object { Get-Answer $records $_ 'Did this window come to the front by itself?' })
+        $steps = @(for ($index = 0; $index -lt $names.Count; $index++) { Get-Activation $records $names[$index] $answers[$index] })
+        $failed = @($steps | Where-Object { $_.Result -eq 'fail' }).Count
+        $inconclusive = @($steps | Where-Object { $_.Result -eq 'inconclusive' }).Count
         $agree = @($answers | Where-Object { $_ -ne 'Yes' }).Count -eq 0
         $setting = if ($start) { "notifier $($start.data.notifier), Windows said '$($start.data.notifications)'" } else { 'no start record' }
-        $verdict = if ($works -and $agree) { 'works' } elseif ($works) { 'measured to work, but your answers disagree' } else { 'does not fully work' }
-        $lines.Add("- **$label exe ($setting):** banner while minimized: $($steps[0]); banner while behind another window: $($steps[1]); Notification Center: $($steps[2]). Your answers to 'came to the front by itself': $($answers -join ', '). Click activation **$verdict**.")
+        $verdict = if ($failed -gt 0) { 'does not fully work' }
+            elseif ($inconclusive -gt 0) { 'inconclusive: repeat the steps marked so' }
+            elseif ($agree) { 'works' }
+            else { 'measured to work, but your answers disagree' }
+        $lines.Add("- **$label exe ($setting):** banner while minimized: $($steps[0].Text); banner while behind another window: $($steps[1].Text); Notification Center: $($steps[2].Text). Your answers to 'came to the front by itself': $($answers -join ', '). Click activation **$verdict**.")
         $flash = Get-Answer $records 'taskbar-flash' 'Did the taskbar button flash?'
         $lines.Add("  The fallback's taskbar flash, by your answer: $flash.")
     }

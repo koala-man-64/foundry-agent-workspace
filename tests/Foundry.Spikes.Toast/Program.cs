@@ -17,8 +17,7 @@ internal static class Program
     {
         var command = args.Length > 0 ? args[0] : string.Empty;
         var results = Option(args, "--results");
-        // A local, fully qualified folder only: never a network share or device path (decision 8's rule).
-        if (results is not null && (!Path.IsPathFullyQualified(results) || results.StartsWith(@"\\", StringComparison.Ordinal) || results.StartsWith("//", StringComparison.Ordinal)))
+        if (results is not null && !IsLocalFolder(results))
         {
             results = null;
         }
@@ -58,6 +57,26 @@ internal static class Program
         File.AppendAllText(Path.Combine(folder, "launches.log"), $"{Stamp()} pid {Environment.ProcessId} {Environment.ProcessPath} arguments {shown}{Environment.NewLine}");
         MessageBox.Show($"Windows started this spike with the arguments {shown}.\n\nThey were recorded; nothing else happens. Close this message.", Registration.DisplayName);
         return 0;
+    }
+
+    /// <summary>
+    /// A drive-letter path on a local drive only: never a network share, a mapped network drive or a device path such as
+    /// \\?\ or \??\ (decision 8's rule for the product, applied here too).
+    /// </summary>
+    private static bool IsLocalFolder(string path)
+    {
+        if (path.Length < 3 || !char.IsAsciiLetter(path[0]) || path[1] != ':' || path[2] is not ('\\' or '/'))
+        {
+            return false;
+        }
+        try
+        {
+            return new DriveInfo(path[..1]).DriveType is not (DriveType.Network or DriveType.NoRootDirectory or DriveType.Unknown);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     private static string? Option(string[] args, string name)

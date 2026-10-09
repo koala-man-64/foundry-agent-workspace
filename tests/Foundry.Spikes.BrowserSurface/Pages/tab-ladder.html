@@ -61,12 +61,12 @@
   // Each frame reports its own counts here; the totals cover the page and every frame.
   window.addEventListener('message', event => {
     const data = event.data;
-    if (data && typeof data.s4frame === 'string' && data.recorder) { frames[data.s4frame] = data.recorder; render(); }
+    if (data && typeof data.s4frame === 'string' && data.recorder) { frames[data.s4frame] = { load: data.load, recorder: data.recorder }; render(); }
   });
   const add = (into, from) => { for (const [type, n] of Object.entries(from)) into[type] = (into[type] ?? 0) + n; return into; };
   const sum = counts => Object.values(counts).reduce((total, n) => total + n, 0);
   function totals() {
-    const all = [recorder, ...Object.values(frames)];
+    const all = [recorder, ...Object.values(frames).map(frame => frame.recorder)];
     return {
       input: all.reduce((into, item) => add(into, item.input), {}),
       hover: all.reduce((into, item) => add(into, item.hover), {}),
@@ -119,7 +119,8 @@
     snapshot() {
       const now = totals();
       return {
-        loadId, input: now.input, hover: now.hover, synthetic: now.synthetic, last: now.last, frames: Object.keys(frames),
+        loadId, input: now.input, hover: now.hover, synthetic: now.synthetic, last: now.last,
+        frames: Object.fromEntries(Object.entries(frames).map(([name, frame]) => [name, frame.load])),
         rendered, agentClicks, agentTimes: [...agentTimes],
         state: { hasFocus: document.hasFocus(), active: element(document.activeElement), scrollX, scrollY, href: location.href, history: history.length },
       };

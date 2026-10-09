@@ -11,10 +11,13 @@ namespace Foundry.Spikes.BrowserSurface;
 
 internal sealed record LayerResult(string Layer, bool Ok, string Detail);
 
-/// <param name="SettlingEvents">Trusted events between the start of the attach and the baseline: reported, never erased.</param>
+/// <param name="SettlingInput">Input events between the start of the attach and the hover baseline; they count against the attachment.</param>
+/// <param name="SettlingHover">Hover and focus events in the same window (such as the tab's blur), which may settle.</param>
+/// <param name="OutOfProcessFrames">Frames Chromium reported as separate targets (out of process), or null if unknown.</param>
 internal sealed record AttachRecord(
     string Kind, DateTimeOffset Time, int Generation, IReadOnlyList<LayerResult> Layers, bool Attached, string? Refusal,
-    IReadOnlyDictionary<string, int>? SettlingEvents, IReadOnlyList<string>? Frames);
+    IReadOnlyDictionary<string, int>? SettlingInput, IReadOnlyDictionary<string, int>? SettlingHover, IReadOnlyList<string>? Frames,
+    int? OutOfProcessFrames);
 
 /// <param name="DetachMilliseconds">From the human's input to the end of the attachment.</param>
 /// <param name="InputEvents">Trusted input events that reached the page or its frames while attached; -1 if unknown.</param>
@@ -34,7 +37,7 @@ internal sealed record PageState(bool HasFocus, string Active, double ScrollX, d
 
 /// <summary>What the S4 test page and its frames counted, read through the DevTools protocol.</summary>
 internal sealed record PageSnapshot(
-    string LoadId, Dictionary<string, int> Input, Dictionary<string, int> Hover, int Synthetic, string[] Last, string[] Frames,
+    string LoadId, Dictionary<string, int> Input, Dictionary<string, int> Hover, int Synthetic, string[] Last, Dictionary<string, string> Frames,
     int Rendered, int AgentClicks, double[] AgentTimes, PageState State);
 
 /// <summary>
@@ -81,6 +84,8 @@ internal sealed class LadderSpike : IDisposable
     private Task restoring = Task.CompletedTask;
     private Task agentTask = Task.CompletedTask;
     private PageSnapshot? baseline;
+    private PageSnapshot? inputBaseline;
+    private static readonly string[] ExpectedFrames = ["same-origin-frame", "cross-site-frame"];
     private int generation;
     private bool attached;
     private bool attaching;
@@ -144,9 +149,9 @@ internal sealed class LadderSpike : IDisposable
         {
             var page = Pages.Load("tab-ladder.html");
             var frame = Pages.Load("tab-frame.html");
-            site = new LoopbackSite(path => path switch
+            site = new LoopbackSite((path, otherOrigin) => path switch
             {
-                "/" => page.Replace("{{OTHER}}", site!.OtherOrigin, StringComparison.Ordinal),
+                "/" => page.Replace("{{OTHER}}", otherOrigin, StringComparison.Ordinal),
                 "/frame" => frame,
                 _ => null,
             });
@@ -220,20 +225,33 @@ internal sealed class LadderSpike : IDisposable
         }
         finally
         {
-            WriteSummary();
-            overlay?.Dispose();
-            overlay = null;
-            if (surface is not null)
+            // Release the webviews' temporary profiles and the server even if the summary cannot be written.
+            try
             {
-                await surface.DisposeAsync();
+                WriteSummary();
             }
-            if (site is not null)
+            finally
             {
-                await site.DisposeAsync();
+                overlay?.Dispose();
+                overlay = null;
+                try
+                {
+                    if (surface is not null)
+                    {
+                        await surface.DisposeAsync();
+                    }
+                }
+                finally
+                {
+                    if (site is not null)
+                    {
+                        await site.DisposeAsync();
+                    }
+                    closing = true;
+                    window.Close();
+                    results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
+                }
             }
-            closing = true;
-            window.Close();
-            results.Log($"Finished. Summary: {System.IO.Path.Combine(results.Directory, "summary.md")}");
         }
     }
 
@@ -278,7 +296,8 @@ internal sealed class LadderSpike : IDisposable
         PageSnapshot? start = null;
         try
         {
-            start = await SnapshotAsync();
+            // The input baseline, taken before any layer engages; the page's own counter starts here too.
+            start = await SnapshotAsync(mark: "attached");
             var host = Host.TabHostHwnd;
             Native.EnableWindow(host, false);
             layers.Add(new LayerResult("1 tab host disabled", !Native.IsWindowEnabled(host), "EnableWindow(false), checked with IsWindowEnabled"));
@@ -326,7 +345,15 @@ internal sealed class LadderSpike : IDisposable
             attaching = false;
             layersOk = false;
             layersText = string.Join(" · ", layers.Select(layer => $"{layer.Layer} {(layer.Ok ? "✓" : "✗")}"));
-            AddAttach(new AttachRecord("attach", DateTimeOffset.Now, generation, layers, false, refusal, null, null));
+            try
+            {
+                await Surface.EvaluateAsync(Host.Tab.CoreWebView2, "window.__s4 && window.__s4.mark('manual')");
+            }
+            catch (Exception error) when (error is InvalidOperationException or TimeoutException or System.Runtime.InteropServices.COMException)
+            {
+                // The page's display only; the refusal stands either way.
+            }
+            AddAttach(new AttachRecord("attach", DateTimeOffset.Now, generation, layers, false, refusal, null, null, null, null));
             Log($"Attach refused: {refusal}");
             Push();
             return;
@@ -338,17 +365,19 @@ internal sealed class LadderSpike : IDisposable
         attachedAt = clock.Elapsed;
         layersOk = true;
         layersText = string.Join(" · ", layers.Select(layer => $"{layer.Layer} ✓"));
-        // Let the blur from moving focus out of the tab arrive, then take the baseline. Whatever arrived since the
-        // attach began is reported with the attachment, not erased.
+        // Let the blur from moving focus out of the tab arrive, then take the hover baseline. Input that arrived since
+        // the attach began counts against the attachment; hover and focus events here are reported, not counted.
         await Task.Delay(150);
         baseline = await SnapshotAsync();
-        var settling = start is null || baseline is null ? null : Minus(Merge(baseline.Input, baseline.Hover), Merge(start.Input, start.Hover));
-        await Surface.EvaluateAsync(Host.Tab.CoreWebView2, "window.__s4.mark('attached')");
-        AddAttach(new AttachRecord("attach", DateTimeOffset.Now, generation, layers, true, null, settling, baseline?.Frames));
-        Log($"Attached (generation {generation}); all layers engaged{(settling is { Count: > 0 } ? $"; while attaching the page saw {Describe(settling)}" : string.Empty)}.");
-        if (baseline is not null && !baseline.Frames.Contains("cross-site-frame"))
+        inputBaseline = start;
+        var settlingInput = start is null || baseline is null ? null : Minus(baseline.Input, start.Input);
+        var settlingHover = start is null || baseline is null ? null : Minus(baseline.Hover, start.Hover);
+        var outOfProcess = await OutOfProcessFramesAsync();
+        AddAttach(new AttachRecord("attach", DateTimeOffset.Now, generation, layers, true, null, settlingInput, settlingHover, baseline?.Frames.Keys.ToList(), outOfProcess));
+        Log($"Attached (generation {generation}); all layers engaged{(settlingInput is { Count: > 0 } ? $"; INPUT reached the page while attaching: {Describe(settlingInput)}" : string.Empty)}{(settlingHover is { Count: > 0 } ? $"; hover and focus events while attaching: {Describe(settlingHover)}" : string.Empty)}; frames in their own process: {outOfProcess?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}.");
+        if (baseline is null || !ExpectedFrames.All(baseline.Frames.ContainsKey))
         {
-            Log("The cross-site frame has not reported; frame coverage is incomplete.");
+            Log("Not every frame has reported, so this attachment's counts will be unknown.");
         }
         liveInput = 0;
         liveText = "0";
@@ -460,10 +489,10 @@ internal sealed class LadderSpike : IDisposable
         var restored = error is null && Native.IsWindowEnabled(Host.TabHostHwnd) && !Native.IsWindowVisible(overlay!.Handle);
 
         var unknown = page is null ? "the page could not be read"
-            : baseline is null ? "no baseline was taken at attach"
-            : page.LoadId != baseline.LoadId ? "the page reloaded while attached, so its counters restarted"
-            : null;
-        var input = unknown is null ? Minus(page!.Input, baseline!.Input) : [];
+            : baseline is null || inputBaseline is null ? "no baseline was taken at attach"
+            : page.LoadId != inputBaseline.LoadId ? "the page reloaded while attached, so its counters restarted"
+            : FrameProblem(inputBaseline.Frames, page.Frames);
+        var input = unknown is null ? Minus(page!.Input, inputBaseline!.Input) : [];
         var hover = unknown is null ? Minus(page!.Hover, baseline!.Hover) : [];
         var changes = unknown is null ? StateChanges(baseline!.State, page!.State) : [];
         double inputMilliseconds = inputAt.ToUnixTimeMilliseconds(); // The page's Date.now() reads the same system clock.
@@ -481,6 +510,7 @@ internal sealed class LadderSpike : IDisposable
         Log(string.Create(CultureInfo.InvariantCulture, $"Take control by {trigger}: detach {record.DetachMilliseconds:0.0} ms (input queued {queued} ms), restore {record.RestoreMilliseconds:0.0} ms, input events on page {(unknown ?? (input.Count == 0 ? "0" : Describe(input)))}, hover/focus {(hover.Count == 0 ? "0" : Describe(hover))}, agent actions {agentActions}, agent effects after the input {late.Count}{(changes.Count > 0 ? $", page state changed: {string.Join("; ", changes)}" : string.Empty)}{(error is null ? string.Empty : $", restore problem: {error}")}"));
         agentActions = 0;
         baseline = null;
+        inputBaseline = null;
         Push();
     }
 
@@ -606,27 +636,78 @@ internal sealed class LadderSpike : IDisposable
 
     private async Task PollAsync()
     {
-        if (!attached || baseline is null)
+        if (!attached || baseline is null || inputBaseline is null)
         {
             return;
         }
-        if (await SnapshotAsync() is { } page && attached && baseline is not null)
+        var page = await SnapshotAsync();
+        if (!attached || baseline is null || inputBaseline is null)
         {
-            var input = Minus(page.Input, baseline.Input);
+            return;
+        }
+        var problem = page is null ? "the page's counts could not be read"
+            : page.LoadId != inputBaseline.LoadId ? "the page reloaded"
+            : FrameProblem(inputBaseline.Frames, page.Frames);
+        if (page is null || problem is not null)
+        {
+            liveInput = -1;
+            liveText = $"UNKNOWN: {problem}";
+        }
+        else
+        {
+            var input = Minus(page.Input, inputBaseline.Input);
             var hover = Minus(page.Hover, baseline.Hover);
-            liveInput = page.LoadId == baseline.LoadId ? input.Values.Sum() : -1;
-            liveText = page.LoadId != baseline.LoadId ? "UNKNOWN: the page reloaded"
-                : $"{(input.Count == 0 ? "0" : Describe(input))}{(hover.Count == 0 ? string.Empty : $" · hover/focus {Describe(hover)}")}";
-            Push();
+            liveInput = input.Values.Sum();
+            liveText = $"{(input.Count == 0 ? "0" : Describe(input))}{(hover.Count == 0 ? string.Empty : $" · hover/focus {Describe(hover)}")}";
+        }
+        Push();
+    }
+
+    /// <summary>Why the frames' counts cannot be trusted for an attachment, or null if every frame reported throughout.</summary>
+    private static string? FrameProblem(Dictionary<string, string> before, Dictionary<string, string> after)
+    {
+        foreach (var frame in ExpectedFrames)
+        {
+            if (!before.TryGetValue(frame, out var load))
+            {
+                return $"the {frame} had not reported when the attachment began";
+            }
+            if (!after.TryGetValue(frame, out var now))
+            {
+                return $"the {frame} stopped reporting";
+            }
+            if (now != load)
+            {
+                return $"the {frame} reloaded while attached, so its counters restarted";
+            }
+        }
+        return null;
+    }
+
+    /// <summary>How many of the tab's frames Chromium runs as separate targets (out of process), or null if unknown.</summary>
+    private async Task<int?> OutOfProcessFramesAsync()
+    {
+        try
+        {
+            var targets = await Surface.CdpAsync(Host.Tab.CoreWebView2, "Target.getTargets", new { });
+            return targets.GetProperty("targetInfos").EnumerateArray().Count(target => target.GetProperty("type").GetString() == "iframe");
+        }
+        catch (Exception error) when (error is InvalidOperationException or TimeoutException or System.Runtime.InteropServices.COMException or KeyNotFoundException)
+        {
+            results.Log($"Could not list the tab's targets: {error.Message}");
+            return null;
         }
     }
 
     /// <summary>The page's counts, or null when they cannot be read; callers treat null as unknown, never as zero.</summary>
-    private async Task<PageSnapshot?> SnapshotAsync()
+    /// <param name="mark">A phase for the page's own counter display, set in the same evaluation as the snapshot.</param>
+    private async Task<PageSnapshot?> SnapshotAsync(string? mark = null)
     {
         try
         {
-            var value = await Surface.EvaluateAsync(Host.Tab.CoreWebView2, "window.__s4 ? window.__s4.snapshot() : null");
+            var expression = mark is null ? "window.__s4 ? window.__s4.snapshot() : null"
+                : $"window.__s4 ? (() => {{ const snapshot = window.__s4.snapshot(); window.__s4.mark('{mark}'); return snapshot; }})() : null";
+            var value = await Surface.EvaluateAsync(Host.Tab.CoreWebView2, expression);
             return value.ValueKind == JsonValueKind.Object ? value.Deserialize<PageSnapshot>(Json) : null;
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException or TimeoutException or System.Runtime.InteropServices.COMException)
@@ -806,7 +887,7 @@ internal sealed class LadderSpike : IDisposable
         text.AppendLine(invariant, $"- Breaches (focus or keys inside an attached tab): {breaches.Count}.");
         text.AppendLine(invariant, $"- Rendering while attached: {takeovers.Count(item => item.RenderingOk == true)} ok, {takeovers.Count(item => item.RenderingOk == false)} with a problem, {takeovers.Count(item => item.RenderingOk is null)} not judged on screen.");
         var frames = attaches.Where(item => item.Frames is not null).SelectMany(item => item.Frames!).Distinct().ToList();
-        text.AppendLine(invariant, $"- Frames reporting to the page's counter: {(frames.Count == 0 ? "none" : string.Join(", ", frames))}.").AppendLine();
+        text.AppendLine(invariant, $"- Frames reporting to the page's counter: {(frames.Count == 0 ? "none" : string.Join(", ", frames))}; frames Chromium ran in their own process at attach: {string.Join(", ", attaches.Where(item => item.Attached).Select(item => item.OutOfProcessFrames?.ToString(invariant) ?? "unknown").Distinct())}.").AppendLine();
         text.AppendLine("## Takeovers").AppendLine();
         text.AppendLine("| Time | Trigger | Detach ms | Agent after input | Restore ms | Input events while attached | Hover/focus | Page state | Agent actions | Rendering | Restored |");
         text.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
@@ -820,7 +901,7 @@ internal sealed class LadderSpike : IDisposable
         {
             if (item.Attached)
             {
-                text.AppendLine(invariant, $"- {item.Time:HH:mm:ss} attached (generation {item.Generation}); events while attaching, before the baseline: {(item.SettlingEvents is { Count: > 0 } settling ? Describe(settling) : "none")}");
+                text.AppendLine(invariant, $"- {item.Time:HH:mm:ss} attached (generation {item.Generation}); input while attaching (counted against the attachment): {(item.SettlingInput is { Count: > 0 } settledInput ? $"**{Describe(settledInput)}**" : "none")}; hover and focus while attaching: {(item.SettlingHover is { Count: > 0 } settledHover ? Describe(settledHover) : "none")}");
             }
             else
             {
