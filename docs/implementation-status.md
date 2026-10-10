@@ -88,20 +88,24 @@ P0 deliverables so far:
 - Run-ready harnesses for the three host spikes that Rudy runs himself ([docs/spikes](spikes/)). None of them changes a system setting.
   - **S3 (tab bounds).** `tests/Foundry.Spikes.BrowserSurface` measures on screen while Rudy switches display scaling. Its arithmetic and pixel classification are unit-tested.
     - A preview at 100%, with 125 to 200% simulated, shows exact placement, re-synced by the host on its own.
-    - It also shows the UI's whole-pixel bounds missing near-worst fractional layouts by up to zoom × scale: 4 px at 200% and zoom 2. That is a decision for Rudy after the real run.
+    - It also shows the UI's whole-pixel bounds missing near-worst fractional layouts by up to zoom × scale: 4 px at 200% and zoom 2.
+    - Rudy decided on 9 October 2026 not to run S3 (see Next).
   - **S4 (input ladder).** The same app implements section 6's five-layer ladder as the subject of a manual test script; nothing generates input.
     - The test page has a same-origin and a cross-site frame.
     - Detach is judged by when the agent last changed the page.
     - Its self-check passed.
   - **S6 (toasts).** `tests/Foundry.Spikes.Toast` and `Run-S6.ps1` test the unzipped exe and a per-user Inno Setup install, then remove the registration and the install and verify that nothing is left. CI compiled the installer.
-  - **Reviews.** Independent reviews of security and of test validity reshaped all three before Rudy runs them. The security review gave a conditional GO for running S6 on his machine, and its conditions are addressed.
+  - **Reviews.** Independent reviews of security and of test validity reshaped all three. After its findings were fixed, the security review gave GO for running S6 on Rudy's machine. The test-validity review's findings are all resolved.
 
-Next: Rudy runs the three host spikes, as he chose on 8 October 2026:
-- S3: the harness measures while he switches display scaling ([guide](spikes/s3-tab-bounds.md)).
-- S4: he follows the manual test script against the ladder app ([script](spikes/s4-input-ladder.md)). Decision 7 is the fallback.
-- S6: at his desktop, the unzipped and the per-user installed exe ([guide](spikes/s6-toast-activation.md)). Phase B needs Inno Setup 6, which this machine does not have.
+Next, as Rudy decided on 9 October 2026:
+- **S3: decided without a run, by Rudy's decision.**
+  - The preview is S3's only evidence.
+  - Rudy accepted the UI's whole-pixel inset with no protocol change. The criterion is restated as "within the UI's whole-pixel rounding, never over the UI".
+  - P3's exit gate checks it with `browser.spec` at 100/150/200% DPI and zoom 2.
+- **S4:** Rudy runs the manual test script on 10 October 2026 ([script](spikes/s4-input-ladder.md)). Decision 7 is the fallback.
+- **S6:** Rudy runs it on 9 October 2026 ([guide](spikes/s6-toast-activation.md)), with Inno Setup installed per-user.
 
-Their results and decisions then go into the plan, completing P0's exit gate.
+With S3 decided, the S4 and S6 results and decisions complete P0's exit gate when they go into the plan.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.
