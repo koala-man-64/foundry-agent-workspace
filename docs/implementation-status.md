@@ -1,6 +1,6 @@
 # Implementation status
 
-## WPF + WebView2 migration — phase P0 in progress
+## WPF + WebView2 migration — P0 decisions complete; P1 next
 
 Recorded 8 October 2026. The [migration plan](wpf-webview2-migration.md) replaces Electron and Node with three parts, delivered in a single cutover:
 - a WPF host on .NET 10;
@@ -102,10 +102,14 @@ Next, as Rudy decided on 9 October 2026:
   - The preview is S3's only evidence.
   - Rudy accepted the UI's whole-pixel inset with no protocol change. The criterion is restated as "within the UI's whole-pixel rounding, never over the UI".
   - P3's exit gate checks it with `browser.spec` at 100/150/200% DPI and zoom 2.
-- **S4:** Rudy runs the manual test script on 10 October 2026 ([script](spikes/s4-input-ladder.md)). Decision 7 is the fallback.
-- **S6:** Rudy runs it on 9 October 2026 ([guide](spikes/s6-toast-activation.md)), with Inno Setup installed per-user.
+- **S4: desktop run completed 11 October 2026; tested input classes passed; accepted by Rudy with documented gaps on 12 October 2026.** The [recording sheet, raw results and cleanup](spikes/results/s4-20261011-073210/README.md) retain 19 takeovers: worst detach 16.0594 ms; zero attached input/hover events, breaches, unknown counts, page state changes or late agent effects; all restores succeeded. Physical clicks in the page and both frames, right/middle/side buttons, vertical/Ctrl/horizontal wheel, double-click, OSK text/emoji/clipboard, hover, external file/link drags, focus checks, move/resize edges and Take control passed the identified trials. Rudy confirmed normal Manual typing, buttons, scrolling and focus afterward. Keyboard chords were observed blocked in the earlier partial run, which later had an inactive agent and a shutdown exception; that limitation is preserved separately. Maximize/restore edge reports conflict with live readback and remain **inconclusive**. IME, voice, touchpad, touch, pen, external text drag, Windows+D and UIA are **not tested**. Final summary saved; independent checks found no spike processes, temporary spike profiles or loopback listener. Rudy's acceptance below resolves this run's disposition without invoking decision 7; no main integration authorized.
+- **S6: desktop run completed 11 October 2026; activation inconclusive.** The [results and cleanup evidence](spikes/results/s6-20261011-063102/README.md) preserve the generated summary, both phase JSONL files, installer/uninstaller logs and console transcript. Installed Notification Center activation passed (one valid trial; behind another window, matching arguments, foreground after 800 ms), agreeing with Rudy. Steps 1–2 in both phases timed out without activation; these are inconclusive, not observed foreground failures. Unzipped step 3 has conflicting evidence: Rudy observed foreground activation, but no activation event was recorded. Taskbar flash was observed in both phases. After app closure, Rudy reported “clicked it and codex app flashed” (unzipped) and “clicked it; nothing happened” (installed); neither phase recorded a spike restart. Runner cleanup and independent residue checks passed; Rudy confirmed the spike was absent from Windows Settings → System → Notifications. Rudy's subsequent acceptance is recorded below; the measured limitations remain unchanged.
 
-With S3 decided, the S4 and S6 results and decisions complete P0's exit gate when they go into the plan.
+**S6 disposition — Rudy, 11 October 2026:** accepts the current toast/notification behavior without further retest or fallback; he will handle Windows Do not disturb. This resolves the S6 human decision while retaining the inconclusive measured trials and conflicting observation above. No COM-activator exploration is required by this acceptance.
+
+**S4 disposition — Rudy, 12 October 2026:** “I accept S4 with the documented gaps.” This accepts the limited keyboard evidence, inconclusive maximize/restore boundary trials, and named untested classes. It resolves the S4 human decision; no additional retest or decision-7 fallback is required by this acceptance. Raw measurements and gaps remain unchanged.
+
+With S3, S4 and S6 decided and the other spike outcomes recorded, P0's documented spike exit gates are resolved. Next is P1 **Contract & platform**: protocol corpus parity, the runtime loop, the Store and `workspace.summary`, building on the S7 platform primitives. P1 must prove full corpus agreement, identical normalized fixture dumps and structure, and green platform security tests, with independent security/data review where required. Re-baseline the migration schedule after P0. The local evidence/decision changes still require their review and authorized main integration; this acceptance authorizes neither integration nor real-data adoption.
 
 These program rules hold until the P5 cutover:
 - Protocol and runtime features are frozen, except the planned P4 deltas: adoption RPCs and removal of the JavaScript script language.

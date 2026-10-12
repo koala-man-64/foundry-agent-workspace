@@ -1,0 +1,10 @@
+# Raw evidence retains original bytes and whitespace; do not reformat it.
+# Authored recording sheets and product code keep ordinary text/whitespace checks.
+s4-*/log.txt -text -whitespace
+s4-*/records.jsonl -text -whitespace
+s4-*/summary.md -text -whitespace
+s6-*/*.log -text -whitespace
+s6-*/phase-*.jsonl -text -whitespace
+s6-*/phase-*.md -text -whitespace
+s6-*/step5-*.md -text -whitespace
+s6-*/summary.md -text -whitespace

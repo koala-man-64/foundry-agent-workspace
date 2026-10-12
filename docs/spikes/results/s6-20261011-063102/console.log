@@ -1,0 +1,52 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261011063102
+Username: MSI\rdpro
+RunAs User: MSI\rdpro
+Configuration Name: 
+Machine: MSI (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Foundry.Spikes.Toast\Run-S6.ps1 -IsccPath C:\Users\rdpro\AppData\Local\Programs\Inno Setup 6\ISCC.exe
+Process ID: 29960
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+== Publishing the spike self-contained for win-x64
+Restore complete (0.6s)
+  Foundry.Spikes.Toast net10.0-windows10.0.19041.0 win-x64 succeeded (3.2s) → test-results\spikes\s6-toast-activation\20261011-063102\publish\
+
+Build succeeded in 4.3s
+
+== Zipping and unzipping it, as a user would
+
+== Compiling the per-user installer
+Compressing: 100.00% done
+
+== Phase unzipped: a window titled 'Foundry S6 toast spike' opens. Do its five steps in order.
+Step 5 closes the window for you; or use "Finish without step 5".
+
+Step 5: the spike has closed and left a toast. Open Notification Center (Windows+N, or click the clock)
+and click the toast titled "Foundry S6: 5. Click a toast after the app has closed".
+
+== Installing the spike for this user only
+
+== Phase installed: a window titled 'Foundry S6 toast spike' opens. Do its five steps in order.
+Step 5 closes the window for you; or use "Finish without step 5".
+
+Step 5: the spike has closed and left a toast. Open Notification Center (Windows+N, or click the clock)
+and click the toast titled "Foundry S6: 5. Click a toast after the app has closed".
+
+== Cleaning up: the spike, its app ID registration, its toasts and the test install
+Uninstalling the test install.
+Nothing was left behind.
+Summary: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s6-toast-activation\20261011-063102\summary.md
+**********************
+Windows PowerShell transcript end
+End time: 20261011070554
+**********************

@@ -1,0 +1,23 @@
+07:15:36.792 S4 input ladder. Results: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s4-input-ladder\20261011-071536
+07:15:36.799 Windows 10.0.26200.0, WebView2 runtime 154.0.4258.62, SDK 1.0.4258.31
+07:15:42.826 Ready. Follow docs/spikes/s4-input-ladder.md.
+07:21:22.595 Attached (generation 1); all layers engaged; frames in their own process: 1.
+07:21:24.096 Rendering while attached: 123 frames/s, 1238 pixels changed in 1 s, brightness shift 0.6 → ok
+07:22:26.734 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 71.7 ms, input events on page 0, hover/focus 0, agent actions 91, agent effects after the input 0
+07:26:53.431 Attached (generation 3); all layers engaged; frames in their own process: 1.
+07:26:54.913 Rendering while attached: 123 frames/s, 517 pixels changed in 1 s, brightness shift 0.4 → ok
+07:27:20.921 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+07:30:23.800 Finished. Summary: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s4-input-ladder\20261011-071536\summary.md
+07:30:23.827 Unhandled: System.ArgumentException: Value does not fall within the expected range.
+   at Microsoft.Web.WebView2.Core.CoreWebView2.CallDevToolsProtocolMethodAsync(String methodName, String parametersAsJson)
+   at Foundry.Spikes.BrowserSurface.Surface.CdpAsync(CoreWebView2 core, String method, Object parameters) in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\Surface.cs:line 152
+   at Foundry.Spikes.BrowserSurface.Surface.EvaluateAsync(CoreWebView2 core, String expression, Nullable`1 contextId) in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\Surface.cs:line 165
+   at Foundry.Spikes.BrowserSurface.LadderSpike.AgentActAsync() in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\LadderSpike.cs:line 616
+   at Foundry.Spikes.BrowserSurface.LadderSpike.RestoreAsync(String trigger, Int32 queued, DateTimeOffset inputAt, TimeSpan start, TimeSpan detached) in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\LadderSpike.cs:line 470
+   at Foundry.Spikes.BrowserSurface.LadderSpike.RunAsync() in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\LadderSpike.cs:line 223
+   at Foundry.Spikes.BrowserSurface.LadderSpike.RunAsync() in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\LadderSpike.cs:line 252
+   at Foundry.Spikes.BrowserSurface.Program.<>c__DisplayClass0_0.<<Main>b__2>d.MoveNext() in C:\Users\rdpro\Projects\foundry-agent-workspace-s6\tests\Foundry.Spikes.BrowserSurface\Program.cs:line 49
+--- End of stack trace from previous location ---
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__124_0(Object state)
+   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)
+   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)

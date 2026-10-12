@@ -1,0 +1,28 @@
+{"time":"2026-10-11T06:51:18.7356984-05:00","kind":"start","data":{"label":"installed","executable":"C:\\Users\\rdpro\\AppData\\Local\\Programs\\Foundry S6 toast spike\\Foundry.Spikes.Toast.exe","aumid":"Foundry.Spikes.S6Toast","notifier":"Enabled","notifications":"busy (a full-screen app)","windows":"10.0.26200.0"}}
+{"time":"2026-10-11T06:51:51.7923515-05:00","kind":"start-step","data":{"step":"banner-minimized"}}
+{"time":"2026-10-11T06:51:52.8597452-05:00","kind":"shown","data":{"step":"banner-minimized","nonce":"00fba66400e4","launch":"s6;label=installed;step=banner-minimized;nonce=00fba66400e4","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:51:52.8770107-05:00","kind":"dismissed","data":{"step":"banner-minimized","nonce":"00fba66400e4","reason":"TimedOut"}}
+{"time":"2026-10-11T06:52:14.9250477-05:00","kind":"start-step","data":{"step":"banner-background"}}
+{"time":"2026-10-11T06:52:19.9409563-05:00","kind":"shown","data":{"step":"banner-background","nonce":"8383eb6d5d81","launch":"s6;label=installed;step=banner-background;nonce=8383eb6d5d81","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:52:19.9448314-05:00","kind":"dismissed","data":{"step":"banner-background","nonce":"8383eb6d5d81","reason":"TimedOut"}}
+{"time":"2026-10-11T06:52:52.5520823-05:00","kind":"note","data":{"step":"banner-minimized","text":"Banner immediately timed out while Windows reported busy (a full-screen app). No click or activation recorded. Inconclusive; no foreground activation trial completed."}}
+{"time":"2026-10-11T06:52:57.4986712-05:00","kind":"note","data":{"step":"banner-background","text":"Banner immediately timed out while Windows reported busy (a full-screen app), with File Explorer placed in front. No click or activation recorded. Inconclusive."}}
+{"time":"2026-10-11T06:52:57.5164491-05:00","kind":"start-step","data":{"step":"notification-center"}}
+{"time":"2026-10-11T06:52:57.5201529-05:00","kind":"shown","data":{"step":"notification-center","nonce":"16d07582768b","launch":"s6;label=installed;step=notification-center;nonce=16d07582768b","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:52:57.5247448-05:00","kind":"dismissed","data":{"step":"notification-center","nonce":"16d07582768b","reason":"TimedOut"}}
+{"time":"2026-10-11T06:53:47.4412751-05:00","kind":"start-step","data":{"step":"notification-center"}}
+{"time":"2026-10-11T06:53:47.4451403-05:00","kind":"shown","data":{"step":"notification-center","nonce":"9dab2bd441be","launch":"s6;label=installed;step=notification-center;nonce=9dab2bd441be","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:53:47.450807-05:00","kind":"dismissed","data":{"step":"notification-center","nonce":"9dab2bd441be","reason":"TimedOut"}}
+{"time":"2026-10-11T06:53:51.8726301-05:00","kind":"start-step","data":{"step":"notification-center"}}
+{"time":"2026-10-11T06:53:51.8761505-05:00","kind":"shown","data":{"step":"notification-center","nonce":"19f703064421","launch":"s6;label=installed;step=notification-center;nonce=19f703064421","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:53:51.8825097-05:00","kind":"dismissed","data":{"step":"notification-center","nonce":"19f703064421","reason":"TimedOut"}}
+{"time":"2026-10-11T06:54:05.9606629-05:00","kind":"activated","data":{"step":"notification-center","nonce":"19f703064421","arguments":"s6;label=installed;step=notification-center;nonce=19f703064421","argumentsMatch":true,"stateBefore":"Normal","wasInFront":false,"activateReturned":true,"inFrontAfter800ms":true,"foregroundProcess":null,"secondsAfterShown":14.087364}}
+{"time":"2026-10-11T06:54:16.8786274-05:00","kind":"answer","data":{"step":"notification-center","question":"Was the toast in Notification Center?","answer":"Yes"}}
+{"time":"2026-10-11T06:54:25.6012477-05:00","kind":"answer","data":{"step":"notification-center","question":"Did this window come to the front by itself?","answer":"Yes"}}
+{"time":"2026-10-11T06:56:25.5440215-05:00","kind":"start-step","data":{"step":"taskbar-flash"}}
+{"time":"2026-10-11T06:56:30.5425456-05:00","kind":"flash","data":{"step":"taskbar-flash","inFront":false}}
+{"time":"2026-10-11T06:59:11.288204-05:00","kind":"answer","data":{"step":"taskbar-flash","question":"Did the taskbar button flash?","answer":"Yes"}}
+{"time":"2026-10-11T06:59:16.3963757-05:00","kind":"start-step","data":{"step":"app-closed"}}
+{"time":"2026-10-11T06:59:16.401864-05:00","kind":"shown","data":{"step":"app-closed","nonce":"e452f842f1a6","launch":"s6;label=installed;step=app-closed;nonce=e452f842f1a6","notifier":"Enabled","notifications":"busy (a full-screen app)"}}
+{"time":"2026-10-11T06:59:16.4065264-05:00","kind":"dismissed","data":{"step":"app-closed","nonce":"e452f842f1a6","reason":"TimedOut"}}
+{"time":"2026-10-11T06:59:19.4299125-05:00","kind":"finish","data":{}}

@@ -1,0 +1,69 @@
+07:32:11.015 S4 input ladder. Results: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s4-input-ladder\20261011-073210
+07:32:11.018 Windows 10.0.26200.0, WebView2 runtime 154.0.4258.62, SDK 1.0.4258.31
+07:32:12.066 Ready. Follow docs/spikes/s4-input-ladder.md.
+07:34:13.681 Attached (generation 1); all layers engaged; frames in their own process: 1.
+07:34:15.173 Rendering while attached: 123 frames/s, 1262 pixels changed in 1 s, brightness shift 0.6 → ok
+07:43:28.589 Take control by left button: detach 16.1 ms (input queued 16 ms), restore 93.6 ms, input events on page 0, hover/focus 0, agent actions 788, agent effects after the input 0
+07:45:09.652 Attached (generation 3); all layers engaged; frames in their own process: 1.
+07:45:11.188 Rendering while attached: 122 frames/s, 586 pixels changed in 1 s, brightness shift 0.1 → ok
+07:45:26.486 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 71.0 ms, input events on page 0, hover/focus 0, agent actions 23, agent effects after the input 0
+07:52:12.671 Attached (generation 5); all layers engaged; frames in their own process: 1.
+07:52:14.142 Rendering while attached: 124 frames/s, 562 pixels changed in 1 s, brightness shift 0.0 → ok
+07:52:20.659 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 72.7 ms, input events on page 0, hover/focus 0, agent actions 11, agent effects after the input 0
+07:55:44.423 Attached (generation 7); all layers engaged; frames in their own process: 1.
+07:55:46.395 Rendering while attached: 177 frames/s, 492 pixels changed in 1 s, brightness shift 0.0 → ok
+07:55:57.957 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 63.6 ms, input events on page 0, hover/focus 0, agent actions 19, agent effects after the input 0
+07:59:55.938 Attached (generation 9); all layers engaged; frames in their own process: 1.
+07:59:57.394 Rendering while attached: 123 frames/s, 601 pixels changed in 1 s, brightness shift 0.0 → ok
+08:00:02.256 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 75.8 ms, input events on page 0, hover/focus 0, agent actions 8, agent effects after the input 0
+08:01:43.921 Attached (generation 11); all layers engaged; frames in their own process: 1.
+08:01:45.732 Rendering while attached: 123 frames/s, 587 pixels changed in 1 s, brightness shift 0.0 → ok
+08:01:50.921 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 69.9 ms, input events on page 0, hover/focus 0, agent actions 9, agent effects after the input 0
+08:02:58.687 Attached (generation 13); all layers engaged; frames in their own process: 1.
+08:03:01.142 Rendering while attached: 181 frames/s, 584 pixels changed in 1 s, brightness shift 0.0 → ok
+08:03:04.987 Take control by left button: detach 0.1 ms (input queued 0 ms), restore 71.8 ms, input events on page 0, hover/focus 0, agent actions 8, agent effects after the input 0
+08:10:58.464 Attached (generation 15); all layers engaged; frames in their own process: 1.
+08:11:00.379 Rendering while attached: 177 frames/s, 639 pixels changed in 1 s, brightness shift 0.0 → ok
+08:12:55.811 Take control by right button: detach 0.2 ms (input queued 0 ms), restore 69.9 ms, input events on page 0, hover/focus 0, agent actions 166, agent effects after the input 0
+08:16:07.886 Attached (generation 17); all layers engaged; frames in their own process: 1.
+08:16:09.602 Rendering while attached: 150 frames/s, 512 pixels changed in 1 s, brightness shift 0.0 → ok
+08:16:12.068 Take control by middle button: detach 0.0 ms (input queued 0 ms), restore 75.5 ms, input events on page 0, hover/focus 0, agent actions 5, agent effects after the input 0
+08:17:03.623 Attached (generation 19); all layers engaged; frames in their own process: 1.
+08:17:04.316 Take control by wheel: detach 0.0 ms (input queued 0 ms), restore 63.6 ms, input events on page 0, hover/focus 0, agent actions 0, agent effects after the input 0
+08:17:46.362 Attached (generation 21); all layers engaged; frames in their own process: 1.
+08:17:48.221 Rendering while attached: 169 frames/s, 574 pixels changed in 1 s, brightness shift 0.0 → ok
+08:18:05.071 Take control by wheel: detach 0.0 ms (input queued 0 ms), restore 74.5 ms, input events on page 0, hover/focus 0, agent actions 26, agent effects after the input 0
+08:18:55.947 Attached (generation 23); all layers engaged; frames in their own process: 1.
+08:18:57.412 Rendering while attached: 123 frames/s, 525 pixels changed in 1 s, brightness shift 0.0 → ok
+08:19:05.523 Take control by wheel: detach 0.1 ms (input queued 0 ms), restore 67.6 ms, input events on page 0, hover/focus 0, agent actions 13, agent effects after the input 0
+08:19:54.338 Attached (generation 25); all layers engaged; frames in their own process: 1.
+08:19:55.814 Rendering while attached: 123 frames/s, 580 pixels changed in 1 s, brightness shift 0.0 → ok
+08:19:58.171 Take control by left button: detach 0.0 ms (input queued 0 ms), restore 77.4 ms, input events on page 0, hover/focus 0, agent actions 5, agent effects after the input 0
+08:22:50.993 Attached (generation 27); all layers engaged; frames in their own process: 1.
+08:22:52.472 Rendering while attached: 123 frames/s, 603 pixels changed in 1 s, brightness shift 0.0 → ok
+08:23:46.512 Take control by side button: detach 0.0 ms (input queued 0 ms), restore 75.0 ms, input events on page 0, hover/focus 0, agent actions 78, agent effects after the input 0
+08:24:10.225 Attached (generation 29); all layers engaged; frames in their own process: 1.
+08:24:11.689 Rendering while attached: 122 frames/s, 609 pixels changed in 1 s, brightness shift 0.0 → ok
+08:26:10.165 Take control by side button: detach 0.0 ms (input queued 0 ms), restore 72.6 ms, input events on page 0, hover/focus 0, agent actions 170, agent effects after the input 0
+08:26:37.429 Attached (generation 31); all layers engaged; frames in their own process: 1.
+08:26:39.151 Rendering while attached: 93 frames/s, 648 pixels changed in 1 s, brightness shift 0.0 → ok
+08:27:23.352 Take control by horizontal wheel: detach 15.0 ms (input queued 15 ms), restore 79.3 ms, input events on page 0, hover/focus 0, agent actions 65, agent effects after the input 0
+08:27:48.963 Attached (generation 33); all layers engaged; frames in their own process: 1.
+08:27:50.459 Rendering while attached: 123 frames/s, 680 pixels changed in 1 s, brightness shift 0.0 → ok
+08:52:50.497 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:50.928 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:51.356 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:51.768 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:52.167 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:52.616 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:53.028 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:53.456 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:52:53.921 Tab-key traversal into the attached tab was refused; focus stays in the UI.
+08:56:48.976 Take control by left button: detach 0.0 ms (input queued 0 ms), restore 76.6 ms, input events on page 0, hover/focus 0, agent actions 2473, agent effects after the input 0
+08:57:20.224 Attached (generation 35); all layers engaged; frames in their own process: 1.
+08:57:22.020 Rendering while attached: 164 frames/s, 609 pixels changed in 1 s, brightness shift 0.0 → ok
+09:04:09.246 Take control by left button: detach 0.0 ms (input queued 0 ms), restore 72.7 ms, input events on page 0, hover/focus 0, agent actions 581, agent effects after the input 0
+09:04:47.661 Attached (generation 37); all layers engaged; frames in their own process: 1.
+09:04:49.639 Rendering while attached: 177 frames/s, 587 pixels changed in 1 s, brightness shift 0.0 → ok
+09:41:08.592 Take control by the Take control button: detach 2.3 ms (input queued 2 ms), restore 85.4 ms, input events on page 0, hover/focus 0, agent actions 3099, agent effects after the input 0
+22:09:23.156 Finished. Summary: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s4-input-ladder\20261011-073210\summary.md
