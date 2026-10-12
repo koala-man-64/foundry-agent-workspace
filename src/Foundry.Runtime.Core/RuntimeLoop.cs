@@ -26,7 +26,7 @@ public sealed class RuntimeLoop : SynchronizationContext, IAsyncDisposable
         public override void Send(SendOrPostCallback callback, object? state) => throw new NotSupportedException("RuntimeLoop.Send is forbidden.");
         // Async-void has no task to observe or drain. Its builder calls this
         // before executing the body, including when hidden behind a helper.
-        public override void OperationStarted() => throw new NotSupportedException("RuntimeLoop requires task-returning handlers; async void is forbidden.");
+        public override void OperationStarted() => throw new NotSupportedException("RuntimeLoop requires task-returning handlers; async-void is forbidden.");
     }
     private readonly SynchronizationContext continuations;
     private static readonly AsyncLocal<SynchronousScope?> Scope = new();

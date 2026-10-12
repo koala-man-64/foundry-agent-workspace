@@ -580,6 +580,8 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 
 The post-P0 planning range is 33–44 weeks through P5 (29–39 after P1), retaining the original ±40% uncertainty. The P1 baseline inventory expands the historical count without introducing feature scope; the approved P1 4–5 week estimate remains a planning range. These estimates are not delivery promises or authorization for the later phases.
 
+The local foundation now implements frozen protocol validation/parity, the owning runtime loop, isolated Store admission/recovery/backup/transactions/outbox and the development-only `workspace.summary` process. Independent security and data/concurrency reviews accepted the recorded source. Both FULL durability and publication after the outermost commit remain explicit approved differences. The exact checks, six increment records, usage, retained evidence and limitations are in `docs/implementation-status.md`. The ephemeral-CI-only WebView2 registry-policy gate is not established by local tests, and main integration remains held. This local delivery does not authorize P2 execution, Electron switching, adoption, v6 or cutover.
+
 **Blocking order (Seat B, aligned to phases)**
 - Before P1 code: S7 (Platform design) and S8 (SQLite parity and STJ strict-option choice).
 - Before P3: S1–S6 and S9. S3/S4 can also resolve through decision 7.
