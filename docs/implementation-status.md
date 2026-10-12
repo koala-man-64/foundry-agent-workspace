@@ -132,6 +132,18 @@ Dual-landed fixes:
 
 The owner (Claude Opus 5.5, max effort) chaired two review rounds and kept the test strategy and synthesis. The owner also verified the disputed facts, for example the CDP `grantUniveralAccess` spelling and that `setCredential` clears profile verification. The review produced a plan, not an implementation; its acceptance criteria are not evidence that any migration phase exists.
 
+## P1 contract and platform foundation — local work in progress
+
+Recorded 12 October 2026. Rudy authorized proceeding locally on the accepted P0 records before their integration: “Yes—continue P1 locally; keep integration held.” Main integration, publication, real-data adoption and the Electron supervisor switch remain held. The development executable requires an explicit isolated data directory; existing data additionally requires the disposable-copy marker. A marker never grants real-root admission.
+
+The baseline inventory is `tests/Foundry.Conformance/BaselineInventory.json`: starting revision `e5517ac410f7ab6d5099a380b4114a25e5247f69`, local prerequisite revision `3bf7462` (link unavailable), unchanged SDK/package pins, hashes of all ten golden files and fifteen era-fixture files, and the complete contract inventory. Inspection found **89 existing RPC methods**, not the historical plan's 86; five non-RPC frames, two RPC envelopes and three bridge inputs make 99 schemas. No protocol methods were added.
+
+Baseline validation: locked .NET restore and Release warnings-as-errors build passed; existing solution tests passed 171 with one environment-policy skip. `pnpm check` passed type checking, lint and 483 TypeScript tests. The latest tested local P1 snapshot passed 4,210 conformance tests, covering frozen corpus normalization, supporting parity vectors, six era openings/recovery, loop interleaving/affinity, transaction/outbox faults, protected WAL-aware backups and isolated upgrades, filesystem admission, and process framing/EOF. These are snapshot results; exact-final validation is still required. Logs remain under `test-results/p1-*.txt`.
+
+Independent read-only security and data/concurrency reviews use GPT-6 Luna/max, selected by the supplied AGENTS Critical lane from the provider-confirmed GPT-6.1 Sol/medium owner. They identified time-zone namespace acceptance, nested rejected-async-callback drain, and rollback-failure publication defects in the new C# implementation. The owner added fixes and regressions. Their final exact-source acceptance is pending; no shipping TypeScript defect with a present-path trigger was established. Review agents could not register their provider sessions with agentcoord and made no edits or claims.
+
+P1 is **not complete**. Typed contract/result models, additional oracle and process-limit coverage, final independent reviews, six focused local increments and final checks remain. FULL SQLite durability and publication only after the outermost commit are the two approved behavioral differences. P2 handlers, adoption operations, v6 fences, renderer changes and shipping packaging remain deferred. The approved 4–5 week P1 estimate remains a planning range, not a delivery promise; remaining work must be refined after the first accepted increment.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

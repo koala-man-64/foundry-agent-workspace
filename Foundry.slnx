@@ -9,6 +9,7 @@
     <Project Path="src/Foundry.Runtime/Foundry.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Foundry.Conformance/Foundry.Conformance.csproj" />
     <Project Path="tests/Foundry.Architecture.Tests/Foundry.Architecture.Tests.csproj" />
     <Project Path="tests/Foundry.Platform.TestProbe/Foundry.Platform.TestProbe.csproj" />
     <Project Path="tests/Foundry.Platform.Tests/Foundry.Platform.Tests.csproj" />

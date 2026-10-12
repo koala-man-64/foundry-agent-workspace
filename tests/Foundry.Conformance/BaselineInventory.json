@@ -1,0 +1,217 @@
+{
+  "startingRevision": "e5517ac410f7ab6d5099a380b4114a25e5247f69",
+  "localPrerequisiteRevision": "3bf7462",
+  "integration": "held",
+  "pins": {
+    "dotnet": "10.0.300",
+    "node": "24.14.0",
+    "pnpm": "10.28.1",
+    "sqlite": "10.0.12",
+    "protectedData": "10.0.12",
+    "webView2": "1.0.4258.31",
+    "xunit": "4.0.1"
+  },
+  "files": [
+    {
+      "path": "tests/golden/data/ecmascript-lowercase.json",
+      "sha256": "b5eef32fcb29aef901567658c01c08946ab2e92938f955bd242668ebfb24844c"
+    },
+    {
+      "path": "tests/golden/data/jsjson.json",
+      "sha256": "fa45c1b56db024002f64e49eeeb58043884f56df017868ca90cc6c08ae817826"
+    },
+    {
+      "path": "tests/golden/data/manifest.json",
+      "sha256": "2bf2c49cab0fd3ddd35ed3bdf3a0a47364d690c7d55e309fbfa898ab7478004b"
+    },
+    {
+      "path": "tests/golden/data/mcp-config.json",
+      "sha256": "3fafa8ebc81cbcd70406680154f67a1fe56a10b046968847714eb234f1d5614f"
+    },
+    {
+      "path": "tests/golden/data/profile-fingerprint.json",
+      "sha256": "fba05c0a46c02439297219bde9faaa87aae79326040703310290fe99668ba734"
+    },
+    {
+      "path": "tests/golden/data/redaction.json",
+      "sha256": "806fd6fbac0768d5e27ef19f8a06e62ee3113d7290cf667af2e5471d6bcf61cb"
+    },
+    {
+      "path": "tests/golden/data/rpc-corpus.json",
+      "sha256": "016cada98ad200a96fff76d6d015d51babdf360d58119987f7c5912c0df9d272"
+    },
+    {
+      "path": "tests/golden/data/rpc-wire.json",
+      "sha256": "05f5851e330f7fa0de8a9daaa1470a465ce373c09fd2f74ec1132a002c471117"
+    },
+    {
+      "path": "tests/golden/data/schedules.json",
+      "sha256": "6ee322810434820c93c891add77730034cb87ae264ca11a18d40d629d81bae0d"
+    },
+    {
+      "path": "tests/golden/data/sqlite-engine.json",
+      "sha256": "6c11a438ab131fdfe78b4da819924223c9a14be833b1ee299bd89bcdb2c4d83f"
+    },
+    {
+      "path": "tests/fixtures/databases/README.md",
+      "sha256": "9acbbecc01625f9a7be148686b1908cb1e1bd1f1551da07ca52aaf5f8a94c07a"
+    },
+    {
+      "path": "tests/fixtures/databases/v1/expected-after-open.json",
+      "sha256": "f19b1c8baba48a29378809999626251cce381a2c609af5ff5b22f149636da55c"
+    },
+    {
+      "path": "tests/fixtures/databases/v1/workspace.db",
+      "sha256": "376bd325355af2f5bf35bbdc7394fb5b30e1dc7be57715a243eb9b7badcc6db1"
+    },
+    {
+      "path": "tests/fixtures/databases/v2/expected-after-open.json",
+      "sha256": "fbb1b4313f7ee25e75d5aa6ce5d9d36b02489c65641310ddcd4199bf06c45f2d"
+    },
+    {
+      "path": "tests/fixtures/databases/v2/workspace.db",
+      "sha256": "241e79bec08f7e369d9b39ef2e961404ea591cae6e80ba0f120ebded5faa6dc5"
+    },
+    {
+      "path": "tests/fixtures/databases/v3/expected-after-open.json",
+      "sha256": "5e5d2db1a7721ab8bdb4cd00bbba1d2e80d473712b2b8607a01b66e9187f52e6"
+    },
+    {
+      "path": "tests/fixtures/databases/v3/workspace.db",
+      "sha256": "16817ad68e2b7cb26a5d648ec96a18503b8a9230c0233a34b05598fd58746819"
+    },
+    {
+      "path": "tests/fixtures/databases/v4/expected-after-open.json",
+      "sha256": "f678fdf3c97a3cfc19791be6665c19a9c35771a357e329bcbb6d95fd1f808d56"
+    },
+    {
+      "path": "tests/fixtures/databases/v4/workspace.db",
+      "sha256": "f25aefef08ad4d49e6a55d70709aa3862cfc9ab87aca12f85f1b9ecb33ffa774"
+    },
+    {
+      "path": "tests/fixtures/databases/v5/expected-after-open.json",
+      "sha256": "59852dae5eca795a5aaba2fcc4f93fafa196d6a35360c3c2e4b5c4ada315eea5"
+    },
+    {
+      "path": "tests/fixtures/databases/v5/workspace.db",
+      "sha256": "797f271bc5d6d9c5926a91fa6d24cdb2fa75ed2298cab55b99ccf27fbec5dec5"
+    },
+    {
+      "path": "tests/fixtures/databases/v5-wal/expected-after-open.json",
+      "sha256": "96d1f1f95569457363c42393fd0b7c55752e4e0166b42c1c560460b63c22c0cb"
+    },
+    {
+      "path": "tests/fixtures/databases/v5-wal/workspace.db",
+      "sha256": "797f271bc5d6d9c5926a91fa6d24cdb2fa75ed2298cab55b99ccf27fbec5dec5"
+    },
+    {
+      "path": "tests/fixtures/databases/v5-wal/workspace.db-shm",
+      "sha256": "df2add21dd4f289a889c7e7a5dd1491ae2abb7aab7e1e31810391007fa8321e0"
+    },
+    {
+      "path": "tests/fixtures/databases/v5-wal/workspace.db-wal",
+      "sha256": "642f695b5fd34b4723bebeec28f7c5c75f130e404380c64f7090ba29953925a2"
+    }
+  ],
+  "contracts": [
+    "bridge workspace:browser",
+    "bridge workspace:save-credential",
+    "bridge workspace:set-notifications",
+    "frame browser.host",
+    "frame browser.host.result",
+    "frame browser.invalidated",
+    "frame rpc request",
+    "frame rpc response",
+    "frame runtime.credential",
+    "frame workspace.event",
+    "rpc approval.content",
+    "rpc approval.decide",
+    "rpc approval.get",
+    "rpc approval.reconcile",
+    "rpc artifact.chunk",
+    "rpc artifact.preview",
+    "rpc automation.draft.dismiss",
+    "rpc automation.draft.prepare",
+    "rpc automation.list",
+    "rpc automation.query",
+    "rpc automation.rule.preview",
+    "rpc automation.rule.remove",
+    "rpc automation.rule.save",
+    "rpc automation.schedule.remove",
+    "rpc automation.schedule.save",
+    "rpc automation.schedule.tick",
+    "rpc automation.script.grant",
+    "rpc automation.script.register",
+    "rpc automation.script.revoke",
+    "rpc automation.script.source",
+    "rpc browser.acknowledgeUnknown",
+    "rpc channel.get",
+    "rpc channel.send",
+    "rpc continuity.get",
+    "rpc decision.save",
+    "rpc diagnostics.export",
+    "rpc features.get",
+    "rpc features.set",
+    "rpc files.list",
+    "rpc files.read",
+    "rpc mcp.getConfig",
+    "rpc mcp.list",
+    "rpc mcp.remove",
+    "rpc mcp.save",
+    "rpc mcp.update",
+    "rpc orchestration.cancelChild",
+    "rpc orchestration.cancelRoot",
+    "rpc orchestration.child",
+    "rpc orchestration.decide",
+    "rpc orchestration.get",
+    "rpc orchestration.prepareContinue",
+    "rpc orchestration.reconcile",
+    "rpc orchestration.resume",
+    "rpc orchestration.reviseAssignment",
+    "rpc profile.probe",
+    "rpc profile.read",
+    "rpc profile.save",
+    "rpc project.add",
+    "rpc project.update",
+    "rpc task.approvals",
+    "rpc task.cancel",
+    "rpc task.commit",
+    "rpc task.compact",
+    "rpc task.compactionContent",
+    "rpc task.compactions",
+    "rpc task.continuationPreview",
+    "rpc task.continue",
+    "rpc task.create",
+    "rpc task.diff",
+    "rpc task.exportTranscript",
+    "rpc task.messageContent",
+    "rpc task.messages",
+    "rpc task.push",
+    "rpc task.read",
+    "rpc task.reconcilePublication",
+    "rpc task.retire",
+    "rpc task.send",
+    "rpc task.setArchived",
+    "rpc task.start",
+    "rpc task.timeline",
+    "rpc task.usage",
+    "rpc task.usageRecords",
+    "rpc templates.list",
+    "rpc templates.remove",
+    "rpc templates.save",
+    "rpc usage.breakdown",
+    "rpc usage.requests",
+    "rpc usage.summary",
+    "rpc workspace.actions",
+    "rpc workspace.events",
+    "rpc workspace.preferences.save",
+    "rpc workspace.profiles",
+    "rpc workspace.projects",
+    "rpc workspace.schema",
+    "rpc workspace.search",
+    "rpc workspace.summary",
+    "rpc workspace.tasks",
+    "rpc workspace.upgrade",
+    "rpc workspace.usageTrend"
+  ]
+}
