@@ -39,9 +39,10 @@ internal static class EcmaIso
         var offset = text[^1] == 'Z' ? 0 : (Number(text.AsSpan(end + 1, 2)) * 60 + Number(text.AsSpan(end + 4, 2))) * (text[end] == '+' ? 1 : -1);
         return Days(year, month, day) * Day + ((hour * 60L + minute - offset) * 60 + second) * 1000 + milliseconds;
     }
-    public static string Normalize(string text)
+    public static string Normalize(string text) => Format(Epoch(text));
+    public static string Format(long epoch)
     {
-        var epoch = Epoch(text); var days = Floor(epoch, Day); var time = epoch - days * Day;
+        var days = Floor(epoch, Day); var time = epoch - days * Day;
         var shifted = days + 719468; var era = Floor(shifted, 146097); var dayOfEra = shifted - era * 146097;
         var yearOfEra = (dayOfEra - dayOfEra / 1460 + dayOfEra / 36524 - dayOfEra / 146096) / 365;
         var year = yearOfEra + era * 400; var dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100);

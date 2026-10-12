@@ -7,6 +7,17 @@ namespace Foundry.Conformance;
 
 public sealed class ScheduleTests
 {
+    [Theory]
+    [InlineData(true), InlineData(false)]
+    public void DailyScheduleCanStartInYearZero(bool explicitDate)
+    {
+        var schedule = new Dictionary<string, object?> { ["cadence"] = "daily", ["startAt"] = "0000-01-01T00:00:00Z", ["localTime"] = "09:00", ["timeZone"] = "UTC", ["weekDay"] = null };
+        if (explicitDate) schedule["startDate"] = "0000-01-01";
+        var due = ScheduleClock.Due(schedule, DateTimeOffset.Parse("2026-10-12T16:00:00Z", CultureInfo.InvariantCulture));
+        Assert.Equal("2026-10-12", due!["localDate"]);
+        Assert.Equal("2026-10-12T09:00:00.000Z", due["dueAt"]);
+    }
+
     [Fact]
     public void MatchesCommittedNodeVectors()
     {

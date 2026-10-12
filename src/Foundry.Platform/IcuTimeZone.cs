@@ -38,11 +38,12 @@ public sealed partial class IcuTimeZone : IDisposable
         if (status > 0 || calendar.IsInvalid) { Dispose(); throw new InvalidOperationException("Time-zone initialization failed."); }
     }
 
-    public unsafe long OffsetMilliseconds(DateTimeOffset instant)
+    public long OffsetMilliseconds(DateTimeOffset instant) => OffsetMilliseconds(instant.ToUnixTimeMilliseconds());
+    public unsafe long OffsetMilliseconds(long epochMilliseconds)
     {
         ObjectDisposedException.ThrowIf(calendar.IsClosed || calendar.IsInvalid, this);
         var status = 0;
-        SetMillis(calendar, instant.ToUnixTimeMilliseconds(), &status);
+        SetMillis(calendar, epochMilliseconds, &status);
         var offset = Get(calendar, 15, &status); // UCAL_ZONE_OFFSET
         var daylight = Get(calendar, 16, &status); // UCAL_DST_OFFSET
         if (status > 0) throw new InvalidOperationException("Time-zone conversion failed.");

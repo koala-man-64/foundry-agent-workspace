@@ -8,6 +8,14 @@ public static class ScheduleClock
 {
     private static DateTimeOffset Parse(string text) => DateTimeOffset.Parse(text, CultureInfo.InvariantCulture);
     private static string LocalStamp(IcuTimeZone zone, DateTimeOffset instant) => Clock.Iso(DateTimeOffset.FromUnixTimeMilliseconds(instant.ToUnixTimeMilliseconds() + zone.OffsetMilliseconds(instant)))[..16];
+    private static string LocalStartDay(IcuTimeZone zone, long instant)
+    {
+        var iso = Clock.Iso(instant + zone.OffsetMilliseconds(instant));
+        // Intl's numeric year has no padding or era in the TS schedule helper.
+        var yearLength = iso[0] is '+' or '-' ? 7 : 4;
+        var year = int.Parse(iso.AsSpan(0, yearLength), CultureInfo.InvariantCulture);
+        return string.Concat((year <= 0 ? 1 - year : year).ToString(CultureInfo.InvariantCulture), iso.AsSpan(yearLength, 6));
+    }
     public static DateTimeOffset Resolve(string date, string time, string timeZone)
     {
         using var zone = new IcuTimeZone(Contracts.TimeZoneName(timeZone));
@@ -33,15 +41,15 @@ public static class ScheduleClock
 
     public static Dictionary<string, object?>? Due(Dictionary<string, object?> schedule, DateTimeOffset now)
     {
-        var start = Parse((string)schedule["startAt"]!);
-        if (now < start) return null;
+        var start = Clock.Epoch((string)schedule["startAt"]!);
+        if (now.ToUnixTimeMilliseconds() < start) return null;
         var timeZone = (string)schedule["timeZone"]!; using var zone = new IcuTimeZone(Contracts.TimeZoneName(timeZone));
-        var startDay = (string?)schedule.GetValueOrDefault("startDate") ?? LocalStamp(zone, start)[..10];
+        var startDay = (string?)schedule.GetValueOrDefault("startDate") ?? LocalStartDay(zone, start);
         var cadence = (string)schedule["cadence"]!; var time = (string)schedule["localTime"]!;
         var candidate = DateOnly.ParseExact(cadence == "once" ? startDay : LocalStamp(zone, now)[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture);
         if (cadence == "weekly") while ((int)candidate.DayOfWeek != (double)schedule["weekDay"]!) candidate = candidate.AddDays(-1);
         var date = candidate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture); var due = Resolve(date, time, timeZone);
         if (cadence != "once" && due > now) { candidate = candidate.AddDays(cadence == "weekly" ? -7 : -1); date = candidate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture); due = Resolve(date, time, timeZone); }
-        return StringComparer.Ordinal.Compare(date, startDay) >= 0 && due >= start && due <= now ? new() { ["localDate"] = date, ["dueAt"] = Clock.Iso(due) } : null;
+        return StringComparer.Ordinal.Compare(date, startDay) >= 0 && due.ToUnixTimeMilliseconds() >= start && due <= now ? new() { ["localDate"] = date, ["dueAt"] = Clock.Iso(due) } : null;
     }
 }

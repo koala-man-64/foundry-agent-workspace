@@ -5,6 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <EmbeddedResource Include="Schema\*.sql" />
+    <EmbeddedResource Include="Schema\manifest.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Foundry.Protocol\Foundry.Protocol.csproj" />
     <ProjectReference Include="..\Foundry.Providers\Foundry.Providers.csproj" />
     <ProjectReference Include="..\Foundry.Platform\Foundry.Platform.csproj" />

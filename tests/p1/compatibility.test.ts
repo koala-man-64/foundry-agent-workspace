@@ -3,6 +3,12 @@ import { expect, it } from 'vitest';
 import { BrowserUrlSchema } from '../../packages/protocol/src/browser';
 import { LineDecoder } from '../../packages/protocol/src/framing';
 import { UsageRpc } from '../../packages/protocol/src/usage';
+import { scheduleInternals } from '../../packages/runtime/src/automation';
+
+it('pins daily schedules whose activation instant is in year zero', () => {
+  const base = { cadence: 'daily', startAt: '0000-01-01T00:00:00Z', localTime: '09:00', timeZone: 'UTC', weekDay: null } as Parameters<typeof scheduleInternals.dueOccurrence>[0];
+  for (const schedule of [base, { ...base, startDate: '0000-01-01' }]) expect(scheduleInternals.dueOccurrence(schedule, new Date('2026-10-12T16:00:00Z'))).toEqual({ localDate: '2026-10-12', dueAt: '2026-10-12T09:00:00.000Z' });
+});
 
 it('pins ISO normalization beyond DateTimeOffset and at calendar boundaries', () => {
   for (const [from, expected] of [

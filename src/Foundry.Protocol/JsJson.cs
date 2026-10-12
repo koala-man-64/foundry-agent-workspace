@@ -130,4 +130,7 @@ public static class JsJson
 public static class Clock
 {
     public static string Iso(DateTimeOffset instant) => instant.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+    public static string Iso(long epochMilliseconds) => EcmaIso.Format(epochMilliseconds);
+    // Input syntax is validated by the frozen protocol before use.
+    public static long Epoch(string validatedIsoTimestamp) => EcmaIso.Epoch(validatedIsoTimestamp);
 }
