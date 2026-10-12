@@ -576,6 +576,10 @@ Data created after the cutover is lost by design (decision 3). Worktrees created
 
 **Total ≈ 37–49 weeks.** Re-baseline after P0.
 
+**P1 local execution record (12 October 2026).** Rudy authorized “Yes—continue P1 locally; keep integration held,” allowing implementation on the locally recorded P0 acceptances before their main integration. Delivery remains on the private task branch; publication, main integration and real-data adoption remain held. The initial inventory contains **89 existing RPC methods**, five non-RPC frames, two RPC envelopes and three bridge inputs (99 schemas). The 86-method count above is historical, not a reduced acceptance target. No method was added. The immutable corpus/fixture hashes and unchanged toolchain pins are recorded in `tests/Foundry.Conformance/BaselineInventory.json`; measured implementation evidence is in `docs/implementation-status.md`.
+
+The post-P0 planning range is 33–44 weeks through P5 (29–39 after P1), retaining the original ±40% uncertainty. The P1 baseline inventory expands the historical count without introducing feature scope; the approved P1 4–5 week estimate remains a planning range. These estimates are not delivery promises or authorization for the later phases.
+
 **Blocking order (Seat B, aligned to phases)**
 - Before P1 code: S7 (Platform design) and S8 (SQLite parity and STJ strict-option choice).
 - Before P3: S1–S6 and S9. S3/S4 can also resolve through decision 7.

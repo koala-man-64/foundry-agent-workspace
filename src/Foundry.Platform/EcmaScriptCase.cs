@@ -9,7 +9,7 @@ namespace Foundry.Platform;
 /// the final-sigma rule. The tables (EcmaScriptLowercase.json) are Electron 44's Unicode 17.0 data, generated and
 /// drift-checked by tests/golden/ecmascript-case.test.ts, so persisted path keys do not move with the system ICU.
 /// </summary>
-internal static class EcmaScriptCase
+public static class EcmaScriptCase
 {
     private const int CapitalSigma = 0x03A3;
     private static readonly Lazy<Tables> Data = new(Tables.Load);

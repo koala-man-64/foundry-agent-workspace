@@ -142,7 +142,13 @@ Baseline validation: locked .NET restore and Release warnings-as-errors build pa
 
 Independent read-only security and data/concurrency reviews use GPT-6 Luna/max, selected by the supplied AGENTS Critical lane from the provider-confirmed GPT-6.1 Sol/medium owner. They identified time-zone namespace acceptance, nested rejected-async-callback drain, and rollback-failure publication defects in the new C# implementation. The owner added fixes and regressions. Their final exact-source acceptance is pending; no shipping TypeScript defect with a present-path trigger was established. Review agents could not register their provider sessions with agentcoord and made no edits or claims.
 
-P1 is **not complete**. Typed contract/result models, additional oracle and process-limit coverage, final independent reviews, six focused local increments and final checks remain. FULL SQLite durability and publication only after the outermost commit are the two approved behavioral differences. P2 handlers, adoption operations, v6 fences, renderer changes and shipping packaging remain deferred. The approved 4–5 week P1 estimate remains a planning range, not a delivery promise; remaining work must be refined after the first accepted increment.
+P1 is **not complete**. The local implementation now includes all typed contract/result models and the additional oracle and process-limit coverage. Final independent reviews, the remaining focused local increments and exact-final checks remain. FULL SQLite durability and publication only after the outermost commit are the two approved behavioral differences. P2 handlers, adoption operations, v6 fences, renderer changes and shipping packaging remain deferred.
+
+| Local increment | Revision and validation |
+| --- | --- |
+| 1 — baseline and conformance harness | `ecfeb3f` (link unavailable). Validated from a clean `git archive` snapshot: locked restore; Release build with warnings as errors, zero warnings/errors; Microsoft.Testing.Platform solution run: 171 passed, 2 environment skips, 173 total. The skips are the ephemeral-CI-only registry-policy test and the CDP test because the archive has no `node_modules`. The owner checkout's existing baseline run passed CDP and had only the policy skip. Logs: `test-results/p1-increment1-{restore,build,tests}.txt`. Inventory coverage and committed input hashes pass. |
+
+After P0, the approved phase ranges total **33–44 weeks** through P5; after P1 they total **29–39 weeks**, retaining the original solo-plus-AI uncertainty (±40%). Increment 1 found three already-existing methods beyond the historical inventory; it added no feature scope. Keep P1's approved 4–5 week range as a planning baseline, rather than deriving a delivery date from local test speed. Refine the P2 range after its first security/store/tasks slice. No schedule estimate authorizes integration, adoption or cutover.
 
 ## Personal workspace expansion — local implementation
 
