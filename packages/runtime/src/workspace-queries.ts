@@ -17,6 +17,14 @@ type EventRow = { sequence: number; type: string; task_id: string | null; data: 
 export function isWorkspaceMethod(method: string): method is WorkspaceMethod { return Object.prototype.hasOwnProperty.call(WorkspaceRpc, method); }
 function bytes(value: unknown): number { return Buffer.byteLength(JSON.stringify(value), 'utf8'); }
 function fingerprint(value: unknown): string { return createHash('sha256').update(JSON.stringify(value)).digest('hex'); }
+// Validated UTC timestamps: removing Z and insignificant fractional zeros
+// produces an exact lexical instant key without rounding sub-millisecond bounds.
+function usageInstantKey(value: string): string {
+  let end = value.length - 1;
+  if (value[19] !== '.') return value.slice(0, 19) + '.';
+  while (end > 20 && value[end - 1] === '0') end--;
+  return value.slice(0, 19) + '.' + value.slice(20, end);
+}
 function clipped(text: string, maxBytes = EXCERPT_BYTES): { content: string; truncated: boolean } {
   const source = Buffer.from(text, 'utf8');
   if (source.length <= maxBytes) return { content: text, truncated: false };
@@ -268,7 +276,9 @@ export class WorkspaceQueries {
 
   private usageTrend(p: { groupBy: 'day' | 'profile' | 'task'; from?: string; to?: string; profileId?: string; taskId?: string; after?: string; limit: number }): UsageTrendPage {
     const from = p.from ?? '1970-01-01T00:00:00.000Z', to = p.to ?? new Date().toISOString();
-    if (from > to) throw new Error('Usage trend start must be before end.');
+    const fromKey = usageInstantKey(from), toKey = usageInstantKey(to);
+    if (fromKey > toKey) throw new Error('Usage trend start must be before end.');
+    const timeKey = "substr(u.created_at,1,19) || '.' || rtrim(CASE WHEN substr(u.created_at,20,1) = '.' THEN substr(u.created_at,21,length(u.created_at)-21) ELSE '' END,'0')";
     const current = this.store.schemaVersion >= 4;
     const group = p.groupBy === 'day' ? 'substr(u.created_at, 1, 10)' : p.groupBy === 'profile'
       ? current ? "COALESCE(u.profile_id, 'unknown')" : "COALESCE(json_extract(t.data, '$.profileId'), 'unknown')" : current ? 'COALESCE(u.root_task_id, u.task_id)' : 'u.task_id';
@@ -295,10 +305,12 @@ export class WorkspaceQueries {
       SUM(CASE WHEN ${pending} THEN u.reserved ELSE 0 END) AS reserved_pending,
       SUM(CASE WHEN ${notSent} THEN u.reserved ELSE 0 END) AS reserved_not_sent
       FROM ${table} u ${join}
-      WHERE u.created_at >= ? AND u.created_at <= ? AND (? IS NULL OR ${taskFilter} = ?)
+      WHERE u.created_at >= ? AND u.created_at < ? AND ${timeKey} >= ? AND ${timeKey} <= ? AND (? IS NULL OR ${taskFilter} = ?)
         AND (? IS NULL OR ${profile} = ?) ${p.groupBy === 'task' ? 'AND u.task_id IS NOT NULL' : ''}
       GROUP BY key HAVING key > ? ORDER BY key LIMIT ?`)
-      .all(from, to, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; pending: number; not_sent: number; unknown: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number; reserved_pending: number; reserved_not_sent: number }[];
+      // Coarse second-wide bounds keep the created_at range index usable; exact
+      // keys then enforce the inclusive fractional bounds inside that range.
+      .all(from.slice(0, 19), to.slice(0, 19) + '[', fromKey, toKey, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; pending: number; not_sent: number; unknown: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number; reserved_pending: number; reserved_not_sent: number }[];
     const buckets = rows.slice(0, p.limit).map(row => ({ key: row.key, requests: row.requests, knownRequests: row.known,
       unknownRequests: row.unknown, pendingRequests: row.pending, notSentRequests: row.not_sent,
       observedPrompt: row.prompt, observedCompletion: row.completion, cacheRead: row.cache_read,

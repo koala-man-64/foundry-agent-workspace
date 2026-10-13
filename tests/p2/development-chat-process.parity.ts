@@ -73,6 +73,13 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const searchNext = await request('search-next', 'workspace.search', { query: 'Hello', limit: 50, cursor: (search.result as ObjectValue).nextCursor });
     const invalidSearch = await request('invalid-search', 'workspace.search', { query: '\u0000', limit: 50 });
     const stillAlive = await request('search-alive', 'workspace.actions', { limit: 50 });
+    const trends = [];
+    for (const groupBy of ['day', 'profile', 'task']) trends.push((await request(`trend-${groupBy}`, 'workspace.usageTrend', { groupBy, taskId, limit: 50 })).result);
+    const invalidTrend = await request('invalid-trend', 'workspace.usageTrend', { groupBy: 'day', from: '2027-01-01T00:00:00.000Z', to: '2026-01-01T00:00:00.000Z' });
+    const recordStamp = (((usage.result as ObjectValue).records as ObjectValue[])[0]!.createdAt as string);
+    const exactTrend = await request('exact-trend', 'workspace.usageTrend', { groupBy: 'task', taskId, from: recordStamp, to: recordStamp.slice(0, -1) + '000000000Z' });
+    expect(((exactTrend.result as ObjectValue).buckets as ObjectValue[])[0]!.requests).toBe(1);
+    const shortFractionTrend = await request('short-fraction-trend', 'workspace.usageTrend', { groupBy: 'day', from: '2026-01-02T03:04:05.1Z', to: '2026-01-02T03:04:05.12Z' });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -104,6 +111,8 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         archived: archived.result, paused: paused.result, deniedArchive: deniedArchive.error, restored: restored.result, features: features.result,
         actions: actions.result,
         search: search.result, searchNext: searchNext.result, invalidSearch: invalidSearch.error, stillAlive: stillAlive.result,
+        trends, invalidTrend: invalidTrend.error,
+        exactTrend: exactTrend.result, shortFractionTrend: shortFractionTrend.result,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });
