@@ -55,6 +55,12 @@ public sealed class DevelopmentChat
         switch (method)
         {
             case "workspace.summary": return store.Summary();
+            case "workspace.profiles": return store.ProfilePage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
+            case "workspace.projects": return store.ProjectPage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
+            case "profile.read": return store.ProfileRead((string)parameters["profileId"]!);
+            case "workspace.tasks": return store.TaskPage(parameters);
+            case "workspace.events": return store.EventPage(Ordinal(parameters, "after") ?? 0, Integer(parameters, "limit", 50), (string?)parameters.GetValueOrDefault("taskId"), redactor);
+            case "task.timeline": return store.TimelinePage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
             case "task.start": return await Start(parameters);
             case "task.send":
                 var sending = StartTurn((string)parameters["taskId"]!, (string)parameters["content"]!);

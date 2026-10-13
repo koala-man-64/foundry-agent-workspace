@@ -54,6 +54,12 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const assistant = ((messages.result as ObjectValue).items as ObjectValue[]).map(item => item.message as ObjectValue).find(item => item.role === 'assistant')!;
     const content = await request('content', 'task.messageContent', { taskId, messageId: assistant.id, offset: 0, maxBytes: 65536 });
     const cancelled = await request('cancel', 'task.cancel', { taskId });
+    const profilePage = await request('profiles', 'workspace.profiles', { limit: 50 });
+    const profile = await request('profile', 'profile.read', { profileId: FAKE_PROFILE_ID });
+    const projectPage = await request('projects', 'workspace.projects', { limit: 50 });
+    const taskPage = await request('tasks', 'workspace.tasks', { limit: 50 });
+    const eventPage = await request('events', 'workspace.events', { after: 0, limit: 50 });
+    const timeline = await request('timeline', 'task.timeline', { taskId, limit: 50 });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -80,6 +86,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         return value;
       };
       return normalize({ read: read.result, messages: messages.result, content: content.result, cancel: cancelled.result, conflict: conflict.error,
+        profiles: profilePage.result, profile: profile.result, projects: projectPage.result, tasksPage: taskPage.result, eventsPage: eventPage.result, timeline: timeline.result,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });

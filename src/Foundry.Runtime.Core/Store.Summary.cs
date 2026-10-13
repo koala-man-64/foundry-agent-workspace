@@ -22,14 +22,14 @@ public sealed partial class Store
             ["lastSequence"] = (long)Scalar("SELECT COALESCE(MAX(sequence),0) FROM events")!, ["runtime"] = "ready"
         };
     }
-    private (List<object?> Items, string? Cursor) Page(string table)
+    private (List<object?> Items, string? Cursor) Page(string table, string? after = null, int limit = 25, int budget = 96 * 1024)
     {
         if (table is not "profiles" and not "projects") throw new ArgumentException("Invalid page.", nameof(table));
-        var rows = Rows("SELECT id,data FROM " + table + " WHERE id>$p0 ORDER BY id LIMIT $p1", "", 26);
+        var rows = Rows("SELECT id,data FROM " + table + " WHERE id>$p0 ORDER BY id LIMIT $p1", after ?? "", limit + 1);
         var items = new List<object?>();
         foreach (var row in rows)
         {
-            if (items.Count >= 25) break;
+            if (items.Count >= limit) break;
             var item = Document((string)row["data"]!);
             if (table == "projects")
             {
@@ -44,7 +44,7 @@ public sealed partial class Store
                 }
             }
             var candidate = new Dictionary<string, object?> { [table] = items.Append(item).ToList(), ["nextAfter"] = row["id"] };
-            if (Encoding.UTF8.GetByteCount(JsJson.Stringify(candidate)!) > 96 * 1024)
+            if (Encoding.UTF8.GetByteCount(JsJson.Stringify(candidate)!) > budget)
             {
                 if (items.Count == 0) throw new WorkspaceReadException(table == "profiles" ? "Stored profile is too large to page safely. Repair this profile before using it." : "Stored project is too large to page safely. Repair this project before using it.");
                 break;
