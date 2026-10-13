@@ -61,6 +61,7 @@ public sealed class DevelopmentChat
             case "workspace.tasks": return store.TaskPage(parameters);
             case "workspace.events": return store.EventPage(Ordinal(parameters, "after") ?? 0, Integer(parameters, "limit", 50), (string?)parameters.GetValueOrDefault("taskId"), redactor);
             case "workspace.actions": return store.ActionPage(parameters, redactor);
+            case "workspace.search": return store.SearchPage(parameters, redactor);
             case "task.timeline": return store.TimelinePage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
             case "task.usageRecords": return store.UsageRecordPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
             case "task.compactions": return store.CompactionPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);

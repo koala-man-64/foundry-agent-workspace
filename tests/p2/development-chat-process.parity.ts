@@ -69,6 +69,10 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const restored = await request('restore', 'task.setArchived', { taskId, archived: false });
     const features = await request('features', 'features.get', {});
     const actions = await request('actions', 'workspace.actions', { limit: 50 });
+    const search = await request('search', 'workspace.search', { query: 'Hello', limit: 1 });
+    const searchNext = await request('search-next', 'workspace.search', { query: 'Hello', limit: 50, cursor: (search.result as ObjectValue).nextCursor });
+    const invalidSearch = await request('invalid-search', 'workspace.search', { query: '\u0000', limit: 50 });
+    const stillAlive = await request('search-alive', 'workspace.actions', { limit: 50 });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -99,6 +103,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         usage: usage.result, compactions: compactions.result, missingCompaction: missingCompaction.error,
         archived: archived.result, paused: paused.result, deniedArchive: deniedArchive.error, restored: restored.result, features: features.result,
         actions: actions.result,
+        search: search.result, searchNext: searchNext.result, invalidSearch: invalidSearch.error, stillAlive: stillAlive.result,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });
