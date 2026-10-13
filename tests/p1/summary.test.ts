@@ -1,6 +1,6 @@
-import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { expect, it } from 'vitest';
 import { Store } from '../../packages/runtime/src/store';
 import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
@@ -30,9 +30,37 @@ it('pins summary results to the shipping TypeScript queries on disposable data',
       if (scenario.era) for (const file of readdirSync(`tests/fixtures/databases/${scenario.era}`).filter(file => file.startsWith('workspace.db'))) copyFileSync(`tests/fixtures/databases/${scenario.era}/${file}`, join(scratch, file));
       const store = new Store(join(scratch, 'workspace.db'));
       try {
+        // Keep fixture paths out of machine-global directories. Only disposable
+        // copies change; wire expectations retain the committed original paths.
+        const projectPaths = new Map<string, string>();
+        const scratchCanonical = realpathSync(scratch);
+        if (scenario.era && store.schemaVersion >= 3) {
+          for (const row of store.db.prepare('SELECT id,data FROM projects').all() as { id: string; data: string }[]) {
+            const project = JSON.parse(row.data) as { path: string };
+            const relativePath = join('projects', String(projectPaths.size));
+            const folder = join(scratch, relativePath);
+            mkdirSync(folder, { recursive: true });
+            const canonical = realpathSync(folder);
+            expect(relative(scratchCanonical, canonical)).toBe(relativePath);
+            projectPaths.set(canonical, project.path);
+            project.path = canonical;
+            store.db.prepare('UPDATE projects SET data=? WHERE id=?').run(JSON.stringify(project), row.id);
+          }
+        }
         for (const statement of scenario.setup) store.db.prepare(statement.sql).run(Object.fromEntries(statement.values.map((value, index) => [`p${index}`, value])));
-        try { return { ...scenario, expected: new WorkspaceQueries(store, new Redactor()).dispatch('workspace.summary', {}) }; }
+        const queries = new WorkspaceQueries(store, new Redactor());
+        let expected: { projects: { path: string }[] };
+        try { expected = queries.dispatch('workspace.summary', {}) as typeof expected; }
         catch (error) { if (!(error instanceof Error)) throw error; return { ...scenario, error: error.message }; }
+        for (const project of expected.projects) project.path = projectPaths.get(project.path) ?? project.path;
+        const missing = projectPaths.keys().next().value;
+        if (missing !== undefined) {
+          expect(relative(scratchCanonical, missing)).toBe(join('projects', '0'));
+          rmSync(missing, { recursive: true });
+          const unavailable = (queries.dispatch('workspace.summary', {}) as { projects: { path: string; kind: string; unavailableReason?: string }[] }).projects.find(project => project.path === missing);
+          expect(unavailable).toMatchObject({ kind: 'unavailable', unavailableReason: 'Folder is unavailable.' });
+        }
+        return { ...scenario, expected };
       } finally { store.close(); }
     } finally { rmSync(scratch, { recursive: true, force: true }); }
   });
