@@ -122,11 +122,24 @@ export class WorkspaceQueries {
     if (p.sort === 'recent' && p.cursor) throw new Error('Recent tasks are a refreshed first page; reload to see changes.');
     if (p.cursor && p.cursor.filterHash !== filterHash) throw new Error('Task list cursor belongs to different filters; reload the first page.');
     if (this.store.schemaVersion < 5) {
-      const legacy = this.store.allTasks().filter(task => !task.parentTaskId && this.matchesTask(task, p));
-      legacy.sort((a, b) => (p.sort === 'created' ? b.createdAt.localeCompare(a.createdAt) : b.updatedAt.localeCompare(a.updatedAt)) || b.id.localeCompare(a.id));
-      const highWater = p.cursor ? { at: p.cursor.highWaterAt, id: p.cursor.highWaterId } : { at: p.sort === 'created' ? legacy[0]?.createdAt ?? '' : legacy[0]?.updatedAt ?? '', id: legacy[0]?.id ?? '' };
-      const filtered = legacy.filter(task => { const value = p.sort === 'created' ? task.createdAt : task.updatedAt; return !p.cursor || (value < p.cursor.at || value === p.cursor.at && task.id < p.cursor.id); });
-      return this.taskPage(filtered.slice(0, p.limit + 1), p, highWater, filterHash);
+      const key = p.sort === 'created' ? 'createdAt' : 'updatedAt';
+      const compare = (left: { at: string; id: string }, right: { at: string; id: string }): number => right.at.localeCompare(left.at) || right.id.localeCompare(left.id);
+      let first: { at: string; id: string } | undefined;
+      const candidates: Task[] = [];
+      // Old eras have no indexed read projection. Scan every row, including
+      // malformed retained data, but keep at most limit + 1 documents in memory.
+      for (const row of this.store.db.prepare('SELECT data FROM tasks').iterate() as Iterable<{ data: string }>) {
+        const task = JSON.parse(row.data) as Task;
+        if (task.parentTaskId || !this.matchesTask(task, p)) continue;
+        const position = { at: task[key], id: task.id };
+        if (!first || compare(position, first) < 0) first = position;
+        if (p.cursor && !(position.at < p.cursor.at || position.at === p.cursor.at && position.id < p.cursor.id)) continue;
+        let index = candidates.findIndex(item => compare(position, { at: item[key], id: item.id }) < 0);
+        if (index < 0) index = candidates.length;
+        if (index <= p.limit) { candidates.splice(index, 0, task); if (candidates.length > p.limit + 1) candidates.pop(); }
+      }
+      const highWater = p.cursor ? { at: p.cursor.highWaterAt, id: p.cursor.highWaterId } : first ?? { at: '', id: '' };
+      return this.taskPage(candidates, p, highWater, filterHash);
     }
     const clauses = ['parent_task_id IS NULL']; const args: unknown[] = [];
     if (p.visibility !== 'all') clauses.push(p.visibility === 'active' ? 'archived_at IS NULL' : 'archived_at IS NOT NULL');

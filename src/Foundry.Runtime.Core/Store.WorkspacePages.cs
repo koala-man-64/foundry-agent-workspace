@@ -43,12 +43,23 @@ public sealed partial class Store
         if (SchemaVersion < 5)
         {
             var comparer = StringComparer.Create(CultureInfo.GetCultureInfo("en-US"), false);
-            var legacy = Rows("SELECT data FROM tasks").Select(row => Document((string)row["data"]!))
-                .Where(task => !Truthy(task.GetValueOrDefault("parentTaskId")) && MatchesTask(task, parameters, property))
-                .OrderByDescending(task => (string)task[property]!, comparer).ThenByDescending(task => (string)task["id"]!, comparer).ToList();
-            highAt = cursor is null ? legacy.FirstOrDefault()?.GetValueOrDefault(property) ?? "" : cursor["highWaterAt"];
-            highId = cursor is null ? legacy.FirstOrDefault()?.GetValueOrDefault("id") ?? "" : cursor["highWaterId"];
-            candidates = legacy.Where(task => cursor is null || Before(task[property], task["id"], cursor["at"], cursor["id"])).Take(limit + 1).ToList();
+            int Compare(string leftAt, string leftId, string rightAt, string rightId)
+            {
+                var result = comparer.Compare(rightAt, leftAt); return result != 0 ? result : comparer.Compare(rightId, leftId);
+            }
+            string? firstAt = null; string? firstId = null; candidates = [];
+            foreach (var task in LegacyTaskDocuments())
+            {
+                if (Truthy(task.GetValueOrDefault("parentTaskId")) || !MatchesTask(task, parameters, property)) continue;
+                var at = (string)task[property]!; var key = (string)task["id"]!;
+                if (firstAt is null || Compare(at, key, firstAt, firstId!) < 0) { firstAt = at; firstId = key; }
+                if (cursor is not null && !Before(at, key, cursor["at"], cursor["id"])) continue;
+                var index = candidates.FindIndex(item => Compare(at, key, (string)item[property]!, (string)item["id"]!) < 0);
+                if (index < 0) index = candidates.Count;
+                if (index <= limit) { candidates.Insert(index, task); if (candidates.Count > limit + 1) candidates.RemoveAt(candidates.Count - 1); }
+            }
+            highAt = cursor is null ? firstAt ?? "" : cursor["highWaterAt"];
+            highId = cursor is null ? firstId ?? "" : cursor["highWaterId"];
         }
         else
         {
@@ -90,6 +101,16 @@ public sealed partial class Store
 
     private static bool Before(object? at, object? id, object? boundary, object? key) =>
         StringComparer.Ordinal.Compare((string?)at, (string?)boundary) < 0 || Equals(at, boundary) && StringComparer.Ordinal.Compare((string?)id, (string?)key) < 0;
+
+    private IEnumerable<Dictionary<string, object?>> LegacyTaskDocuments()
+    {
+        using var command = Command("SELECT data FROM tasks"); using var reader = command.ExecuteReader();
+        while (true)
+        {
+            loop.AssertCurrent(); if (!reader.Read()) yield break;
+            yield return Document((string)reader.GetValue(0));
+        }
+    }
 
     private static bool MatchesTask(Dictionary<string, object?> task, Dictionary<string, object?> p, string property)
     {
