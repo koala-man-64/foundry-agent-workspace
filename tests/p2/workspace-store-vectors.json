@@ -1,0 +1,519 @@
+[
+  {
+    "name": "defaults",
+    "value": {
+      "profileId": "00000000-0000-4000-8000-000000000001",
+      "mode": "chat",
+      "collapsedProjectIds": []
+    },
+    "profiles": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048}"
+      }
+    ],
+    "projects": [],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "missing-profile",
+    "value": null,
+    "profiles": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048}"
+      }
+    ],
+    "projects": [],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "save-profile",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Offline demo",
+      "apiKind": "fake",
+      "endpoint": "",
+      "deployment": "deterministic-fixture",
+      "contextLimit": 32000,
+      "outputLimit": 2048,
+      "opaque": {
+        "future": [
+          1,
+          null,
+          "keep"
+        ]
+      }
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "missing-project",
+    "value": null,
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "insert-project",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "path": "$project",
+      "name": "Project",
+      "hidden": false,
+      "kind": "folder",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Project\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\"}"
+      }
+    ],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "path-alias",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "path": "$project",
+      "name": "Project",
+      "hidden": false,
+      "kind": "folder",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Project\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\"}"
+      }
+    ],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "save-project",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "path": "$project",
+      "name": "Renamed",
+      "hidden": true,
+      "kind": "folder",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z",
+      "future": {
+        "keep": true
+      }
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "list-projects",
+    "value": [
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path": "$project",
+        "name": "Renamed",
+        "hidden": true,
+        "kind": "folder",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "updatedAt": "2026-01-02T03:04:05.678Z",
+        "future": {
+          "keep": true
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [],
+    "starts": []
+  },
+  {
+    "name": "save-preferences",
+    "value": {
+      "profileId": "00000000-0000-4000-8000-000000000001",
+      "mode": "coding",
+      "collapsedProjectIds": [
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "future": [
+        true,
+        null
+      ]
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": []
+  },
+  {
+    "name": "reserve",
+    "value": {
+      "inputHash": "hash-1",
+      "taskId": "task-1",
+      "state": "pending"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-1",
+        "input_hash": "hash-1",
+        "task_id": "task-1",
+        "state": "pending",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  },
+  {
+    "name": "failed",
+    "value": {
+      "inputHash": "hash-1",
+      "taskId": "task-1",
+      "state": "failed"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-1",
+        "input_hash": "hash-1",
+        "task_id": "task-1",
+        "state": "failed",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  },
+  {
+    "name": "retain-failed",
+    "value": {
+      "inputHash": "hash-1",
+      "taskId": "task-1",
+      "state": "failed"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-1",
+        "input_hash": "hash-1",
+        "task_id": "task-1",
+        "state": "failed",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  },
+  {
+    "name": "clear-pending",
+    "value": null,
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": []
+  },
+  {
+    "name": "complete",
+    "value": {
+      "inputHash": "hash-2",
+      "taskId": "task-2",
+      "state": "complete"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-2",
+        "input_hash": "hash-2",
+        "task_id": "task-2",
+        "state": "complete",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  },
+  {
+    "name": "retain-unknown",
+    "value": {
+      "inputHash": "hash-3",
+      "taskId": "task-3",
+      "state": "unknown"
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-2",
+        "input_hash": "hash-2",
+        "task_id": "task-2",
+        "state": "complete",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      },
+      {
+        "_rowid": 2,
+        "request_id": "request-3",
+        "input_hash": "hash-3",
+        "task_id": "task-3",
+        "state": "unknown",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  },
+  {
+    "name": "events",
+    "value": {
+      "count": 0
+    },
+    "profiles": [
+      {
+        "_rowid": 2,
+        "id": "00000000-0000-4000-8000-000000000001",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"name\":\"Offline demo\",\"apiKind\":\"fake\",\"endpoint\":\"\",\"deployment\":\"deterministic-fixture\",\"contextLimit\":32000,\"outputLimit\":2048,\"opaque\":{\"future\":[1,null,\"keep\"]}}"
+      }
+    ],
+    "projects": [
+      {
+        "_rowid": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "path_key": "$project-key",
+        "data": "{\"id\":\"00000000-0000-4000-8000-000000000002\",\"path\":\"$project\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"future\":{\"keep\":true}}"
+      }
+    ],
+    "preferences": [
+      {
+        "_rowid": 1,
+        "id": 1,
+        "data": "{\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"mode\":\"coding\",\"collapsedProjectIds\":[\"00000000-0000-4000-8000-000000000002\"],\"future\":[true,null]}"
+      }
+    ],
+    "starts": [
+      {
+        "_rowid": 1,
+        "request_id": "request-2",
+        "input_hash": "hash-2",
+        "task_id": "task-2",
+        "state": "complete",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      },
+      {
+        "_rowid": 2,
+        "request_id": "request-3",
+        "input_hash": "hash-3",
+        "task_id": "task-3",
+        "state": "unknown",
+        "created_at": "2026-01-02T03:04:05.678Z"
+      }
+    ]
+  }
+]
