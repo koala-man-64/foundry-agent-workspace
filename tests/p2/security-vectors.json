@@ -1,0 +1,10406 @@
+[
+  {
+    "name": "normalizePath:0",
+    "operation": "normalizePath",
+    "arguments": [
+      null,
+      false
+    ],
+    "expected": {
+      "error": "Scope paths must be strings."
+    }
+  },
+  {
+    "name": "normalizePath:1",
+    "operation": "normalizePath",
+    "arguments": [
+      null,
+      true
+    ],
+    "expected": {
+      "error": "Scope paths must be strings."
+    }
+  },
+  {
+    "name": "normalizePath:2",
+    "operation": "normalizePath",
+    "arguments": [
+      "",
+      false
+    ],
+    "expected": {
+      "error": "Write scope cannot be the whole repository."
+    }
+  },
+  {
+    "name": "normalizePath:3",
+    "operation": "normalizePath",
+    "arguments": [
+      "",
+      true
+    ],
+    "expected": {
+      "value": ""
+    }
+  },
+  {
+    "name": "normalizePath:4",
+    "operation": "normalizePath",
+    "arguments": [
+      "/",
+      false
+    ],
+    "expected": {
+      "error": "Write scope cannot be the whole repository."
+    }
+  },
+  {
+    "name": "normalizePath:5",
+    "operation": "normalizePath",
+    "arguments": [
+      "/",
+      true
+    ],
+    "expected": {
+      "value": ""
+    }
+  },
+  {
+    "name": "normalizePath:6",
+    "operation": "normalizePath",
+    "arguments": [
+      "\\",
+      false
+    ],
+    "expected": {
+      "error": "Write scope cannot be the whole repository."
+    }
+  },
+  {
+    "name": "normalizePath:7",
+    "operation": "normalizePath",
+    "arguments": [
+      "\\",
+      true
+    ],
+    "expected": {
+      "value": ""
+    }
+  },
+  {
+    "name": "normalizePath:8",
+    "operation": "normalizePath",
+    "arguments": [
+      "////",
+      false
+    ],
+    "expected": {
+      "error": "Write scope cannot be the whole repository."
+    }
+  },
+  {
+    "name": "normalizePath:9",
+    "operation": "normalizePath",
+    "arguments": [
+      "////",
+      true
+    ],
+    "expected": {
+      "value": ""
+    }
+  },
+  {
+    "name": "normalizePath:10",
+    "operation": "normalizePath",
+    "arguments": [
+      "src\\feature\\",
+      false
+    ],
+    "expected": {
+      "value": "src/feature"
+    }
+  },
+  {
+    "name": "normalizePath:11",
+    "operation": "normalizePath",
+    "arguments": [
+      "src\\feature\\",
+      true
+    ],
+    "expected": {
+      "value": "src/feature"
+    }
+  },
+  {
+    "name": "normalizePath:12",
+    "operation": "normalizePath",
+    "arguments": [
+      "src///",
+      false
+    ],
+    "expected": {
+      "value": "src"
+    }
+  },
+  {
+    "name": "normalizePath:13",
+    "operation": "normalizePath",
+    "arguments": [
+      "src///",
+      true
+    ],
+    "expected": {
+      "value": "src"
+    }
+  },
+  {
+    "name": "normalizePath:14",
+    "operation": "normalizePath",
+    "arguments": [
+      "../x",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:15",
+    "operation": "normalizePath",
+    "arguments": [
+      "../x",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:16",
+    "operation": "normalizePath",
+    "arguments": [
+      "a/../b",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:17",
+    "operation": "normalizePath",
+    "arguments": [
+      "a/../b",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:18",
+    "operation": "normalizePath",
+    "arguments": [
+      "./a",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:19",
+    "operation": "normalizePath",
+    "arguments": [
+      "./a",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:20",
+    "operation": "normalizePath",
+    "arguments": [
+      "a//b",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:21",
+    "operation": "normalizePath",
+    "arguments": [
+      "a//b",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths cannot contain empty, \".\" or \"..\" segments."
+    }
+  },
+  {
+    "name": "normalizePath:22",
+    "operation": "normalizePath",
+    "arguments": [
+      "/abs",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:23",
+    "operation": "normalizePath",
+    "arguments": [
+      "/abs",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:24",
+    "operation": "normalizePath",
+    "arguments": [
+      "C:/x",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:25",
+    "operation": "normalizePath",
+    "arguments": [
+      "C:/x",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:26",
+    "operation": "normalizePath",
+    "arguments": [
+      "C:x",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:27",
+    "operation": "normalizePath",
+    "arguments": [
+      "C:x",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:28",
+    "operation": "normalizePath",
+    "arguments": [
+      "é:/x",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"é:\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:29",
+    "operation": "normalizePath",
+    "arguments": [
+      "é:/x",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"é:\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:30",
+    "operation": "normalizePath",
+    "arguments": [
+      "src2/file",
+      false
+    ],
+    "expected": {
+      "value": "src2/file"
+    }
+  },
+  {
+    "name": "normalizePath:31",
+    "operation": "normalizePath",
+    "arguments": [
+      "src2/file",
+      true
+    ],
+    "expected": {
+      "value": "src2/file"
+    }
+  },
+  {
+    "name": "normalizePath:32",
+    "operation": "normalizePath",
+    "arguments": [
+      "文件/é.txt",
+      false
+    ],
+    "expected": {
+      "value": "文件/é.txt"
+    }
+  },
+  {
+    "name": "normalizePath:33",
+    "operation": "normalizePath",
+    "arguments": [
+      "文件/é.txt",
+      true
+    ],
+    "expected": {
+      "value": "文件/é.txt"
+    }
+  },
+  {
+    "name": "normalizePath:34",
+    "operation": "normalizePath",
+    "arguments": [
+      "😀/x",
+      false
+    ],
+    "expected": {
+      "value": "😀/x"
+    }
+  },
+  {
+    "name": "normalizePath:35",
+    "operation": "normalizePath",
+    "arguments": [
+      "😀/x",
+      true
+    ],
+    "expected": {
+      "value": "😀/x"
+    }
+  },
+  {
+    "name": "normalizePath:36",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/İ",
+      false
+    ],
+    "expected": {
+      "value": "src/İ"
+    }
+  },
+  {
+    "name": "normalizePath:37",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/İ",
+      true
+    ],
+    "expected": {
+      "value": "src/İ"
+    }
+  },
+  {
+    "name": "normalizePath:38",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/K",
+      false
+    ],
+    "expected": {
+      "value": "src/K"
+    }
+  },
+  {
+    "name": "normalizePath:39",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/K",
+      true
+    ],
+    "expected": {
+      "value": "src/K"
+    }
+  },
+  {
+    "name": "normalizePath:40",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/ſ",
+      false
+    ],
+    "expected": {
+      "value": "src/ſ"
+    }
+  },
+  {
+    "name": "normalizePath:41",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/ſ",
+      true
+    ],
+    "expected": {
+      "value": "src/ſ"
+    }
+  },
+  {
+    "name": "normalizePath:42",
+    "operation": "normalizePath",
+    "arguments": [
+      " leading",
+      false
+    ],
+    "expected": {
+      "value": " leading"
+    }
+  },
+  {
+    "name": "normalizePath:43",
+    "operation": "normalizePath",
+    "arguments": [
+      " leading",
+      true
+    ],
+    "expected": {
+      "value": " leading"
+    }
+  },
+  {
+    "name": "normalizePath:44",
+    "operation": "normalizePath",
+    "arguments": [
+      "trailing ",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"trailing \" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:45",
+    "operation": "normalizePath",
+    "arguments": [
+      "trailing ",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"trailing \" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:46",
+    "operation": "normalizePath",
+    "arguments": [
+      "trailing.",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"trailing.\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:47",
+    "operation": "normalizePath",
+    "arguments": [
+      "trailing.",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"trailing.\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:48",
+    "operation": "normalizePath",
+    "arguments": [
+      "a:stream",
+      false
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:49",
+    "operation": "normalizePath",
+    "arguments": [
+      "a:stream",
+      true
+    ],
+    "expected": {
+      "error": "Scope paths must be repository-relative."
+    }
+  },
+  {
+    "name": "normalizePath:50",
+    "operation": "normalizePath",
+    "arguments": [
+      ".git",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".git\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:51",
+    "operation": "normalizePath",
+    "arguments": [
+      ".git",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".git\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:52",
+    "operation": "normalizePath",
+    "arguments": [
+      ".GIT/config",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".GIT\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:53",
+    "operation": "normalizePath",
+    "arguments": [
+      ".GIT/config",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".GIT\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:54",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.GIT/x",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".GIT\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:55",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.GIT/x",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".GIT\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:56",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gitmodules",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".gitmodules\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:57",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gitmodules",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".gitmodules\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:58",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gitattributes",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".gitattributes\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:59",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gitattributes",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".gitattributes\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:60",
+    "operation": "normalizePath",
+    "arguments": [
+      "config/.env",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:61",
+    "operation": "normalizePath",
+    "arguments": [
+      "config/.env",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:62",
+    "operation": "normalizePath",
+    "arguments": [
+      "keys/id_rsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:63",
+    "operation": "normalizePath",
+    "arguments": [
+      "keys/id_rsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:64",
+    "operation": "normalizePath",
+    "arguments": [
+      "a .pem",
+      false
+    ],
+    "expected": {
+      "value": "a .pem"
+    }
+  },
+  {
+    "name": "normalizePath:65",
+    "operation": "normalizePath",
+    "arguments": [
+      "a .pem",
+      true
+    ],
+    "expected": {
+      "value": "a .pem"
+    }
+  },
+  {
+    "name": "normalizePath:66",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env. ",
+      false
+    ],
+    "expected": {
+      "value": ".env. "
+    }
+  },
+  {
+    "name": "normalizePath:67",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env. ",
+      true
+    ],
+    "expected": {
+      "value": ".env. "
+    }
+  },
+  {
+    "name": "normalizePath:68",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env ",
+      false
+    ],
+    "expected": {
+      "value": ".env "
+    }
+  },
+  {
+    "name": "normalizePath:69",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env ",
+      true
+    ],
+    "expected": {
+      "value": ".env "
+    }
+  },
+  {
+    "name": "normalizePath:70",
+    "operation": "normalizePath",
+    "arguments": [
+      "KEY",
+      false
+    ],
+    "expected": {
+      "value": "KEY"
+    }
+  },
+  {
+    "name": "normalizePath:71",
+    "operation": "normalizePath",
+    "arguments": [
+      "KEY",
+      true
+    ],
+    "expected": {
+      "value": "KEY"
+    }
+  },
+  {
+    "name": "normalizePath:72",
+    "operation": "normalizePath",
+    "arguments": [
+      "ſecret",
+      false
+    ],
+    "expected": {
+      "value": "ſecret"
+    }
+  },
+  {
+    "name": "normalizePath:73",
+    "operation": "normalizePath",
+    "arguments": [
+      "ſecret",
+      true
+    ],
+    "expected": {
+      "value": "ſecret"
+    }
+  },
+  {
+    "name": "normalizePath:74",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret.😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret.😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\ud83d\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:75",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret.😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret.😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\ud83d\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:76",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:77",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:78",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ENV",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".ENV\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:79",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ENV",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".ENV\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:80",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.env",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:81",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.env",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".env\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:82",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".env.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:83",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".env.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:84",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env. ",
+      false
+    ],
+    "expected": {
+      "value": ".env. "
+    }
+  },
+  {
+    "name": "normalizePath:85",
+    "operation": "normalizePath",
+    "arguments": [
+      ".env. ",
+      true
+    ],
+    "expected": {
+      "value": ".env. "
+    }
+  },
+  {
+    "name": "normalizePath:86",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".envrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:87",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".envrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:88",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ENVRC",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".ENVRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:89",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ENVRC",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".ENVRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:90",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.envrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".envrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:91",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.envrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".envrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:92",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc.bak",
+      false
+    ],
+    "expected": {
+      "value": ".envrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:93",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc.bak",
+      true
+    ],
+    "expected": {
+      "value": ".envrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:94",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc. ",
+      false
+    ],
+    "expected": {
+      "value": ".envrc. "
+    }
+  },
+  {
+    "name": "normalizePath:95",
+    "operation": "normalizePath",
+    "arguments": [
+      ".envrc. ",
+      true
+    ],
+    "expected": {
+      "value": ".envrc. "
+    }
+  },
+  {
+    "name": "normalizePath:96",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".npmrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:97",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".npmrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:98",
+    "operation": "normalizePath",
+    "arguments": [
+      ".NPMRC",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".NPMRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:99",
+    "operation": "normalizePath",
+    "arguments": [
+      ".NPMRC",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".NPMRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:100",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.npmrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".npmrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:101",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.npmrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".npmrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:102",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc.bak",
+      false
+    ],
+    "expected": {
+      "value": ".npmrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:103",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc.bak",
+      true
+    ],
+    "expected": {
+      "value": ".npmrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:104",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc. ",
+      false
+    ],
+    "expected": {
+      "value": ".npmrc. "
+    }
+  },
+  {
+    "name": "normalizePath:105",
+    "operation": "normalizePath",
+    "arguments": [
+      ".npmrc. ",
+      true
+    ],
+    "expected": {
+      "value": ".npmrc. "
+    }
+  },
+  {
+    "name": "normalizePath:106",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".pypirc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:107",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".pypirc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:108",
+    "operation": "normalizePath",
+    "arguments": [
+      ".PYPIRC",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".PYPIRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:109",
+    "operation": "normalizePath",
+    "arguments": [
+      ".PYPIRC",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".PYPIRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:110",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.pypirc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".pypirc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:111",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.pypirc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".pypirc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:112",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc.bak",
+      false
+    ],
+    "expected": {
+      "value": ".pypirc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:113",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc.bak",
+      true
+    ],
+    "expected": {
+      "value": ".pypirc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:114",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc. ",
+      false
+    ],
+    "expected": {
+      "value": ".pypirc. "
+    }
+  },
+  {
+    "name": "normalizePath:115",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pypirc. ",
+      true
+    ],
+    "expected": {
+      "value": ".pypirc. "
+    }
+  },
+  {
+    "name": "normalizePath:116",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".netrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:117",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".netrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:118",
+    "operation": "normalizePath",
+    "arguments": [
+      ".NETRC",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".NETRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:119",
+    "operation": "normalizePath",
+    "arguments": [
+      ".NETRC",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".NETRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:120",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.netrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".netrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:121",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.netrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".netrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:122",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc.bak",
+      false
+    ],
+    "expected": {
+      "value": ".netrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:123",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc.bak",
+      true
+    ],
+    "expected": {
+      "value": ".netrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:124",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc. ",
+      false
+    ],
+    "expected": {
+      "value": ".netrc. "
+    }
+  },
+  {
+    "name": "normalizePath:125",
+    "operation": "normalizePath",
+    "arguments": [
+      ".netrc. ",
+      true
+    ],
+    "expected": {
+      "value": ".netrc. "
+    }
+  },
+  {
+    "name": "normalizePath:126",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".pgpass\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:127",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".pgpass\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:128",
+    "operation": "normalizePath",
+    "arguments": [
+      ".PGPASS",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".PGPASS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:129",
+    "operation": "normalizePath",
+    "arguments": [
+      ".PGPASS",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".PGPASS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:130",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.pgpass",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".pgpass\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:131",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.pgpass",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".pgpass\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:132",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass.bak",
+      false
+    ],
+    "expected": {
+      "value": ".pgpass.bak"
+    }
+  },
+  {
+    "name": "normalizePath:133",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass.bak",
+      true
+    ],
+    "expected": {
+      "value": ".pgpass.bak"
+    }
+  },
+  {
+    "name": "normalizePath:134",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass. ",
+      false
+    ],
+    "expected": {
+      "value": ".pgpass. "
+    }
+  },
+  {
+    "name": "normalizePath:135",
+    "operation": "normalizePath",
+    "arguments": [
+      ".pgpass. ",
+      true
+    ],
+    "expected": {
+      "value": ".pgpass. "
+    }
+  },
+  {
+    "name": "normalizePath:136",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".terraformrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:137",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".terraformrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:138",
+    "operation": "normalizePath",
+    "arguments": [
+      ".TERRAFORMRC",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".TERRAFORMRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:139",
+    "operation": "normalizePath",
+    "arguments": [
+      ".TERRAFORMRC",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".TERRAFORMRC\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:140",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.terraformrc",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".terraformrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:141",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.terraformrc",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".terraformrc\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:142",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc.bak",
+      false
+    ],
+    "expected": {
+      "value": ".terraformrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:143",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc.bak",
+      true
+    ],
+    "expected": {
+      "value": ".terraformrc.bak"
+    }
+  },
+  {
+    "name": "normalizePath:144",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc. ",
+      false
+    ],
+    "expected": {
+      "value": ".terraformrc. "
+    }
+  },
+  {
+    "name": "normalizePath:145",
+    "operation": "normalizePath",
+    "arguments": [
+      ".terraformrc. ",
+      true
+    ],
+    "expected": {
+      "value": ".terraformrc. "
+    }
+  },
+  {
+    "name": "normalizePath:146",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".ssh\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:147",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".ssh\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:148",
+    "operation": "normalizePath",
+    "arguments": [
+      ".SSH",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".SSH\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:149",
+    "operation": "normalizePath",
+    "arguments": [
+      ".SSH",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".SSH\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:150",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.ssh",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".ssh\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:151",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.ssh",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".ssh\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:152",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh.bak",
+      false
+    ],
+    "expected": {
+      "value": ".ssh.bak"
+    }
+  },
+  {
+    "name": "normalizePath:153",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh.bak",
+      true
+    ],
+    "expected": {
+      "value": ".ssh.bak"
+    }
+  },
+  {
+    "name": "normalizePath:154",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh. ",
+      false
+    ],
+    "expected": {
+      "value": ".ssh. "
+    }
+  },
+  {
+    "name": "normalizePath:155",
+    "operation": "normalizePath",
+    "arguments": [
+      ".ssh. ",
+      true
+    ],
+    "expected": {
+      "value": ".ssh. "
+    }
+  },
+  {
+    "name": "normalizePath:156",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".aws\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:157",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".aws\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:158",
+    "operation": "normalizePath",
+    "arguments": [
+      ".AWS",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".AWS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:159",
+    "operation": "normalizePath",
+    "arguments": [
+      ".AWS",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".AWS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:160",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.aws",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".aws\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:161",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.aws",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".aws\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:162",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws.bak",
+      false
+    ],
+    "expected": {
+      "value": ".aws.bak"
+    }
+  },
+  {
+    "name": "normalizePath:163",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws.bak",
+      true
+    ],
+    "expected": {
+      "value": ".aws.bak"
+    }
+  },
+  {
+    "name": "normalizePath:164",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws. ",
+      false
+    ],
+    "expected": {
+      "value": ".aws. "
+    }
+  },
+  {
+    "name": "normalizePath:165",
+    "operation": "normalizePath",
+    "arguments": [
+      ".aws. ",
+      true
+    ],
+    "expected": {
+      "value": ".aws. "
+    }
+  },
+  {
+    "name": "normalizePath:166",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".azure\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:167",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".azure\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:168",
+    "operation": "normalizePath",
+    "arguments": [
+      ".AZURE",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".AZURE\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:169",
+    "operation": "normalizePath",
+    "arguments": [
+      ".AZURE",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".AZURE\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:170",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.azure",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".azure\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:171",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.azure",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".azure\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:172",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure.bak",
+      false
+    ],
+    "expected": {
+      "value": ".azure.bak"
+    }
+  },
+  {
+    "name": "normalizePath:173",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure.bak",
+      true
+    ],
+    "expected": {
+      "value": ".azure.bak"
+    }
+  },
+  {
+    "name": "normalizePath:174",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure. ",
+      false
+    ],
+    "expected": {
+      "value": ".azure. "
+    }
+  },
+  {
+    "name": "normalizePath:175",
+    "operation": "normalizePath",
+    "arguments": [
+      ".azure. ",
+      true
+    ],
+    "expected": {
+      "value": ".azure. "
+    }
+  },
+  {
+    "name": "normalizePath:176",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".kube\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:177",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".kube\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:178",
+    "operation": "normalizePath",
+    "arguments": [
+      ".KUBE",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".KUBE\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:179",
+    "operation": "normalizePath",
+    "arguments": [
+      ".KUBE",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".KUBE\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:180",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.kube",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".kube\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:181",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.kube",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".kube\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:182",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube.bak",
+      false
+    ],
+    "expected": {
+      "value": ".kube.bak"
+    }
+  },
+  {
+    "name": "normalizePath:183",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube.bak",
+      true
+    ],
+    "expected": {
+      "value": ".kube.bak"
+    }
+  },
+  {
+    "name": "normalizePath:184",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube. ",
+      false
+    ],
+    "expected": {
+      "value": ".kube. "
+    }
+  },
+  {
+    "name": "normalizePath:185",
+    "operation": "normalizePath",
+    "arguments": [
+      ".kube. ",
+      true
+    ],
+    "expected": {
+      "value": ".kube. "
+    }
+  },
+  {
+    "name": "normalizePath:186",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".docker\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:187",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".docker\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:188",
+    "operation": "normalizePath",
+    "arguments": [
+      ".DOCKER",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".DOCKER\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:189",
+    "operation": "normalizePath",
+    "arguments": [
+      ".DOCKER",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".DOCKER\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:190",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.docker",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".docker\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:191",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.docker",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".docker\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:192",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker.bak",
+      false
+    ],
+    "expected": {
+      "value": ".docker.bak"
+    }
+  },
+  {
+    "name": "normalizePath:193",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker.bak",
+      true
+    ],
+    "expected": {
+      "value": ".docker.bak"
+    }
+  },
+  {
+    "name": "normalizePath:194",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker. ",
+      false
+    ],
+    "expected": {
+      "value": ".docker. "
+    }
+  },
+  {
+    "name": "normalizePath:195",
+    "operation": "normalizePath",
+    "arguments": [
+      ".docker. ",
+      true
+    ],
+    "expected": {
+      "value": ".docker. "
+    }
+  },
+  {
+    "name": "normalizePath:196",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".gnupg\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:197",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".gnupg\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:198",
+    "operation": "normalizePath",
+    "arguments": [
+      ".GNUPG",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".GNUPG\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:199",
+    "operation": "normalizePath",
+    "arguments": [
+      ".GNUPG",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".GNUPG\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:200",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.gnupg",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \".gnupg\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:201",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/.gnupg",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \".gnupg\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:202",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg.bak",
+      false
+    ],
+    "expected": {
+      "value": ".gnupg.bak"
+    }
+  },
+  {
+    "name": "normalizePath:203",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg.bak",
+      true
+    ],
+    "expected": {
+      "value": ".gnupg.bak"
+    }
+  },
+  {
+    "name": "normalizePath:204",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg. ",
+      false
+    ],
+    "expected": {
+      "value": ".gnupg. "
+    }
+  },
+  {
+    "name": "normalizePath:205",
+    "operation": "normalizePath",
+    "arguments": [
+      ".gnupg. ",
+      true
+    ],
+    "expected": {
+      "value": ".gnupg. "
+    }
+  },
+  {
+    "name": "normalizePath:206",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:207",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:208",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_RSA",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_RSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:209",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_RSA",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_RSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:210",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_rsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:211",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_rsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_rsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:212",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa.bak",
+      false
+    ],
+    "expected": {
+      "value": "id_rsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:213",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa.bak",
+      true
+    ],
+    "expected": {
+      "value": "id_rsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:214",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa. ",
+      false
+    ],
+    "expected": {
+      "value": "id_rsa. "
+    }
+  },
+  {
+    "name": "normalizePath:215",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_rsa. ",
+      true
+    ],
+    "expected": {
+      "value": "id_rsa. "
+    }
+  },
+  {
+    "name": "normalizePath:216",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_dsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:217",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_dsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:218",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_DSA",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_DSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:219",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_DSA",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_DSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:220",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_dsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_dsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:221",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_dsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_dsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:222",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa.bak",
+      false
+    ],
+    "expected": {
+      "value": "id_dsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:223",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa.bak",
+      true
+    ],
+    "expected": {
+      "value": "id_dsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:224",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa. ",
+      false
+    ],
+    "expected": {
+      "value": "id_dsa. "
+    }
+  },
+  {
+    "name": "normalizePath:225",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_dsa. ",
+      true
+    ],
+    "expected": {
+      "value": "id_dsa. "
+    }
+  },
+  {
+    "name": "normalizePath:226",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ecdsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:227",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ecdsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:228",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_ECDSA",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_ECDSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:229",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_ECDSA",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_ECDSA\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:230",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_ecdsa",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ecdsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:231",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_ecdsa",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ecdsa\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:232",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa.bak",
+      false
+    ],
+    "expected": {
+      "value": "id_ecdsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:233",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa.bak",
+      true
+    ],
+    "expected": {
+      "value": "id_ecdsa.bak"
+    }
+  },
+  {
+    "name": "normalizePath:234",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa. ",
+      false
+    ],
+    "expected": {
+      "value": "id_ecdsa. "
+    }
+  },
+  {
+    "name": "normalizePath:235",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ecdsa. ",
+      true
+    ],
+    "expected": {
+      "value": "id_ecdsa. "
+    }
+  },
+  {
+    "name": "normalizePath:236",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ed25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:237",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ed25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:238",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_ED25519",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_ED25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:239",
+    "operation": "normalizePath",
+    "arguments": [
+      "ID_ED25519",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"ID_ED25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:240",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_ed25519",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ed25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:241",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/id_ed25519",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"id_ed25519\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:242",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519.bak",
+      false
+    ],
+    "expected": {
+      "value": "id_ed25519.bak"
+    }
+  },
+  {
+    "name": "normalizePath:243",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519.bak",
+      true
+    ],
+    "expected": {
+      "value": "id_ed25519.bak"
+    }
+  },
+  {
+    "name": "normalizePath:244",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519. ",
+      false
+    ],
+    "expected": {
+      "value": "id_ed25519. "
+    }
+  },
+  {
+    "name": "normalizePath:245",
+    "operation": "normalizePath",
+    "arguments": [
+      "id_ed25519. ",
+      true
+    ],
+    "expected": {
+      "value": "id_ed25519. "
+    }
+  },
+  {
+    "name": "normalizePath:246",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:247",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:248",
+    "operation": "normalizePath",
+    "arguments": [
+      "CREDENTIAL",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CREDENTIAL\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:249",
+    "operation": "normalizePath",
+    "arguments": [
+      "CREDENTIAL",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CREDENTIAL\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:250",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/credential",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:251",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/credential",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:252",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:253",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credential.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:254",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential. ",
+      false
+    ],
+    "expected": {
+      "value": "credential. "
+    }
+  },
+  {
+    "name": "normalizePath:255",
+    "operation": "normalizePath",
+    "arguments": [
+      "credential. ",
+      true
+    ],
+    "expected": {
+      "value": "credential. "
+    }
+  },
+  {
+    "name": "normalizePath:256",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:257",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:258",
+    "operation": "normalizePath",
+    "arguments": [
+      "CREDENTIALS",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CREDENTIALS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:259",
+    "operation": "normalizePath",
+    "arguments": [
+      "CREDENTIALS",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CREDENTIALS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:260",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/credentials",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:261",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/credentials",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:262",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:263",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"credentials.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:264",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials. ",
+      false
+    ],
+    "expected": {
+      "value": "credentials. "
+    }
+  },
+  {
+    "name": "normalizePath:265",
+    "operation": "normalizePath",
+    "arguments": [
+      "credentials. ",
+      true
+    ],
+    "expected": {
+      "value": "credentials. "
+    }
+  },
+  {
+    "name": "normalizePath:266",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:267",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:268",
+    "operation": "normalizePath",
+    "arguments": [
+      "SECRET",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"SECRET\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:269",
+    "operation": "normalizePath",
+    "arguments": [
+      "SECRET",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"SECRET\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:270",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/secret",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:271",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/secret",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:272",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:273",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secret.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:274",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret. ",
+      false
+    ],
+    "expected": {
+      "value": "secret. "
+    }
+  },
+  {
+    "name": "normalizePath:275",
+    "operation": "normalizePath",
+    "arguments": [
+      "secret. ",
+      true
+    ],
+    "expected": {
+      "value": "secret. "
+    }
+  },
+  {
+    "name": "normalizePath:276",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:277",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:278",
+    "operation": "normalizePath",
+    "arguments": [
+      "SECRETS",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"SECRETS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:279",
+    "operation": "normalizePath",
+    "arguments": [
+      "SECRETS",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"SECRETS\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:280",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/secrets",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:281",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/secrets",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:282",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:283",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"secrets.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:284",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets. ",
+      false
+    ],
+    "expected": {
+      "value": "secrets. "
+    }
+  },
+  {
+    "name": "normalizePath:285",
+    "operation": "normalizePath",
+    "arguments": [
+      "secrets. ",
+      true
+    ],
+    "expected": {
+      "value": "secrets. "
+    }
+  },
+  {
+    "name": "normalizePath:286",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pem\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:287",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pem\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:288",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.PEM",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.PEM\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:289",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.PEM",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.PEM\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:290",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.pem",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pem\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:291",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.pem",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pem\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:292",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem.bak",
+      false
+    ],
+    "expected": {
+      "value": "cert.pem.bak"
+    }
+  },
+  {
+    "name": "normalizePath:293",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem.bak",
+      true
+    ],
+    "expected": {
+      "value": "cert.pem.bak"
+    }
+  },
+  {
+    "name": "normalizePath:294",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem. ",
+      false
+    ],
+    "expected": {
+      "value": "cert.pem. "
+    }
+  },
+  {
+    "name": "normalizePath:295",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pem. ",
+      true
+    ],
+    "expected": {
+      "value": "cert.pem. "
+    }
+  },
+  {
+    "name": "normalizePath:296",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.key\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:297",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.key\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:298",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.KEY",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.KEY\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:299",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.KEY",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.KEY\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:300",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.key",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.key\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:301",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.key",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.key\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:302",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key.bak",
+      false
+    ],
+    "expected": {
+      "value": "cert.key.bak"
+    }
+  },
+  {
+    "name": "normalizePath:303",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key.bak",
+      true
+    ],
+    "expected": {
+      "value": "cert.key.bak"
+    }
+  },
+  {
+    "name": "normalizePath:304",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key. ",
+      false
+    ],
+    "expected": {
+      "value": "cert.key. "
+    }
+  },
+  {
+    "name": "normalizePath:305",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.key. ",
+      true
+    ],
+    "expected": {
+      "value": "cert.key. "
+    }
+  },
+  {
+    "name": "normalizePath:306",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.p12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:307",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.p12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:308",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.P12",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.P12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:309",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.P12",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.P12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:310",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.p12",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.p12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:311",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.p12",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.p12\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:312",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12.bak",
+      false
+    ],
+    "expected": {
+      "value": "cert.p12.bak"
+    }
+  },
+  {
+    "name": "normalizePath:313",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12.bak",
+      true
+    ],
+    "expected": {
+      "value": "cert.p12.bak"
+    }
+  },
+  {
+    "name": "normalizePath:314",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12. ",
+      false
+    ],
+    "expected": {
+      "value": "cert.p12. "
+    }
+  },
+  {
+    "name": "normalizePath:315",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.p12. ",
+      true
+    ],
+    "expected": {
+      "value": "cert.p12. "
+    }
+  },
+  {
+    "name": "normalizePath:316",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pfx\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:317",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pfx\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:318",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.PFX",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.PFX\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:319",
+    "operation": "normalizePath",
+    "arguments": [
+      "CERT.PFX",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CERT.PFX\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:320",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.pfx",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pfx\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:321",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/cert.pfx",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"cert.pfx\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:322",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx.bak",
+      false
+    ],
+    "expected": {
+      "value": "cert.pfx.bak"
+    }
+  },
+  {
+    "name": "normalizePath:323",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx.bak",
+      true
+    ],
+    "expected": {
+      "value": "cert.pfx.bak"
+    }
+  },
+  {
+    "name": "normalizePath:324",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx. ",
+      false
+    ],
+    "expected": {
+      "value": "cert.pfx. "
+    }
+  },
+  {
+    "name": "normalizePath:325",
+    "operation": "normalizePath",
+    "arguments": [
+      "cert.pfx. ",
+      true
+    ],
+    "expected": {
+      "value": "cert.pfx. "
+    }
+  },
+  {
+    "name": "normalizePath:326",
+    "operation": "normalizePath",
+    "arguments": [
+      "con",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"con\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:327",
+    "operation": "normalizePath",
+    "arguments": [
+      "con",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"con\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:328",
+    "operation": "normalizePath",
+    "arguments": [
+      "CON",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"CON\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:329",
+    "operation": "normalizePath",
+    "arguments": [
+      "CON",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"CON\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:330",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/con",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"con\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:331",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/con",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"con\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:332",
+    "operation": "normalizePath",
+    "arguments": [
+      "con.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"con.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:333",
+    "operation": "normalizePath",
+    "arguments": [
+      "con.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"con.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:334",
+    "operation": "normalizePath",
+    "arguments": [
+      "con. ",
+      false
+    ],
+    "expected": {
+      "value": "con. "
+    }
+  },
+  {
+    "name": "normalizePath:335",
+    "operation": "normalizePath",
+    "arguments": [
+      "con. ",
+      true
+    ],
+    "expected": {
+      "value": "con. "
+    }
+  },
+  {
+    "name": "normalizePath:336",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:337",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:338",
+    "operation": "normalizePath",
+    "arguments": [
+      "PRN",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"PRN\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:339",
+    "operation": "normalizePath",
+    "arguments": [
+      "PRN",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"PRN\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:340",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/prn",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:341",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/prn",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:342",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:343",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"prn.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:344",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn. ",
+      false
+    ],
+    "expected": {
+      "value": "prn. "
+    }
+  },
+  {
+    "name": "normalizePath:345",
+    "operation": "normalizePath",
+    "arguments": [
+      "prn. ",
+      true
+    ],
+    "expected": {
+      "value": "prn. "
+    }
+  },
+  {
+    "name": "normalizePath:346",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:347",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:348",
+    "operation": "normalizePath",
+    "arguments": [
+      "AUX",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"AUX\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:349",
+    "operation": "normalizePath",
+    "arguments": [
+      "AUX",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"AUX\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:350",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/aux",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:351",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/aux",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:352",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:353",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"aux.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:354",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux. ",
+      false
+    ],
+    "expected": {
+      "value": "aux. "
+    }
+  },
+  {
+    "name": "normalizePath:355",
+    "operation": "normalizePath",
+    "arguments": [
+      "aux. ",
+      true
+    ],
+    "expected": {
+      "value": "aux. "
+    }
+  },
+  {
+    "name": "normalizePath:356",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:357",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:358",
+    "operation": "normalizePath",
+    "arguments": [
+      "NUL",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"NUL\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:359",
+    "operation": "normalizePath",
+    "arguments": [
+      "NUL",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"NUL\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:360",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/nul",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:361",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/nul",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:362",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:363",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"nul.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:364",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul. ",
+      false
+    ],
+    "expected": {
+      "value": "nul. "
+    }
+  },
+  {
+    "name": "normalizePath:365",
+    "operation": "normalizePath",
+    "arguments": [
+      "nul. ",
+      true
+    ],
+    "expected": {
+      "value": "nul. "
+    }
+  },
+  {
+    "name": "normalizePath:366",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0",
+      false
+    ],
+    "expected": {
+      "value": "com0"
+    }
+  },
+  {
+    "name": "normalizePath:367",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0",
+      true
+    ],
+    "expected": {
+      "value": "com0"
+    }
+  },
+  {
+    "name": "normalizePath:368",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM0",
+      false
+    ],
+    "expected": {
+      "value": "COM0"
+    }
+  },
+  {
+    "name": "normalizePath:369",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM0",
+      true
+    ],
+    "expected": {
+      "value": "COM0"
+    }
+  },
+  {
+    "name": "normalizePath:370",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com0",
+      false
+    ],
+    "expected": {
+      "value": "src/com0"
+    }
+  },
+  {
+    "name": "normalizePath:371",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com0",
+      true
+    ],
+    "expected": {
+      "value": "src/com0"
+    }
+  },
+  {
+    "name": "normalizePath:372",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0.bak",
+      false
+    ],
+    "expected": {
+      "value": "com0.bak"
+    }
+  },
+  {
+    "name": "normalizePath:373",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0.bak",
+      true
+    ],
+    "expected": {
+      "value": "com0.bak"
+    }
+  },
+  {
+    "name": "normalizePath:374",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0. ",
+      false
+    ],
+    "expected": {
+      "value": "com0. "
+    }
+  },
+  {
+    "name": "normalizePath:375",
+    "operation": "normalizePath",
+    "arguments": [
+      "com0. ",
+      true
+    ],
+    "expected": {
+      "value": "com0. "
+    }
+  },
+  {
+    "name": "normalizePath:376",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:377",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:378",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:379",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:380",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:381",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:382",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:383",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com1.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:384",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1. ",
+      false
+    ],
+    "expected": {
+      "value": "com1. "
+    }
+  },
+  {
+    "name": "normalizePath:385",
+    "operation": "normalizePath",
+    "arguments": [
+      "com1. ",
+      true
+    ],
+    "expected": {
+      "value": "com1. "
+    }
+  },
+  {
+    "name": "normalizePath:386",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:387",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:388",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:389",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:390",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:391",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:392",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:393",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com2.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:394",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2. ",
+      false
+    ],
+    "expected": {
+      "value": "com2. "
+    }
+  },
+  {
+    "name": "normalizePath:395",
+    "operation": "normalizePath",
+    "arguments": [
+      "com2. ",
+      true
+    ],
+    "expected": {
+      "value": "com2. "
+    }
+  },
+  {
+    "name": "normalizePath:396",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:397",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:398",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:399",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:400",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:401",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:402",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:403",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com3.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:404",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3. ",
+      false
+    ],
+    "expected": {
+      "value": "com3. "
+    }
+  },
+  {
+    "name": "normalizePath:405",
+    "operation": "normalizePath",
+    "arguments": [
+      "com3. ",
+      true
+    ],
+    "expected": {
+      "value": "com3. "
+    }
+  },
+  {
+    "name": "normalizePath:406",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:407",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:408",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:409",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:410",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:411",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:412",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:413",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com4.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:414",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4. ",
+      false
+    ],
+    "expected": {
+      "value": "com4. "
+    }
+  },
+  {
+    "name": "normalizePath:415",
+    "operation": "normalizePath",
+    "arguments": [
+      "com4. ",
+      true
+    ],
+    "expected": {
+      "value": "com4. "
+    }
+  },
+  {
+    "name": "normalizePath:416",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:417",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:418",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:419",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:420",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:421",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:422",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:423",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com5.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:424",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5. ",
+      false
+    ],
+    "expected": {
+      "value": "com5. "
+    }
+  },
+  {
+    "name": "normalizePath:425",
+    "operation": "normalizePath",
+    "arguments": [
+      "com5. ",
+      true
+    ],
+    "expected": {
+      "value": "com5. "
+    }
+  },
+  {
+    "name": "normalizePath:426",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:427",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:428",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:429",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:430",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:431",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:432",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:433",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com6.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:434",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6. ",
+      false
+    ],
+    "expected": {
+      "value": "com6. "
+    }
+  },
+  {
+    "name": "normalizePath:435",
+    "operation": "normalizePath",
+    "arguments": [
+      "com6. ",
+      true
+    ],
+    "expected": {
+      "value": "com6. "
+    }
+  },
+  {
+    "name": "normalizePath:436",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:437",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:438",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:439",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:440",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:441",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:442",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:443",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com7.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:444",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7. ",
+      false
+    ],
+    "expected": {
+      "value": "com7. "
+    }
+  },
+  {
+    "name": "normalizePath:445",
+    "operation": "normalizePath",
+    "arguments": [
+      "com7. ",
+      true
+    ],
+    "expected": {
+      "value": "com7. "
+    }
+  },
+  {
+    "name": "normalizePath:446",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:447",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:448",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:449",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:450",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:451",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:452",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:453",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com8.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:454",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8. ",
+      false
+    ],
+    "expected": {
+      "value": "com8. "
+    }
+  },
+  {
+    "name": "normalizePath:455",
+    "operation": "normalizePath",
+    "arguments": [
+      "com8. ",
+      true
+    ],
+    "expected": {
+      "value": "com8. "
+    }
+  },
+  {
+    "name": "normalizePath:456",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:457",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:458",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:459",
+    "operation": "normalizePath",
+    "arguments": [
+      "COM9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"COM9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:460",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:461",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/com9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:462",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:463",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"com9.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:464",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9. ",
+      false
+    ],
+    "expected": {
+      "value": "com9. "
+    }
+  },
+  {
+    "name": "normalizePath:465",
+    "operation": "normalizePath",
+    "arguments": [
+      "com9. ",
+      true
+    ],
+    "expected": {
+      "value": "com9. "
+    }
+  },
+  {
+    "name": "normalizePath:466",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0",
+      false
+    ],
+    "expected": {
+      "value": "lpt0"
+    }
+  },
+  {
+    "name": "normalizePath:467",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0",
+      true
+    ],
+    "expected": {
+      "value": "lpt0"
+    }
+  },
+  {
+    "name": "normalizePath:468",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT0",
+      false
+    ],
+    "expected": {
+      "value": "LPT0"
+    }
+  },
+  {
+    "name": "normalizePath:469",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT0",
+      true
+    ],
+    "expected": {
+      "value": "LPT0"
+    }
+  },
+  {
+    "name": "normalizePath:470",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt0",
+      false
+    ],
+    "expected": {
+      "value": "src/lpt0"
+    }
+  },
+  {
+    "name": "normalizePath:471",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt0",
+      true
+    ],
+    "expected": {
+      "value": "src/lpt0"
+    }
+  },
+  {
+    "name": "normalizePath:472",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0.bak",
+      false
+    ],
+    "expected": {
+      "value": "lpt0.bak"
+    }
+  },
+  {
+    "name": "normalizePath:473",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0.bak",
+      true
+    ],
+    "expected": {
+      "value": "lpt0.bak"
+    }
+  },
+  {
+    "name": "normalizePath:474",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt0. "
+    }
+  },
+  {
+    "name": "normalizePath:475",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt0. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt0. "
+    }
+  },
+  {
+    "name": "normalizePath:476",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:477",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:478",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:479",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:480",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt1",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:481",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt1",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:482",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:483",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt1.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:484",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt1. "
+    }
+  },
+  {
+    "name": "normalizePath:485",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt1. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt1. "
+    }
+  },
+  {
+    "name": "normalizePath:486",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:487",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:488",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:489",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:490",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt2",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:491",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt2",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:492",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:493",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt2.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:494",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt2. "
+    }
+  },
+  {
+    "name": "normalizePath:495",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt2. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt2. "
+    }
+  },
+  {
+    "name": "normalizePath:496",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:497",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:498",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:499",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:500",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt3",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:501",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt3",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:502",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:503",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt3.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:504",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt3. "
+    }
+  },
+  {
+    "name": "normalizePath:505",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt3. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt3. "
+    }
+  },
+  {
+    "name": "normalizePath:506",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:507",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:508",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:509",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:510",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt4",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:511",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt4",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:512",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:513",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt4.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:514",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt4. "
+    }
+  },
+  {
+    "name": "normalizePath:515",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt4. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt4. "
+    }
+  },
+  {
+    "name": "normalizePath:516",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:517",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:518",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:519",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:520",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt5",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:521",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt5",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:522",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:523",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt5.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:524",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt5. "
+    }
+  },
+  {
+    "name": "normalizePath:525",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt5. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt5. "
+    }
+  },
+  {
+    "name": "normalizePath:526",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:527",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:528",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:529",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:530",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt6",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:531",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt6",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:532",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:533",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt6.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:534",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt6. "
+    }
+  },
+  {
+    "name": "normalizePath:535",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt6. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt6. "
+    }
+  },
+  {
+    "name": "normalizePath:536",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:537",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:538",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:539",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:540",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt7",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:541",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt7",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:542",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:543",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt7.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:544",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt7. "
+    }
+  },
+  {
+    "name": "normalizePath:545",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt7. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt7. "
+    }
+  },
+  {
+    "name": "normalizePath:546",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:547",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:548",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:549",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:550",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt8",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:551",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt8",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:552",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:553",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt8.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:554",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt8. "
+    }
+  },
+  {
+    "name": "normalizePath:555",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt8. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt8. "
+    }
+  },
+  {
+    "name": "normalizePath:556",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:557",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:558",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:559",
+    "operation": "normalizePath",
+    "arguments": [
+      "LPT9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"LPT9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:560",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt9",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:561",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/lpt9",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:562",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9.bak",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:563",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9.bak",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"lpt9.bak\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:564",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9. ",
+      false
+    ],
+    "expected": {
+      "value": "lpt9. "
+    }
+  },
+  {
+    "name": "normalizePath:565",
+    "operation": "normalizePath",
+    "arguments": [
+      "lpt9. ",
+      true
+    ],
+    "expected": {
+      "value": "lpt9. "
+    }
+  },
+  {
+    "name": "normalizePath:566",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\u0000b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\u0000b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:567",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\u0000b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\u0000b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:568",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\tb",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\tb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:569",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\tb",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\tb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:570",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\nb",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\nb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:571",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\nb",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\nb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:572",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\rb",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\rb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:573",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\rb",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\rb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:574",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\u001fb",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\u001fb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:575",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\u001fb",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\u001fb\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:576",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a*b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a*b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:577",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a*b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a*b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:578",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a?b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a?b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:579",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a?b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a?b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:580",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\"b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\"b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:581",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a\"b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a\"b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:582",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a<b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a<b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:583",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a<b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a<b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:584",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a>b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a>b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:585",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a>b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a>b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:586",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a|b",
+      false
+    ],
+    "expected": {
+      "error": "Scope path segment \"a|b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalizePath:587",
+    "operation": "normalizePath",
+    "arguments": [
+      "src/a|b",
+      true
+    ],
+    "expected": {
+      "error": "Scope path segment \"a|b\" is not permitted."
+    }
+  },
+  {
+    "name": "normalize:588",
+    "operation": "normalize",
+    "arguments": [
+      [],
+      false
+    ],
+    "expected": {
+      "value": []
+    }
+  },
+  {
+    "name": "normalize:589",
+    "operation": "normalize",
+    "arguments": [
+      [],
+      true
+    ],
+    "expected": {
+      "value": []
+    }
+  },
+  {
+    "name": "normalize:590",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "src",
+        "src"
+      ],
+      false
+    ],
+    "expected": {
+      "value": [
+        "src"
+      ]
+    }
+  },
+  {
+    "name": "normalize:591",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "src",
+        "src"
+      ],
+      true
+    ],
+    "expected": {
+      "value": [
+        "src"
+      ]
+    }
+  },
+  {
+    "name": "normalize:592",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "src",
+        "SRC"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:593",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "src",
+        "SRC"
+      ],
+      true
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:594",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "İ",
+        "i̇"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:595",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "İ",
+        "i̇"
+      ],
+      true
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:596",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "K",
+        "K"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:597",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "K",
+        "K"
+      ],
+      true
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:598",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "ſ",
+        "s"
+      ],
+      false
+    ],
+    "expected": {
+      "value": [
+        "s",
+        "ſ"
+      ]
+    }
+  },
+  {
+    "name": "normalize:599",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "ſ",
+        "s"
+      ],
+      true
+    ],
+    "expected": {
+      "value": [
+        "s",
+        "ſ"
+      ]
+    }
+  },
+  {
+    "name": "normalize:600",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "😀",
+        "",
+        "A",
+        "a"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:601",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "😀",
+        "",
+        "A",
+        "a"
+      ],
+      true
+    ],
+    "expected": {
+      "error": "Scope paths differ only by case."
+    }
+  },
+  {
+    "name": "normalize:602",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "",
+        "src"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Write scope cannot be the whole repository."
+    }
+  },
+  {
+    "name": "normalize:603",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "",
+        "src"
+      ],
+      true
+    ],
+    "expected": {
+      "value": [
+        "",
+        "src"
+      ]
+    }
+  },
+  {
+    "name": "normalize:604",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "file0",
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file30",
+        "file31"
+      ],
+      false
+    ],
+    "expected": {
+      "value": [
+        "file0",
+        "file1",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file2",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file3",
+        "file30",
+        "file31",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9"
+      ]
+    }
+  },
+  {
+    "name": "normalize:605",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "file0",
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file30",
+        "file31"
+      ],
+      true
+    ],
+    "expected": {
+      "value": [
+        "file0",
+        "file1",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file2",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file3",
+        "file30",
+        "file31",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9"
+      ]
+    }
+  },
+  {
+    "name": "normalize:606",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "file0",
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file30",
+        "file31",
+        "file32"
+      ],
+      false
+    ],
+    "expected": {
+      "error": "Too many scope paths."
+    }
+  },
+  {
+    "name": "normalize:607",
+    "operation": "normalize",
+    "arguments": [
+      [
+        "file0",
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "file5",
+        "file6",
+        "file7",
+        "file8",
+        "file9",
+        "file10",
+        "file11",
+        "file12",
+        "file13",
+        "file14",
+        "file15",
+        "file16",
+        "file17",
+        "file18",
+        "file19",
+        "file20",
+        "file21",
+        "file22",
+        "file23",
+        "file24",
+        "file25",
+        "file26",
+        "file27",
+        "file28",
+        "file29",
+        "file30",
+        "file31",
+        "file32"
+      ],
+      true
+    ],
+    "expected": {
+      "error": "Too many scope paths."
+    }
+  },
+  {
+    "name": "covers:608",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:609",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:610",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:611",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:612",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:613",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:614",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:615",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:616",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:617",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:618",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "../x"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:619",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:620",
+    "operation": "covers",
+    "arguments": [
+      "",
+      ".env"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:621",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:622",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:623",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:624",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:625",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:626",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:627",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:628",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:629",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:630",
+    "operation": "covers",
+    "arguments": [
+      "",
+      "k/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:631",
+    "operation": "inScope",
+    "arguments": [
+      [
+        ""
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:632",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:633",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:634",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:635",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:636",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:637",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:638",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:639",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:640",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:641",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:642",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:643",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:644",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:645",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:646",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:647",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:648",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:649",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:650",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:651",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:652",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:653",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:654",
+    "operation": "covers",
+    "arguments": [
+      "src",
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:655",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:656",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:657",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:658",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:659",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:660",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:661",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:662",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:663",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:664",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:665",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:666",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:667",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:668",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:669",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:670",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:671",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:672",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:673",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:674",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:675",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:676",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:677",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:678",
+    "operation": "covers",
+    "arguments": [
+      "src/a.ts",
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:679",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:680",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:681",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:682",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:683",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:684",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:685",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:686",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:687",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:688",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:689",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:690",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:691",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:692",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:693",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:694",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:695",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:696",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:697",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:698",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:699",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:700",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:701",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:702",
+    "operation": "covers",
+    "arguments": [
+      "src/a",
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:703",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:704",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:705",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:706",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:707",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:708",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:709",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:710",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:711",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:712",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:713",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:714",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:715",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:716",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:717",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:718",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:719",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:720",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:721",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:722",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:723",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:724",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:725",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:726",
+    "operation": "covers",
+    "arguments": [
+      "docs",
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:727",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "docs"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:728",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:729",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:730",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:731",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:732",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:733",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:734",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:735",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:736",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:737",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:738",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:739",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:740",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:741",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:742",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:743",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:744",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:745",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:746",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:747",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:748",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:749",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "covers:750",
+    "operation": "covers",
+    "arguments": [
+      "İ",
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:751",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "İ"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:752",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:753",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "src/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:754",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:755",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "SRC/A.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:756",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:757",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "src2/a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:758",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:759",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "src/a.ts.bak"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:760",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:761",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "src\\a.ts"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:762",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:763",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "../x"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:764",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:765",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      ".env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:766",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:767",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "docs/.env"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:768",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:769",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "docs/../secrets.txt"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:770",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:771",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "docs/guide.md"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:772",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "inScope:773",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "i̇/file"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "covers:774",
+    "operation": "covers",
+    "arguments": [
+      "K",
+      "k/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "inScope:775",
+    "operation": "inScope",
+    "arguments": [
+      [
+        "K"
+      ],
+      "k/file"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "overlap:776",
+    "operation": "overlap",
+    "arguments": [
+      [
+        "src"
+      ],
+      [
+        "src/a.ts"
+      ]
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "overlap:777",
+    "operation": "overlap",
+    "arguments": [
+      [
+        "src/a.ts"
+      ],
+      [
+        "SRC"
+      ]
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "overlap:778",
+    "operation": "overlap",
+    "arguments": [
+      [
+        "src/a"
+      ],
+      [
+        "src/ab"
+      ]
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "overlap:779",
+    "operation": "overlap",
+    "arguments": [
+      [],
+      [
+        "src"
+      ]
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "overlap:780",
+    "operation": "overlap",
+    "arguments": [
+      [
+        ""
+      ],
+      [
+        "docs"
+      ]
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "overlap:781",
+    "operation": "overlap",
+    "arguments": [
+      [
+        "K"
+      ],
+      [
+        "k/file"
+      ]
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "acyclic:782",
+    "operation": "acyclic",
+    "arguments": [
+      []
+    ],
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "ordered:783",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:784",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:785",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:786",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:787",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:788",
+    "operation": "ordered",
+    "arguments": [
+      [],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "acyclic:789",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ]
+    ],
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "ordered:790",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:791",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:792",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:793",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:794",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:795",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "acyclic:796",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ]
+    ],
+    "expected": {
+      "error": "Assignment dependencies contain a cycle."
+    }
+  },
+  {
+    "name": "ordered:797",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:798",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:799",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:800",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:801",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:802",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "acyclic:803",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ]
+    ],
+    "expected": {
+      "error": "Assignment dependencies contain a cycle."
+    }
+  },
+  {
+    "name": "ordered:804",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:805",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:806",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:807",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:808",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:809",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "acyclic:810",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ]
+    ],
+    "expected": {
+      "error": "Assignment dependency references an unknown assignment."
+    }
+  },
+  {
+    "name": "ordered:811",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:812",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:813",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:814",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:815",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:816",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "missing"
+          ]
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "acyclic:817",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ]
+    ],
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "ordered:818",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:819",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:820",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:821",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:822",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:823",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          []
+        ],
+        [
+          "b",
+          [
+            "a"
+          ]
+        ],
+        [
+          "c",
+          [
+            "b"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "acyclic:824",
+    "operation": "acyclic",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ]
+    ],
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "ordered:825",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "a"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:826",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "b"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:827",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "c"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:828",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "b",
+      "c"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "ordered:829",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "a",
+      "d"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "ordered:830",
+    "operation": "ordered",
+    "arguments": [
+      [
+        [
+          "a",
+          [
+            "b",
+            "c"
+          ]
+        ],
+        [
+          "b",
+          [
+            "d"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "d",
+          []
+        ]
+      ],
+      "missing",
+      "a"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:831",
+    "operation": "network",
+    "arguments": [
+      "\\\\server\\share\\project"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:832",
+    "operation": "network",
+    "arguments": [
+      "//server/share/project"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:833",
+    "operation": "network",
+    "arguments": [
+      "\\/server/share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:834",
+    "operation": "network",
+    "arguments": [
+      "/\\server/share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:835",
+    "operation": "network",
+    "arguments": [
+      "\\\\?\\UNC\\server\\share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:836",
+    "operation": "network",
+    "arguments": [
+      "\\\\?\\C:\\local"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:837",
+    "operation": "network",
+    "arguments": [
+      "\\\\.\\pipe\\name"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:838",
+    "operation": "network",
+    "arguments": [
+      "\\\\.\\C:\\local"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:839",
+    "operation": "network",
+    "arguments": [
+      "\\\\.\\UNC\\server\\share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:840",
+    "operation": "network",
+    "arguments": [
+      "\\\\;LanmanRedirector\\;Z:0\\server\\share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:841",
+    "operation": "network",
+    "arguments": [
+      "\\\\host@SSL\\DavWWWRoot\\project"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:842",
+    "operation": "network",
+    "arguments": [
+      "\\??\\UNC\\server\\share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:843",
+    "operation": "network",
+    "arguments": [
+      "\\??\\C:\\local"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:844",
+    "operation": "network",
+    "arguments": [
+      "/??/UNC/server/share"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:845",
+    "operation": "network",
+    "arguments": [
+      "\\??/C:/local"
+    ],
+    "expected": {
+      "value": true
+    }
+  },
+  {
+    "name": "network:846",
+    "operation": "network",
+    "arguments": [
+      "C:\\projects\\app"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:847",
+    "operation": "network",
+    "arguments": [
+      "c:/projects/app"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:848",
+    "operation": "network",
+    "arguments": [
+      "\\projects\\app"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:849",
+    "operation": "network",
+    "arguments": [
+      "/projects/app"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:850",
+    "operation": "network",
+    "arguments": [
+      "relative\\path"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:851",
+    "operation": "network",
+    "arguments": [
+      "C:relative"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:852",
+    "operation": "network",
+    "arguments": [
+      ""
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:853",
+    "operation": "network",
+    "arguments": [
+      " \\\\server\\share"
+    ],
+    "expected": {
+      "value": false
+    }
+  },
+  {
+    "name": "network:854",
+    "operation": "network",
+    "arguments": [
+      "?\\??\\x"
+    ],
+    "expected": {
+      "value": false
+    }
+  }
+]

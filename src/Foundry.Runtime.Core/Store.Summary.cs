@@ -34,8 +34,7 @@ public sealed partial class Store
             if (table == "projects")
             {
                 var path = (string)item["path"]!;
-                static bool Separator(char value) => value is '\\' or '/';
-                if (path.Length >= 2 && Separator(path[0]) && Separator(path[1]) || path.Length >= 4 && Separator(path[0]) && path[1] == '?' && path[2] == '?' && Separator(path[3]))
+                if (NetworkPathPolicy.IsNetworkOrDevicePath(path))
                 {
                     item["kind"] = "unavailable"; item["unavailableReason"] = "Projects on network shares are not supported.";
                 }
