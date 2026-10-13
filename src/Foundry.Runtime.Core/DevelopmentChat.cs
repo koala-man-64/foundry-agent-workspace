@@ -61,6 +61,9 @@ public sealed class DevelopmentChat
             case "workspace.tasks": return store.TaskPage(parameters);
             case "workspace.events": return store.EventPage(Ordinal(parameters, "after") ?? 0, Integer(parameters, "limit", 50), (string?)parameters.GetValueOrDefault("taskId"), redactor);
             case "task.timeline": return store.TimelinePage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
+            case "task.usageRecords": return store.UsageRecordPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
+            case "task.compactions": return store.CompactionPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
+            case "task.compactionContent": return store.CompactionContent((string)parameters["taskId"]!, (string)parameters["compactionId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "task.start": return await Start(parameters);
             case "task.send":
                 var sending = StartTurn((string)parameters["taskId"]!, (string)parameters["content"]!);
@@ -83,9 +86,14 @@ public sealed class DevelopmentChat
 
     private void Fail(Exception error)
     {
-        loop.AssertCurrent(); backgroundFailure ??= error; closing = true;
-        foreach (var entry in running.Values) entry.Abort.Cancel();
+        loop.AssertCurrent(); backgroundFailure ??= error; CloseAdmission();
         failure.TrySetResult();
+    }
+
+    public void CloseAdmission()
+    {
+        loop.AssertCurrent(); closing = true;
+        foreach (var entry in running.Values) entry.Abort.Cancel();
     }
 
     private Task<Dictionary<string, object?>> Start(Dictionary<string, object?> parameters)
@@ -306,8 +314,7 @@ public sealed class DevelopmentChat
 
     public async Task Shutdown()
     {
-        loop.AssertCurrent(); closing = true;
-        foreach (var entry in running.Values) entry.Abort.Cancel();
+        CloseAdmission();
         await Task.WhenAll(running.Values.Select(entry => entry.Done).ToArray());
         loop.AssertCurrent();
         if (backgroundFailure is not null) throw new InvalidOperationException("Development chat execution failed.", backgroundFailure);

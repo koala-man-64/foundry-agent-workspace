@@ -17,13 +17,13 @@ public sealed class DevelopmentChatProcessTests
             throw new InvalidOperationException("Missing development runtime.");
         }
     }
-    private static Process Start(string directory)
+    private static Process Start(string directory, bool chatEnabled = true)
     {
         var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
         {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
         };
-        info.Environment["FOUNDRY_WORKSPACE_DATA"] = directory; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = directory; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = chatEnabled ? "1" : "0";
         return Process.Start(info) ?? throw new InvalidOperationException("Runtime did not start.");
     }
     private static Dictionary<string, object?> StartParameters(string content = "Hello 😀", string requestId = "88888888-0000-4000-8000-000000000001") => new()
@@ -188,6 +188,76 @@ public sealed class DevelopmentChatProcessTests
                 Assert.Equal(0L, store.Scalar("SELECT COUNT(*) FROM provider_requests WHERE finished_at IS NULL"));
                 return Task.FromResult(0);
             });
+        }
+        finally { Directory.Delete(scratch, true); }
+    }
+
+    [Theory]
+    [InlineData(false, false), InlineData(true, false), InlineData(false, true), InlineData(true, true)]
+    public async Task UnexpectedHandlerFailureStopsPromptlyWhileInputRemainsOpen(bool chatEnabled, bool malformedJson)
+    {
+        var scratch = Directory.CreateTempSubdirectory("foundry-p2-stdio-handler-fault-").FullName;
+        try
+        {
+            await using (var loop = new RuntimeLoop()) await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
+                store.Execute("INSERT INTO profiles(id,data) VALUES('99999999-0000-4000-8000-000000000001',$p0)", malformedJson ? "{" : "[]");
+                return Task.FromResult(0);
+            });
+            using var process = Start(scratch, chatEnabled); var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+            try
+            {
+                await Send(process, Frame("warm", "profile.read", new { profileId = Store.FakeProfileId }));
+                await Reply(process, "warm", []); Assert.False(process.HasExited);
+                await Send(process, Frame("failure", "workspace.summary", new { }) + Frame("queued", "task.start", StartParameters()));
+                // Keep stdin open: the old loop could wait indefinitely for more
+                // frames before observing an unexpected handler exception.
+                await process.WaitForExitAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+                Assert.Equal(1, process.ExitCode); Assert.Equal("Runtime failed unexpectedly; restart to reconcile retained state.", (await error).Trim());
+                Assert.Empty(await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken));
+            }
+            finally { await KillIfNeeded(process); }
+            await using (var loop = new RuntimeLoop()) await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
+                Assert.Equal(0L, store.Scalar("SELECT COUNT(*) FROM tasks"));
+                Assert.Equal(0L, store.Scalar("SELECT COUNT(*) FROM provider_requests"));
+                Assert.Equal(malformedJson ? "{" : "[]", store.Scalar("SELECT data FROM profiles WHERE id='99999999-0000-4000-8000-000000000001'"));
+                return Task.FromResult(0);
+            });
+        }
+        finally { Directory.Delete(scratch, true); }
+    }
+
+    [Fact]
+    public async Task CompactionContentIsBoundedAndOwnedOverStdio()
+    {
+        var scratch = Directory.CreateTempSubdirectory("foundry-p2-stdio-compaction-").FullName;
+        const string taskId = "12121212-0000-4000-8000-000000000001";
+        const string compactionId = "12121212-0000-4000-8000-000000000204";
+        try
+        {
+            await using (var loop = new RuntimeLoop()) await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
+                store.SaveTask(new Dictionary<string, object?> { ["id"] = taskId, ["title"] = "Retained", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["mode"] = "chat", ["workspaceKind"] = "none", ["createdAt"] = "2026-01-02T03:04:05.678Z", ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000, ["usedTokens"] = 0 });
+                store.Execute("INSERT INTO compactions(id,task_id,from_ordinal,to_ordinal,message_ids,summary,estimated_before,estimated_after,provider_state_before,provider_state_after,created_at) VALUES($p0,$p1,1,3,'[]',$p2,10000,2000,'{\"opaque\":\"before\"}','{\"opaque\":\"after\"}','2026-01-02T03:04:05.678Z')", compactionId, taskId, "A😀éB");
+                return Task.FromResult(0);
+            });
+            using var process = Start(scratch); var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+            try
+            {
+                await Send(process, Frame("list", "task.compactions", new { taskId, limit = 1 }) + Frame("content", "task.compactionContent", new { taskId, compactionId, offset = 1, maxBytes = 1 }) + Frame("denied", "task.compactionContent", new { taskId = "12121212-0000-4000-8000-000000000004", compactionId }), 3);
+                var replies = await Replies(process, ["list", "content", "denied"], []);
+                var list = JsJson.Stringify(replies["list"]["result"])!;
+                Assert.Contains("A😀éB", list); Assert.DoesNotContain("opaque", list);
+                var content = (Dictionary<string, object?>)replies["content"]["result"]!;
+                Assert.Equal("😀", content["content"]); Assert.Equal(1d, content["offset"]); Assert.Equal(5d, content["nextOffset"]);
+                Assert.Equal("Compaction not found in this task.", ((Dictionary<string, object?>)replies["denied"]["error"]!)["message"]);
+                await Exit(process, error);
+            }
+            finally { await KillIfNeeded(process); }
         }
         finally { Directory.Delete(scratch, true); }
     }

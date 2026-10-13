@@ -119,7 +119,11 @@ public sealed partial class Store : IDisposable
         while (reader.Read())
         {
             var row = new Dictionary<string, object?>(StringComparer.Ordinal);
-            for (var index = 0; index < reader.FieldCount; index++) row.Add(reader.GetName(index), reader.IsDBNull(index) ? null : reader.GetValue(index));
+            // Decode SQLite's counted UTF-8 bytes: GetValue's string path stops
+            // at embedded NULs in retained text such as compaction summaries.
+            for (var index = 0; index < reader.FieldCount; index++)
+                row.Add(reader.GetName(index), reader.IsDBNull(index) ? null : reader.GetFieldType(index) == typeof(string)
+                    ? System.Text.Encoding.UTF8.GetString(reader.GetFieldValue<byte[]>(index)) : reader.GetValue(index));
             rows.Add(row);
         }
         return rows;

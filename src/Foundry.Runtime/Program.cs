@@ -16,6 +16,7 @@ DevelopmentChat? chat = null;
 Task? writer = null;
 using var inputStop = new CancellationTokenSource();
 var pending = new List<Task>();
+var requestFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 long? shutdownStarted = null;
 Task DuringShutdown(Task operation)
 {
@@ -59,8 +60,8 @@ try
     while (true)
     {
         var reading = ReadInput();
-        var first = chat is null ? await Task.WhenAny(reading, writer) : await Task.WhenAny(reading, writer, chat.Failure);
-        if (chat is not null && first == chat.Failure) throw new IOException("Runtime execution failed.");
+        var first = chat is null ? await Task.WhenAny(reading, writer, requestFailure.Task) : await Task.WhenAny(reading, writer, chat.Failure, requestFailure.Task);
+        if (first == requestFailure.Task || chat is not null && first == chat.Failure) throw new IOException("Runtime execution failed.");
         if (first == writer) { await writer; throw new IOException("Output closed before input ended."); }
         var count = await reading;
         if (count < 0) throw new IOException("Input failed.");
@@ -73,13 +74,18 @@ try
             if (LineReader.IsBlank(line)) continue;
             pending.Add(loop.Invoke(async () =>
             {
+                try
+                {
+                if (requestFailure.Task.IsCompleted) throw new IOException("Runtime execution failed.");
                 var requestId = "invalid";
+                var parsingRequest = true;
                 object response;
                 try
                 {
                     var envelope = (Dictionary<string, object?>)Contracts.Validate("frame rpc request", WireJson.Parse(line))!;
                     requestId = (string)envelope["id"]!;
                     var request = WireJson.Request(envelope);
+                    parsingRequest = false;
                     object? result;
                     if (chat is not null) result = await chat.Dispatch(request.Method, (Dictionary<string, object?>)request.Params!);
                     else
@@ -89,7 +95,7 @@ try
                     }
                     response = new { jsonrpc = "2.0", id = requestId, result };
                 }
-                catch (JsonException) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, "Invalid request.") }; }
+                catch (JsonException) when (parsingRequest) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, "Invalid request.") }; }
                 catch (NotSupportedException error) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, error.Message) }; }
                 catch (WorkspaceReadException error) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, error.Message) }; }
                 catch (InvalidOperationException error)
@@ -102,6 +108,13 @@ try
                     text = JsJson.Stringify(new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32001, "The result exceeds the display limit. Retained data has not been deleted.") })!;
                 await output.Writer.WriteAsync(text);
                 return 0;
+                }
+                catch
+                {
+                    try { chat?.CloseAdmission(); }
+                    finally { requestFailure.TrySetResult(); }
+                    throw;
+                }
             }));
             if (pending.Count >= 64)
             {

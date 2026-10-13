@@ -50,6 +50,11 @@ public sealed partial class Store
         var message = Document((string)row["data"]!);
         var source = Encoding.UTF8.GetBytes((redactor ?? new Redactor()).Text((string)message["content"]!));
         if (offset > source.Length) throw new WorkspaceReadException("Message offset is beyond the content.");
+        return ContentChunk(source, "messageId", messageId, offset, maxBytes);
+    }
+
+    private static Dictionary<string, object?> ContentChunk(byte[] source, string idKey, string resourceId, long offset, int maxBytes)
+    {
         var start = checked((int)offset);
         var end = (int)Math.Min(source.Length, offset + maxBytes);
         void Align() { while (end < source.Length && end > start && IsContinuation(source[end])) end--; }
@@ -57,7 +62,7 @@ public sealed partial class Store
         if (end == start && end < source.Length) end = Math.Min(source.Length, start + 4);
         Dictionary<string, object?> Build() => new()
         {
-            ["messageId"] = messageId, ["content"] = Encoding.UTF8.GetString(source, start, end - start),
+            [idKey] = resourceId, ["content"] = Encoding.UTF8.GetString(source, start, end - start),
             ["offset"] = offset, ["nextOffset"] = end < source.Length ? end : null, ["totalBytes"] = source.Length
         };
         var result = Build();
