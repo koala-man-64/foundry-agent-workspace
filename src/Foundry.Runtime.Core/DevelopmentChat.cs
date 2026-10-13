@@ -44,7 +44,7 @@ public sealed class DevelopmentChat
     // Only notifications selected by the shipping ordinary-chat service are sent.
     // Other durable Store events remain retrievable; sequence gaps are expected.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
-        or "usage.changed" or "task.progress" or "task.context-warning" or "task.budget-warning";
+        or "usage.changed" or "features.changed" or "task.progress" or "task.context-warning" or "task.budget-warning";
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
     {
@@ -64,6 +64,17 @@ public sealed class DevelopmentChat
             case "task.usageRecords": return store.UsageRecordPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
             case "task.compactions": return store.CompactionPage((string)parameters["taskId"]!, Ordinal(parameters, "before"), Integer(parameters, "limit", 50), redactor);
             case "task.compactionContent": return store.CompactionContent((string)parameters["taskId"]!, (string)parameters["compactionId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
+            case "features.get": return store.FeatureSnapshot();
+            case "features.set":
+                var feature = store.SetFeature(parameters);
+                store.Event("features.changed", new Dictionary<string, object?> { ["feature"] = feature["feature"], ["enabled"] = feature["enabled"] });
+                return feature;
+            case "task.setArchived":
+                var archiving = (bool)parameters["archived"]!;
+                if (archiving && Equals(store.FeatureState("archive")["enabled"], false)) throw new WorkspaceReadException("Archive admission is paused. Restore and pending-work access remain available.");
+                var archivedTask = store.SetArchived((string)parameters["taskId"]!, archiving);
+                store.Event("tasks.changed", new Dictionary<string, object?>(), (string)parameters["taskId"]!);
+                return archivedTask;
             case "task.start": return await Start(parameters);
             case "task.send":
                 var sending = StartTurn((string)parameters["taskId"]!, (string)parameters["content"]!);

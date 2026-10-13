@@ -63,6 +63,11 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const usage = await request('usage', 'task.usageRecords', { taskId, limit: 50 });
     const compactions = await request('compactions', 'task.compactions', { taskId, limit: 50 });
     const missingCompaction = await request('missing-compaction', 'task.compactionContent', { taskId, compactionId: '12121212-0000-4000-8000-000000000299', offset: 0, maxBytes: 1 });
+    const archived = await request('archive', 'task.setArchived', { taskId, archived: true });
+    const paused = await request('pause-archive', 'features.set', { feature: 'archive', enabled: false });
+    const deniedArchive = await request('denied-archive', 'task.setArchived', { taskId, archived: true });
+    const restored = await request('restore', 'task.setArchived', { taskId, archived: false });
+    const features = await request('features', 'features.get', {});
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -91,6 +96,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
       return normalize({ read: read.result, messages: messages.result, content: content.result, cancel: cancelled.result, conflict: conflict.error,
         profiles: profilePage.result, profile: profile.result, projects: projectPage.result, tasksPage: taskPage.result, eventsPage: eventPage.result, timeline: timeline.result,
         usage: usage.result, compactions: compactions.result, missingCompaction: missingCompaction.error,
+        archived: archived.result, paused: paused.result, deniedArchive: deniedArchive.error, restored: restored.result, features: features.result,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });
