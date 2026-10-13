@@ -1,0 +1,8210 @@
+[
+  {
+    "messages": [],
+    "compactions": [],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "streaming"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "streaming"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "streaming"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "streaming"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "interrupted"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "interrupted"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "interrupted"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "interrupted"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary a 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary a 😀\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary b 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary A 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "\n\n---\n\nsummary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 5,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "",
+        "ordinal": 6,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "\n\n---\n\n"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": ""
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [],
+    "expected": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": "summary a 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary b 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary same 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": [
+      {
+        "role": "user",
+        "content": "summary a 😀\n\n---\n\nsummary A 😀"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀",
+        "ordinal": 6,
+        "status": "complete"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀",
+        "ordinal": 1,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 2 😀",
+        "ordinal": 2,
+        "status": "complete"
+      },
+      {
+        "role": "assistant",
+        "content": "message 3 😀",
+        "ordinal": 3,
+        "status": "complete"
+      },
+      {
+        "role": "tool",
+        "content": "message 4 😀",
+        "ordinal": 4,
+        "status": "complete"
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀",
+        "ordinal": 5,
+        "status": "complete"
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": [
+      {
+        "role": "assistant",
+        "content": "message 6 😀"
+      },
+      {
+        "role": "system",
+        "content": "message 1 😀"
+      },
+      {
+        "role": "user",
+        "content": ""
+      },
+      {
+        "role": "user",
+        "content": "message 5 😀"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 1,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 9,
+        "toOrdinal": 12,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 4,
+        "toOrdinal": 2,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      },
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "b",
+        "fromOrdinal": 2,
+        "toOrdinal": 6,
+        "summary": "summary b 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "same",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary same 😀"
+      },
+      {
+        "id": "same",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary same 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "A",
+        "fromOrdinal": 1,
+        "toOrdinal": 2,
+        "summary": "summary A 😀"
+      },
+      {
+        "id": "a",
+        "fromOrdinal": 5,
+        "toOrdinal": 6,
+        "summary": "summary a 😀"
+      }
+    ],
+    "expected": []
+  },
+  {
+    "messages": [
+      {
+        "status": "failed"
+      },
+      {
+        "role": "user",
+        "content": "no status",
+        "ordinal": 9
+      }
+    ],
+    "compactions": [
+      {
+        "id": "empty",
+        "fromOrdinal": 2,
+        "toOrdinal": 4,
+        "summary": ""
+      }
+    ],
+    "expected": []
+  }
+]
