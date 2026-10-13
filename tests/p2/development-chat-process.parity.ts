@@ -68,6 +68,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const deniedArchive = await request('denied-archive', 'task.setArchived', { taskId, archived: true });
     const restored = await request('restore', 'task.setArchived', { taskId, archived: false });
     const features = await request('features', 'features.get', {});
+    const actions = await request('actions', 'workspace.actions', { limit: 50 });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -97,6 +98,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         profiles: profilePage.result, profile: profile.result, projects: projectPage.result, tasksPage: taskPage.result, eventsPage: eventPage.result, timeline: timeline.result,
         usage: usage.result, compactions: compactions.result, missingCompaction: missingCompaction.error,
         archived: archived.result, paused: paused.result, deniedArchive: deniedArchive.error, restored: restored.result, features: features.result,
+        actions: actions.result,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });
