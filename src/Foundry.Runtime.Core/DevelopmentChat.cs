@@ -44,7 +44,7 @@ public sealed class DevelopmentChat
     // Only notifications selected by the shipping ordinary-chat service are sent.
     // Other durable Store events remain retrievable; sequence gaps are expected.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
-        or "usage.changed" or "features.changed" or "task.progress" or "task.context-warning" or "task.budget-warning";
+        or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning";
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
     {
@@ -55,6 +55,9 @@ public sealed class DevelopmentChat
         switch (method)
         {
             case "workspace.summary": return store.Summary();
+            case "workspace.schema": return new Dictionary<string, object?> { ["version"] = store.SchemaVersion, ["current"] = 5, ["upgradeRequired"] = store.SchemaVersion < 5, ["coordinatedAvailable"] = false };
+            case "project.update": return store.UpdateProject(parameters);
+            case "workspace.preferences.save": return store.UpdatePreferences(parameters);
             case "workspace.profiles": return store.ProfilePage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
             case "workspace.projects": return store.ProjectPage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
             case "profile.read": return store.ProfileRead((string)parameters["profileId"]!);

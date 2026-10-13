@@ -96,8 +96,26 @@ export class RuntimeService {
     // Streaming fragments are transient and never trigger a history query or automation.
     if (type === 'task.progress') { this.emit({ sequence: 0, type, data, taskId, createdAt: new Date().toISOString() }); return; }
     const canonical = this.store.schemaVersion >= 5 && ['task.started', 'task.completed', 'task.stopped', 'approval.changed', 'message.completed'].includes(type);
-    const event = (canonical ? this.store.lastEvent(type, taskId) : undefined) ?? this.store.event(type, data, taskId); this.emit(event);
-    if (this.automation && !/^(?:hook\.|automation\.|draft\.|schedule\.)/.test(type)) void this.automation.onEvent(event).catch(error => this.recordAutomationFault(error));
+    const event = (canonical ? this.store.lastEvent(type, taskId) : undefined) ?? this.store.event(type, data, taskId); this.notify(event);
+  }
+  private notify(event: WorkspaceEvent): void {
+    this.emit(event);
+    if (this.automation && !/^(?:hook\.|automation\.|draft\.|schedule\.)/.test(event.type)) void this.automation.onEvent(event).catch(error => this.recordAutomationFault(error));
+  }
+  private notifyCommitted(event: WorkspaceEvent): void {
+    try { this.notify(event); }
+    catch {
+      // State and event are authoritative. Close admission so a retry cannot
+      // repeat the committed mutation after a failed renderer notification.
+      this.closing = true;
+      clearInterval(this.automationTimer);
+      this.orchestrator.beginShutdown();
+      // close sets admission/abort synchronously; ordinary shutdown still
+      // drains these operations before closing SQLite. Observe this promise.
+      void this.automation?.close().catch(error => this.recordAutomationFault(error));
+      for (const { abort } of this.running.values()) abort.abort();
+      throw new Error('The mutation committed, but event delivery failed.');
+    }
   }
   private recordAutomationFault(error: unknown): void {
     if (this.closing) return;
@@ -225,14 +243,15 @@ export class RuntimeService {
         const project = this.store.project(p.projectId); if (!project) throw new Error('Project not found.');
         if (p.name === undefined && p.hidden === undefined) throw new Error('Choose a name or visibility change.');
         const updated: Project = { ...project, ...(p.name !== undefined ? { name: p.name } : {}), ...(p.hidden !== undefined ? { hidden: p.hidden } : {}), updatedAt: new Date().toISOString() };
-        this.store.saveProject(updated); this.publish('projects.changed', { projectId: updated.id }); return updated;
+        const committed = this.store.transactionWithEvent(() => this.store.saveProject(updated), 'projects.changed', { projectId: updated.id });
+        this.notifyCommitted(committed.event); return committed.value;
       }
       case 'workspace.preferences.save': {
         this.store.requireProjects(); const p = params as Partial<WorkspacePreferences>;
         if (p.profileId && !this.store.profile(p.profileId)) throw new Error('Select an existing model profile.');
         for (const id of p.collapsedProjectIds ?? []) if (id !== 'none' && !this.store.project(id)) throw new Error('A collapsed project no longer exists.');
-        const saved = this.store.savePreferences({ ...this.store.preferences(), ...p, ...(p.collapsedProjectIds ? { collapsedProjectIds: [...new Set(p.collapsedProjectIds)] } : {}) });
-        this.publish('preferences.changed', {}); return saved;
+        const committed = this.store.transactionWithEvent(() => this.store.savePreferences({ ...this.store.preferences(), ...p, ...(p.collapsedProjectIds ? { collapsedProjectIds: [...new Set(p.collapsedProjectIds)] } : {}) }), 'preferences.changed', {});
+        this.notifyCommitted(committed.event); return committed.value;
       }
       case 'task.start': return this.startTaskCoalesced(params as { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig });
       case 'usage.summary': return this.store.usageSummary(params as Parameters<Store['usageSummary']>[0]);

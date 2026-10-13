@@ -80,6 +80,13 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const exactTrend = await request('exact-trend', 'workspace.usageTrend', { groupBy: 'task', taskId, from: recordStamp, to: recordStamp.slice(0, -1) + '000000000Z' });
     expect(((exactTrend.result as ObjectValue).buckets as ObjectValue[])[0]!.requests).toBe(1);
     const shortFractionTrend = await request('short-fraction-trend', 'workspace.usageTrend', { groupBy: 'day', from: '2026-01-02T03:04:05.1Z', to: '2026-01-02T03:04:05.12Z' });
+    const schema = await request('schema', 'workspace.schema', {});
+    // The complete Node runtime admits orchestration; the development C# slice
+    // must advertise that deferred capability as unavailable, not grant it.
+    expect((schema.result as ObjectValue).coordinatedAvailable).toBe(kind === 'node');
+    const preferences = await request('preferences-save', 'workspace.preferences.save', { profileId: FAKE_PROFILE_ID, mode: 'chat', collapsedProjectIds: ['none', 'none'] });
+    const deniedPreferences = await request('preferences-missing', 'workspace.preferences.save', { collapsedProjectIds: ['17171717-0000-4000-8000-000000000099'] });
+    const deniedProject = await request('project-missing', 'project.update', { projectId: '17171717-0000-4000-8000-000000000099', hidden: true });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -113,6 +120,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         search: search.result, searchNext: searchNext.result, invalidSearch: invalidSearch.error, stillAlive: stillAlive.result,
         trends, invalidTrend: invalidTrend.error,
         exactTrend: exactTrend.result, shortFractionTrend: shortFractionTrend.result,
+        schema: Object.fromEntries(Object.entries(schema.result as ObjectValue).filter(([key]) => key !== 'coordinatedAvailable')), preferences: preferences.result, deniedPreferences: deniedPreferences.error, deniedProject: deniedProject.error,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });

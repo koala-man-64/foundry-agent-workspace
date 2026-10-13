@@ -35,10 +35,12 @@ async function handle(message) {
   if (method === 'demo.leak') { send({ jsonrpc: '2.0', id, error: { code: -32000, message: `rejected key ${credential}` } }); return; }
   if (method === 'demo.noise') {
     process.stdout.write('not json\n');
-    process.stderr.write('fixture diagnostics\r\n');
     send({ jsonrpc: '2.0', id, result: 'noisy' });
     return;
   }
+  // stdout/stderr are independent pipes. The driver requests this only after
+  // consuming noisy stdout, and observes stderr before sending its next frame.
+  if (method === 'demo.diagnostics') { process.stderr.write('fixture diagnostics\r\n'); return; }
   if (method === 'demo.oversized') {
     process.stdout.write(`${'x'.repeat(1024 * 1024 + 10)}\n`);
     send({ jsonrpc: '2.0', id, result: 'survived' });
