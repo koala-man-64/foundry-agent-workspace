@@ -45,7 +45,12 @@ public sealed partial class Store
                     {
                         var recorded = Convert.ToDouble(Scalar("SELECT COALESCE(SUM(CASE WHEN usage_known=1 THEN COALESCE(prompt_tokens,0)+COALESCE(completion_tokens,0) ELSE reserved END),0) FROM usage_records WHERE task_id=$p0", taskId), System.Globalization.CultureInfo.InvariantCulture);
                         var unrecorded = (double)task["usedTokens"]! - recorded;
-                        if (unrecorded > 0) SaveUnknownUsage(taskId, id().ToString(), unrecorded, Clock.Iso(now()));
+                        if (unrecorded > 0)
+                        {
+                            var recordId = id().ToString();
+                            var requestId = id().ToString();
+                            SaveUnknownUsage(taskId, requestId, unrecorded, Clock.Iso(now()), recordId);
+                        }
                     }
                     Event("task.interrupted", new Dictionary<string, object?> { ["reason"] = "Runtime restarted; partial response retained. Reserved usage retained conservatively." }, taskId);
                 }
@@ -69,7 +74,7 @@ public sealed partial class Store
         if (!Equals(previousStatus, task["status"])) Event("task.stopped", new Dictionary<string, object?> { ["status"] = task["status"], ["previousStatus"] = previousStatus }, (string)task["id"]!);
     }
 
-    private void SaveUnknownUsage(string taskId, string requestId, double amount, string timestamp) => Execute("INSERT INTO usage_records(id,task_id,request_id,reserved,prompt_tokens,completion_tokens,cache_read_tokens,cache_creation_tokens,usage_known,reason,created_at) VALUES($p0,$p1,$p2,$p3,NULL,NULL,NULL,NULL,0,'Runtime restarted before usage was recorded.',$p4)", id().ToString(), taskId, requestId, amount, timestamp);
+    private void SaveUnknownUsage(string taskId, string requestId, double amount, string timestamp, string? recordId = null) => Execute("INSERT INTO usage_records(id,task_id,request_id,reserved,prompt_tokens,completion_tokens,cache_read_tokens,cache_creation_tokens,usage_known,reason,created_at) VALUES($p0,$p1,$p2,$p3,NULL,NULL,NULL,NULL,0,'Runtime restarted before usage was recorded.',$p4)", recordId ?? id().ToString(), taskId, requestId, amount, timestamp);
     private void RecoverOrchestration()
     {
         var timestamp = Clock.Iso(now());
