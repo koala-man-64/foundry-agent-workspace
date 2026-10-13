@@ -1,0 +1,8678 @@
+[
+  {
+    "name": "estimateContext:0",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1039
+    }
+  },
+  {
+    "name": "reserveRequest:1",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1038
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1055
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:2",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1038
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:3",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1055
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:4",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1039
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1039
+    }
+  },
+  {
+    "name": "reserveRequest:5",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1056
+    },
+    "expected": {
+      "value": 1039
+    }
+  },
+  {
+    "name": "estimateRequest:6",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1040
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1039
+    }
+  },
+  {
+    "name": "reserveRequest:7",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1057
+    },
+    "expected": {
+      "value": 1039
+    }
+  },
+  {
+    "name": "estimateContext:8",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1072
+    }
+  },
+  {
+    "name": "reserveRequest:9",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1071
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1088
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:10",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1071
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:11",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1088
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:12",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1072
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1072
+    }
+  },
+  {
+    "name": "reserveRequest:13",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1089
+    },
+    "expected": {
+      "value": 1072
+    }
+  },
+  {
+    "name": "estimateRequest:14",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1073
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1072
+    }
+  },
+  {
+    "name": "reserveRequest:15",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1090
+    },
+    "expected": {
+      "value": 1072
+    }
+  },
+  {
+    "name": "estimateContext:16",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1085
+    }
+  },
+  {
+    "name": "reserveRequest:17",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1084
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1101
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:18",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1084
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:19",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1101
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:20",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1085
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1085
+    }
+  },
+  {
+    "name": "reserveRequest:21",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1102
+    },
+    "expected": {
+      "value": 1085
+    }
+  },
+  {
+    "name": "estimateRequest:22",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1086
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1085
+    }
+  },
+  {
+    "name": "reserveRequest:23",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀é文件\ud800"
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1103
+    },
+    "expected": {
+      "value": 1085
+    }
+  },
+  {
+    "name": "estimateContext:24",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1050
+    }
+  },
+  {
+    "name": "reserveRequest:25",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1049
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1066
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:26",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1049
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:27",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1066
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:28",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1050
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1050
+    }
+  },
+  {
+    "name": "reserveRequest:29",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1067
+    },
+    "expected": {
+      "value": 1050
+    }
+  },
+  {
+    "name": "estimateRequest:30",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1051
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1050
+    }
+  },
+  {
+    "name": "reserveRequest:31",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1068
+    },
+    "expected": {
+      "value": 1050
+    }
+  },
+  {
+    "name": "estimateContext:32",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1052
+    }
+  },
+  {
+    "name": "reserveRequest:33",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1051
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1068
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:34",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1051
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:35",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1068
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:36",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1052
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1052
+    }
+  },
+  {
+    "name": "reserveRequest:37",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1069
+    },
+    "expected": {
+      "value": 1052
+    }
+  },
+  {
+    "name": "estimateRequest:38",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1053
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1052
+    }
+  },
+  {
+    "name": "reserveRequest:39",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": null,
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1070
+    },
+    "expected": {
+      "value": 1052
+    }
+  },
+  {
+    "name": "estimateContext:40",
+    "operation": "estimateContext",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1292
+    }
+  },
+  {
+    "name": "reserveRequest:41",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1291
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1308
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "estimateRequest:42",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1291
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "error": "Conservative context limit reached. Compact this task from its Usage panel or create a new task."
+    }
+  },
+  {
+    "name": "reserveRequest:43",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1308
+    },
+    "expected": {
+      "error": "Insufficient task budget for the conservative request reservation."
+    }
+  },
+  {
+    "name": "estimateRequest:44",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1292
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1292
+    }
+  },
+  {
+    "name": "reserveRequest:45",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1309
+    },
+    "expected": {
+      "value": 1292
+    }
+  },
+  {
+    "name": "estimateRequest:46",
+    "operation": "estimateRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1293
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "expected": {
+      "value": 1292
+    }
+  },
+  {
+    "name": "reserveRequest:47",
+    "operation": "reserveRequest",
+    "value": {
+      "messages": [],
+      "tools": [
+        {
+          "name": "fixture",
+          "inputSchema": {
+            "1": false,
+            "2": true
+          },
+          "description": "fixture"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "opaque": [
+            1,
+            null,
+            "keep"
+          ],
+          "future": true
+        }
+      },
+      "toolResults": [
+        {
+          "id": "fixture",
+          "name": "fixture",
+          "content": "done",
+          "isError": false
+        }
+      ],
+      "profile": {
+        "outputLimit": 512,
+        "contextLimit": 1000000
+      },
+      "credential": "fixture-not-in-estimate"
+    },
+    "task": {
+      "usedTokens": 17,
+      "tokenBudget": 1310
+    },
+    "expected": {
+      "value": 1292
+    }
+  },
+  {
+    "name": "measuredUsage:48",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:49",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:50",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:51",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:52",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:53",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:54",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:55",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:56",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:57",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:58",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:59",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:60",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:61",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:62",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:63",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:64",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:65",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:66",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:67",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:68",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:69",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": null,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:70",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:71",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:72",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:73",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:74",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:75",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:76",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:77",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:78",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:79",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:80",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": "10",
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:81",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:82",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:83",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:84",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:85",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:86",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:87",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:88",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:89",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:90",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:91",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": true,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:92",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:93",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:94",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:95",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:96",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:97",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:98",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:99",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:100",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:101",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:102",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": -1,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:103",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:104",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:105",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:106",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:107",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:108",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:109",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:110",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:111",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 1
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:112",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 9007199254740991
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:113",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:114",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:115",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:116",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:117",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:118",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:119",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:120",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:121",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:122",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 1
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:123",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 0,
+        "outputTokens": 9007199254740991
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:124",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:125",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:126",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:127",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:128",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:129",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:130",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:131",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:132",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:133",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:134",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:135",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 0.5,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:136",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:137",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:138",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:139",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:140",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:141",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 1,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:142",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 1,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:143",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:144",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 1,
+        "outputTokens": 1
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:145",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:146",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 1,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:147",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:148",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:149",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:150",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:151",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:152",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 9007199254740991,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:153",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 9007199254740991,
+        "outputTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:154",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:155",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:156",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:157",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740991,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:158",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:159",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": null
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:160",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": "10"
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:161",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": true
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:162",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": -1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:163",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:164",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 0
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:165",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 0.5
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:166",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 1
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:167",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 9007199254740991
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:168",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 9007199254740992,
+      "outputTokens": 9007199254740992
+    },
+    "expected": {
+      "value": null
+    }
+  },
+  {
+    "name": "measuredUsage:169",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:170",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:171",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:172",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:173",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:174",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:175",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:176",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:177",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:178",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:179",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:180",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:181",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:182",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:183",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:184",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:185",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:186",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:187",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:188",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:189",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:190",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:191",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:192",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:193",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:194",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:195",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:196",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:197",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:198",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:199",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:200",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:201",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:202",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:203",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:204",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:205",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:206",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:207",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:208",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:209",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:210",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:211",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:212",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:213",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:214",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:215",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:216",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:217",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:218",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:219",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:220",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:221",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:222",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:223",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:224",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:225",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:226",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:227",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:228",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": null,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:229",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:230",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:231",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:232",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:233",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:234",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:235",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:236",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:237",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:238",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:239",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:240",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:241",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:242",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:243",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:244",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:245",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:246",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:247",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:248",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:249",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:250",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:251",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:252",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:253",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:254",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:255",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:256",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:257",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:258",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": -1,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:259",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:260",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:261",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:262",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:263",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:264",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:265",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:266",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:267",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:268",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:269",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:270",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:271",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:272",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:273",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:274",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:275",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:276",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:277",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:278",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:279",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:280",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:281",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:282",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:283",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:284",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:285",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:286",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:287",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:288",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:289",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:290",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:291",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:292",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:293",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:294",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:295",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:296",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:297",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:298",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:299",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:300",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:301",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:302",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:303",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:304",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:305",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:306",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:307",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:308",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:309",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:310",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:311",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:312",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:313",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:314",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:315",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:316",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:317",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:318",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 0.5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:319",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:320",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:321",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:322",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:323",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:324",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:325",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:326",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:327",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:328",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:329",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:330",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:331",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:332",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:333",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:334",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:335",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:336",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:337",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:338",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:339",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:340",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:341",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:342",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:343",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:344",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:345",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:346",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:347",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:348",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 2,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:349",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:350",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:351",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:352",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:353",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:354",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:355",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:356",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:357",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:358",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:359",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:360",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:361",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:362",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:363",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:364",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:365",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:366",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:367",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:368",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:369",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:370",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:371",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:372",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:373",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:374",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:375",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:376",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:377",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:378",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 5,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:379",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:380",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:381",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:382",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:383",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:384",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:385",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:386",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:387",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:388",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:389",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:390",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:391",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:392",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:393",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:394",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:395",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:396",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:397",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:398",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:399",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:400",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:401",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:402",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:403",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:404",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:405",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:406",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:407",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:408",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 10,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheReadTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:409",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:410",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:411",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:412",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:413",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:414",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:415",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:416",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:417",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:418",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:419",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:420",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:421",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:422",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:423",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:424",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:425",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:426",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:427",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:428",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:429",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:430",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:431",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:432",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:433",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:434",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:435",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:436",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:437",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:438",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": 11,
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:439",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:440",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:441",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:442",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": null,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:443",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": null,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:444",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": null,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:445",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:446",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:447",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": -1,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:448",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:449",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:450",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:451",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:452",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:453",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 0.5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:454",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:455",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:456",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 2,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 2
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:457",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:458",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:459",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 5,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:460",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:461",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:462",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 10,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "cacheCreationTokens": 10
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:463",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:464",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:465",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": 11,
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:466",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 0
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 0
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:467",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 5
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "reasoningTokens": 5
+      }
+    }
+  },
+  {
+    "name": "measuredUsage:468",
+    "operation": "measuredUsage",
+    "value": {
+      "type": "usage",
+      "inputTokens": 10,
+      "outputTokens": 5,
+      "cacheReadTokens": "3",
+      "cacheCreationTokens": "3",
+      "reasoningTokens": 6
+    },
+    "expected": {
+      "value": {
+        "type": "usage",
+        "inputTokens": 10,
+        "outputTokens": 5
+      }
+    }
+  }
+]
