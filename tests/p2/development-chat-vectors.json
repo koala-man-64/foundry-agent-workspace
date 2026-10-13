@@ -1,0 +1,2768 @@
+{
+  "timestamp": "2026-01-02T03:04:05.678Z",
+  "steps": [
+    {
+      "method": "task.start",
+      "params": {
+        "requestId": "77777777-0000-4000-8000-999999999999",
+        "projectId": null,
+        "content": "Hello 😀",
+        "profileId": "00000000-0000-4000-8000-000000000001",
+        "mode": "chat",
+        "tokenBudget": 100000
+      },
+      "expected": {
+        "value": {
+          "id": "77777777-0000-4000-8000-000000000001",
+          "title": "Hello 😀",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "running",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 2613,
+          "mode": "chat",
+          "workspaceKind": "none"
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"running\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "running"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"streaming\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": null,
+            "outcome": "pending",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": null
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "wait",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001"
+      },
+      "expected": {
+        "value": null,
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.read",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001"
+      },
+      "expected": {
+        "value": {
+          "task": {
+            "id": "77777777-0000-4000-8000-000000000001",
+            "title": "Hello 😀",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "status": "idle",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "tokenBudget": 100000,
+            "usedTokens": 2613,
+            "mode": "chat",
+            "workspaceKind": "none"
+          },
+          "compactionCount": 0,
+          "pendingApprovals": 0,
+          "unknownOutcomes": 0
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.messages",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001",
+        "limit": 50
+      },
+      "expected": {
+        "value": {
+          "items": [
+            {
+              "message": {
+                "id": "77777777-0000-4000-8000-000000000004",
+                "taskId": "77777777-0000-4000-8000-000000000001",
+                "role": "user",
+                "content": "Hello 😀",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "status": "complete"
+              },
+              "ordinal": 1
+            },
+            {
+              "message": {
+                "id": "77777777-0000-4000-8000-000000000002",
+                "taskId": "77777777-0000-4000-8000-000000000001",
+                "role": "assistant",
+                "content": "Fake response: Hello 😀",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "status": "complete"
+              },
+              "ordinal": 2
+            }
+          ],
+          "nextBefore": null,
+          "through": 2
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.start",
+      "params": {
+        "requestId": "77777777-0000-4000-8000-999999999999",
+        "projectId": null,
+        "content": "Hello 😀",
+        "profileId": "00000000-0000-4000-8000-000000000001",
+        "mode": "chat",
+        "tokenBudget": 100000
+      },
+      "expected": {
+        "value": {
+          "id": "77777777-0000-4000-8000-000000000001",
+          "title": "Hello 😀",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 2613,
+          "mode": "chat",
+          "workspaceKind": "none"
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.start",
+      "params": {
+        "requestId": "77777777-0000-4000-8000-999999999999",
+        "projectId": null,
+        "content": "different",
+        "profileId": "00000000-0000-4000-8000-000000000001",
+        "mode": "chat",
+        "tokenBudget": 100000
+      },
+      "expected": {
+        "value": null,
+        "error": "This request ID belongs to different chat settings.",
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":2613,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.send",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001",
+        "content": "second"
+      },
+      "expected": {
+        "value": {
+          "accepted": true
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"running\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":5320,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "running"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          },
+          {
+            "_rowid": 3,
+            "id": "77777777-0000-4000-8000-000000000007",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000007\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 3
+          },
+          {
+            "_rowid": 4,
+            "id": "77777777-0000-4000-8000-000000000005",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000005\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"streaming\"}",
+            "ordinal": 4
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          },
+          {
+            "_rowid": 2,
+            "request_id": "77777777-0000-4000-8000-000000000006",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": null,
+            "outcome": "pending",
+            "reserved": 2707,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": null
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 9,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000007\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "wait",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001"
+      },
+      "expected": {
+        "value": null,
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":5320,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          },
+          {
+            "_rowid": 3,
+            "id": "77777777-0000-4000-8000-000000000007",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000007\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 3
+          },
+          {
+            "_rowid": 4,
+            "id": "77777777-0000-4000-8000-000000000005",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000005\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 4
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          },
+          {
+            "_rowid": 2,
+            "request_id": "77777777-0000-4000-8000-000000000006",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2707,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 9,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000007\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000006\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 11,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000005\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2707}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000006"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2707
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.cancel",
+      "params": {
+        "taskId": "77777777-0000-4000-8000-000000000001"
+      },
+      "expected": {
+        "value": {
+          "accepted": false
+        },
+        "error": null,
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":5320,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          },
+          {
+            "_rowid": 3,
+            "id": "77777777-0000-4000-8000-000000000007",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000007\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 3
+          },
+          {
+            "_rowid": 4,
+            "id": "77777777-0000-4000-8000-000000000005",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000005\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 4
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          },
+          {
+            "_rowid": 2,
+            "request_id": "77777777-0000-4000-8000-000000000006",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2707,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 9,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000007\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000006\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 11,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000005\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2707}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000006"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2707
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "task.start",
+      "params": {
+        "requestId": "77777777-0000-4000-8000-999999999998",
+        "projectId": null,
+        "content": "Hello 😀",
+        "profileId": "00000000-0000-4000-8000-000000000001",
+        "mode": "chat",
+        "tokenBudget": 1024
+      },
+      "expected": {
+        "value": null,
+        "error": "Insufficient task budget for the conservative request reservation.",
+        "tasks": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000001\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":100000,\"usedTokens\":5320,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000008",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000008\",\"title\":\"Hello 😀\",\"profileId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"idle\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"tokenBudget\":1024,\"usedTokens\":0,\"mode\":\"chat\",\"workspaceKind\":\"none\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "updated_at": "2026-01-02T03:04:05.678Z",
+            "archived_at": null,
+            "parent_task_id": null,
+            "project_path": null,
+            "project_id": null,
+            "mode": "chat",
+            "status": "idle"
+          }
+        ],
+        "messages": [
+          {
+            "_rowid": 1,
+            "id": "77777777-0000-4000-8000-000000000004",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000004\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 1
+          },
+          {
+            "_rowid": 2,
+            "id": "77777777-0000-4000-8000-000000000002",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000002\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: Hello 😀\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 2
+          },
+          {
+            "_rowid": 3,
+            "id": "77777777-0000-4000-8000-000000000007",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000007\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"user\",\"content\":\"second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 3
+          },
+          {
+            "_rowid": 4,
+            "id": "77777777-0000-4000-8000-000000000005",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"id\":\"77777777-0000-4000-8000-000000000005\",\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"role\":\"assistant\",\"content\":\"Fake response: second\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"status\":\"complete\"}",
+            "ordinal": 4
+          }
+        ],
+        "requests": [
+          {
+            "_rowid": 1,
+            "request_id": "77777777-0000-4000-8000-000000000003",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2613,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          },
+          {
+            "_rowid": 2,
+            "request_id": "77777777-0000-4000-8000-000000000006",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "root_task_id": "77777777-0000-4000-8000-000000000001",
+            "parent_task_id": null,
+            "task_title": "Hello 😀",
+            "root_task_title": "Hello 😀",
+            "role": null,
+            "purpose": "conversation",
+            "profile_id": "00000000-0000-4000-8000-000000000001",
+            "profile_name": "Offline demo",
+            "api_kind": "fake",
+            "deployment": "deterministic-fixture",
+            "effort": null,
+            "attribution_known": 1,
+            "reported_model": null,
+            "response_id": null,
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "attempted_at": "2026-01-02T03:04:05.678Z",
+            "finished_at": "2026-01-02T03:04:05.678Z",
+            "outcome": "completed",
+            "reserved": 2707,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "reasoning_tokens": null,
+            "usage_known": 0,
+            "reason": "Provider completed without reporting usage; the reservation is retained."
+          }
+        ],
+        "starts": [
+          {
+            "request_id": "77777777-0000-4000-8000-999999999999",
+            "input_hash": "4827679536864824841c78531b48233a6c691bce85c2bf9b7b548ef386a8054e",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "state": "complete",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "request_id": "77777777-0000-4000-8000-999999999998",
+            "input_hash": "b906eb7ce5949b3855fa37ac4016042089017c5ee2bcdcaa80772ef0e70e8314",
+            "task_id": "77777777-0000-4000-8000-000000000008",
+            "state": "failed",
+            "created_at": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "events": [
+          {
+            "sequence": 1,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000001\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 4,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000004\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000003\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 6,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000002\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2613}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"running\",\"previousStatus\":\"idle\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 9,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000007\",\"role\":\"user\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"requestId\":\"77777777-0000-4000-8000-000000000006\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 11,
+            "type": "message.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"messageId\":\"77777777-0000-4000-8000-000000000005\",\"role\":\"assistant\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "task_id": "77777777-0000-4000-8000-000000000001",
+            "data": "{\"status\":\"idle\",\"previousStatus\":\"running\",\"usageKnown\":false,\"chargedTokens\":2707}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000001"
+          },
+          {
+            "sequence": 13,
+            "type": "task.created",
+            "task_id": "77777777-0000-4000-8000-000000000008",
+            "data": "{\"taskId\":\"77777777-0000-4000-8000-000000000008\",\"mode\":\"chat\"}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000008"
+          },
+          {
+            "sequence": 14,
+            "type": "tasks.changed",
+            "task_id": "77777777-0000-4000-8000-000000000008",
+            "data": "{}",
+            "created_at": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime",
+            "root_task_id": "77777777-0000-4000-8000-000000000008"
+          }
+        ],
+        "notifications": [
+          {
+            "sequence": 2,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 3,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 5,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000003"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 7,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2613
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 8,
+            "type": "task.started",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "running",
+              "previousStatus": "idle"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 0,
+            "type": "task.progress",
+            "data": {
+              "receivedCharacters": 12
+            },
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          },
+          {
+            "sequence": 10,
+            "type": "usage.changed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "requestId": "77777777-0000-4000-8000-000000000006"
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 12,
+            "type": "task.completed",
+            "taskId": "77777777-0000-4000-8000-000000000001",
+            "rootTaskId": "77777777-0000-4000-8000-000000000001",
+            "data": {
+              "status": "idle",
+              "previousStatus": "running",
+              "usageKnown": false,
+              "chargedTokens": 2707
+            },
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          },
+          {
+            "sequence": 14,
+            "type": "tasks.changed",
+            "taskId": "77777777-0000-4000-8000-000000000008",
+            "rootTaskId": "77777777-0000-4000-8000-000000000008",
+            "data": {},
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "version": 1,
+            "source": "runtime"
+          }
+        ]
+      }
+    }
+  ]
+}

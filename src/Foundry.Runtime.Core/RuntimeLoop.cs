@@ -83,6 +83,14 @@ public sealed class RuntimeLoop : SynchronizationContext, IAsyncDisposable
         });
     }
 
+    // Timer completion is state-free; awaiting callers capture the owner context.
+    // The caller must retain, cancel and await its timer task during shutdown.
+    internal Task Delay(TimeSpan duration, CancellationToken cancellationToken)
+    {
+        AssertCurrent();
+        return Task.Delay(duration, cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (IsOwnerThread) throw new InvalidOperationException("The owner cannot join itself.");
