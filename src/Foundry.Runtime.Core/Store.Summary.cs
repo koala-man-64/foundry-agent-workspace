@@ -38,7 +38,15 @@ public sealed partial class Store
                 {
                     item["kind"] = "unavailable"; item["unavailableReason"] = "Projects on network shares are not supported.";
                 }
-                else if (!Directory.Exists(path) || !FinalPath.TryResolve(path, out var resolved) || !StringComparer.Ordinal.Equals(EcmaScriptCase.ToLower(resolved), EcmaScriptCase.ToLower(path)))
+                else try
+                {
+                    using var folder = RepositoryFolderLease.Open(loop, path);
+                    if (!StringComparer.Ordinal.Equals(EcmaScriptCase.ToLower(folder.Path), EcmaScriptCase.ToLower(path)))
+                    {
+                        item["kind"] = "unavailable"; item["unavailableReason"] = "Folder is unavailable.";
+                    }
+                }
+                catch (Exception error) when (error is IOException or ArgumentException or WorkspaceReadException)
                 {
                     item["kind"] = "unavailable"; item["unavailableReason"] = "Folder is unavailable.";
                 }
