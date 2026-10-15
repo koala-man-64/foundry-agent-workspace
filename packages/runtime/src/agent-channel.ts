@@ -1,16 +1,17 @@
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { ChannelMessageInput, ChannelTools, CHANNEL_LIMITS, isGitTask, type AgentMessage, type ChannelPage, type ChannelParticipant, type ChannelView, type ProviderRequest, type Task, type ToolCall } from '../../protocol/src/index';
 import type { Store } from './store';
 import type { Redactor } from './redaction';
 import { isNetworkOrDevicePath } from './network-path';
+import { resolveGitAdmission, resolveLocalPath, type GitAdmissionIdentity } from './repository';
 
 interface MessageRow { sequence: number; task_id: string; data: string; created_at: string }
 interface MessageData { project: string; callId: string; senderTitle: string; actor: 'agent' | 'user'; recipientTaskId: string | null; content: string }
 interface MessageIndex { sequence: number; sender: string; recipient: string | null; actor: 'agent' | 'user'; createdAt: string }
 const MESSAGE = 'channel.message';
 const RECEIPT = 'channel.received';
+type ChannelIdentity = GitAdmissionIdentity;
 
 /** Runtime-only channel. Existing events retain messages and model-delivery cursors; no schema upgrade. */
 export class AgentChannel {
@@ -40,26 +41,42 @@ export class AgentChannel {
   }
   private row(sequence: number): MessageRow { return this.store.db.prepare('SELECT sequence, task_id, data, created_at FROM events WHERE sequence = ?').get(sequence) as MessageRow; }
 
+  /** Called only by trusted task admission, before worktree creation or provider dispatch. */
+  prepareAdmission(projectPath: string): ChannelIdentity {
+    const identity = resolveGitAdmission(projectPath);
+    if (!identity) throw new Error('Project channel requires an available local Git project.');
+    return identity;
+  }
+  admit(task: Task, identity: ChannelIdentity): void {
+    if (!isGitTask(task)) return;
+    const current = this.prepareAdmission(task.projectPath);
+    if (JSON.stringify(current) !== JSON.stringify(identity)) throw new Error('Project channel identity changed during admission.');
+    const existing = this.binding(task.id);
+    if (existing) { if (JSON.stringify(existing) !== JSON.stringify(identity)) throw new Error('Project channel identity changed during admission.'); return; }
+    const intent = this.store.intent('channel.identity', { taskId: task.id, identity });
+    this.store.finishIntent(intent, 'complete');
+  }
+  private binding(taskId: string): ChannelIdentity | undefined {
+    const row = this.store.db.prepare("SELECT data FROM intents WHERE kind = 'channel.identity' AND state = 'complete' AND json_extract(data, '$.taskId') = ? ORDER BY rowid LIMIT 1").get(taskId) as { data: string } | undefined;
+    return row && (JSON.parse(row.data) as { identity: ChannelIdentity }).identity;
+  }
+  assertAdmission(task: Task): void { this.project(task); }
   private project(task: Task): string {
     if (!isGitTask(task)) throw new Error('Project channel requires a Git worktree.');
-    // Task creation validates the root. Resolve aliases for older tasks as well; never accept a model-supplied project.
     if (isNetworkOrDevicePath(task.projectPath)) throw new Error('Projects on network shares are not supported.');
-    let canonical = realpathSync.native(task.projectPath);
-    while (!existsSync(join(canonical, '.git'))) {
-      const parent = dirname(canonical);
-      if (parent === canonical) throw new Error('Project channel requires an available local Git project.');
-      canonical = parent;
+    const binding = this.binding(task.id) ?? (task.parentTaskId && task.rootTaskId ? this.binding(task.rootTaskId) : undefined);
+    const savedProject = task.projectId && this.store.schemaVersion >= 3 ? this.store.project(task.projectId) : undefined;
+    const approved = binding?.path ?? savedProject?.path ?? task.projectPath;
+    resolveLocalPath(task.projectPath, approved);
+    const current = this.prepareAdmission(task.projectPath);
+    if (binding) {
+      if (JSON.stringify(current) !== JSON.stringify(binding)) throw new Error('Project channel identity changed.');
+    } else {
+      // Legacy physical roots retain access; redirected metadata or aliases need explicit trusted admission.
+      const normalize = (value: string) => process.platform === 'win32' ? value.toLowerCase() : value;
+      if (normalize(current.common) !== normalize(join(current.root, '.git'))) throw new Error('Project channel requires an approved local identity.');
     }
-    const metadata = (file: string): string => { if (statSync(file).size > 16384) throw new Error('Invalid Git project metadata.'); return readFileSync(file, 'utf8').trim(); };
-    let gitDirectory = join(canonical, '.git');
-    if (statSync(gitDirectory).isFile()) {
-      const gitdir = /^gitdir: (.+)$/.exec(metadata(gitDirectory));
-      if (!gitdir) throw new Error('Invalid Git project metadata.');
-      gitDirectory = resolve(canonical, gitdir[1]!);
-    }
-    const common = join(gitDirectory, 'commondir');
-    const identity = realpathSync.native(existsSync(common) ? resolve(gitDirectory, metadata(common)) : gitDirectory);
-    return createHash('sha256').update(process.platform === 'win32' ? identity.toLowerCase() : identity).digest('hex');
+    return createHash('sha256').update(process.platform === 'win32' ? current.common.toLowerCase() : current.common).digest('hex');
   }
   private available(task: Task): boolean {
     if (!isGitTask(task)) return false;

@@ -1,6 +1,7 @@
 import { execFile as execFileCallback } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { constants as fsConstants, promises as fs } from 'node:fs';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { isNetworkOrDevicePath } from './network-path';
 import { gitEnvironment } from './git-environment';
@@ -18,6 +19,89 @@ const MAX_PATHS = 5_000;
 const EMPTY_HOOKS_DIRECTORY = '.empty-git-hooks';
 const SECRET_NAME = /^(?:\.env(?:\..*)?|\.envrc|\.npmrc|\.pypirc|\.netrc|\.pgpass|\.terraformrc|\.(?:ssh|aws|azure|kube|docker|gnupg)|id_(?:rsa|dsa|ecdsa|ed25519)|credentials?(?:\..*)?|secrets?(?:\..*)?|.*\.(?:pem|key|p12|pfx))$/i;
 const RESERVED_WINDOWS_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+
+/** Inspect link metadata before following it; a local alias never grants network authority. */
+export function resolveLocalPath(candidate: string, approvedPath?: string): string {
+  if (isNetworkOrDevicePath(candidate)) throw new Error('Projects on network shares are not supported.');
+  if (!path.isAbsolute(candidate)) throw new Error('Repository root must be an absolute path.');
+  let absolute = path.resolve(candidate);
+  const visited = new Set<string>();
+  for (let hops = 0; hops <= 32; hops++) {
+    const root = path.parse(absolute).root;
+    const components = absolute.slice(root.length).split(path.sep).filter(Boolean);
+    let current = root; let redirected = false;
+    for (let index = -1; index < components.length; index++) {
+      if (index >= 0) current = path.join(current, components[index]!);
+      const stat = fsSync.lstatSync(current);
+      if (!stat.isSymbolicLink()) continue;
+      const target = fsSync.readlinkSync(current);
+      if (isNetworkOrDevicePath(target)) throw new Error('Projects on network shares are not supported.');
+      const key = process.platform === 'win32' ? current.toLowerCase() : current;
+      if (visited.has(key)) throw new Error('Repository alias contains a cycle.');
+      visited.add(key);
+      absolute = path.resolve(path.dirname(current), target, ...components.slice(index + 1));
+      redirected = true; break;
+    }
+    if (redirected) continue;
+    const canonical = fsSync.realpathSync.native(absolute);
+    if (isNetworkOrDevicePath(canonical)) throw new Error('Projects on network shares are not supported.');
+    const key = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+    if (approvedPath && key(canonical) !== key(approvedPath)) throw new Error('The saved folder now resolves to a different location.');
+    return canonical;
+  }
+  throw new Error('Repository alias depth exceeded.');
+}
+
+export interface GitAdmissionIdentity { path: string; root: string; common: string }
+
+/** Inspect Git pointers without invoking Git or following raw network/device targets. */
+export function resolveGitAdmission(projectPath: string): GitAdmissionIdentity | undefined {
+  const canonicalPath = resolveLocalPath(projectPath);
+  let root = canonicalPath;
+  const localExists = (file: string): boolean => {
+    try { resolveLocalPath(file); return true; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; }
+  };
+  while (!localExists(path.join(root, '.git'))) {
+    const parent = path.dirname(root);
+    if (parent === root) return undefined;
+    root = parent;
+  }
+  const metadata = (file: string): string => {
+    const safe = resolveLocalPath(file, file);
+    if (fsSync.statSync(safe).size > 16384) throw new Error('Invalid Git project metadata.');
+    return fsSync.readFileSync(safe, 'utf8').trim();
+  };
+  let gitDirectory = resolveLocalPath(path.join(root, '.git'));
+  if (fsSync.statSync(gitDirectory).isFile()) {
+    const gitdir = /^gitdir: (.+)$/.exec(metadata(gitDirectory));
+    if (!gitdir) throw new Error('Invalid Git project metadata.');
+    if (isNetworkOrDevicePath(gitdir[1]!)) throw new Error('Projects on network shares are not supported.');
+    gitDirectory = resolveLocalPath(path.resolve(root, gitdir[1]!));
+  }
+  if (!fsSync.statSync(gitDirectory).isDirectory()) throw new Error('Invalid Git project metadata.');
+  const common = path.join(gitDirectory, 'commondir');
+  const pointer = localExists(common) ? metadata(common) : undefined;
+  if (pointer && isNetworkOrDevicePath(pointer)) throw new Error('Projects on network shares are not supported.');
+  return { path: canonicalPath, root, common: resolveLocalPath(pointer ? path.resolve(gitDirectory, pointer) : gitDirectory) };
+}
+
+/** Point-in-time revalidation across awaits; this does not pin filesystem objects. */
+export function assertGitAdmission(projectPath: string, expected: GitAdmissionIdentity | undefined): void {
+  if (JSON.stringify(resolveGitAdmission(projectPath)) !== JSON.stringify(expected)) throw new Error('Project channel identity changed during admission.');
+}
+
+/** Paths within an admitted root cannot redirect individual file operations. */
+export function assertNoReparseDirectories(candidate: string): void {
+  if (isNetworkOrDevicePath(candidate)) throw new Error('Projects on network shares are not supported.');
+  if (!path.isAbsolute(candidate)) throw new Error('Repository root must be an absolute path.');
+  const absolute = path.resolve(candidate); const root = path.parse(absolute).root;
+  let current = root;
+  for (const component of ['', ...absolute.slice(root.length).split(path.sep).filter(Boolean)]) {
+    if (component) current = path.join(current, component);
+    if (fsSync.lstatSync(current).isSymbolicLink()) throw new Error('Symbolic links cannot be accessed.');
+  }
+}
 
 type GitOutput = { stdout: string; truncated: boolean; exitCode: number };
 export interface PreparedEdit {
@@ -54,6 +138,9 @@ export class RepositoryService {
 
   /** Classify a saved folder without creating a worktree or altering Git state. */
   public async isGitWorkingTree(root: string): Promise<boolean> {
+    // A security refusal must not be swallowed as ordinary folder classification.
+    const identity = resolveGitAdmission(root);
+    if (!identity) return false;
     try {
       const selected = await this.requireRepository(root);
       const top = (await this.git(selected, ['rev-parse', '--show-toplevel'])).stdout.trim();
@@ -61,6 +148,7 @@ export class RepositoryService {
       const key = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
       return key(selected) === key(canonicalTop);
     } catch { return false; }
+    finally { assertGitAdmission(root, identity); }
   }
 
   public async createTaskWorktree(
@@ -455,11 +543,17 @@ export class RepositoryService {
   }
 
   private async requireRepository(candidate: string): Promise<string> {
+    const identity = resolveGitAdmission(candidate);
     const root = await this.requireRoot(candidate);
+    assertGitAdmission(candidate, identity);
     await this.assertGitOutside(root);
+    assertGitAdmission(candidate, identity);
     await this.rejectCoreWorktree(root);
+    assertGitAdmission(candidate, identity);
     const inside = (await this.git(root, ['rev-parse', '--is-inside-work-tree'])).stdout.trim();
+    assertGitAdmission(candidate, identity);
     const bare = (await this.git(root, ['rev-parse', '--is-bare-repository'])).stdout.trim();
+    assertGitAdmission(candidate, identity);
     if (inside !== 'true' || bare !== 'false') throw new Error('Path must be a non-bare Git working tree.');
     return root;
   }
@@ -467,7 +561,7 @@ export class RepositoryService {
   private async requireRoot(candidate: string): Promise<string> {
     if (!candidate || !path.isAbsolute(candidate)) throw new Error('Repository root must be an absolute path.');
     if (isNetworkOrDevicePath(candidate)) throw new Error('Projects on network shares are not supported.');
-    const root = await fs.realpath(candidate);
+    const root = resolveLocalPath(candidate);
     const stat = await fs.stat(root);
     if (!stat.isDirectory() || path.basename(root).toLowerCase() === '.git') throw new Error('Root must be a working directory.');
     return root;
@@ -477,6 +571,7 @@ export class RepositoryService {
     this.validateRelativePath(relativePath, allowDirectory);
     const candidate = path.resolve(root, relativePath || '.');
     if (!this.isInside(root, candidate)) throw new Error('Path escapes the repository root.');
+    assertNoReparseDirectories(path.dirname(candidate));
     const before = await fs.lstat(candidate);
     if (before.isSymbolicLink()) throw new Error('Symbolic links cannot be accessed.');
     const resolved = await fs.realpath(candidate);
@@ -591,10 +686,13 @@ export class RepositoryService {
   }
 
   private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false, options: { timeoutMs?: number; allowCredentialHelper?: boolean } = {}): Promise<GitOutput> {
+    const identity = resolveGitAdmission(cwd);
+    if (!identity) throw new Error('Project channel requires an available local Git project.');
     const hooksPath = path.join(path.resolve(this.worktreeBase), EMPTY_HOOKS_DIRECTORY);
     const env = gitEnvironment();
     try {
       const executable = await this.getGitExecutable(cwd);
+      assertGitAdmission(cwd, identity);
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', ...(options.allowCredentialHelper ? [] : ['-c', 'credential.helper=']), ...args], {
         cwd,
         env,
@@ -602,6 +700,7 @@ export class RepositoryService {
         maxBuffer: GIT_MAX_OUTPUT_BYTES,
         windowsHide: true,
       });
+      assertGitAdmission(cwd, identity);
       return { stdout: result.stdout, truncated: false, exitCode: 0 };
     } catch (error: unknown) {
       const value = error as { code?: string; stdout?: string | Buffer; stderr?: string | Buffer; message?: string };

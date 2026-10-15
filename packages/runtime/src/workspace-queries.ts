@@ -6,6 +6,7 @@ import { WorkspaceRpc, type ActionItem, type ActionPage, type ApprovalContentChu
 import type { Redactor } from './redaction';
 import { canonicalPath, type Store } from './store';
 import { isNetworkOrDevicePath } from './network-path';
+import { resolveLocalPath } from './repository';
 
 const PAGE_BYTES = 256 * 1024;
 const PAGE_ITEMS_BYTES = PAGE_BYTES - 1024; // Leave room for cursors, counts, and response metadata.
@@ -111,6 +112,7 @@ export class WorkspaceQueries {
       // A project saved before network paths were refused is reported without being probed.
       if (isNetworkOrDevicePath(project.path)) project = { ...project, kind: 'unavailable', unavailableReason: 'Projects on network shares are not supported.' };
       else try {
+        resolveLocalPath(project.path, project.path);
         if (!statSync(project.path).isDirectory()) throw new Error('Folder unavailable.');
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
         if (!same) throw new Error('Folder now resolves to a different location.');

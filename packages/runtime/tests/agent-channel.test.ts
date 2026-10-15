@@ -12,7 +12,13 @@ import { OrchestrationRecords } from '../src/orchestration-records';
 describe('runtime-owned project channel', () => {
   let directory: string, project: string, store: Store, channel: AgentChannel, redactor: Redactor;
   let sender: GitTask, recipient: GitTask, teammate: GitTask, outsider: GitTask;
-  const task = (projectPath: string, title: string): GitTask => store.saveTask({ id: randomUUID(), title, projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'running', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', tokenBudget: 100000, usedTokens: 0, mode: 'coding' }) as GitTask;
+  const task = (projectPath: string, title: string): GitTask => {
+    const identity = channel.prepareAdmission(projectPath);
+    return store.transaction(() => {
+      const task = store.saveTask({ id: randomUUID(), title, projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), profileId: FAKE_PROFILE_ID, status: 'running', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', tokenBudget: 100000, usedTokens: 0, mode: 'coding' }) as GitTask;
+      channel.admit(task, identity); return task;
+    });
+  };
   const request = (): ProviderRequest => ({ profile: store.profile(FAKE_PROFILE_ID)!, signal: new AbortController().signal, messages: [{ role: 'system', content: 'Trusted system instructions' }, { role: 'user', content: 'Continue my task' }] });
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'foundry-channel-')); project = join(directory, 'project');
@@ -57,6 +63,27 @@ describe('runtime-owned project channel', () => {
     const peer = task(linked, 'Linked worktree');
     channel.send(sender.id, 'across-worktrees', { recipientTaskId: peer.id, content: 'Shared local project' }, 'agent');
     expect(channel.view(peer.id).messages).toHaveLength(1); expect(channel.view(outsider.id).messages).toEqual([]);
+  });
+  it('refuses a replaced approved alias before exposing another project channel, including after restart', () => {
+    const alias = join(directory, 'alias'); symlinkSync(project, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    const peer = task(alias, 'Approved alias');
+    channel.send(outsider.id, 'outsider-private', { content: 'Other project data' }, 'agent');
+    rmSync(alias); symlinkSync(join(directory, 'other'), alias, process.platform === 'win32' ? 'junction' : 'dir');
+    expect(() => channel.view(peer.id)).toThrow('different location');
+    store.close(); store = new Store(join(directory, 'state.db')); channel = new AgentChannel(store, redactor, () => {});
+    expect(() => channel.view(peer.id)).toThrow('different location');
+    expect(channel.view(sender.id).messages).toEqual([]);
+    rmSync(alias);
+  });
+  it('refuses changed Git common-directory metadata without rebinding the task', () => {
+    const linked = join(directory, 'linked'); const metadata = join(project, '.git', 'worktrees', 'linked');
+    mkdirSync(linked); mkdirSync(metadata, { recursive: true });
+    writeFileSync(join(linked, '.git'), `gitdir: ${metadata}\n`); writeFileSync(join(metadata, 'commondir'), '../..\n');
+    const peer = task(linked, 'Approved linked worktree');
+    channel.send(outsider.id, 'outsider-private', { content: 'Other project data' }, 'agent');
+    writeFileSync(join(metadata, 'commondir'), join(directory, 'other', '.git'));
+    expect(() => channel.view(peer.id)).toThrow('identity changed');
+    expect(() => channel.admit(peer, channel.prepareAdmission(linked))).toThrow('identity changed');
   });
   it('fences coordinated agents and resumes reads correctly after many unrelated retained events', () => {
     const root = store.saveTask({ ...sender, mode: 'coordinated', role: 'coordinator', rootTaskId: sender.id });

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { AutomationDraft, CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
 import { AutomationRpc, COORDINATED_MODE_ENABLED, isGitTask, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
-import { RepositoryService, RepositoryError } from './repository';
+import { RepositoryService, RepositoryError, resolveLocalPath, resolveGitAdmission, assertGitAdmission } from './repository';
 import { Redactor } from './redaction';
 import { Store, FAKE_PROFILE_ID, canonicalPath } from './store';
 import { CommandRunner } from './command-runner';
@@ -229,12 +229,15 @@ export class RuntimeService {
         if (!isAbsolute(raw)) throw new Error('Select an absolute folder path.');
         // Before canonicalPath or stat: touching a network path makes Windows authenticate to its server.
         if (isNetworkOrDevicePath(raw)) throw new Error('Projects on network shares are not supported.');
-        const path = canonicalPath(raw);
+        const path = resolveLocalPath(raw);
         if (isNetworkOrDevicePath(path)) throw new Error('Projects on network drives are not supported.');
         if (!statSync(path).isDirectory()) throw new Error('Select a folder.');
         const previous = this.store.projectByPath(path);
         if (previous) return previous;
+        const identity = resolveGitAdmission(path);
         const kind = await this.repositories.isGitWorkingTree(path) ? 'git' : 'folder';
+        resolveLocalPath(raw, path);
+        assertGitAdmission(path, identity);
         const project = this.store.projectByPath(path) ?? this.store.insertProject(path, kind);
         this.publish('projects.changed', { projectId: project.id }); return project;
       }
@@ -322,6 +325,7 @@ export class RuntimeService {
         const p = params as { title: string; projectPath: string; profileId: string; tokenBudget: number; mode: 'chat' | 'coding' | 'coordinated'; coordination?: CoordinationConfig };
         // Before canonicalPath or Git: touching a network path makes Windows authenticate to its server.
         if (isNetworkOrDevicePath(p.projectPath)) throw new Error('Projects on network shares are not supported.');
+        resolveLocalPath(p.projectPath);
         if (isNetworkOrDevicePath(canonicalPath(p.projectPath))) throw new Error('Projects on network drives are not supported.');
         const selected = this.store.profile(p.profileId);
         if (!selected) throw new Error('Select an existing model profile.');
@@ -336,6 +340,7 @@ export class RuntimeService {
         }
         if (p.mode === 'coding' && !this.profileReady(selected)) throw new Error('Probe tool and continuation capabilities before creating a coding task.');
         if (this.store.unknownIntents()) throw new Error('An earlier worktree creation has an unknown outcome. Inspect the retained worktree and database intent before creating another task.');
+        const channelIdentity = this.tools.channel.prepareAdmission(p.projectPath);
         const id = randomUUID(); const intent = this.store.intent('worktree.create', { taskId: id, projectPath: p.projectPath });
         try {
           const worktree = await this.repositories.createTaskWorktree(p.projectPath, id);
@@ -349,6 +354,7 @@ export class RuntimeService {
           const task: GitTask = { id, title: this.redactor.text(p.title), workspaceKind: 'git', ...(projectId ? { projectId } : {}), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) };
           this.store.transaction(() => {
             this.store.saveTask(task);
+            this.tools.channel.admit(task, channelIdentity);
             if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
             this.store.finishIntent(intent, 'complete');
           });
@@ -527,6 +533,7 @@ export class RuntimeService {
     if (isGitTask(task)) return task.worktreePath;
     if (task.workspaceKind === 'folder') {
       if (isNetworkOrDevicePath(task.projectPath)) throw new Error('Projects on network shares are not supported.');
+      resolveLocalPath(task.projectPath, task.projectPath);
       const same = process.platform === 'win32'
         ? canonicalPath(task.projectPath).toLowerCase() === task.projectPath.toLowerCase()
         : canonicalPath(task.projectPath) === task.projectPath;
@@ -555,6 +562,13 @@ export class RuntimeService {
       if (prior.state === 'failed') {
         const task = this.store.task(prior.taskId);
         if (this.store.detail(task.id).messages.some(message => message.role === 'user')) { this.store.finishTaskStart(p.requestId, 'complete'); return task; }
+        if (task.workspaceKind !== 'none') {
+          const project = task.projectId ? this.store.project(task.projectId) : undefined;
+          if (!project || project.id !== p.projectId || project.hidden) throw new Error('Project folder is unavailable or resolves to a different location.');
+          try { resolveLocalPath(project.path, project.path); resolveLocalPath(task.projectPath, project.path); }
+          catch { throw new Error('Project folder is unavailable or resolves to a different location.'); }
+          if (isGitTask(task)) this.tools.channel.assertAdmission(task);
+        }
         this.store.finishTaskStart(p.requestId, 'pending');
         try {
           if (task.mode === 'coordinated') await this.orchestrator.resume(task.id, p.content);
@@ -571,12 +585,16 @@ export class RuntimeService {
     if (project) {
       if (isNetworkOrDevicePath(project.path)) throw new Error('Projects on network shares are not supported.');
       try {
+        resolveLocalPath(project.path, project.path);
         if (!statSync(project.path).isDirectory()) throw new Error();
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
         if (!same) throw new Error();
       } catch { throw new Error('Project folder is unavailable or resolves to a different location.'); }
     }
+    const identity = project ? resolveGitAdmission(project.path) : undefined;
     const kind = project ? await this.repositories.isGitWorkingTree(project.path) ? 'git' : 'folder' : 'none';
+    if (project) assertGitAdmission(project.path, identity);
+    const channelIdentity = kind === 'git' ? this.tools.channel.prepareAdmission(project!.path) : undefined;
     if (kind !== 'git' && p.mode !== 'chat') throw new Error('Coding and coordination require a Git project.');
     if (p.mode !== 'coordinated' && p.coordination) throw new Error('Coordination settings apply only to coordinated tasks.');
     if (p.mode === 'coordinated') {
@@ -613,6 +631,7 @@ export class RuntimeService {
           : { ...base, mode: 'chat', workspaceKind: 'none' };
       this.store.transaction(() => {
         this.store.saveTask(task);
+        if (channelIdentity) this.tools.channel.admit(task, channelIdentity);
         if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
         if (intent) this.store.finishIntent(intent, 'complete');
       });
