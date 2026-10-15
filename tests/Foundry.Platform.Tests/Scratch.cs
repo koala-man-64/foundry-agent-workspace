@@ -14,6 +14,8 @@ namespace Foundry.Platform.Tests;
 
 internal static class Scratch
 {
+    private static readonly string[] StageMarkerNames = ["before-start-process.marker", "after-start-process.marker", "child-entry.marker"];
+
     public static string RepositoryRoot { get; } = FindRepositoryRoot();
 
     public static string PowerShell { get; } = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -103,6 +105,12 @@ internal static class Scratch
                 var file = new FileInfo(Path.Combine(directory, name));
                 return new { exists = file.Exists, bytes = file.Exists ? (long?)file.Length : null };
             }) }).ToArray(),
+            stageMarkers = StageMarkerNames
+                .Select(name => new { name, state = Observe(() =>
+                {
+                    var file = new FileInfo(Path.Combine(directory, name));
+                    return new { exists = file.Exists, bytes = file.Exists ? (long?)file.Length : null };
+                }) }).ToArray(),
             stdout = PeekOutput(job.StandardOutput),
             stderr = PeekOutput(job.StandardError)
         });
