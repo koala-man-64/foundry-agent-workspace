@@ -9,6 +9,127 @@ import { RpcMethods } from '../../packages/protocol/src/index';
 import { AgentChannel } from '../../packages/runtime/src/agent-channel';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
+import { execFileSync } from 'node:child_process';
+
+function fixtureGit(root: string, ...args: string[]): string {
+  return execFileSync('git', ['-C', root, '-c', `core.hooksPath=${path.join(root, 'no-fixture-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', ...args], { windowsHide: true, encoding: 'utf8' }).trim();
+}
+function gitRoots(scratch: string): { root: string; other: string; alias: string } {
+  const root = path.join(scratch, 'root'); const other = path.join(scratch, 'other'); const alias = path.join(scratch, 'alias');
+  fs.mkdirSync(root); fs.mkdirSync(other); fs.symlinkSync(root, alias, 'junction');
+  fixtureGit(root, 'init', '-q', '-b', 'main'); fixtureGit(root, 'commit', '--allow-empty', '-qm', 'fixture');
+  fixtureGit(scratch, 'clone', '-q', '--no-hardlinks', root, other);
+  return { root, other, alias };
+}
+const repositoryState = (root: string) => JSON.stringify([fixtureGit(root, 'for-each-ref', '--format=%(refname) %(objectname)'), fixtureGit(root, 'worktree', 'list', '--porcelain'), fixtureGit(root, 'status', '--porcelain=v1')]);
+
+it('retains admission for both queued worktree requests and refuses alias replacement before Git mutation', async () => {
+  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-queued-identity-'));
+  const { root, other, alias } = gitRoots(scratch);
+  const repositories = new RepositoryService(path.join(scratch, 'wt'));
+  const internal = repositories as unknown as { prepareWorktreeBase(): Promise<string> };
+  const prepare = internal.prepareWorktreeBase.bind(repositories);
+  let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+  let entered!: () => void; const started = new Promise<void>(resolve => { entered = resolve; });
+  vi.spyOn(internal, 'prepareWorktreeBase').mockImplementationOnce(async () => { entered(); await gate; return prepare(); });
+  const before = [repositoryState(root), repositoryState(other)];
+  const first = repositories.createTaskWorktree(alias, '18181818-0000-4000-8000-000000000011').catch((error: unknown) => error);
+  let second: Promise<unknown> | undefined;
+  try {
+    await started;
+    second = repositories.createTaskWorktree(alias, '18181818-0000-4000-8000-000000000012').catch((error: unknown) => error);
+    fs.rmSync(alias); fs.symlinkSync(other, alias, 'junction'); release();
+    for (const outcome of await Promise.all([first, second])) expect(outcome).toMatchObject({ outcome: 'none', mutationStarted: false });
+    expect([repositoryState(root), repositoryState(other)]).toEqual(before);
+  } finally { release(); await Promise.all([first, second]); vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+});
+
+it('refuses alias rebinding during final Git executable lookup as a known pre-mutation failure', async () => {
+  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-final-boundary-'));
+  const { root, other, alias } = gitRoots(scratch);
+  const repositories = new RepositoryService(path.join(scratch, 'wt'));
+  const internal = repositories as unknown as { prepareWorktreeBase(): Promise<string>; getGitExecutable(root: string): Promise<string> };
+  const prepare = internal.prepareWorktreeBase.bind(repositories); const executable = internal.getGitExecutable.bind(repositories);
+  let armed = false;
+  vi.spyOn(internal, 'prepareWorktreeBase').mockImplementation(async () => { const base = await prepare(); armed = true; return base; });
+  vi.spyOn(internal, 'getGitExecutable').mockImplementation(async folder => {
+    const value = await executable(folder);
+    if (armed) { armed = false; fs.rmSync(alias); fs.symlinkSync(other, alias, 'junction'); }
+    return value;
+  });
+  const before = [repositoryState(root), repositoryState(other)];
+  try {
+    await expect(repositories.createTaskWorktree(alias, '18181818-0000-4000-8000-000000000013')).rejects.toMatchObject({ outcome: 'none', mutationStarted: false });
+    expect([repositoryState(root), repositoryState(other)]).toEqual(before);
+  } finally { vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+});
+
+it('retains an unknown outcome when checkout fails after worktree add has actually run', async () => {
+  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-post-mutation-'));
+  const { root, alias } = gitRoots(scratch);
+  const repositories = new RepositoryService(path.join(scratch, 'wt'));
+  const internal = repositories as unknown as { git(root: string, args: string[], ...options: unknown[]): Promise<unknown> };
+  const git = internal.git.bind(repositories);
+  vi.spyOn(internal, 'git').mockImplementation((folder, args, ...options) => args[0] === 'checkout' ? Promise.reject(new Error('Injected failure after worktree add.')) : git(folder, args, ...options));
+  const id = '18181818-0000-4000-8000-000000000014';
+  try {
+    await expect(repositories.createTaskWorktree(alias, id)).rejects.toMatchObject({ outcome: 'unknown', mutationStarted: true });
+    expect(fixtureGit(root, 'for-each-ref', '--format=%(refname)')).toContain(`refs/heads/codex/task/${id}`);
+    expect(fixtureGit(root, 'worktree', 'list', '--porcelain')).toContain(id);
+  } finally { vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+});
+
+it.each(['task.create', 'task.start'] as const)('carries trusted %s admission through repository invocation instead of admitting replacement metadata afresh', async method => {
+  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-caller-identity-'));
+  const { root, other, alias } = gitRoots(scratch);
+  const store = new Store(path.join(scratch, 'workspace.db'));
+  const repositories = new RepositoryService(path.join(scratch, 'wt'));
+  const create = repositories.createTaskWorktree.bind(repositories);
+  const pointer = path.join(root, '.git', 'commondir');
+  vi.spyOn(repositories, 'createTaskWorktree').mockImplementation((...args) => { fs.writeFileSync(pointer, path.join(other, '.git')); return create(...args); });
+  const provider = vi.fn(() => { throw new Error('Provider must not start.'); });
+  const service = new RuntimeService(store, repositories, () => {}, provider);
+  const project = method === 'task.start' ? store.insertProject(root, 'git') : undefined;
+  const before = [repositoryState(root), repositoryState(other)];
+  try {
+    const input = method === 'task.create'
+      ? { title: 'Bound admission', projectPath: alias, profileId: FAKE_PROFILE_ID, tokenBudget: 100000, mode: 'chat' }
+      : { requestId: '18181818-0000-4000-8000-000000000003', projectId: project!.id, profileId: FAKE_PROFILE_ID, tokenBudget: 100000, mode: 'chat', content: 'denied' };
+    await expect(service.dispatch(method, input)).rejects.toThrow('identity changed');
+    fs.rmSync(pointer);
+    expect([repositoryState(root), repositoryState(other)]).toEqual(before);
+    expect(provider).not.toHaveBeenCalled();
+    expect(store.db.prepare('SELECT * FROM tasks').all()).toEqual([]);
+    expect(store.db.prepare('SELECT * FROM task_starts').all()).toEqual([]);
+    expect(store.unknownIntents()).toBe(0);
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+});
+
+it.each(['chat', 'coordinated'] as const)('refuses same-common Git-directory rebinding on %s retry without ledger or execution effects', async mode => {
+  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-gitdir-retry-'));
+  const root = path.join(scratch, 'root'); const first = path.join(scratch, 'first'); const second = path.join(scratch, 'second'); const common = path.join(scratch, 'common');
+  for (const folder of [root, first, second, common]) fs.mkdirSync(folder);
+  for (const folder of [first, second]) fs.writeFileSync(path.join(folder, 'commondir'), common);
+  fs.writeFileSync(path.join(root, '.git'), `gitdir: ${first}\n`);
+  const store = new Store(path.join(scratch, 'workspace.db'));
+  const repositories = new RepositoryService(path.join(scratch, 'wt'));
+  const provider = vi.fn(() => { throw new Error('Provider must not start.'); });
+  const service = new RuntimeService(store, repositories, () => {}, provider);
+  const channel = new AgentChannel(store, service.redactor, () => {});
+  const project = store.insertProject(root, 'git'); const stamp = '2026-01-02T03:04:05.678Z';
+  const task = store.saveTask({ id: '18181818-0000-4000-8000-000000000002', title: 'saved', workspaceKind: 'git', worktreePath: root, branch: 'fixture', baseCommit: 'a'.repeat(40), projectPath: root, projectId: project.id, profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: stamp, updatedAt: stamp, tokenBudget: 100000, usedTokens: 0, mode });
+  channel.admit(task, channel.prepareAdmission(root));
+  const input = { requestId: '18181818-0000-4000-8000-000000000003', projectId: project.id, profileId: FAKE_PROFILE_ID, mode, tokenBudget: 100000, content: 'denied' };
+  store.reserveTaskStart(input.requestId, createHash('sha256').update(JSON.stringify(RpcMethods['task.start'].parse(input))).digest('hex'), task.id); store.finishTaskStart(input.requestId, 'failed');
+  fs.writeFileSync(path.join(root, '.git'), `gitdir: ${second}\n`);
+  const pending = vi.spyOn(store, 'finishTaskStart'); const resume = vi.spyOn(service.orchestrator, 'resume');
+  const snapshot = () => JSON.stringify(['tasks', 'task_starts', 'intents', 'projects', 'events', 'messages'].map(table => store.db.prepare(`SELECT * FROM ${table}`).all()));
+  const before = snapshot();
+  try {
+    await expect(service.dispatch('task.start', input)).rejects.toThrow('Project channel identity changed.');
+    expect(pending).not.toHaveBeenCalled(); expect(resume).not.toHaveBeenCalled(); expect(provider).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(scratch, { recursive: true, force: true }); }
+});
 
 it('rechecks metadata after executable resolution before the first Git command', async () => {
   const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-await-'));

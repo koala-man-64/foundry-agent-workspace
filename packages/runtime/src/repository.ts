@@ -52,7 +52,7 @@ export function resolveLocalPath(candidate: string, approvedPath?: string): stri
   throw new Error('Repository alias depth exceeded.');
 }
 
-export interface GitAdmissionIdentity { path: string; root: string; common: string }
+export interface GitAdmissionIdentity { path: string; root: string; gitDirectory: string; common: string }
 
 /** Inspect Git pointers without invoking Git or following raw network/device targets. */
 export function resolveGitAdmission(projectPath: string): GitAdmissionIdentity | undefined {
@@ -83,7 +83,7 @@ export function resolveGitAdmission(projectPath: string): GitAdmissionIdentity |
   const common = path.join(gitDirectory, 'commondir');
   const pointer = localExists(common) ? metadata(common) : undefined;
   if (pointer && isNetworkOrDevicePath(pointer)) throw new Error('Projects on network shares are not supported.');
-  return { path: canonicalPath, root, common: resolveLocalPath(pointer ? path.resolve(gitDirectory, pointer) : gitDirectory) };
+  return { path: canonicalPath, root, gitDirectory, common: resolveLocalPath(pointer ? path.resolve(gitDirectory, pointer) : gitDirectory) };
 }
 
 /** Point-in-time revalidation across awaits; this does not pin filesystem objects. */
@@ -155,10 +155,20 @@ export class RepositoryService {
     projectPath: string,
     taskId: string,
     baseCommit?: string,
+    admittedIdentity?: GitAdmissionIdentity,
   ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
-    const key = process.platform === 'win32' ? path.resolve(projectPath).toLowerCase() : path.resolve(projectPath);
+    let identity: GitAdmissionIdentity;
+    try {
+      const expected = admittedIdentity ?? resolveGitAdmission(projectPath);
+      if (!expected) throw new Error('Project channel requires an available local Git project.');
+      identity = Object.freeze({ ...expected });
+      assertGitAdmission(projectPath, identity);
+    } catch (error) {
+      throw new RepositoryError(error instanceof Error ? error.message : 'Repository admission failed.', 'none', { cause: error });
+    }
+    const key = process.platform === 'win32' ? identity.common.toLowerCase() : identity.common;
     const previous = this.creating.get(key) ?? Promise.resolve();
-    const operation = previous.catch(() => undefined).then(() => this.createTaskWorktreeSerialized(projectPath, taskId, baseCommit));
+    const operation = previous.catch(() => undefined).then(() => this.createTaskWorktreeSerialized(projectPath, taskId, baseCommit, identity));
     this.creating.set(key, operation);
     try { return await operation; } finally { if (this.creating.get(key) === operation) this.creating.delete(key); }
   }
@@ -166,24 +176,42 @@ export class RepositoryService {
   private async createTaskWorktreeSerialized(
     projectPath: string,
     taskId: string,
-    requestedBase?: string,
+    requestedBase: string | undefined,
+    identity: GitAdmissionIdentity,
   ): Promise<{ worktreePath: string; branch: string; baseCommit: string }> {
     let mutationStarted = false;
 
     try {
+      assertGitAdmission(projectPath, identity);
       const projectRoot = await this.requireRepository(projectPath);
+      assertGitAdmission(projectPath, identity);
       const baseCommit = requestedBase ? await this.requireLocalCommit(projectRoot, requestedBase) : (await this.git(projectRoot, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
+      assertGitAdmission(projectPath, identity);
       if (!baseCommit) throw new Error('Repository does not have a valid HEAD commit.');
       await this.rejectTrackedFiltersAtRevision(projectRoot, baseCommit);
+      assertGitAdmission(projectPath, identity);
       const id = this.requireTaskId(taskId);
       const branch = `codex/task/${id}`;
       const base = await this.prepareWorktreeBase();
       const worktreePath = path.join(base, id);
-      // A timeout or process failure can occur after Git has created refs or worktree metadata.
-      mutationStarted = true;
-      await this.git(projectRoot, ['worktree', 'add', '--no-checkout', '-b', branch, worktreePath, baseCommit]);
+      assertGitAdmission(projectPath, identity);
+      await this.git(projectRoot, ['worktree', 'add', '--no-checkout', '-b', branch, worktreePath, baseCommit], false, false, {
+        admission: identity,
+        beforeMutation: () => {
+          assertGitAdmission(projectPath, identity);
+          // Set only at the final process boundary; later failures retain an unknown outcome.
+          mutationStarted = true;
+        },
+      });
+      assertGitAdmission(projectPath, identity);
+      const worktreeIdentity = resolveGitAdmission(worktreePath);
+      if (!worktreeIdentity || worktreeIdentity.common !== identity.common) throw new Error('Created worktree does not belong to the admitted repository.');
       // Checkout may run filters, so it follows the tracked-filter check above and disables hooks.
-      await this.git(worktreePath, ['checkout', '--no-recurse-submodules', branch]);
+      await this.git(worktreePath, ['checkout', '--no-recurse-submodules', branch], false, false, {
+        admission: worktreeIdentity,
+        beforeMutation: () => { assertGitAdmission(projectPath, identity); },
+      });
+      assertGitAdmission(projectPath, identity);
       return { worktreePath, branch, baseCommit };
     } catch (error) {
       if (error instanceof RepositoryError) throw error;
@@ -685,14 +713,16 @@ export class RepositoryService {
     return false;
   }
 
-  private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false, options: { timeoutMs?: number; allowCredentialHelper?: boolean } = {}): Promise<GitOutput> {
-    const identity = resolveGitAdmission(cwd);
+  private async git(cwd: string, args: string[], permitTruncation = false, allowNonZero = false, options: { timeoutMs?: number; allowCredentialHelper?: boolean; admission?: GitAdmissionIdentity; beforeMutation?: () => void } = {}): Promise<GitOutput> {
+    const identity = options.admission ?? resolveGitAdmission(cwd);
     if (!identity) throw new Error('Project channel requires an available local Git project.');
+    assertGitAdmission(cwd, identity);
     const hooksPath = path.join(path.resolve(this.worktreeBase), EMPTY_HOOKS_DIRECTORY);
     const env = gitEnvironment();
     try {
       const executable = await this.getGitExecutable(cwd);
       assertGitAdmission(cwd, identity);
+      options.beforeMutation?.();
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', ...(options.allowCredentialHelper ? [] : ['-c', 'credential.helper=']), ...args], {
         cwd,
         env,

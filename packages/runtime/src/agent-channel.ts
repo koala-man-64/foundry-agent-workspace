@@ -58,6 +58,7 @@ export class AgentChannel {
   }
   private binding(taskId: string): ChannelIdentity | undefined {
     const row = this.store.db.prepare("SELECT data FROM intents WHERE kind = 'channel.identity' AND state = 'complete' AND json_extract(data, '$.taskId') = ? ORDER BY rowid LIMIT 1").get(taskId) as { data: string } | undefined;
+    // Incomplete older bindings remain evidence only: comparisons refuse them, never fill from current metadata.
     return row && (JSON.parse(row.data) as { identity: ChannelIdentity }).identity;
   }
   assertAdmission(task: Task): void { this.project(task); }
@@ -74,7 +75,8 @@ export class AgentChannel {
     } else {
       // Legacy physical roots retain access; redirected metadata or aliases need explicit trusted admission.
       const normalize = (value: string) => process.platform === 'win32' ? value.toLowerCase() : value;
-      if (normalize(current.common) !== normalize(join(current.root, '.git'))) throw new Error('Project channel requires an approved local identity.');
+      const physical = normalize(join(current.root, '.git'));
+      if (normalize(current.common) !== physical || normalize(current.gitDirectory) !== physical) throw new Error('Project channel requires an approved local identity.');
     }
     return createHash('sha256').update(process.platform === 'win32' ? current.common.toLowerCase() : current.common).digest('hex');
   }

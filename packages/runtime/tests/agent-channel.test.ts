@@ -85,6 +85,39 @@ describe('runtime-owned project channel', () => {
     expect(() => channel.view(peer.id)).toThrow('identity changed');
     expect(() => channel.admit(peer, channel.prepareAdmission(linked))).toThrow('identity changed');
   });
+  it('refuses rebinding between Git directories with the same common directory, including after restart', () => {
+    const linked = join(directory, 'linked'); const first = join(project, '.git', 'worktrees', 'first'); const second = join(project, '.git', 'worktrees', 'second');
+    mkdirSync(linked); mkdirSync(first, { recursive: true }); mkdirSync(second);
+    for (const metadata of [first, second]) writeFileSync(join(metadata, 'commondir'), '../..\n');
+    writeFileSync(join(linked, '.git'), `gitdir: ${first}\n`);
+    const peer = task(linked, 'Bound linked worktree');
+    writeFileSync(join(linked, '.git'), `gitdir: ${second}\n`);
+    expect(() => channel.view(peer.id)).toThrow('identity changed');
+    store.close(); store = new Store(join(directory, 'state.db')); channel = new AgentChannel(store, redactor, () => {});
+    expect(() => channel.view(peer.id)).toThrow('identity changed');
+    expect(() => channel.admit(peer, channel.prepareAdmission(linked))).toThrow('identity changed');
+  });
+  it('does not silently backfill incomplete retained identity bindings', () => {
+    const peer = store.saveTask({ ...sender, id: randomUUID(), title: 'Legacy binding' });
+    const legacy = { ...channel.prepareAdmission(project) } as Record<string, unknown>; delete legacy.gitDirectory;
+    const intent = store.intent('channel.identity', { taskId: peer.id, identity: legacy }); store.finishIntent(intent, 'complete');
+    const before = store.db.prepare('SELECT * FROM intents').all();
+    expect(() => channel.view(peer.id)).toThrow('identity changed');
+    expect(() => channel.admit(peer, channel.prepareAdmission(project))).toThrow('identity changed');
+    expect(store.db.prepare('SELECT * FROM intents').all()).toEqual(before);
+  });
+  it('retains admission when a Git-directory alias resolves to the same physical metadata', () => {
+    const linked = join(directory, 'linked'); const metadata = join(project, '.git', 'worktrees', 'linked'); const alias = join(directory, 'git-alias');
+    mkdirSync(linked); mkdirSync(metadata, { recursive: true }); symlinkSync(metadata, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    writeFileSync(join(metadata, 'commondir'), join(project, '.git'));
+    writeFileSync(join(linked, '.git'), `gitdir: ${metadata}\n`);
+    const peer = task(linked, 'Git-directory alias');
+    writeFileSync(join(linked, '.git'), `gitdir: ${alias}\n`);
+    expect(() => channel.view(peer.id)).not.toThrow();
+    channel.send(sender.id, 'same-metadata-alias', { recipientTaskId: peer.id, content: 'Same approved repository' }, 'agent');
+    expect(channel.view(peer.id).messages).toHaveLength(1);
+    rmSync(alias);
+  });
   it('fences coordinated agents and resumes reads correctly after many unrelated retained events', () => {
     const root = store.saveTask({ ...sender, mode: 'coordinated', role: 'coordinator', rootTaskId: sender.id });
     const records = new OrchestrationRecords(store); records.insertCoordinatorRun(root.id);

@@ -343,7 +343,7 @@ export class RuntimeService {
         const channelIdentity = this.tools.channel.prepareAdmission(p.projectPath);
         const id = randomUUID(); const intent = this.store.intent('worktree.create', { taskId: id, projectPath: p.projectPath });
         try {
-          const worktree = await this.repositories.createTaskWorktree(p.projectPath, id);
+          const worktree = await this.repositories.createTaskWorktree(p.projectPath, id, undefined, channelIdentity);
           const now = new Date().toISOString();
           let projectId: string | undefined;
           if (this.store.schemaVersion >= 3) {
@@ -620,7 +620,7 @@ export class RuntimeService {
     try {
       const worktree = kind === 'git' ? await (async () => {
         intent = this.store.intent('worktree.create', { taskId: id, projectPath: project!.path, requestId: p.requestId });
-        return this.repositories.createTaskWorktree(project!.path, id);
+        return this.repositories.createTaskWorktree(project!.path, id, undefined, channelIdentity);
       })() : undefined;
       if (worktree) worktreeCreated = true;
       const now = new Date().toISOString();
