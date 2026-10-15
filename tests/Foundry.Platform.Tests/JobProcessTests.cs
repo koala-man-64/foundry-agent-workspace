@@ -18,8 +18,13 @@ public sealed class JobProcessTests
         return $"""
         $ErrorActionPreference = 'Stop'
         [IO.File]::WriteAllText('{Quote(Path.Combine(directory, "root.pid"))}', $PID)
+        $startInfo = [Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = '{Quote(Scratch.PowerShell)}'
+        $startInfo.Arguments = '-NoProfile -NonInteractive -Command {Quote(childCommand)}'
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
         {StageMarker(directory, "before-start-process.marker")}
-        $child = Start-Process -PassThru -WindowStyle Hidden -FilePath '{Quote(Scratch.PowerShell)}' -ArgumentList '-NoProfile','-NonInteractive','-Command','{Quote(childCommand)}'
+        $child = [Diagnostics.Process]::Start($startInfo)
         {StageMarker(directory, "after-start-process.marker")}
         [IO.File]::WriteAllText('{Quote(Path.Combine(directory, "child.pid"))}', [string]$child.Id)
         Start-Sleep -Seconds {lingerSeconds}
