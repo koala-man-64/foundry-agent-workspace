@@ -804,6 +804,50 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
 - This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
 - The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
 
+### Existing-file edit primitive (P2.2g)
+
+**What it is.** `RepositoryService.PrepareEdit` and `ApplyEdit` port `prepareEdit` and `applyEdit` from `repository.ts`. They are **unwired**: no handler, tool, approval or protocol method reaches them, and the development runtime stays at 34 of the 89 methods. The native tool loop and the approval records that will call them belong to a later slice.
+- **Prepare.** The checks run in TypeScript's order:
+  1. The new content must be UTF-8 text of at most 64 KiB, with no NUL.
+  2. Creating a file is refused: there must be a reviewed hash.
+  3. The root is admitted and the relative path rules apply.
+  4. The parent must already exist.
+  5. The file must be readable UTF-8 text whose hash is the reviewed one.
+  6. The file must not be hard-linked.
+
+  The fingerprint is the SHA-256 of the JSON array `[root, path, expectedHash, resultingHash]`. The path keeps the request's spelling beneath the real root, as in TypeScript; the applied result reports the real one.
+- **Apply.** It reruns the whole preflight and requires the same fingerprint. A tampered or replayed approval, or a file changed after review, is therefore refused before anything is written. Once written, the content no longer matches the reviewed hash, so one approval applies once. An unchanged edit can apply again, because it writes identical bytes.
+- **Write boundary.** The file is opened by its exact name, without following a reparse point, for one exclusive rewrite (the new Platform `ExistingEntry.TryOpenForRewrite`). Other handles may still read it if they share writing. No other writer, rename, delete or replacement of the file, and no rename of its folders, can start while it is held.
+  - Under that hold, native checks that the file is regular and has one link, that its bytes are the reviewed ones, and that its name still resolves to the same file identity (FileIdInfo).
+  - It then writes from the start, cuts the length, flushes to disk, and verifies the result by name, still under the hold.
+- **Outcomes.** A failure before the write is "none". From the write on, any failure is "unknown", including a verification that does not find the reviewed result.
+
+**Differences, all fail-closed or invisible on success:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages. A missing file becomes "Requested path does not exist.", and a read-only file at execution becomes "Requested file cannot be opened for editing.", with the same "none" outcome.
+- **Exclusive write window.** A file that another handle can already write or delete is refused at execution, where Node's shared open proceeds. Native holds the file exclusively from the content check to verification. TypeScript instead re-checks the name's identity before writing and verifies after closing.
+- At execution, the content is read bounded (64 KiB plus one byte), and a larger file is refused as changed. TypeScript reads it whole and then refuses it on the hash.
+
+**Evidence.**
+- `tests/p2/existing-file-edit.test.ts` drives the shipping `RepositoryService` directly through **23** cases (76 steps: 51 prepares, 19 applies, and external writes, renames, removals, hard links and read-only flags between them). The cases cover:
+  - plain edits, empty content, byte order marks and carriage returns, and non-ASCII text;
+  - backslash and case-variant paths, and a case-variant root;
+  - the 64 KiB limit counted in UTF-8 bytes, and NUL;
+  - creation, stale hashes, forbidden, absolute and escaping paths, and roots that are not working directories;
+  - directories, missing files and parents, binary and oversized files;
+  - a linked parent and hard links, before and after review;
+  - tampered, stale, replayed and unchanged approvals;
+  - removal, read-only and a same-content swap after review;
+  - a Git working tree and its metadata.
+
+  It pins every outcome, each prepared edit (with its fingerprint's preimage checked against the hash), and the final bytes of every file in `existing-file-edit-vectors.json`. It is bound to the SHA-256 of `repository.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_EXISTING_FILE_EDIT=1`.
+- `ExistingFileEditTests` replays every case through the native primitive. Where Node raised a raw error, it pins native's own message and requires the same outcome. Native-only tests prove four things:
+  - another writer is refused before anything is written;
+  - at the write boundary, writing, renaming, replacing or deleting the file, and renaming its folder, are all refused;
+  - failures are classified by whether the write started;
+  - the primitive requires the owning loop.
+- Mutations were caught. Opening the rewrite with full sharing failed the two exclusivity tests. Skipping the fingerprint comparison failed the tampered-approval case.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

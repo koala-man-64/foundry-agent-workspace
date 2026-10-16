@@ -12,12 +12,13 @@ namespace Foundry.Platform;
 /// </summary>
 public sealed class ExistingEntry : IDisposable
 {
-    private const uint ReadData = 0x1, ReadAttributes = 0x80, ShareReadWrite = 0x3;
+    private const uint ReadData = 0x1, WriteData = 0x2, ReadAttributes = 0x80, ShareRead = 0x1, ShareReadWrite = 0x3;
     private readonly SafeFileHandle handle;
+    private readonly bool writable;
 
-    private ExistingEntry(SafeFileHandle handle, Native.FileInformation information)
+    private ExistingEntry(SafeFileHandle handle, Native.FileInformation information, bool writable = false)
     {
-        this.handle = handle;
+        this.handle = handle; this.writable = writable;
         IsReparsePoint = (information.Attributes & Native.FileAttributeReparsePoint) != 0;
         IsDirectory = (information.Attributes & Native.FileAttributeDirectory) != 0;
         Length = ((long)information.SizeHigh << 32) | information.SizeLow;
@@ -31,23 +32,55 @@ public sealed class ExistingEntry : IDisposable
 
     /// <summary>The entry, or null when it or a parent is missing. Anything that is not a drive-absolute path fails closed
     /// before any open.</summary>
-    public static unsafe ExistingEntry? TryOpen(string path)
+    public static ExistingEntry? TryOpen(string path) =>
+        Open(path, ReadData | ReadAttributes, ShareReadWrite, Native.FileFlagBackupSemantics | Native.FileFlagOpenReparsePoint, false, "Entry is not available for isolated access.");
+
+    /// <summary>
+    /// An existing file opened for one in-place rewrite, by its exact namespaced name and without following a final
+    /// reparse point. Readers that share writing may still open it, but no other writer, rename, delete or replacement can
+    /// start while it is held, and opening fails while another handle can already write or delete it: the content that is
+    /// checked is the content that is replaced. Opening never creates anything: a missing file is null, and a directory cannot be opened this way.
+    /// </summary>
+    public static ExistingEntry? TryOpenForRewrite(string path) =>
+        Open(path, ReadData | WriteData | ReadAttributes, ShareRead, Native.FileFlagOpenReparsePoint, true, "Entry is not available for an exclusive rewrite.");
+
+    private static unsafe ExistingEntry? Open(string path, uint access, uint share, uint flags, bool writable, string unavailable)
     {
         ArgumentNullException.ThrowIfNull(path);
-        var handle = MetadataFile.Open(path, ReadData | ReadAttributes, ShareReadWrite, Native.FileFlagBackupSemantics | Native.FileFlagOpenReparsePoint);
+        var handle = MetadataFile.Open(path, access, share, flags);
         if (handle.IsInvalid)
         {
             var error = Marshal.GetLastPInvokeError(); handle.Dispose();
             if (error is 2 or 3) return null;
-            throw new IOException("Entry is not available for isolated access.", new Win32Exception(error));
+            throw new IOException(unavailable, new Win32Exception(error));
         }
         try
         {
             Native.FileInformation information;
             if (!Native.GetFileInformation(handle, &information)) throw new IOException("Entry identity cannot be established.");
-            return new(handle, information);
+            return new(handle, information, writable);
         }
         catch { handle.Dispose(); throw; }
+    }
+
+    /// <summary>The volume serial number and 128-bit file identifier (FileIdInfo) of the open entry.</summary>
+    public unsafe FileIdentity Identity()
+    {
+        ObjectDisposedException.ThrowIf(handle.IsClosed, this);
+        Native.FileIdInformation information;
+        if (!Native.GetFileInformationByHandleEx(handle, Native.FileIdInformationClass, &information, (uint)sizeof(Native.FileIdInformation)))
+            throw new IOException("Entry identity cannot be established.");
+        return new(information.VolumeSerialNumber, new UInt128(information.FileIdHigh, information.FileIdLow));
+    }
+
+    /// <summary>Replaces the whole content through the handle: write from the start, cut the length, then flush to disk.</summary>
+    public void Rewrite(ReadOnlySpan<byte> content)
+    {
+        ObjectDisposedException.ThrowIf(handle.IsClosed, this);
+        if (!writable || IsDirectory || IsReparsePoint) throw new InvalidOperationException("Entry was not opened for a rewrite.");
+        RandomAccess.Write(handle, content, 0);
+        RandomAccess.SetLength(handle, content.Length);
+        RandomAccess.FlushToDisk(handle);
     }
 
     /// <summary>The real path of the open entry, as fs.realpath reports it for a local drive; null when it is not one.</summary>

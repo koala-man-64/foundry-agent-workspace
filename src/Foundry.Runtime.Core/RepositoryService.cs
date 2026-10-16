@@ -227,7 +227,9 @@ internal sealed partial class RepositoryService
         public void Dispose() { try { Entry.Dispose(); } finally { chain.Dispose(); } }
     }
 
-    internal static SafeEntry OpenSafe(string root, string relativePath, bool allowDirectory)
+    /// <remarks>With <paramref name="rewrite"/>, the entry is opened for one exclusive in-place rewrite
+    /// (<see cref="ExistingEntry.TryOpenForRewrite"/>) instead of shared reading.</remarks>
+    internal static SafeEntry OpenSafe(string root, string relativePath, bool allowDirectory, bool rewrite = false)
     {
         RepositoryPaths.ValidateRelative(relativePath, allowDirectory);
         var candidate = FinalPath.Resolve(System.IO.Path.Join(root, relativePath.Length == 0 ? "." : relativePath));
@@ -240,8 +242,8 @@ internal sealed partial class RepositoryService
         try
         {
             ExistingEntry? entry;
-            try { entry = ExistingEntry.TryOpen(candidate); }
-            catch (IOException) { throw new WorkspaceReadException(Unreadable); }
+            try { entry = rewrite ? ExistingEntry.TryOpenForRewrite(candidate) : ExistingEntry.TryOpen(candidate); }
+            catch (IOException) { throw new WorkspaceReadException(rewrite ? EditUnavailable : Unreadable); }
             if (entry is null) throw new WorkspaceReadException(Missing);
             try
             {
