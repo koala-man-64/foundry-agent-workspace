@@ -1,12 +1,19 @@
 name: Portable Windows build
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to a pull request cancels its older run. Other events get a unique group, so no
+# main commit's run (and its artifact) is cancelled or dropped from the queue.
+concurrency:
+  group: portable-windows-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   portable:
@@ -68,6 +75,7 @@ jobs:
           "$hash  $($package.Name)" | Set-Content -LiteralPath "$($package.FullName).sha256" -Encoding ascii
 
       - name: Upload the portable app and checksum
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: foundry-portable-windows-x64-${{ github.sha }}
