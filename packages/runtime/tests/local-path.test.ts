@@ -70,6 +70,27 @@ describe.runIf(process.platform === 'win32')('resolveLocalPath approved spelling
     fs.rmSync(alias);
   });
 
+  it('refuses a candidate alias to another folder, and a replaced approved folder, under a short approved spelling', context => {
+    const base = scratch();
+    const approved = path.join(base, 'approved project folder');
+    const other = path.join(base, 'other project folder');
+    const alias = path.join(base, 'candidate alias name');
+    fs.mkdirSync(approved); fs.mkdirSync(other);
+    fs.symlinkSync(other, alias, 'junction');
+    const short = shortName(approved);
+    if (short.toLowerCase() === approved.toLowerCase()) context.skip('8.3 short names are disabled on this volume.');
+    expect(() => resolveLocalPath(alias, short)).toThrow(DIFFERENT);
+    expect(() => resolveLocalPath(shortName(alias), short)).toThrow(DIFFERENT);
+    expect(() => resolveLocalPath(alias, approved)).toThrow(DIFFERENT);
+    // The approved folder is replaced by a junction to another folder under the same long name.
+    fs.rmSync(alias); fs.rmdirSync(approved);
+    fs.symlinkSync(other, approved, 'junction');
+    expect(() => resolveLocalPath(approved, short)).toThrow(DIFFERENT);
+    expect(() => resolveLocalPath(shortName(approved), shortName(approved))).toThrow(DIFFERENT);
+    expect(() => resolveLocalPath(approved, approved)).toThrow(DIFFERENT);
+    fs.rmSync(approved);
+  });
+
   it('refuses an approved short spelling of a different real folder', context => {
     const base = scratch();
     const approved = path.join(base, 'approved project folder');
