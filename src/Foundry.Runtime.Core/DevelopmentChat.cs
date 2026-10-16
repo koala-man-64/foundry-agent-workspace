@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Foundry.Platform;
 using Foundry.Protocol;
 using Foundry.Providers;
 
@@ -21,6 +22,7 @@ public sealed class DevelopmentChat
     private readonly Func<DateTimeOffset> now;
     private readonly Func<Guid> id;
     private readonly Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream;
+    private readonly RepositoryService repositories;
     private readonly Dictionary<string, Running> running = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Hash, Task<Dictionary<string, object?>> Work)> starts = new(StringComparer.Ordinal);
     private readonly List<TaskCompletionSource> slotWaiters = [];
@@ -33,12 +35,17 @@ public sealed class DevelopmentChat
     public DevelopmentChat(RuntimeLoop loop, Store store, Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
         : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), now, id) { }
 
+    /// <summary>Tests supply the environment Git inherits, so fixtures never read the machine's Git configuration.</summary>
+    internal DevelopmentChat(RuntimeLoop loop, Store store, Func<IReadOnlyDictionary<string, string>> gitEnvironment)
+        : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), gitEnvironment: gitEnvironment) { }
+
     internal DevelopmentChat(RuntimeLoop loop, Store store,
         Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream,
-        Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
+        Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Func<IReadOnlyDictionary<string, string>>? gitEnvironment = null)
     {
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.stream = stream; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
+        repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
@@ -95,10 +102,52 @@ public sealed class DevelopmentChat
             case "task.read": return store.TaskRead((string)parameters["taskId"]!);
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
+            case "files.list":
+                return await Repository(() => Task.FromResult<object?>(repositories.ListFiles(FileRoot(store.ReadTask((string)parameters["taskId"]!)), (string?)parameters.GetValueOrDefault("path") ?? "")));
+            case "files.read":
+                return await Repository(() =>
+                {
+                    var file = repositories.ReadFile(FileRoot(store.ReadTask((string)parameters["taskId"]!)), (string)parameters["path"]!);
+                    file["content"] = redactor.Text((string)file["content"]!);
+                    return Task.FromResult<object?>(file);
+                });
+            case "task.diff":
+                return await Repository(async () =>
+                {
+                    var diff = await repositories.Diff((string)store.ReadGitTask((string)parameters["taskId"]!)["worktreePath"]!);
+                    diff["patch"] = redactor.Text((string)diff["patch"]!); diff["summary"] = redactor.Text((string)diff["summary"]!);
+                    return diff;
+                });
             default: throw new NotSupportedException("This operation is not implemented in the P2 development chat runtime.");
         }
         }
         catch (EventDeliveryException error) { Fail(error); throw; }
+    }
+
+    /// <summary>Repository refusals reach the caller as TypeScript's entry reports them: the message, redacted.</summary>
+    private async Task<object?> Repository(Func<Task<object?>> operation)
+    {
+        try { return await operation(); }
+        catch (InvalidOperationException error) { throw new WorkspaceReadException(redactor.Text(error.Message)); }
+    }
+
+    /// <summary>
+    /// service.ts fileRoot: a Git task's worktree, or a saved folder that still resolves to the same physical folder under
+    /// the exact spelling it was saved with. The saved spelling is both the candidate and the approved path, and the folder
+    /// lease refuses every reparse point on the way, so the only remaining check is that the real path keeps that spelling.
+    /// TypeScript currently refuses a short (8.3) or otherwise non-canonical spelling one step earlier, with the shorter
+    /// "different location" message; both refuse.
+    /// </summary>
+    private string FileRoot(Dictionary<string, object?> task)
+    {
+        if (Store.IsGitDocument(task)) return (string)task["worktreePath"]!;
+        if (!Equals(task.GetValueOrDefault("workspaceKind"), "folder")) throw new WorkspaceReadException("This chat has no folder access.");
+        var projectPath = (string)task["projectPath"]!;
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(projectPath)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+        using var folder = RepositoryFolderLease.Open(loop, projectPath, RepositoryService.WorkingDirectory);
+        if (EcmaScriptCase.ToLower(folder.Path) != EcmaScriptCase.ToLower(projectPath))
+            throw new WorkspaceReadException("The saved folder now resolves to a different location. Restore the original folder before browsing files.");
+        return projectPath;
     }
 
     private void Fail(Exception error)

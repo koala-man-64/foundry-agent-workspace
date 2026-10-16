@@ -574,6 +574,35 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
   - `ExistingEntry`.
 - `RepositoryFolderTests` now proves renames into a held folder.
 
+### Read-only Git/files handlers (P2.2b)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `files.list`, `files.read` and `task.diff`. That brings it to **28** of the 89 methods. No other surface, selector or schema changed.
+- **Task roots.** They follow `service.ts`:
+  - a Git task (including a legacy task with no workspace kind) uses its worktree;
+  - a folder task uses its saved folder only while that folder still resolves to the same physical folder under the exact spelling it was saved with;
+  - any other task has no folder access.
+- **Redaction.** `files.read` content and the diff's patch and summary are redacted. Refusals reach the caller as TypeScript's entry reports them: the message, redacted.
+- **Worktree base.** It is the data directory's `wt` folder, as `entry.ts` places it.
+
+**Approved-path comparison.** For a folder task, the saved spelling is both the candidate and the approved path, and the folder lease refuses every reparse point. Native therefore keeps only the check that the real path still has the saved spelling, case-insensitively. Today TypeScript refuses a short (8.3) or otherwise non-canonical spelling one check earlier, with the shorter "different location" message; both runtimes refuse. A TypeScript fix for 8.3 approved paths is under separate review. The native comparisons that slice c adds will compare file identity, never lowercased keys.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages.
+
+**Evidence.**
+- `tests/p2/repository-handlers.test.ts` drives the shipping `RuntimeService` over seeded folder, Git, legacy, projectless and missing tasks, including:
+  - network and moved roots;
+  - spelling variants;
+  - junctions;
+  - redaction;
+  - refusals.
+
+  It pins the outcomes of 41 calls across 14 cases in `repository-handler-vectors.json`, bound to the SHA-256 of `service.ts`, `repository.ts`, `redaction.ts` and `store.ts`. It also asserts that no persisted row changes. Regenerating the vectors requires `P2_WRITE_REPOSITORY_HANDLERS=1`.
+- `RepositoryHandlerTests` seeds the same tasks into a fresh native Store and dispatches through `DevelopmentChat`. It must match each outcome or its named difference, and leave every row unchanged. Mutating a redacted result and an error made both cases fail.
+- `DevelopmentChatProcessTests` drives the three methods through the stdio entry point: listing, redacted content, refusals, a redacted diff, and no notifications.
+- The two oracles share `tests/p2/repository-fixture.ts`. Slice a's inspection vectors are unchanged.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

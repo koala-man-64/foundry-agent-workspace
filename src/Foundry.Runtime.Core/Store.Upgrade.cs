@@ -11,7 +11,7 @@ public sealed record VerifiedBackup(string Path, int Version);
 public sealed partial class Store
 {
     private static readonly string[] UpgradeSchemas = ["V5_MIGRATION", "AUTOMATION_SCHEMA", "CONTINUITY_SCHEMA", "FEATURE_ADMISSION_SCHEMA"];
-    private static bool IsGitDocument(Dictionary<string, object?> task) => Field(task, "workspaceKind") is null || Equals(Field(task, "workspaceKind"), "git");
+    internal static bool IsGitDocument(Dictionary<string, object?> task) => Field(task, "workspaceKind") is null || Equals(Field(task, "workspaceKind"), "git");
     public VerifiedBackup Backup(StoreFault fault = StoreFault.None)
     {
         loop.AssertCurrent();

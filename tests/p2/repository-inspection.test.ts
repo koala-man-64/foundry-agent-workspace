@@ -1,31 +1,22 @@
-import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
 import { gitEnvironment } from '../../packages/runtime/src/git-environment';
 import { RepositoryService } from '../../packages/runtime/src/repository';
+import { build, committed, file, git, isolatedGitEnvironment, normalize, sha256File, withIsolatedGit, type Step } from './repository-fixture';
 
 // Read-only repository inspection outcomes of the shipping TypeScript RepositoryService over disposable fixture trees.
 // The C# conformance suite (RepositoryInspectionTests) rebuilds every tree and must reproduce each outcome, except where a
 // case names an approved native difference. Node's raw filesystem errors are recorded as { systemError }; native must
 // refuse those with its own fixed message. Git runs with an isolated HOME, no system configuration and the C locale,
 // so the vectors do not depend on the machine's Git configuration. Placeholders: {scratch} {scratch/}.
-type Step = { dir: string } | { file: string; text?: string; base64?: string; repeat?: [string, number] } | { junction: string; target: string }
-  | { hardlink: string; target: string } | { git: string[] } | { remove: string };
 type Op = { op: 'list' | 'read'; root: string; path: string } | { op: 'status' | 'diff' | 'isGit' | 'repository' | 'trackedFilters'; root: string }
   | { op: 'filters'; root: string; paths: string[] } | { op: 'revisionFilters'; root: string; revision: string };
 type Outcome = { result: unknown } | { error: string } | { systemError: string };
 type Case = { name: string; tree: Step[]; operation: Op; native?: { outcome: Outcome; difference: string } };
 
 const ALIAS = 'Native refuses local aliases (approved difference until Rudy decides otherwise).';
-const git = (...args: string[]): Step => ({ git: args });
-const file = (name: string, text: string): Step => ({ file: name, text });
-const committed = (extra: Step[] = []): Step[] => [
-  { dir: 'repo' }, file('repo/README.md', 'hello\n'), file('repo/src/a.ts', 'export const a = 1;\n'), file('repo/docs/b.md', '# b\n'), ...extra,
-  git('-C', 'repo', 'init', '-q'), git('-C', 'repo', 'add', '-A'), git('-C', 'repo', 'commit', '-qm', 'fixture'),
-];
 const linked: Step[] = [...committed(), git('-C', 'repo', 'worktree', 'add', '-q', '../wt')];
 const list = (relative: string, root = 'repo'): Op => ({ op: 'list', root, path: relative });
 const read = (relative: string, root = 'repo'): Op => ({ op: 'read', root, path: relative });
@@ -142,45 +133,6 @@ const cases: Case[] = [
   { name: 'working-tree attributes do not affect the selected revision', tree: filtered('*.txt filter=lfs\n', false), operation: { op: 'revisionFilters', root: 'repo', revision: 'HEAD' } },
 ];
 
-/** Fixture and runtime Git share these settings; neither reads system, global or locale configuration from the machine. */
-export function isolatedGitEnvironment(home: string): Record<string, string> {
-  return { GIT_CONFIG_NOSYSTEM: '1', HOME: home, XDG_CONFIG_HOME: home, LC_ALL: 'C', LANG: 'C', LANGUAGE: 'C' };
-}
-function runGit(scratch: string, home: string, args: string[]): void {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const name of Object.keys(env)) if (/^GIT_/i.test(name)) delete env[name];
-  Object.assign(env, isolatedGitEnvironment(home), { GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z' });
-  execFileSync('git', ['-c', `core.hooksPath=${path.join(scratch, 'no-fixture-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'init.defaultBranch=main', '-c', 'core.autocrlf=false',
-    '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', ...args], { cwd: scratch, env, windowsHide: true, stdio: 'pipe' });
-}
-function build(scratch: string, home: string, tree: Step[]): string[] {
-  const links: string[] = [];
-  for (const step of tree) {
-    if ('dir' in step) fs.mkdirSync(path.join(scratch, step.dir), { recursive: true });
-    else if ('file' in step) {
-      const target = path.join(scratch, step.file);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      const bytes = step.base64 !== undefined ? Buffer.from(step.base64, 'base64') : step.repeat ? Buffer.from(step.repeat[0].repeat(step.repeat[1]), 'utf8') : Buffer.from(step.text!, 'utf8');
-      fs.writeFileSync(target, bytes);
-    } else if ('junction' in step) {
-      const link = path.join(scratch, step.junction);
-      fs.symlinkSync(path.join(scratch, step.target), link, 'junction'); links.push(link);
-    } else if ('hardlink' in step) fs.linkSync(path.join(scratch, step.target), path.join(scratch, step.hardlink));
-    else if ('remove' in step) fs.rmSync(path.join(scratch, step.remove));
-    else runGit(scratch, home, step.git);
-  }
-  return links;
-}
-/** Long strings are pinned by length and hash so the corpus stays reviewable. */
-export function normalize(value: unknown, scratch: string): unknown {
-  if (typeof value === 'string') {
-    const text = value.replaceAll(scratch, '{scratch}').replaceAll(scratch.replaceAll('\\', '/'), '{scratch/}');
-    return text.length > 4096 ? { length: text.length, sha256: createHash('sha256').update(text, 'utf8').digest('hex') } : text;
-  }
-  if (Array.isArray(value)) return value.map(item => normalize(item, scratch));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalize(item, scratch)]));
-  return value;
-}
 async function perform(service: RepositoryService, operation: Op, scratch: string): Promise<unknown> {
   const root = path.join(scratch, operation.root);
   const internal = service as unknown as { requireRepository(root: string): Promise<string>; rejectTrackedFilters(root: string): Promise<void>; rejectFilters(root: string, paths: string[]): Promise<void>; rejectTrackedFiltersAtRevision(root: string, commit: string): Promise<void> };
@@ -200,17 +152,18 @@ async function outcome(item: Case): Promise<Outcome> {
   const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-inspection-')));
   const home = path.join(scratch, 'home'); fs.mkdirSync(home);
   const links = build(scratch, home, item.tree);
-  const saved = { ...process.env };
-  Object.assign(process.env, isolatedGitEnvironment(home));
   try {
-    const service = new RepositoryService(path.join(scratch, 'wt-base'));
-    return { result: normalize(await perform(service, item.operation, scratch), scratch) };
-  } catch (error) {
-    if (!(error instanceof Error)) throw error;
-    const code = (error as NodeJS.ErrnoException).code;
-    return typeof code === 'string' ? { systemError: code } : { error: normalize(error.message, scratch) as string };
+    return await withIsolatedGit(home, async () => {
+      try {
+        const service = new RepositoryService(path.join(scratch, 'wt-base'));
+        return { result: normalize(await perform(service, item.operation, scratch), scratch) };
+      } catch (error) {
+        if (!(error instanceof Error)) throw error;
+        const code = (error as NodeJS.ErrnoException).code;
+        return typeof code === 'string' ? { systemError: code } : { error: normalize(error.message, scratch) as string };
+      }
+    });
   } finally {
-    for (const name of Object.keys(isolatedGitEnvironment(home))) { if (saved[name] === undefined) delete process.env[name]; else process.env[name] = saved[name]; }
     for (const link of links) fs.rmSync(link);
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -225,14 +178,13 @@ function sanitization(): { names: string[]; kept: string[] } {
     return { names: SANITIZED_NAMES, kept: SANITIZED_NAMES.filter(name => environment[name] === 'value') };
   } finally { for (const name of SANITIZED_NAMES) { if (saved[name] === undefined) delete process.env[name]; else process.env[name] = saved[name]; } }
 }
-const sha256 = (target: string) => createHash('sha256').update(fs.readFileSync(target)).digest('hex');
 
 it('pins read-only repository inspection outcomes to the shipping Node authority without ordinary regeneration', async () => {
   const expected: (Case & { expected: Outcome })[] = [];
   for (const item of cases) expected.push({ ...item, expected: await outcome(item) });
   const corpus = {
     schemaVersion: 1,
-    oracle: { sources: ['packages/runtime/src/repository.ts', 'packages/runtime/src/git-environment.ts', 'packages/runtime/src/network-path.ts'].map(source => ({ path: source, sha256: sha256(source) })) },
+    oracle: { sources: ['packages/runtime/src/repository.ts', 'packages/runtime/src/git-environment.ts', 'packages/runtime/src/network-path.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
     environment: isolatedGitEnvironment('{home}'),
     sanitization: sanitization(),
     cases: expected,
