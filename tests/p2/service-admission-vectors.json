@@ -1,0 +1,5540 @@
+{
+  "stamp": "2026-01-02T03:04:05.678Z",
+  "project": {
+    "id": "17171717-0000-4000-8000-000000000001",
+    "path": "C:\\never-probe-admission-fixture",
+    "name": "Original",
+    "hidden": false,
+    "kind": "folder",
+    "createdAt": "2026-01-02T03:04:05.678Z",
+    "updatedAt": "2026-01-02T03:04:05.678Z",
+    "opaque": {
+      "retained": true
+    }
+  },
+  "preferences": {
+    "profileId": "00000000-0000-4000-8000-000000000001",
+    "mode": "chat",
+    "collapsedProjectIds": [],
+    "opaque": {
+      "retained": true
+    }
+  },
+  "cases": [
+    {
+      "era": "fresh",
+      "firstSequence": 0,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 5,
+            "current": 5,
+            "upgradeRequired": false,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Project not found.",
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Choose a name or visibility change.",
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": true,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Visible",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Select an existing model profile.",
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "A collapsed project no longer exists.",
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 6,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 6,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 1,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 6,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 7,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 1,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 2,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 3,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 4,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 5,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 6,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 7,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "era": "v1",
+      "firstSequence": 31,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 1,
+            "current": 5,
+            "upgradeRequired": true,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        }
+      ]
+    },
+    {
+      "era": "v2",
+      "firstSequence": 196,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 2,
+            "current": 5,
+            "upgradeRequired": true,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": null,
+          "error": "Saved projects require the backed-up database upgrade. Upgrade from the workspace banner first.",
+          "project": null,
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": []
+          },
+          "events": [],
+          "notifications": []
+        }
+      ]
+    },
+    {
+      "era": "v3",
+      "firstSequence": 212,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 3,
+            "current": 5,
+            "upgradeRequired": true,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Project not found.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Choose a name or visibility change.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": true,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Visible",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Select an existing model profile.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "A collapsed project no longer exists.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 218,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 218,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 218,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 219,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 213,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 214,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 215,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 216,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 217,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 218,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 219,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "era": "v4",
+      "firstSequence": 222,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 4,
+            "current": 5,
+            "upgradeRequired": true,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Project not found.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Choose a name or visibility change.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": true,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Visible",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Select an existing model profile.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "A collapsed project no longer exists.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 228,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 228,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 228,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            },
+            {
+              "sequence": 229,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 223,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 224,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 225,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 226,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 227,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 228,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 229,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "era": "v5",
+      "firstSequence": 320,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 5,
+            "current": 5,
+            "upgradeRequired": false,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Project not found.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Choose a name or visibility change.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": true,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Visible",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Select an existing model profile.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "A collapsed project no longer exists.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 326,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 326,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 326,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 327,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 321,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 322,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 323,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 324,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 325,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 326,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 327,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "era": "v5-wal",
+      "firstSequence": 326,
+      "steps": [
+        {
+          "method": "workspace.schema",
+          "params": {},
+          "value": {
+            "version": 5,
+            "current": 5,
+            "upgradeRequired": false,
+            "coordinatedAvailable": false
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000099",
+            "name": "Missing"
+          },
+          "value": null,
+          "error": "Project not found.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001"
+          },
+          "value": null,
+          "error": "Choose a name or visibility change.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Original\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [],
+          "notifications": []
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "  Renamed  "
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "hidden": true
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Renamed",
+            "hidden": true,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Renamed\",\"hidden\":true,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "project.update",
+          "params": {
+            "projectId": "17171717-0000-4000-8000-000000000001",
+            "name": "Visible",
+            "hidden": false
+          },
+          "value": {
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path": "C:\\never-probe-admission-fixture",
+            "name": "Visible",
+            "hidden": false,
+            "kind": "folder",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "updatedAt": "2026-01-02T03:04:05.678Z",
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "profileId": "17171717-0000-4000-8000-000000000099"
+          },
+          "value": null,
+          "error": "Select an existing model profile.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000099"
+            ]
+          },
+          "value": null,
+          "error": "A collapsed project no longer exists.",
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {},
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none",
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ]
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "chat",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "mode": "coding",
+            "profileId": "00000000-0000-4000-8000-000000000001"
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [
+              "17171717-0000-4000-8000-000000000001",
+              "none"
+            ],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 332,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 332,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        },
+        {
+          "method": "workspace.preferences.save",
+          "params": {
+            "collapsedProjectIds": []
+          },
+          "value": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "error": null,
+          "project": {
+            "rowid": 3,
+            "id": "17171717-0000-4000-8000-000000000001",
+            "path_key": "preserve-this-path-key",
+            "data": "{\"id\":\"17171717-0000-4000-8000-000000000001\",\"path\":\"C:\\\\never-probe-admission-fixture\",\"name\":\"Visible\",\"hidden\":false,\"kind\":\"folder\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"updatedAt\":\"2026-01-02T03:04:05.678Z\",\"opaque\":{\"retained\":true}}"
+          },
+          "preferences": {
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "mode": "coding",
+            "collapsedProjectIds": [],
+            "opaque": {
+              "retained": true
+            }
+          },
+          "events": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": "{\"projectId\":\"17171717-0000-4000-8000-000000000001\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 332,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            },
+            {
+              "sequence": 333,
+              "type": "preferences.changed",
+              "task_id": null,
+              "data": "{}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": null
+            }
+          ],
+          "notifications": [
+            {
+              "sequence": 327,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 328,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 329,
+              "type": "projects.changed",
+              "data": {
+                "projectId": "17171717-0000-4000-8000-000000000001"
+              },
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 330,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 331,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 332,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            },
+            {
+              "sequence": 333,
+              "type": "preferences.changed",
+              "data": {},
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -22,6 +22,9 @@ internal static unsafe partial class Native
     internal const uint OpenExisting = 3;
     internal const uint FileAttributeNormal = 0x80;
     internal const uint FileFlagBackupSemantics = 0x02000000;
+    internal const uint FileFlagOpenReparsePoint = 0x00200000;
+    internal const uint FileAttributeDirectory = 0x10;
+    internal const uint FileAttributeReparsePoint = 0x400;
     internal const uint SecuritySqosPresent = 0x00100000;
     internal const uint SecurityAnonymous = 0x0;
     internal const uint VolumeNameDos = 0x0;
@@ -29,6 +32,15 @@ internal static unsafe partial class Native
     internal const nint CurrentProcess = -1;
     internal const uint MoveFileReplaceExisting = 0x1;
     internal const uint MoveFileWriteThrough = 0x8;
+
+    /// <summary>BY_HANDLE_FILE_INFORMATION.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct FileInformation
+    {
+        public uint Attributes;
+        public uint CreationLow, CreationHigh, AccessLow, AccessHigh, WriteLow, WriteHigh;
+        public uint VolumeSerial, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct StartupInfo
@@ -159,6 +171,10 @@ internal static unsafe partial class Native
 
     [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true)]
     internal static partial SafeFileHandle CreateFile(char* name, uint access, uint share, nint security, uint disposition, uint flags, nint template);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "GetFileInformationByHandle", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetFileInformation(SafeFileHandle file, FileInformation* information);
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", SetLastError = true)]
     internal static partial uint GetFinalPathNameByHandle(SafeFileHandle file, char* buffer, uint size, uint flags);

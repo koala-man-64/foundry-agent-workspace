@@ -1,0 +1,883 @@
+[
+  {
+    "name": "fake-chat:0",
+    "input": {
+      "messages": []
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: No user m"
+        },
+        {
+          "type": "text",
+          "text": "essage."
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:1",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": ""
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: No user m"
+        },
+        {
+          "type": "text",
+          "text": "essage."
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:2",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "   "
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e:    "
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:3",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "hello"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: hello"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:4",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "earlier"
+        },
+        {
+          "role": "assistant",
+          "content": "ignore"
+        },
+        {
+          "role": "user",
+          "content": "latest"
+        },
+        {
+          "role": "system",
+          "content": "ignore"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: latest"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:5",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "earlier"
+        },
+        {
+          "role": "user",
+          "content": ""
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: No user m"
+        },
+        {
+          "type": "text",
+          "text": "essage."
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:6",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "12345678😀x"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: 12345678\ud83d"
+        },
+        {
+          "type": "text",
+          "text": "\ude00x"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:7",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: 😀😀😀😀\ud83d"
+        },
+        {
+          "type": "text",
+          "text": "\ude00😀😀😀😀😀\ud83d"
+        },
+        {
+          "type": "text",
+          "text": "\ude00😀😀😀"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:8",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "\ud800x\udfff"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: \ud800x\udfff"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:9",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "\\\"\n\r\t"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: \\\"\n\r\t"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:10",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件é文件"
+        }
+      ]
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: é文件é文件é文件"
+        },
+        {
+          "type": "text",
+          "text": "é文件é文件é文件é文件"
+        },
+        {
+          "type": "text",
+          "text": "é文件é文件é文件é文件"
+        },
+        {
+          "type": "text",
+          "text": "é文件é文件é文件é文件"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:11",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": null
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:12",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": []
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:13",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": "not an object"
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:14",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {}
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:15",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": 3
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:16",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "unknown",
+          "calls": []
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:17",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "chat",
+          "calls": [
+            null
+          ]
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid continuation call."
+    }
+  },
+  {
+    "name": "fake-chat:18",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "chat",
+          "calls": [
+            {
+              "id": 3,
+              "name": "x"
+            }
+          ]
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid continuation call."
+    }
+  },
+  {
+    "name": "fake-chat:19",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "chat",
+          "calls": [
+            {
+              "id": "x",
+              "name": 3
+            }
+          ]
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid continuation call."
+    }
+  },
+  {
+    "name": "fake-chat:20",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "complete",
+          "calls": []
+        }
+      }
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: continuat"
+        },
+        {
+          "type": "text",
+          "text": "ion"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:21",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "chat",
+          "calls": "not an array"
+        }
+      }
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: continuat"
+        },
+        {
+          "type": "text",
+          "text": "ion"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:22",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "continuation"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": {
+          "stage": "chat",
+          "calls": [
+            {
+              "id": "x",
+              "name": "x",
+              "arguments": {
+                "opaque": true
+              }
+            }
+          ],
+          "future": {
+            "retained": [
+              null,
+              1
+            ]
+          }
+        }
+      }
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: continuat"
+        },
+        {
+          "type": "text",
+          "text": "ion"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  },
+  {
+    "name": "fake-chat:23",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "wrong provider"
+        }
+      ],
+      "continuation": {
+        "apiKind": "chat-completions",
+        "data": {
+          "stage": "chat",
+          "calls": []
+        }
+      }
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:24",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "aborted"
+        }
+      ],
+      "abortBefore": true
+    },
+    "expected": {
+      "events": [],
+      "error": "This operation was aborted"
+    }
+  },
+  {
+    "name": "fake-chat:25",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "aborted"
+        }
+      ],
+      "continuation": {
+        "apiKind": "fake",
+        "data": null
+      },
+      "abortBefore": true
+    },
+    "expected": {
+      "events": [],
+      "error": "Invalid fake continuation."
+    }
+  },
+  {
+    "name": "fake-chat:26",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "x"
+        }
+      ],
+      "cancelAfterTexts": 1
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        }
+      ],
+      "error": "This operation was aborted"
+    }
+  },
+  {
+    "name": "fake-chat:27",
+    "input": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "x"
+        }
+      ],
+      "cancelAfterTexts": 2
+    },
+    "expected": {
+      "events": [
+        {
+          "type": "text",
+          "text": "Fake respons"
+        },
+        {
+          "type": "text",
+          "text": "e: x"
+        },
+        {
+          "type": "done",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "stage": "chat",
+              "calls": []
+            }
+          }
+        }
+      ],
+      "error": null
+    }
+  }
+]

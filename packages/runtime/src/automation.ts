@@ -354,6 +354,9 @@ export class AutomationService {
       // Registrations saved before network paths were refused are re-checked before anything touches their files.
       if (isNetworkOrDevicePath(row.registration.cwd)) { this.setRun(run, 'cancelled', 'Hook working directory must not be on a network share.'); return; }
       await this.validateRevision(row);
+      // A close can happen during the asynchronous pin checks. Leave this
+      // never-launched run queued for safe recovery rather than dispatch it.
+      if (this.closing) return;
       const currentGrant = this.grantFor(row.revision.id);
       if (!currentGrant || Date.parse(currentGrant.expiresAt) <= this.now().getTime()) { this.setRun(run, 'cancelled', 'Trust grant was revoked or expired.'); return; }
       const controller = new AbortController(); this.running.set(row.revision.id, controller);

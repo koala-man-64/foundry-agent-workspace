@@ -32,6 +32,10 @@ T:System.Threading.ThreadPool;RuntimeLoop: use RuntimeLoop.Offload for state-fre
 T:System.Threading.Tasks.Parallel;RuntimeLoop: use RuntimeLoop.Offload for state-free CPU or blocking work
 T:System.Threading.Thread;RuntimeLoop: only RuntimeLoop owns a thread, with a local suppression
 T:System.Threading.Timer;RuntimeLoop: use loop timers so callbacks run on the loop thread
+M:System.Threading.Tasks.Task.Delay(System.Int32);RuntimeLoop: delay ownership belongs to RuntimeLoop
+M:System.Threading.Tasks.Task.Delay(System.Int32,System.Threading.CancellationToken);RuntimeLoop: delay ownership belongs to RuntimeLoop
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan);RuntimeLoop: delay ownership belongs to RuntimeLoop
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan,System.Threading.CancellationToken);RuntimeLoop: delay ownership belongs to RuntimeLoop
 T:System.Timers.Timer;RuntimeLoop: use loop timers so callbacks run on the loop thread
 T:System.Threading.Monitor;RuntimeLoop: state is loop-affine; locks hide affinity bugs
 T:System.Threading.Lock;RuntimeLoop: state is loop-affine; locks hide affinity bugs

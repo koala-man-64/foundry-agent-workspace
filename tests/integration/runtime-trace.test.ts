@@ -82,6 +82,8 @@ async function recordScenario(): Promise<{ root: string; path: string; records: 
     expect(await runtime.invoke('demo.browser', {})).toEqual({ tabs: [] });
     await expect(runtime.invoke('demo.leak', {})).rejects.toThrow(CANARY); // The driver sees the leak; the trace must not.
     expect(await runtime.invoke('demo.noise', {})).toBe('noisy');
+    runtime.raw(`${JSON.stringify({ jsonrpc: '2.0', id: 'diagnostics', method: 'demo.diagnostics', params: {} })}\n`);
+    await vi.waitFor(() => expect(runtime.errors()).toContain('fixture diagnostics'));
     expect(await runtime.invoke('demo.oversized', {})).toBe('survived');
     child.stdin.on('error', () => undefined);
     child.stdin.end('{"unterminated":');

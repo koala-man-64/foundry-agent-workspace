@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 using Xunit;
 
 // Tests here mark handles inheritable and launch processes; a concurrent System.Diagnostics.Process launch in another
@@ -11,6 +14,8 @@ namespace Foundry.Platform.Tests;
 
 internal static class Scratch
 {
+    private static readonly string[] StageMarkerNames = ["before-start-process.marker", "after-start-process.marker", "child-entry.marker"];
+
     public static string RepositoryRoot { get; } = FindRepositoryRoot();
 
     public static string PowerShell { get; } = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -71,6 +76,90 @@ internal static class Scratch
         await WaitUntil(() => paths.All(path => File.Exists(path) && new FileInfo(path).Length > 0), "the process tree to record its process ids", seconds: 60);
         return paths.Select(path => int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture)).ToArray();
     }
+
+    public static async Task<int[]> WaitForPids(JobProcess job, string directory, params string[] names)
+    {
+        try
+        {
+            return await WaitForPids(directory, names);
+        }
+        catch (TimeoutException error)
+        {
+            throw new TimeoutException(error.Message + "\nStartup diagnostics: " + await DescribePidStartup(job, directory, names), error);
+        }
+    }
+
+    internal static async Task<string> DescribePidStartup(JobProcess job, string directory, params string[] names)
+    {
+        // Only used with the fixture's untouched output pipes: no concurrent
+        // reader, no draining or waiting for EOF, and no process termination.
+        var rootExit = await ObserveRootExit(job);
+        return JsonSerializer.Serialize(new
+        {
+            directory,
+            rootProcessId = job.ProcessId,
+            rootExit,
+            activeProcesses = Observe(() => job.ActiveProcesses),
+            pidFiles = names.Select(name => new { name, state = Observe(() =>
+            {
+                var file = new FileInfo(Path.Combine(directory, name));
+                return new { exists = file.Exists, bytes = file.Exists ? (long?)file.Length : null };
+            }) }).ToArray(),
+            stageMarkers = StageMarkerNames
+                .Select(name => new { name, state = Observe(() =>
+                {
+                    var file = new FileInfo(Path.Combine(directory, name));
+                    return new { exists = file.Exists, bytes = file.Exists ? (long?)file.Length : null };
+                }) }).ToArray(),
+            stdout = PeekOutput(job.StandardOutput),
+            stderr = PeekOutput(job.StandardError)
+        });
+    }
+
+    private static async Task<object> ObserveRootExit(JobProcess job)
+    {
+        using var observation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        try
+        {
+            return new { state = "exited", code = await job.WaitForExitAsync(observation.Token) };
+        }
+        catch (OperationCanceledException)
+        {
+            return new { state = "exit-not-observed" };
+        }
+        catch (Exception error)
+        {
+            return new { state = "unavailable", error = error.GetType().Name };
+        }
+    }
+
+    private static object Observe(Func<object> read)
+    {
+        try { return read(); }
+        catch (Exception error) { return new { error = error.GetType().Name }; }
+    }
+
+    private static object PeekOutput(FileStream stream) => Observe(() =>
+    {
+        var buffer = new byte[1024];
+        if (!PeekNamedPipe(stream.SafeFileHandle, buffer, (uint)buffer.Length, out var read, out var available, 0))
+            return new { state = "unavailable", win32Error = Marshal.GetLastPInvokeError() };
+        return new
+        {
+            state = "available",
+            availableBytes = available,
+            capturedBytes = read,
+            truncated = available > read,
+            text = Encoding.UTF8.GetString(buffer, 0, checked((int)read))
+        };
+    });
+
+    // CLR array marshalling keeps this test-only observation within the existing
+    // project settings; source-generated interop would require enabling unsafe.
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PeekNamedPipe(SafeFileHandle pipe, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer,
+        uint size, out uint read, out uint available, nint left);
 
     public static async Task WaitUntil(Func<bool> condition, string description, int seconds = 10)
     {

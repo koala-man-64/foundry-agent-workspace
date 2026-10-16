@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <ProjectReference Include="../../src/Foundry.Protocol/Foundry.Protocol.csproj" />
+    <ProjectReference Include="../../src/Foundry.Runtime.Core/Foundry.Runtime.Core.csproj" />
+    <ProjectReference Include="../../src/Foundry.Runtime/Foundry.Runtime.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

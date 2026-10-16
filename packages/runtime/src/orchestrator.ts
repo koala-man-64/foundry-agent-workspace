@@ -552,6 +552,9 @@ export class Orchestrator implements OrchestrationToolHooks {
     }
     const root = this.store.gitTask(rootTaskId);
     const target = await this.git.state(root.worktreePath);
+    // Shutdown may have begun while the read was pending. Do not create a
+    // child, hold or intent after admission has closed.
+    if (this.closing) return false;
     const active = this.records.activeIntegration(rootTaskId);
     for (const assignment of proposed) {
       const predecessors = assignment.dependsOn.map(id => this.records.effectiveAssignment(id)!);

@@ -6,6 +6,7 @@ import { WorkspaceRpc, type ActionItem, type ActionPage, type ApprovalContentChu
 import type { Redactor } from './redaction';
 import { canonicalPath, type Store } from './store';
 import { isNetworkOrDevicePath } from './network-path';
+import { resolveLocalPath } from './repository';
 
 const PAGE_BYTES = 256 * 1024;
 const PAGE_ITEMS_BYTES = PAGE_BYTES - 1024; // Leave room for cursors, counts, and response metadata.
@@ -17,6 +18,14 @@ type EventRow = { sequence: number; type: string; task_id: string | null; data: 
 export function isWorkspaceMethod(method: string): method is WorkspaceMethod { return Object.prototype.hasOwnProperty.call(WorkspaceRpc, method); }
 function bytes(value: unknown): number { return Buffer.byteLength(JSON.stringify(value), 'utf8'); }
 function fingerprint(value: unknown): string { return createHash('sha256').update(JSON.stringify(value)).digest('hex'); }
+// Validated UTC timestamps: removing Z and insignificant fractional zeros
+// produces an exact lexical instant key without rounding sub-millisecond bounds.
+function usageInstantKey(value: string): string {
+  let end = value.length - 1;
+  if (value[19] !== '.') return value.slice(0, 19) + '.';
+  while (end > 20 && value[end - 1] === '0') end--;
+  return value.slice(0, 19) + '.' + value.slice(20, end);
+}
 function clipped(text: string, maxBytes = EXCERPT_BYTES): { content: string; truncated: boolean } {
   const source = Buffer.from(text, 'utf8');
   if (source.length <= maxBytes) return { content: text, truncated: false };
@@ -103,6 +112,7 @@ export class WorkspaceQueries {
       // A project saved before network paths were refused is reported without being probed.
       if (isNetworkOrDevicePath(project.path)) project = { ...project, kind: 'unavailable', unavailableReason: 'Projects on network shares are not supported.' };
       else try {
+        resolveLocalPath(project.path, project.path);
         if (!statSync(project.path).isDirectory()) throw new Error('Folder unavailable.');
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
         if (!same) throw new Error('Folder now resolves to a different location.');
@@ -122,11 +132,24 @@ export class WorkspaceQueries {
     if (p.sort === 'recent' && p.cursor) throw new Error('Recent tasks are a refreshed first page; reload to see changes.');
     if (p.cursor && p.cursor.filterHash !== filterHash) throw new Error('Task list cursor belongs to different filters; reload the first page.');
     if (this.store.schemaVersion < 5) {
-      const legacy = this.store.allTasks().filter(task => !task.parentTaskId && this.matchesTask(task, p));
-      legacy.sort((a, b) => (p.sort === 'created' ? b.createdAt.localeCompare(a.createdAt) : b.updatedAt.localeCompare(a.updatedAt)) || b.id.localeCompare(a.id));
-      const highWater = p.cursor ? { at: p.cursor.highWaterAt, id: p.cursor.highWaterId } : { at: p.sort === 'created' ? legacy[0]?.createdAt ?? '' : legacy[0]?.updatedAt ?? '', id: legacy[0]?.id ?? '' };
-      const filtered = legacy.filter(task => { const value = p.sort === 'created' ? task.createdAt : task.updatedAt; return !p.cursor || (value < p.cursor.at || value === p.cursor.at && task.id < p.cursor.id); });
-      return this.taskPage(filtered.slice(0, p.limit + 1), p, highWater, filterHash);
+      const key = p.sort === 'created' ? 'createdAt' : 'updatedAt';
+      const compare = (left: { at: string; id: string }, right: { at: string; id: string }): number => right.at.localeCompare(left.at) || right.id.localeCompare(left.id);
+      let first: { at: string; id: string } | undefined;
+      const candidates: Task[] = [];
+      // Old eras have no indexed read projection. Scan every row, including
+      // malformed retained data, but keep at most limit + 1 documents in memory.
+      for (const row of this.store.db.prepare('SELECT data FROM tasks').iterate() as Iterable<{ data: string }>) {
+        const task = JSON.parse(row.data) as Task;
+        if (task.parentTaskId || !this.matchesTask(task, p)) continue;
+        const position = { at: task[key], id: task.id };
+        if (!first || compare(position, first) < 0) first = position;
+        if (p.cursor && !(position.at < p.cursor.at || position.at === p.cursor.at && position.id < p.cursor.id)) continue;
+        let index = candidates.findIndex(item => compare(position, { at: item[key], id: item.id }) < 0);
+        if (index < 0) index = candidates.length;
+        if (index <= p.limit) { candidates.splice(index, 0, task); if (candidates.length > p.limit + 1) candidates.pop(); }
+      }
+      const highWater = p.cursor ? { at: p.cursor.highWaterAt, id: p.cursor.highWaterId } : first ?? { at: '', id: '' };
+      return this.taskPage(candidates, p, highWater, filterHash);
     }
     const clauses = ['parent_task_id IS NULL']; const args: unknown[] = [];
     if (p.visibility !== 'all') clauses.push(p.visibility === 'active' ? 'archived_at IS NULL' : 'archived_at IS NOT NULL');
@@ -255,7 +278,9 @@ export class WorkspaceQueries {
 
   private usageTrend(p: { groupBy: 'day' | 'profile' | 'task'; from?: string; to?: string; profileId?: string; taskId?: string; after?: string; limit: number }): UsageTrendPage {
     const from = p.from ?? '1970-01-01T00:00:00.000Z', to = p.to ?? new Date().toISOString();
-    if (from > to) throw new Error('Usage trend start must be before end.');
+    const fromKey = usageInstantKey(from), toKey = usageInstantKey(to);
+    if (fromKey > toKey) throw new Error('Usage trend start must be before end.');
+    const timeKey = "substr(u.created_at,1,19) || '.' || rtrim(CASE WHEN substr(u.created_at,20,1) = '.' THEN substr(u.created_at,21,length(u.created_at)-21) ELSE '' END,'0')";
     const current = this.store.schemaVersion >= 4;
     const group = p.groupBy === 'day' ? 'substr(u.created_at, 1, 10)' : p.groupBy === 'profile'
       ? current ? "COALESCE(u.profile_id, 'unknown')" : "COALESCE(json_extract(t.data, '$.profileId'), 'unknown')" : current ? 'COALESCE(u.root_task_id, u.task_id)' : 'u.task_id';
@@ -282,10 +307,12 @@ export class WorkspaceQueries {
       SUM(CASE WHEN ${pending} THEN u.reserved ELSE 0 END) AS reserved_pending,
       SUM(CASE WHEN ${notSent} THEN u.reserved ELSE 0 END) AS reserved_not_sent
       FROM ${table} u ${join}
-      WHERE u.created_at >= ? AND u.created_at <= ? AND (? IS NULL OR ${taskFilter} = ?)
+      WHERE u.created_at >= ? AND u.created_at < ? AND ${timeKey} >= ? AND ${timeKey} <= ? AND (? IS NULL OR ${taskFilter} = ?)
         AND (? IS NULL OR ${profile} = ?) ${p.groupBy === 'task' ? 'AND u.task_id IS NOT NULL' : ''}
       GROUP BY key HAVING key > ? ORDER BY key LIMIT ?`)
-      .all(from, to, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; pending: number; not_sent: number; unknown: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number; reserved_pending: number; reserved_not_sent: number }[];
+      // Coarse second-wide bounds keep the created_at range index usable; exact
+      // keys then enforce the inclusive fractional bounds inside that range.
+      .all(from.slice(0, 19), to.slice(0, 19) + '[', fromKey, toKey, p.taskId ?? null, p.taskId ?? null, p.profileId ?? null, p.profileId ?? null, p.after ?? '', p.limit + 1) as { key: string; requests: number; known: number; pending: number; not_sent: number; unknown: number; prompt: number; completion: number; cache_read: number; cache_creation: number; reserved_unknown: number; reserved_pending: number; reserved_not_sent: number }[];
     const buckets = rows.slice(0, p.limit).map(row => ({ key: row.key, requests: row.requests, knownRequests: row.known,
       unknownRequests: row.unknown, pendingRequests: row.pending, notSentRequests: row.not_sent,
       observedPrompt: row.prompt, observedCompletion: row.completion, cacheRead: row.cache_read,

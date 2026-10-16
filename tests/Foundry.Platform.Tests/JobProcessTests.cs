@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace Foundry.Platform.Tests;
@@ -11,18 +12,57 @@ namespace Foundry.Platform.Tests;
 /// </summary>
 public sealed class JobProcessTests
 {
-    private static string TreeScript(string directory, int lingerSeconds) => $"""
+    private static string TreeScript(string directory, int lingerSeconds)
+    {
+        var childCommand = StageMarker(directory, "child-entry.marker") + "; Start-Sleep -Seconds 120";
+        return $"""
         $ErrorActionPreference = 'Stop'
         [IO.File]::WriteAllText('{Quote(Path.Combine(directory, "root.pid"))}', $PID)
-        $child = Start-Process -PassThru -WindowStyle Hidden -FilePath '{Quote(Scratch.PowerShell)}' -ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 120'
+        $startInfo = [Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = '{Quote(Scratch.PowerShell)}'
+        $startInfo.Arguments = '-NoProfile -NonInteractive -Command {Quote(childCommand)}'
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        {StageMarker(directory, "before-start-process.marker")}
+        $child = [Diagnostics.Process]::Start($startInfo)
+        {StageMarker(directory, "after-start-process.marker")}
         [IO.File]::WriteAllText('{Quote(Path.Combine(directory, "child.pid"))}', [string]$child.Id)
         Start-Sleep -Seconds {lingerSeconds}
         """;
+    }
+
+    private static string StageMarker(string directory, string name) =>
+        $"try {{ [IO.File]::WriteAllText('{Quote(Path.Combine(directory, name))}', '1') }} catch {{ [Console]::Error.WriteLine('Stage marker {name} failed: ' + $_.Exception.GetType().Name) }}";
 
     private static string Quote(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
     private static JobProcess StartTree(DirectoryInfo directory, int lingerSeconds) =>
         JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand(TreeScript(directory.FullName, lingerSeconds)), directory.FullName, Scratch.Environment(directory.FullName)));
+
+    [Fact]
+    public async Task TreeScriptRecordsStageMarkersInAQuotedFixturePath()
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+        var directory = Scratch.Directory("foundry-job-stage ' ");
+        using var job = StartTree(directory, lingerSeconds: 120);
+        await Scratch.WaitForPids(job, directory.FullName, "root.pid", "child.pid");
+        await Scratch.WaitUntil(() =>
+            File.Exists(Path.Combine(directory.FullName, "child-entry.marker")) && new FileInfo(Path.Combine(directory.FullName, "child-entry.marker")).Length == 1,
+            "the child-entry diagnostic marker", seconds: 60);
+        using var snapshot = JsonDocument.Parse(await Scratch.DescribePidStartup(job, directory.FullName, "root.pid", "child.pid"));
+        var markers = snapshot.RootElement.GetProperty("stageMarkers");
+        Assert.Equal(3, markers.GetArrayLength());
+        Assert.Equal("before-start-process.marker", markers[0].GetProperty("name").GetString());
+        Assert.Equal("after-start-process.marker", markers[1].GetProperty("name").GetString());
+        Assert.Equal("child-entry.marker", markers[2].GetProperty("name").GetString());
+        Assert.All(markers.EnumerateArray(), marker =>
+        {
+            Assert.True(marker.GetProperty("state").GetProperty("exists").GetBoolean());
+            Assert.Equal(1, marker.GetProperty("state").GetProperty("bytes").GetInt64());
+        });
+        job.Terminate(4);
+        Assert.True(await job.WaitForEmptyAsync(TimeSpan.FromSeconds(5), cancellation), "Cleanup was not verified within 5 seconds.");
+    }
 
     [Fact]
     public async Task TerminatingTheJobReclaimsEveryDescendant()
@@ -45,13 +85,67 @@ public sealed class JobProcessTests
         var cancellation = TestContext.Current.CancellationToken;
         var directory = Scratch.Directory("foundry-job-background-");
         using var job = StartTree(directory, lingerSeconds: 3);
-        var pids = await Scratch.WaitForPids(directory.FullName, "root.pid", "child.pid");
+        var pids = await Scratch.WaitForPids(job, directory.FullName, "root.pid", "child.pid");
         Assert.Equal(0, await job.WaitForExitAsync(cancellation));
         Assert.True(Scratch.IsAlive(pids[1]), "The background grandchild should outlive the root.");
         Assert.True(job.ActiveProcesses >= 1, "The background grandchild should still be running inside the job.");
         job.Terminate(3);
         Assert.True(await job.WaitForEmptyAsync(TimeSpan.FromSeconds(5), cancellation), "Cleanup was not verified within 5 seconds.");
         await Scratch.WaitUntil(() => pids.All(pid => !Scratch.IsAlive(pid)), "the background grandchild to be reclaimed");
+    }
+
+    [Fact]
+    public async Task StartupDiagnosticsAreBoundedAndDoNotConsumeOutput()
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+        var directory = Scratch.Directory("foundry-job-diagnostics-");
+        using var job = JobProcess.Start(new ProcessSpec(Scratch.PowerShell,
+            Scratch.EncodedCommand("[Console]::Out.Write(('o' * 2048)); [Console]::Error.Write(('e' * 2048)); exit 23"),
+            directory.FullName, Scratch.Environment(directory.FullName)));
+        Assert.Equal(23, await job.WaitForExitAsync(cancellation));
+        await File.WriteAllTextAsync(Path.Combine(directory.FullName, "root.pid"),
+            job.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellation);
+
+        var snapshot = await Scratch.DescribePidStartup(job, directory.FullName, "root.pid", "child.pid");
+        Assert.Equal(snapshot, await Scratch.DescribePidStartup(job, directory.FullName, "root.pid", "child.pid"));
+        using var document = JsonDocument.Parse(snapshot);
+        var root = document.RootElement;
+        Assert.Equal("exited", root.GetProperty("rootExit").GetProperty("state").GetString());
+        Assert.Equal(23, root.GetProperty("rootExit").GetProperty("code").GetInt32());
+        Assert.Equal(0, root.GetProperty("activeProcesses").GetInt32());
+        var files = root.GetProperty("pidFiles");
+        Assert.True(files[0].GetProperty("state").GetProperty("exists").GetBoolean());
+        Assert.True(files[0].GetProperty("state").GetProperty("bytes").GetInt64() > 0);
+        Assert.False(files[1].GetProperty("state").GetProperty("exists").GetBoolean());
+        foreach (var (name, character) in new[] { ("stdout", 'o'), ("stderr", 'e') })
+        {
+            var output = root.GetProperty(name);
+            Assert.Equal("available", output.GetProperty("state").GetString());
+            Assert.Equal(1024, output.GetProperty("capturedBytes").GetInt32());
+            Assert.True(output.GetProperty("truncated").GetBoolean());
+            Assert.Equal(new string(character, 1024), output.GetProperty("text").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task StartupDiagnosticsObserveARunningRootWithoutStoppingIt()
+    {
+        var directory = Scratch.Directory("foundry-job-live-diagnostics-");
+        using var job = JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand("Start-Sleep -Seconds 30"),
+            directory.FullName, Scratch.Environment(directory.FullName)));
+        using var snapshot = JsonDocument.Parse(await Scratch.DescribePidStartup(job, directory.FullName, "root.pid", "child.pid"));
+        var root = snapshot.RootElement;
+        Assert.Equal("exit-not-observed", root.GetProperty("rootExit").GetProperty("state").GetString());
+        Assert.True(root.GetProperty("activeProcesses").GetInt32() >= 1);
+        Assert.All(root.GetProperty("pidFiles").EnumerateArray(), file => Assert.False(file.GetProperty("state").GetProperty("exists").GetBoolean()));
+        foreach (var name in new[] { "stdout", "stderr" })
+        {
+            var output = root.GetProperty(name);
+            Assert.Equal("available", output.GetProperty("state").GetString());
+            Assert.Equal(0, output.GetProperty("capturedBytes").GetInt32());
+        }
+        Assert.True(Scratch.IsAlive(job.ProcessId));
+        Assert.True(job.ActiveProcesses >= 1);
     }
 
     [Fact]

@@ -1,0 +1,746 @@
+{
+  "task": {
+    "id": "55555555-0000-4000-8000-000000000001",
+    "title": "History",
+    "workspaceKind": "none",
+    "mode": "chat",
+    "profileId": "00000000-0000-4000-8000-000000000001",
+    "status": "idle",
+    "createdAt": "2026-01-02T03:04:05.678Z",
+    "updatedAt": "2026-01-02T03:04:05.678Z",
+    "tokenBudget": 4096,
+    "usedTokens": 0
+  },
+  "messages": [
+    {
+      "id": "55555555-0000-4000-8000-000000000002",
+      "taskId": "55555555-0000-4000-8000-000000000001",
+      "role": "user",
+      "content": "retained user 😀",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "status": "complete",
+      "ordinal": 999,
+      "future": {
+        "untouched": true
+      }
+    },
+    {
+      "id": "55555555-0000-4000-8000-000000000003",
+      "taskId": "55555555-0000-4000-8000-000000000001",
+      "role": "assistant",
+      "content": "retained partial",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "status": "interrupted"
+    },
+    {
+      "id": "55555555-0000-4000-8000-000000000004",
+      "taskId": "55555555-0000-4000-8000-000000000001",
+      "role": "assistant",
+      "content": "retained answer",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "status": "complete"
+    }
+  ],
+  "state": {
+    "fingerprint": "fixture-fingerprint",
+    "continuation": {
+      "apiKind": "fake",
+      "data": {
+        "opaque": [
+          "raw\ud800",
+          null,
+          {
+            "future": true
+          }
+        ],
+        "calls": []
+      }
+    },
+    "pending": [],
+    "results": [],
+    "future": {
+      "preserved": true
+    }
+  },
+  "cases": [
+    {
+      "era": "fresh",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 2,
+        "toOrdinal": 3,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 1,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 2
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 3
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 2,
+            "toOrdinal": 3,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v1",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 10,
+        "toOrdinal": 11,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 9,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 10
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 11
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 10,
+            "toOrdinal": 11,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v2",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 32,
+        "toOrdinal": 33,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 31,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 32
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 33
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 32,
+            "toOrdinal": 33,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v3",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 38,
+        "toOrdinal": 39,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 37,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 38
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 39
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 38,
+            "toOrdinal": 39,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v4",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 42,
+        "toOrdinal": 43,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 41,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 42
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 43
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 42,
+            "toOrdinal": 43,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v5",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 59,
+        "toOrdinal": 60,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 58,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 59
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 60
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 59,
+            "toOrdinal": 60,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    },
+    {
+      "era": "v5-wal",
+      "compaction": {
+        "id": "55555555-0000-4000-8000-000000000005",
+        "taskId": "55555555-0000-4000-8000-000000000001",
+        "fromOrdinal": 61,
+        "toOrdinal": 62,
+        "messageIds": [
+          "55555555-0000-4000-8000-000000000003",
+          "55555555-0000-4000-8000-000000000004"
+        ],
+        "summary": "retained summary 😀",
+        "estimatedTokensBefore": 300,
+        "estimatedTokensAfter": 20,
+        "createdAt": "2026-01-02T03:04:05.678Z"
+      },
+      "expected": {
+        "messages": [
+          {
+            "id": "55555555-0000-4000-8000-000000000002",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "user",
+            "content": "retained user 😀",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 60,
+            "future": {
+              "untouched": true
+            }
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000003",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained partial",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "interrupted",
+            "ordinal": 61
+          },
+          {
+            "id": "55555555-0000-4000-8000-000000000004",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "role": "assistant",
+            "content": "retained answer",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "status": "complete",
+            "ordinal": 62
+          }
+        ],
+        "compactions": [
+          {
+            "id": "55555555-0000-4000-8000-000000000005",
+            "taskId": "55555555-0000-4000-8000-000000000001",
+            "fromOrdinal": 61,
+            "toOrdinal": 62,
+            "messageIds": [
+              "55555555-0000-4000-8000-000000000003",
+              "55555555-0000-4000-8000-000000000004"
+            ],
+            "summary": "retained summary 😀",
+            "estimatedTokensBefore": 300,
+            "estimatedTokensAfter": 20,
+            "createdAt": "2026-01-02T03:04:05.678Z"
+          }
+        ],
+        "state": {
+          "fingerprint": "fixture-fingerprint",
+          "continuation": {
+            "apiKind": "fake",
+            "data": {
+              "opaque": [
+                "raw\ud800",
+                null,
+                {
+                  "future": true
+                }
+              ],
+              "calls": []
+            }
+          },
+          "pending": [],
+          "results": [],
+          "future": {
+            "preserved": true
+          }
+        },
+        "emptyMessages": [],
+        "emptyCompactions": [],
+        "missingState": null,
+        "providerHistory": [
+          {
+            "role": "user",
+            "content": "retained user 😀\n\n---\n\nretained summary 😀"
+          }
+        ]
+      }
+    }
+  ]
+}

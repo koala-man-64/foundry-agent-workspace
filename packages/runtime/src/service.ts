@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { AutomationDraft, CoordinationConfig, GitTask, McpServerStatus, Message, ModelProfile, Project, ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, Task, WorkspaceEvent, WorkspacePreferences } from '../../protocol/src/index';
 import { AutomationRpc, COORDINATED_MODE_ENABLED, isGitTask, ModelProfileSchema, RpcMethods, SCHEMA_VERSION } from '../../protocol/src/index';
 import { createProvider } from '../../providers/src/index';
-import { RepositoryService, RepositoryError } from './repository';
+import { RepositoryService, RepositoryError, resolveLocalPath, resolveGitAdmission, assertGitAdmission } from './repository';
 import { Redactor } from './redaction';
 import { Store, FAKE_PROFILE_ID, canonicalPath } from './store';
 import { CommandRunner } from './command-runner';
@@ -96,8 +96,26 @@ export class RuntimeService {
     // Streaming fragments are transient and never trigger a history query or automation.
     if (type === 'task.progress') { this.emit({ sequence: 0, type, data, taskId, createdAt: new Date().toISOString() }); return; }
     const canonical = this.store.schemaVersion >= 5 && ['task.started', 'task.completed', 'task.stopped', 'approval.changed', 'message.completed'].includes(type);
-    const event = (canonical ? this.store.lastEvent(type, taskId) : undefined) ?? this.store.event(type, data, taskId); this.emit(event);
-    if (this.automation && !/^(?:hook\.|automation\.|draft\.|schedule\.)/.test(type)) void this.automation.onEvent(event).catch(error => this.recordAutomationFault(error));
+    const event = (canonical ? this.store.lastEvent(type, taskId) : undefined) ?? this.store.event(type, data, taskId); this.notify(event);
+  }
+  private notify(event: WorkspaceEvent): void {
+    this.emit(event);
+    if (this.automation && !/^(?:hook\.|automation\.|draft\.|schedule\.)/.test(event.type)) void this.automation.onEvent(event).catch(error => this.recordAutomationFault(error));
+  }
+  private notifyCommitted(event: WorkspaceEvent): void {
+    try { this.notify(event); }
+    catch {
+      // State and event are authoritative. Close admission so a retry cannot
+      // repeat the committed mutation after a failed renderer notification.
+      this.closing = true;
+      clearInterval(this.automationTimer);
+      this.orchestrator.beginShutdown();
+      // close sets admission/abort synchronously; ordinary shutdown still
+      // drains these operations before closing SQLite. Observe this promise.
+      void this.automation?.close().catch(error => this.recordAutomationFault(error));
+      for (const { abort } of this.running.values()) abort.abort();
+      throw new Error('The mutation committed, but event delivery failed.');
+    }
   }
   private recordAutomationFault(error: unknown): void {
     if (this.closing) return;
@@ -211,12 +229,15 @@ export class RuntimeService {
         if (!isAbsolute(raw)) throw new Error('Select an absolute folder path.');
         // Before canonicalPath or stat: touching a network path makes Windows authenticate to its server.
         if (isNetworkOrDevicePath(raw)) throw new Error('Projects on network shares are not supported.');
-        const path = canonicalPath(raw);
+        const path = resolveLocalPath(raw);
         if (isNetworkOrDevicePath(path)) throw new Error('Projects on network drives are not supported.');
         if (!statSync(path).isDirectory()) throw new Error('Select a folder.');
         const previous = this.store.projectByPath(path);
         if (previous) return previous;
+        const identity = resolveGitAdmission(path);
         const kind = await this.repositories.isGitWorkingTree(path) ? 'git' : 'folder';
+        resolveLocalPath(raw, path);
+        assertGitAdmission(path, identity);
         const project = this.store.projectByPath(path) ?? this.store.insertProject(path, kind);
         this.publish('projects.changed', { projectId: project.id }); return project;
       }
@@ -225,14 +246,15 @@ export class RuntimeService {
         const project = this.store.project(p.projectId); if (!project) throw new Error('Project not found.');
         if (p.name === undefined && p.hidden === undefined) throw new Error('Choose a name or visibility change.');
         const updated: Project = { ...project, ...(p.name !== undefined ? { name: p.name } : {}), ...(p.hidden !== undefined ? { hidden: p.hidden } : {}), updatedAt: new Date().toISOString() };
-        this.store.saveProject(updated); this.publish('projects.changed', { projectId: updated.id }); return updated;
+        const committed = this.store.transactionWithEvent(() => this.store.saveProject(updated), 'projects.changed', { projectId: updated.id });
+        this.notifyCommitted(committed.event); return committed.value;
       }
       case 'workspace.preferences.save': {
         this.store.requireProjects(); const p = params as Partial<WorkspacePreferences>;
         if (p.profileId && !this.store.profile(p.profileId)) throw new Error('Select an existing model profile.');
         for (const id of p.collapsedProjectIds ?? []) if (id !== 'none' && !this.store.project(id)) throw new Error('A collapsed project no longer exists.');
-        const saved = this.store.savePreferences({ ...this.store.preferences(), ...p, ...(p.collapsedProjectIds ? { collapsedProjectIds: [...new Set(p.collapsedProjectIds)] } : {}) });
-        this.publish('preferences.changed', {}); return saved;
+        const committed = this.store.transactionWithEvent(() => this.store.savePreferences({ ...this.store.preferences(), ...p, ...(p.collapsedProjectIds ? { collapsedProjectIds: [...new Set(p.collapsedProjectIds)] } : {}) }), 'preferences.changed', {});
+        this.notifyCommitted(committed.event); return committed.value;
       }
       case 'task.start': return this.startTaskCoalesced(params as { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: 'chat' | 'coding' | 'coordinated'; tokenBudget: number; coordination?: CoordinationConfig });
       case 'usage.summary': return this.store.usageSummary(params as Parameters<Store['usageSummary']>[0]);
@@ -303,6 +325,7 @@ export class RuntimeService {
         const p = params as { title: string; projectPath: string; profileId: string; tokenBudget: number; mode: 'chat' | 'coding' | 'coordinated'; coordination?: CoordinationConfig };
         // Before canonicalPath or Git: touching a network path makes Windows authenticate to its server.
         if (isNetworkOrDevicePath(p.projectPath)) throw new Error('Projects on network shares are not supported.');
+        resolveLocalPath(p.projectPath);
         if (isNetworkOrDevicePath(canonicalPath(p.projectPath))) throw new Error('Projects on network drives are not supported.');
         const selected = this.store.profile(p.profileId);
         if (!selected) throw new Error('Select an existing model profile.');
@@ -317,9 +340,10 @@ export class RuntimeService {
         }
         if (p.mode === 'coding' && !this.profileReady(selected)) throw new Error('Probe tool and continuation capabilities before creating a coding task.');
         if (this.store.unknownIntents()) throw new Error('An earlier worktree creation has an unknown outcome. Inspect the retained worktree and database intent before creating another task.');
+        const channelIdentity = this.tools.channel.prepareAdmission(p.projectPath);
         const id = randomUUID(); const intent = this.store.intent('worktree.create', { taskId: id, projectPath: p.projectPath });
         try {
-          const worktree = await this.repositories.createTaskWorktree(p.projectPath, id);
+          const worktree = await this.repositories.createTaskWorktree(p.projectPath, id, undefined, channelIdentity);
           const now = new Date().toISOString();
           let projectId: string | undefined;
           if (this.store.schemaVersion >= 3) {
@@ -330,6 +354,7 @@ export class RuntimeService {
           const task: GitTask = { id, title: this.redactor.text(p.title), workspaceKind: 'git', ...(projectId ? { projectId } : {}), projectPath: p.projectPath, ...worktree, profileId: p.profileId, status: 'idle', createdAt: now, updatedAt: now, tokenBudget: p.tokenBudget, usedTokens: 0, mode: p.mode, ...(p.mode === 'coordinated' ? { role: 'coordinator' as const, rootTaskId: id, coordination: { childProfileIds: [...new Set(p.coordination!.childProfileIds)], requiredValidation: p.coordination!.requiredValidation } } : {}) };
           this.store.transaction(() => {
             this.store.saveTask(task);
+            this.tools.channel.admit(task, channelIdentity);
             if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
             this.store.finishIntent(intent, 'complete');
           });
@@ -508,6 +533,7 @@ export class RuntimeService {
     if (isGitTask(task)) return task.worktreePath;
     if (task.workspaceKind === 'folder') {
       if (isNetworkOrDevicePath(task.projectPath)) throw new Error('Projects on network shares are not supported.');
+      resolveLocalPath(task.projectPath, task.projectPath);
       const same = process.platform === 'win32'
         ? canonicalPath(task.projectPath).toLowerCase() === task.projectPath.toLowerCase()
         : canonicalPath(task.projectPath) === task.projectPath;
@@ -536,6 +562,13 @@ export class RuntimeService {
       if (prior.state === 'failed') {
         const task = this.store.task(prior.taskId);
         if (this.store.detail(task.id).messages.some(message => message.role === 'user')) { this.store.finishTaskStart(p.requestId, 'complete'); return task; }
+        if (task.workspaceKind !== 'none') {
+          const project = task.projectId ? this.store.project(task.projectId) : undefined;
+          if (!project || project.id !== p.projectId || project.hidden) throw new Error('Project folder is unavailable or resolves to a different location.');
+          try { resolveLocalPath(project.path, project.path); resolveLocalPath(task.projectPath, project.path); }
+          catch { throw new Error('Project folder is unavailable or resolves to a different location.'); }
+          if (isGitTask(task)) this.tools.channel.assertAdmission(task);
+        }
         this.store.finishTaskStart(p.requestId, 'pending');
         try {
           if (task.mode === 'coordinated') await this.orchestrator.resume(task.id, p.content);
@@ -552,12 +585,16 @@ export class RuntimeService {
     if (project) {
       if (isNetworkOrDevicePath(project.path)) throw new Error('Projects on network shares are not supported.');
       try {
+        resolveLocalPath(project.path, project.path);
         if (!statSync(project.path).isDirectory()) throw new Error();
         const same = process.platform === 'win32' ? canonicalPath(project.path).toLowerCase() === project.path.toLowerCase() : canonicalPath(project.path) === project.path;
         if (!same) throw new Error();
       } catch { throw new Error('Project folder is unavailable or resolves to a different location.'); }
     }
+    const identity = project ? resolveGitAdmission(project.path) : undefined;
     const kind = project ? await this.repositories.isGitWorkingTree(project.path) ? 'git' : 'folder' : 'none';
+    if (project) assertGitAdmission(project.path, identity);
+    const channelIdentity = kind === 'git' ? this.tools.channel.prepareAdmission(project!.path) : undefined;
     if (kind !== 'git' && p.mode !== 'chat') throw new Error('Coding and coordination require a Git project.');
     if (p.mode !== 'coordinated' && p.coordination) throw new Error('Coordination settings apply only to coordinated tasks.');
     if (p.mode === 'coordinated') {
@@ -583,7 +620,7 @@ export class RuntimeService {
     try {
       const worktree = kind === 'git' ? await (async () => {
         intent = this.store.intent('worktree.create', { taskId: id, projectPath: project!.path, requestId: p.requestId });
-        return this.repositories.createTaskWorktree(project!.path, id);
+        return this.repositories.createTaskWorktree(project!.path, id, undefined, channelIdentity);
       })() : undefined;
       if (worktree) worktreeCreated = true;
       const now = new Date().toISOString();
@@ -594,6 +631,7 @@ export class RuntimeService {
           : { ...base, mode: 'chat', workspaceKind: 'none' };
       this.store.transaction(() => {
         this.store.saveTask(task);
+        if (channelIdentity) this.tools.channel.admit(task, channelIdentity);
         if (task.mode === 'coordinated') this.orchestrator.createRoot(task);
         if (intent) this.store.finishIntent(intent, 'complete');
       });

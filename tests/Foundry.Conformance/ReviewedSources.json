@@ -1,0 +1,192 @@
+{
+  "recordedUtc": "2026-10-12",
+  "scope": "P1 production source and focused tests; reviewed working-tree byte fingerprints (Git text normalization can change line endings)",
+  "owner": {
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provenance": "provider-confirmed"
+  },
+  "reviewers": [
+    {
+      "task": "p1_security_review",
+      "model": "gpt-6-luna",
+      "effort": "max",
+      "selectionSource": "supplied AGENTS.md Critical lane approved parent-child tuple",
+      "routingReason": "independent framing, filesystem, backup protection and process lifecycle evidence",
+      "verdict": "accepted supported P1 paths; no confirmed remaining security blocker",
+      "independentTests": {
+        "passed": 4240,
+        "failed": 0,
+        "scope": "focused conformance security suite"
+      }
+    },
+    {
+      "task": "p1_data_review",
+      "model": "gpt-6-luna",
+      "effort": "max",
+      "selectionSource": "supplied AGENTS.md Critical lane approved parent-child tuple",
+      "routingReason": "independent SQLite opening, recovery, transaction and outbox evidence",
+      "verdict": "accepted current bounded source; no remaining concrete finding",
+      "independentTests": {
+        "passed": 10,
+        "failed": 0,
+        "scope": "rebuilt backup and upgrade regressions"
+      }
+    }
+  ],
+  "coordination": "Review agents could not register provider sessions (session_token_unavailable); read-only reviews made no edits or resource claims.",
+  "sourceFingerprints": [
+    {
+      "path": "src/Foundry.Protocol/Contracts.cs",
+      "sha256": "7de94637fdf19b5f653b81f5ce2fd2d18ee2f8d7a1a307093f2ff9542bb965c2"
+    },
+    {
+      "path": "src/Foundry.Protocol/Contracts.json",
+      "sha256": "ace0b8a301e4200a351a633365f5ae20fa202dfdedae806892c77203526a0f85"
+    },
+    {
+      "path": "src/Foundry.Protocol/WireJson.cs",
+      "sha256": "c9d50985431abfcc5c0020b42b121684941d548bc7664e0aed21f23197999d72"
+    },
+    {
+      "path": "src/Foundry.Protocol/LineReader.cs",
+      "sha256": "6856ccc2a614750ab3a232e3a117b4f312c04ea0ea2fd6e65d8c3fa395e7e537"
+    },
+    {
+      "path": "src/Foundry.Protocol/PersistedJson.cs",
+      "sha256": "718cb150922135145ee911a6a339814cba0d49c4d25945fcd92fb3ae0b572a18"
+    },
+    {
+      "path": "src/Foundry.Protocol/JsJson.cs",
+      "sha256": "0240b684d361786cad891126f26e22e610f6d47483bb5501ed9cf1382b02ba14"
+    },
+    {
+      "path": "src/Foundry.Protocol/EcmaIso.cs",
+      "sha256": "6a1ba7779ebc9d13c89fca43f4236e44185a09d5d615cc63cab66a1361153d1e"
+    },
+    {
+      "path": "src/Foundry.Protocol/EcmaUrl.cs",
+      "sha256": "9a03277679c29c41d95ff7d5ccee98b88100b9fca8279d0c826735f6509ab5dc"
+    },
+    {
+      "path": "src/Foundry.Protocol/Compatibility.cs",
+      "sha256": "3ca43311238027741b2ae3be9384fd32b4949b3d953e0c92e697bfe3e77bca3d"
+    },
+    {
+      "path": "src/Foundry.Protocol/TimeZoneNames.txt",
+      "sha256": "be442baef803d6ff3ebdd66c3ee05fe31d645a53e4ef25596858c377ce94de57"
+    },
+    {
+      "path": "src/Foundry.Platform/DirectoryLease.cs",
+      "sha256": "ba2719ede4c739e01e22c1d18773f01fe14d880f645127bda47551f23c0dcbfa"
+    },
+    {
+      "path": "src/Foundry.Platform/StandardStreams.cs",
+      "sha256": "5a01be87ff652a1b0d0c8742dc672fb8a328489c04a1e5ec4c829cbc060437f3"
+    },
+    {
+      "path": "src/Foundry.Platform/IcuTimeZone.cs",
+      "sha256": "42d7b2b53efa22c143b2f0d5157d4908c5d6ac9c711a5938f050a1b3006e1286"
+    },
+    {
+      "path": "src/Foundry.Platform/ProtectedDirectory.cs",
+      "sha256": "3dbe2e91f75838c598b55405631961ca8ac48a09b946bb98d408261a302f3e7c"
+    },
+    {
+      "path": "src/Foundry.Platform/FinalPath.cs",
+      "sha256": "6277987a44d297c466408044614ac2a8600fcc670bf1dff7679ac6204a5fa4d9"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/DataAdmission.cs",
+      "sha256": "f07c2374e6eb6ea043e357ddb5469c3326c3b0c1d08d175279ca5917f624078c"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/RuntimeLoop.cs",
+      "sha256": "c22436d979124b4c34145312bafc5b69ee0cbb5ac22b4e559c88f193cc08aefa"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Store.cs",
+      "sha256": "aae33567691091fbe4ad67950303fb8661e352af7be490416c5ed6d575473d7d"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Store.Upgrade.cs",
+      "sha256": "b611747ba695fd6b82927ad7ff54ae83dd794e1d2f40c84299dcf1c3e6fbc17b"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Store.Recovery.cs",
+      "sha256": "816b2a16fb26088f611da8987e7444379915fbd8f8ed6304f84f217da373660b"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Store.Summary.cs",
+      "sha256": "e940e453870abbf4b2b03bf7da8a31bd62683f2ad5fe19626f461db7efb57de5"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/SqliteSetup.cs",
+      "sha256": "28860657284d2659cf78d746e52f366a30a2a7d3578d21286c39bf1bb980433e"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/ScheduleClock.cs",
+      "sha256": "8f21ab4ae22f0422fa521f84bdee50624e4584e8f3b584463cb222771912393a"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Foundry.Runtime.Core.csproj",
+      "sha256": "d1000a4d3daf29e3f4a7572c57b43143f5ab53e0bca1789d3e03c9e2e488d6d0"
+    },
+    {
+      "path": "src/Foundry.Runtime/Program.cs",
+      "sha256": "739116849af9d99f390997d1f43a185f6cf566359b9c4d575a70450208e6006f"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/V1_SCHEMA.sql",
+      "sha256": "194e884ba96ebe116968a11be014ce47a3f39da9f503367ab01043389342eded"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/V2_MIGRATION.sql",
+      "sha256": "d2a8b6ff595514aa8dc62d476eb6c479e7e6e9df007a4b47b9b2df44e2b45a24"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/V3_MIGRATION.sql",
+      "sha256": "259dcd7ab8aca37c5d4c6b92a91b9fd8b1f236fc6cb3d5b949db54c483698d3d"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/V4_MIGRATION.sql",
+      "sha256": "bb95583f2ad4dc8bba459ab017c98ee7d1062558fafa56c8a914f3b12a9af36c"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/V5_MIGRATION.sql",
+      "sha256": "b44e2c1075b1fbdfddb704ba219b3fad6f10d53ca7b01c0e975af854030de6b6"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/PHASE4_SCHEMA.sql",
+      "sha256": "fe94cd53d5e62d91e88b61939d787cee560583e4d6eb7788448cf4630d543597"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/AUTOMATION_SCHEMA.sql",
+      "sha256": "676cad6c1c789b7824dad0c067ae673cd04b75f1169de8272f3c422f63714d35"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/CONTINUITY_SCHEMA.sql",
+      "sha256": "8359dbc6d27557de85f38da642cdd94b0205f9c90791cf619f6bf5924c540d20"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/FEATURE_ADMISSION_SCHEMA.sql",
+      "sha256": "c2152abc541ab39f6588572762a70f771f83e794811fa6be87aa45d1e6b63f71"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/Schema/manifest.json",
+      "sha256": "d2f3b6886d6ddfcffae84cce59765fb2066a6431e361b24d4cfcdd741dbc547f"
+    },
+    {
+      "path": "src/Foundry.Platform/packages.lock.json",
+      "sha256": "db2fbdf16ee29c1f50102cea5aca0fee6db43e60b4e1e239d2a61f0c5ae445b8"
+    },
+    {
+      "path": "src/Foundry.Runtime.Core/packages.lock.json",
+      "sha256": "e8eb4ae827d3a6a5b8db94186e16793b9d427ce40b4a0b0c62fd7992feabfff6"
+    },
+    {
+      "path": "src/Foundry.Runtime/packages.lock.json",
+      "sha256": "5e6e91645704ec1a38a701765fdf853f894aed482425f3d17a3ff77cead5c10f"
+    }
+  ]
+}

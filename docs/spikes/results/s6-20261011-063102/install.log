@@ -1,0 +1,2054 @@
+﻿2026-10-11 06:51:14.604   Log opened. (Time zone: UTC-05:00)
+2026-10-11 06:51:14.604   Setup version: Inno Setup version 6.7.3
+2026-10-11 06:51:14.604   Original Setup EXE: C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s6-toast-activation\20261011-063102\FoundryS6ToastSpikeSetup.exe
+2026-10-11 06:51:14.604   Setup command line: /SL5="$150418,60405014,893952,C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s6-toast-activation\20261011-063102\FoundryS6ToastSpikeSetup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG="C:\Users\rdpro\Projects\foundry-agent-workspace-s6\test-results\spikes\s6-toast-activation\20261011-063102\install.log" 
+2026-10-11 06:51:14.604   Windows version: 10.0.26200
+2026-10-11 06:51:14.604   Windows architecture: x64 (64-bit)
+2026-10-11 06:51:14.604   Machine types supported by system: x86 x64
+2026-10-11 06:51:14.604   User privileges: None
+2026-10-11 06:51:14.607   Administrative install mode: No
+2026-10-11 06:51:14.607   Install mode root key: HKEY_CURRENT_USER
+2026-10-11 06:51:14.607   64-bit install mode: Yes
+2026-10-11 06:51:14.607   RedirectionGuard status for current process: Enabled in enforcing mode
+2026-10-11 06:51:14.607   Created temporary directory: C:\Users\rdpro\AppData\Local\Temp\is-UCH07EQ7XQ.tmp
+2026-10-11 06:51:14.730   Starting the installation process.
+2026-10-11 06:51:14.731   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike
+2026-10-11 06:51:14.731   Directory for uninstall files: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike
+2026-10-11 06:51:14.731   Creating new uninstall log: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\unins000.dat
+2026-10-11 06:51:14.742   -- File entry --
+2026-10-11 06:51:14.742   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\unins000.exe
+2026-10-11 06:51:14.742   Non-default bitness: 32-bit
+2026-10-11 06:51:14.746   Time stamp of our file: 2026-10-11 06:51:14.460
+2026-10-11 06:51:14.746   Installing the file.
+2026-10-11 06:51:14.754   Successfully installed the file.
+2026-10-11 06:51:14.754   -- File entry --
+2026-10-11 06:51:14.754   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Accessibility.dll
+2026-10-11 06:51:14.754   Time stamp of our file: 2026-04-29 21:22:02.000
+2026-10-11 06:51:14.754   Installing the file.
+2026-10-11 06:51:14.756   Successfully installed the file.
+2026-10-11 06:51:14.756   -- File entry --
+2026-10-11 06:51:14.756   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\clretwrc.dll
+2026-10-11 06:51:14.756   Time stamp of our file: 2026-04-29 20:08:26.000
+2026-10-11 06:51:14.756   Installing the file.
+2026-10-11 06:51:14.760   Successfully installed the file.
+2026-10-11 06:51:14.761   -- File entry --
+2026-10-11 06:51:14.761   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\clrgc.dll
+2026-10-11 06:51:14.761   Time stamp of our file: 2026-04-29 20:07:52.000
+2026-10-11 06:51:14.761   Installing the file.
+2026-10-11 06:51:14.776   Successfully installed the file.
+2026-10-11 06:51:14.776   -- File entry --
+2026-10-11 06:51:14.776   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\clrgcexp.dll
+2026-10-11 06:51:14.776   Time stamp of our file: 2026-04-29 20:07:48.000
+2026-10-11 06:51:14.776   Installing the file.
+2026-10-11 06:51:14.791   Successfully installed the file.
+2026-10-11 06:51:14.791   -- File entry --
+2026-10-11 06:51:14.791   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\clrjit.dll
+2026-10-11 06:51:14.791   Time stamp of our file: 2026-04-29 20:08:56.000
+2026-10-11 06:51:14.791   Installing the file.
+2026-10-11 06:51:14.840   Successfully installed the file.
+2026-10-11 06:51:14.840   -- File entry --
+2026-10-11 06:51:14.840   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\coreclr.dll
+2026-10-11 06:51:14.840   Time stamp of our file: 2026-04-29 20:09:40.000
+2026-10-11 06:51:14.840   Installing the file.
+2026-10-11 06:51:14.935   Successfully installed the file.
+2026-10-11 06:51:14.935   -- File entry --
+2026-10-11 06:51:14.935   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\createdump.exe
+2026-10-11 06:51:14.935   Time stamp of our file: 2026-04-29 20:08:30.000
+2026-10-11 06:51:14.935   Installing the file.
+2026-10-11 06:51:14.937   Successfully installed the file.
+2026-10-11 06:51:14.937   -- File entry --
+2026-10-11 06:51:14.937   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\D3DCompiler_47_cor3.dll
+2026-10-11 06:51:14.937   Time stamp of our file: 2026-01-27 01:18:40.000
+2026-10-11 06:51:14.937   Installing the file.
+2026-10-11 06:51:15.030   Successfully installed the file.
+2026-10-11 06:51:15.030   -- File entry --
+2026-10-11 06:51:15.030   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\DirectWriteForwarder.dll
+2026-10-11 06:51:15.030   Time stamp of our file: 2026-04-29 21:48:22.000
+2026-10-11 06:51:15.030   Installing the file.
+2026-10-11 06:51:15.041   Successfully installed the file.
+2026-10-11 06:51:15.041   -- File entry --
+2026-10-11 06:51:15.041   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Foundry.Spikes.Toast.deps.json
+2026-10-11 06:51:15.041   Time stamp of our file: 2026-10-11 06:31:06.000
+2026-10-11 06:51:15.041   Installing the file.
+2026-10-11 06:51:15.043   Successfully installed the file.
+2026-10-11 06:51:15.043   -- File entry --
+2026-10-11 06:51:15.043   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Foundry.Spikes.Toast.dll
+2026-10-11 06:51:15.043   Time stamp of our file: 2026-10-11 06:31:06.000
+2026-10-11 06:51:15.043   Installing the file.
+2026-10-11 06:51:15.045   Successfully installed the file.
+2026-10-11 06:51:15.045   -- File entry --
+2026-10-11 06:51:15.045   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Foundry.Spikes.Toast.exe
+2026-10-11 06:51:15.045   Time stamp of our file: 2026-10-11 06:31:06.000
+2026-10-11 06:51:15.045   Installing the file.
+2026-10-11 06:51:15.048   Successfully installed the file.
+2026-10-11 06:51:15.048   -- File entry --
+2026-10-11 06:51:15.048   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Foundry.Spikes.Toast.runtimeconfig.json
+2026-10-11 06:51:15.049   Time stamp of our file: 2026-10-11 06:31:06.000
+2026-10-11 06:51:15.049   Installing the file.
+2026-10-11 06:51:15.049   Successfully installed the file.
+2026-10-11 06:51:15.049   -- File entry --
+2026-10-11 06:51:15.049   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\hostfxr.dll
+2026-10-11 06:51:15.049   Time stamp of our file: 2026-04-29 20:25:40.000
+2026-10-11 06:51:15.049   Installing the file.
+2026-10-11 06:51:15.058   Successfully installed the file.
+2026-10-11 06:51:15.058   -- File entry --
+2026-10-11 06:51:15.058   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\hostpolicy.dll
+2026-10-11 06:51:15.058   Time stamp of our file: 2026-04-29 20:25:40.000
+2026-10-11 06:51:15.058   Installing the file.
+2026-10-11 06:51:15.067   Successfully installed the file.
+2026-10-11 06:51:15.067   -- File entry --
+2026-10-11 06:51:15.067   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.CSharp.dll
+2026-10-11 06:51:15.067   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:15.067   Installing the file.
+2026-10-11 06:51:15.089   Successfully installed the file.
+2026-10-11 06:51:15.089   -- File entry --
+2026-10-11 06:51:15.089   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.DiaSymReader.Native.amd64.dll
+2026-10-11 06:51:15.089   Time stamp of our file: 2024-11-26 23:18:14.000
+2026-10-11 06:51:15.089   Installing the file.
+2026-10-11 06:51:15.131   Successfully installed the file.
+2026-10-11 06:51:15.132   -- File entry --
+2026-10-11 06:51:15.132   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.VisualBasic.Core.dll
+2026-10-11 06:51:15.132   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:15.132   Installing the file.
+2026-10-11 06:51:15.158   Successfully installed the file.
+2026-10-11 06:51:15.158   -- File entry --
+2026-10-11 06:51:15.158   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.VisualBasic.dll
+2026-10-11 06:51:15.158   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:15.158   Installing the file.
+2026-10-11 06:51:15.159   Successfully installed the file.
+2026-10-11 06:51:15.159   -- File entry --
+2026-10-11 06:51:15.159   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.Win32.Primitives.dll
+2026-10-11 06:51:15.159   Time stamp of our file: 2026-04-29 20:26:42.000
+2026-10-11 06:51:15.159   Installing the file.
+2026-10-11 06:51:15.161   Successfully installed the file.
+2026-10-11 06:51:15.161   -- File entry --
+2026-10-11 06:51:15.161   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.Win32.Registry.AccessControl.dll
+2026-10-11 06:51:15.161   Time stamp of our file: 2026-04-29 21:48:06.000
+2026-10-11 06:51:15.161   Installing the file.
+2026-10-11 06:51:15.162   Successfully installed the file.
+2026-10-11 06:51:15.162   -- File entry --
+2026-10-11 06:51:15.162   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.Win32.Registry.dll
+2026-10-11 06:51:15.162   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:15.162   Installing the file.
+2026-10-11 06:51:15.166   Successfully installed the file.
+2026-10-11 06:51:15.166   -- File entry --
+2026-10-11 06:51:15.166   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.Win32.SystemEvents.dll
+2026-10-11 06:51:15.166   Time stamp of our file: 2026-04-29 21:48:06.000
+2026-10-11 06:51:15.166   Installing the file.
+2026-10-11 06:51:15.169   Successfully installed the file.
+2026-10-11 06:51:15.169   -- File entry --
+2026-10-11 06:51:15.169   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\Microsoft.Windows.SDK.NET.dll
+2026-10-11 06:51:15.169   Time stamp of our file: 2024-11-11 12:23:04.000
+2026-10-11 06:51:15.169   Installing the file.
+2026-10-11 06:51:15.451   Successfully installed the file.
+2026-10-11 06:51:15.451   -- File entry --
+2026-10-11 06:51:15.451   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\mscordaccore.dll
+2026-10-11 06:51:15.452   Time stamp of our file: 2026-04-29 20:07:44.000
+2026-10-11 06:51:15.452   Installing the file.
+2026-10-11 06:51:15.476   Successfully installed the file.
+2026-10-11 06:51:15.477   -- File entry --
+2026-10-11 06:51:15.477   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\mscordaccore_amd64_amd64_10.0.826.23019.dll
+2026-10-11 06:51:15.477   Time stamp of our file: 2026-04-29 20:07:44.000
+2026-10-11 06:51:15.477   Installing the file.
+2026-10-11 06:51:15.502   Successfully installed the file.
+2026-10-11 06:51:15.502   -- File entry --
+2026-10-11 06:51:15.503   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\mscordbi.dll
+2026-10-11 06:51:15.503   Time stamp of our file: 2026-04-29 20:06:34.000
+2026-10-11 06:51:15.503   Installing the file.
+2026-10-11 06:51:15.525   Successfully installed the file.
+2026-10-11 06:51:15.525   -- File entry --
+2026-10-11 06:51:15.525   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\mscorlib.dll
+2026-10-11 06:51:15.525   Time stamp of our file: 2026-04-29 20:31:06.000
+2026-10-11 06:51:15.525   Installing the file.
+2026-10-11 06:51:15.528   Successfully installed the file.
+2026-10-11 06:51:15.528   -- File entry --
+2026-10-11 06:51:15.528   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\mscorrc.dll
+2026-10-11 06:51:15.528   Time stamp of our file: 2026-04-29 20:08:32.000
+2026-10-11 06:51:15.528   Installing the file.
+2026-10-11 06:51:15.530   Successfully installed the file.
+2026-10-11 06:51:15.530   -- File entry --
+2026-10-11 06:51:15.530   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\msquic.dll
+2026-10-11 06:51:15.530   Time stamp of our file: 2026-04-14 17:05:00.000
+2026-10-11 06:51:15.530   Installing the file.
+2026-10-11 06:51:15.541   Successfully installed the file.
+2026-10-11 06:51:15.541   -- File entry --
+2026-10-11 06:51:15.541   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\netstandard.dll
+2026-10-11 06:51:15.542   Time stamp of our file: 2026-04-29 20:31:22.000
+2026-10-11 06:51:15.542   Installing the file.
+2026-10-11 06:51:15.544   Successfully installed the file.
+2026-10-11 06:51:15.544   -- File entry --
+2026-10-11 06:51:15.544   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PenImc_cor3.dll
+2026-10-11 06:51:15.544   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:15.544   Installing the file.
+2026-10-11 06:51:15.548   Successfully installed the file.
+2026-10-11 06:51:15.548   -- File entry --
+2026-10-11 06:51:15.548   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationCore.dll
+2026-10-11 06:51:15.548   Time stamp of our file: 2026-04-29 21:48:24.000
+2026-10-11 06:51:15.548   Installing the file.
+2026-10-11 06:51:15.704   Successfully installed the file.
+2026-10-11 06:51:15.704   -- File entry --
+2026-10-11 06:51:15.704   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework-SystemCore.dll
+2026-10-11 06:51:15.704   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.704   Installing the file.
+2026-10-11 06:51:15.705   Successfully installed the file.
+2026-10-11 06:51:15.705   -- File entry --
+2026-10-11 06:51:15.705   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework-SystemData.dll
+2026-10-11 06:51:15.705   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.705   Installing the file.
+2026-10-11 06:51:15.707   Successfully installed the file.
+2026-10-11 06:51:15.707   -- File entry --
+2026-10-11 06:51:15.707   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework-SystemDrawing.dll
+2026-10-11 06:51:15.707   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.707   Installing the file.
+2026-10-11 06:51:15.708   Successfully installed the file.
+2026-10-11 06:51:15.708   -- File entry --
+2026-10-11 06:51:15.708   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework-SystemXml.dll
+2026-10-11 06:51:15.708   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.708   Installing the file.
+2026-10-11 06:51:15.715   Successfully installed the file.
+2026-10-11 06:51:15.715   -- File entry --
+2026-10-11 06:51:15.715   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework-SystemXmlLinq.dll
+2026-10-11 06:51:15.715   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.715   Installing the file.
+2026-10-11 06:51:15.717   Successfully installed the file.
+2026-10-11 06:51:15.717   -- File entry --
+2026-10-11 06:51:15.717   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Aero.dll
+2026-10-11 06:51:15.717   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.717   Installing the file.
+2026-10-11 06:51:15.725   Successfully installed the file.
+2026-10-11 06:51:15.725   -- File entry --
+2026-10-11 06:51:15.725   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Aero2.dll
+2026-10-11 06:51:15.725   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.725   Installing the file.
+2026-10-11 06:51:15.733   Successfully installed the file.
+2026-10-11 06:51:15.733   -- File entry --
+2026-10-11 06:51:15.733   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.AeroLite.dll
+2026-10-11 06:51:15.733   Time stamp of our file: 2026-04-29 21:48:26.000
+2026-10-11 06:51:15.733   Installing the file.
+2026-10-11 06:51:15.738   Successfully installed the file.
+2026-10-11 06:51:15.738   -- File entry --
+2026-10-11 06:51:15.738   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Classic.dll
+2026-10-11 06:51:15.739   Time stamp of our file: 2026-04-29 21:48:28.000
+2026-10-11 06:51:15.739   Installing the file.
+2026-10-11 06:51:15.743   Successfully installed the file.
+2026-10-11 06:51:15.744   -- File entry --
+2026-10-11 06:51:15.744   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.dll
+2026-10-11 06:51:15.744   Time stamp of our file: 2026-04-29 21:48:32.000
+2026-10-11 06:51:15.744   Installing the file.
+2026-10-11 06:51:16.043   Successfully installed the file.
+2026-10-11 06:51:16.043   -- File entry --
+2026-10-11 06:51:16.043   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Fluent.dll
+2026-10-11 06:51:16.043   Time stamp of our file: 2026-04-29 21:48:28.000
+2026-10-11 06:51:16.043   Installing the file.
+2026-10-11 06:51:16.056   Successfully installed the file.
+2026-10-11 06:51:16.056   -- File entry --
+2026-10-11 06:51:16.056   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Luna.dll
+2026-10-11 06:51:16.057   Time stamp of our file: 2026-04-29 21:48:28.000
+2026-10-11 06:51:16.057   Installing the file.
+2026-10-11 06:51:16.076   Successfully installed the file.
+2026-10-11 06:51:16.076   -- File entry --
+2026-10-11 06:51:16.076   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationFramework.Royale.dll
+2026-10-11 06:51:16.076   Time stamp of our file: 2026-04-29 21:48:28.000
+2026-10-11 06:51:16.077   Installing the file.
+2026-10-11 06:51:16.083   Successfully installed the file.
+2026-10-11 06:51:16.083   -- File entry --
+2026-10-11 06:51:16.083   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationNative_cor3.dll
+2026-10-11 06:51:16.083   Time stamp of our file: 2026-03-10 06:06:48.000
+2026-10-11 06:51:16.083   Installing the file.
+2026-10-11 06:51:16.108   Successfully installed the file.
+2026-10-11 06:51:16.108   -- File entry --
+2026-10-11 06:51:16.108   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\PresentationUI.dll
+2026-10-11 06:51:16.108   Time stamp of our file: 2026-04-29 21:48:34.000
+2026-10-11 06:51:16.108   Installing the file.
+2026-10-11 06:51:16.133   Successfully installed the file.
+2026-10-11 06:51:16.133   -- File entry --
+2026-10-11 06:51:16.133   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ReachFramework.dll
+2026-10-11 06:51:16.133   Time stamp of our file: 2026-04-29 21:48:34.000
+2026-10-11 06:51:16.133   Installing the file.
+2026-10-11 06:51:16.165   Successfully installed the file.
+2026-10-11 06:51:16.165   -- File entry --
+2026-10-11 06:51:16.165   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.AppContext.dll
+2026-10-11 06:51:16.165   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.165   Installing the file.
+2026-10-11 06:51:16.166   Successfully installed the file.
+2026-10-11 06:51:16.166   -- File entry --
+2026-10-11 06:51:16.166   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Buffers.dll
+2026-10-11 06:51:16.167   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.167   Installing the file.
+2026-10-11 06:51:16.167   Successfully installed the file.
+2026-10-11 06:51:16.167   -- File entry --
+2026-10-11 06:51:16.167   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.CodeDom.dll
+2026-10-11 06:51:16.167   Time stamp of our file: 2026-04-29 21:48:08.000
+2026-10-11 06:51:16.167   Installing the file.
+2026-10-11 06:51:16.177   Successfully installed the file.
+2026-10-11 06:51:16.177   -- File entry --
+2026-10-11 06:51:16.177   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Collections.Concurrent.dll
+2026-10-11 06:51:16.177   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.177   Installing the file.
+2026-10-11 06:51:16.182   Successfully installed the file.
+2026-10-11 06:51:16.182   -- File entry --
+2026-10-11 06:51:16.182   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Collections.dll
+2026-10-11 06:51:16.182   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.182   Installing the file.
+2026-10-11 06:51:16.189   Successfully installed the file.
+2026-10-11 06:51:16.189   -- File entry --
+2026-10-11 06:51:16.189   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Collections.Immutable.dll
+2026-10-11 06:51:16.189   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.189   Installing the file.
+2026-10-11 06:51:16.218   Successfully installed the file.
+2026-10-11 06:51:16.218   -- File entry --
+2026-10-11 06:51:16.218   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Collections.NonGeneric.dll
+2026-10-11 06:51:16.218   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.218   Installing the file.
+2026-10-11 06:51:16.221   Successfully installed the file.
+2026-10-11 06:51:16.221   -- File entry --
+2026-10-11 06:51:16.221   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Collections.Specialized.dll
+2026-10-11 06:51:16.221   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.221   Installing the file.
+2026-10-11 06:51:16.223   Successfully installed the file.
+2026-10-11 06:51:16.223   -- File entry --
+2026-10-11 06:51:16.223   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.Annotations.dll
+2026-10-11 06:51:16.223   Time stamp of our file: 2026-04-29 20:43:24.000
+2026-10-11 06:51:16.223   Installing the file.
+2026-10-11 06:51:16.228   Successfully installed the file.
+2026-10-11 06:51:16.228   -- File entry --
+2026-10-11 06:51:16.228   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.DataAnnotations.dll
+2026-10-11 06:51:16.228   Time stamp of our file: 2026-04-29 20:31:08.000
+2026-10-11 06:51:16.228   Installing the file.
+2026-10-11 06:51:16.229   Successfully installed the file.
+2026-10-11 06:51:16.229   -- File entry --
+2026-10-11 06:51:16.229   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.dll
+2026-10-11 06:51:16.229   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.229   Installing the file.
+2026-10-11 06:51:16.231   Successfully installed the file.
+2026-10-11 06:51:16.231   -- File entry --
+2026-10-11 06:51:16.231   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.EventBasedAsync.dll
+2026-10-11 06:51:16.231   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.231   Installing the file.
+2026-10-11 06:51:16.232   Successfully installed the file.
+2026-10-11 06:51:16.232   -- File entry --
+2026-10-11 06:51:16.232   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.Primitives.dll
+2026-10-11 06:51:16.233   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.233   Installing the file.
+2026-10-11 06:51:16.235   Successfully installed the file.
+2026-10-11 06:51:16.235   -- File entry --
+2026-10-11 06:51:16.235   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ComponentModel.TypeConverter.dll
+2026-10-11 06:51:16.235   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.235   Installing the file.
+2026-10-11 06:51:16.250   Successfully installed the file.
+2026-10-11 06:51:16.250   -- File entry --
+2026-10-11 06:51:16.250   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Configuration.ConfigurationManager.dll
+2026-10-11 06:51:16.250   Time stamp of our file: 2026-04-29 21:48:08.000
+2026-10-11 06:51:16.250   Installing the file.
+2026-10-11 06:51:16.271   Successfully installed the file.
+2026-10-11 06:51:16.271   -- File entry --
+2026-10-11 06:51:16.271   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Configuration.dll
+2026-10-11 06:51:16.273   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.273   Installing the file.
+2026-10-11 06:51:16.274   Successfully installed the file.
+2026-10-11 06:51:16.274   -- File entry --
+2026-10-11 06:51:16.274   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Console.dll
+2026-10-11 06:51:16.274   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.274   Installing the file.
+2026-10-11 06:51:16.278   Successfully installed the file.
+2026-10-11 06:51:16.278   -- File entry --
+2026-10-11 06:51:16.278   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Core.dll
+2026-10-11 06:51:16.278   Time stamp of our file: 2026-04-29 20:30:42.000
+2026-10-11 06:51:16.278   Installing the file.
+2026-10-11 06:51:16.280   Successfully installed the file.
+2026-10-11 06:51:16.280   -- File entry --
+2026-10-11 06:51:16.280   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Data.Common.dll
+2026-10-11 06:51:16.280   Time stamp of our file: 2026-04-29 20:43:26.000
+2026-10-11 06:51:16.280   Installing the file.
+2026-10-11 06:51:16.336   Successfully installed the file.
+2026-10-11 06:51:16.336   -- File entry --
+2026-10-11 06:51:16.336   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Data.DataSetExtensions.dll
+2026-10-11 06:51:16.336   Time stamp of our file: 2026-04-29 20:31:20.000
+2026-10-11 06:51:16.336   Installing the file.
+2026-10-11 06:51:16.337   Successfully installed the file.
+2026-10-11 06:51:16.337   -- File entry --
+2026-10-11 06:51:16.337   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Data.dll
+2026-10-11 06:51:16.337   Time stamp of our file: 2026-04-29 20:31:22.000
+2026-10-11 06:51:16.337   Installing the file.
+2026-10-11 06:51:16.338   Successfully installed the file.
+2026-10-11 06:51:16.338   -- File entry --
+2026-10-11 06:51:16.338   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.Contracts.dll
+2026-10-11 06:51:16.339   Time stamp of our file: 2026-04-29 20:30:28.000
+2026-10-11 06:51:16.339   Installing the file.
+2026-10-11 06:51:16.340   Successfully installed the file.
+2026-10-11 06:51:16.340   -- File entry --
+2026-10-11 06:51:16.340   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.Debug.dll
+2026-10-11 06:51:16.340   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.340   Installing the file.
+2026-10-11 06:51:16.341   Successfully installed the file.
+2026-10-11 06:51:16.341   -- File entry --
+2026-10-11 06:51:16.341   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.DiagnosticSource.dll
+2026-10-11 06:51:16.341   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.341   Installing the file.
+2026-10-11 06:51:16.350   Successfully installed the file.
+2026-10-11 06:51:16.350   -- File entry --
+2026-10-11 06:51:16.350   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.EventLog.dll
+2026-10-11 06:51:16.350   Time stamp of our file: 2026-04-29 21:48:10.000
+2026-10-11 06:51:16.350   Installing the file.
+2026-10-11 06:51:16.360   Successfully installed the file.
+2026-10-11 06:51:16.360   -- File entry --
+2026-10-11 06:51:16.360   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.EventLog.Messages.dll
+2026-10-11 06:51:16.360   Time stamp of our file: 2026-04-29 20:32:52.000
+2026-10-11 06:51:16.360   Installing the file.
+2026-10-11 06:51:16.365   Successfully installed the file.
+2026-10-11 06:51:16.365   -- File entry --
+2026-10-11 06:51:16.365   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.FileVersionInfo.dll
+2026-10-11 06:51:16.365   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.365   Installing the file.
+2026-10-11 06:51:16.366   Successfully installed the file.
+2026-10-11 06:51:16.366   -- File entry --
+2026-10-11 06:51:16.366   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.PerformanceCounter.dll
+2026-10-11 06:51:16.366   Time stamp of our file: 2026-04-29 21:48:10.000
+2026-10-11 06:51:16.366   Installing the file.
+2026-10-11 06:51:16.383   Successfully installed the file.
+2026-10-11 06:51:16.383   -- File entry --
+2026-10-11 06:51:16.383   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.Process.dll
+2026-10-11 06:51:16.384   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.384   Installing the file.
+2026-10-11 06:51:16.391   Successfully installed the file.
+2026-10-11 06:51:16.391   -- File entry --
+2026-10-11 06:51:16.391   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.StackTrace.dll
+2026-10-11 06:51:16.391   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.391   Installing the file.
+2026-10-11 06:51:16.393   Successfully installed the file.
+2026-10-11 06:51:16.393   -- File entry --
+2026-10-11 06:51:16.393   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.TextWriterTraceListener.dll
+2026-10-11 06:51:16.393   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.393   Installing the file.
+2026-10-11 06:51:16.395   Successfully installed the file.
+2026-10-11 06:51:16.395   -- File entry --
+2026-10-11 06:51:16.395   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.Tools.dll
+2026-10-11 06:51:16.395   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:16.395   Installing the file.
+2026-10-11 06:51:16.397   Successfully installed the file.
+2026-10-11 06:51:16.397   -- File entry --
+2026-10-11 06:51:16.397   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.TraceSource.dll
+2026-10-11 06:51:16.397   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.397   Installing the file.
+2026-10-11 06:51:16.400   Successfully installed the file.
+2026-10-11 06:51:16.400   -- File entry --
+2026-10-11 06:51:16.400   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Diagnostics.Tracing.dll
+2026-10-11 06:51:16.400   Time stamp of our file: 2026-04-29 20:26:46.000
+2026-10-11 06:51:16.400   Installing the file.
+2026-10-11 06:51:16.401   Successfully installed the file.
+2026-10-11 06:51:16.401   -- File entry --
+2026-10-11 06:51:16.401   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.DirectoryServices.dll
+2026-10-11 06:51:16.401   Time stamp of our file: 2026-04-29 21:48:10.000
+2026-10-11 06:51:16.401   Installing the file.
+2026-10-11 06:51:16.422   Successfully installed the file.
+2026-10-11 06:51:16.422   -- File entry --
+2026-10-11 06:51:16.422   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.dll
+2026-10-11 06:51:16.422   Time stamp of our file: 2026-04-29 20:31:22.000
+2026-10-11 06:51:16.422   Installing the file.
+2026-10-11 06:51:16.424   Successfully installed the file.
+2026-10-11 06:51:16.424   -- File entry --
+2026-10-11 06:51:16.424   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Drawing.Common.dll
+2026-10-11 06:51:16.425   Time stamp of our file: 2026-04-29 21:48:14.000
+2026-10-11 06:51:16.425   Installing the file.
+2026-10-11 06:51:16.442   Successfully installed the file.
+2026-10-11 06:51:16.442   -- File entry --
+2026-10-11 06:51:16.442   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Drawing.dll
+2026-10-11 06:51:16.442   Time stamp of our file: 2026-04-29 20:31:00.000
+2026-10-11 06:51:16.442   Installing the file.
+2026-10-11 06:51:16.443   Successfully installed the file.
+2026-10-11 06:51:16.443   -- File entry --
+2026-10-11 06:51:16.443   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Drawing.Primitives.dll
+2026-10-11 06:51:16.443   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.443   Installing the file.
+2026-10-11 06:51:16.447   Successfully installed the file.
+2026-10-11 06:51:16.447   -- File entry --
+2026-10-11 06:51:16.447   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Dynamic.Runtime.dll
+2026-10-11 06:51:16.447   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:16.447   Installing the file.
+2026-10-11 06:51:16.448   Successfully installed the file.
+2026-10-11 06:51:16.448   -- File entry --
+2026-10-11 06:51:16.448   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Formats.Asn1.dll
+2026-10-11 06:51:16.448   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.448   Installing the file.
+2026-10-11 06:51:16.454   Successfully installed the file.
+2026-10-11 06:51:16.454   -- File entry --
+2026-10-11 06:51:16.454   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Formats.Nrbf.dll
+2026-10-11 06:51:16.454   Time stamp of our file: 2026-04-29 21:48:10.000
+2026-10-11 06:51:16.454   Installing the file.
+2026-10-11 06:51:16.456   Successfully installed the file.
+2026-10-11 06:51:16.456   -- File entry --
+2026-10-11 06:51:16.456   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Formats.Tar.dll
+2026-10-11 06:51:16.456   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.456   Installing the file.
+2026-10-11 06:51:16.473   Successfully installed the file.
+2026-10-11 06:51:16.473   -- File entry --
+2026-10-11 06:51:16.474   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Globalization.Calendars.dll
+2026-10-11 06:51:16.474   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.474   Installing the file.
+2026-10-11 06:51:16.474   Successfully installed the file.
+2026-10-11 06:51:16.474   -- File entry --
+2026-10-11 06:51:16.474   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Globalization.dll
+2026-10-11 06:51:16.474   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:16.474   Installing the file.
+2026-10-11 06:51:16.476   Successfully installed the file.
+2026-10-11 06:51:16.476   -- File entry --
+2026-10-11 06:51:16.476   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Globalization.Extensions.dll
+2026-10-11 06:51:16.476   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:16.476   Installing the file.
+2026-10-11 06:51:16.477   Successfully installed the file.
+2026-10-11 06:51:16.477   -- File entry --
+2026-10-11 06:51:16.477   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Compression.Brotli.dll
+2026-10-11 06:51:16.477   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.477   Installing the file.
+2026-10-11 06:51:16.479   Successfully installed the file.
+2026-10-11 06:51:16.479   -- File entry --
+2026-10-11 06:51:16.479   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Compression.dll
+2026-10-11 06:51:16.480   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.480   Installing the file.
+2026-10-11 06:51:16.489   Successfully installed the file.
+2026-10-11 06:51:16.489   -- File entry --
+2026-10-11 06:51:16.489   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Compression.FileSystem.dll
+2026-10-11 06:51:16.489   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.489   Installing the file.
+2026-10-11 06:51:16.491   Successfully installed the file.
+2026-10-11 06:51:16.491   -- File entry --
+2026-10-11 06:51:16.491   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Compression.Native.dll
+2026-10-11 06:51:16.491   Time stamp of our file: 2026-04-29 20:26:14.000
+2026-10-11 06:51:16.491   Installing the file.
+2026-10-11 06:51:16.509   Successfully installed the file.
+2026-10-11 06:51:16.509   -- File entry --
+2026-10-11 06:51:16.509   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Compression.ZipFile.dll
+2026-10-11 06:51:16.509   Time stamp of our file: 2026-04-29 20:43:28.000
+2026-10-11 06:51:16.509   Installing the file.
+2026-10-11 06:51:16.512   Successfully installed the file.
+2026-10-11 06:51:16.513   -- File entry --
+2026-10-11 06:51:16.513   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.dll
+2026-10-11 06:51:16.513   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.513   Installing the file.
+2026-10-11 06:51:16.513   Successfully installed the file.
+2026-10-11 06:51:16.513   -- File entry --
+2026-10-11 06:51:16.513   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.FileSystem.AccessControl.dll
+2026-10-11 06:51:16.513   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.513   Installing the file.
+2026-10-11 06:51:16.517   Successfully installed the file.
+2026-10-11 06:51:16.517   -- File entry --
+2026-10-11 06:51:16.517   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.FileSystem.dll
+2026-10-11 06:51:16.517   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.517   Installing the file.
+2026-10-11 06:51:16.518   Successfully installed the file.
+2026-10-11 06:51:16.518   -- File entry --
+2026-10-11 06:51:16.518   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.FileSystem.DriveInfo.dll
+2026-10-11 06:51:16.518   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.518   Installing the file.
+2026-10-11 06:51:16.520   Successfully installed the file.
+2026-10-11 06:51:16.520   -- File entry --
+2026-10-11 06:51:16.520   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.FileSystem.Primitives.dll
+2026-10-11 06:51:16.520   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:16.520   Installing the file.
+2026-10-11 06:51:16.521   Successfully installed the file.
+2026-10-11 06:51:16.521   -- File entry --
+2026-10-11 06:51:16.521   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.FileSystem.Watcher.dll
+2026-10-11 06:51:16.521   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.521   Installing the file.
+2026-10-11 06:51:16.524   Successfully installed the file.
+2026-10-11 06:51:16.524   -- File entry --
+2026-10-11 06:51:16.524   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.IsolatedStorage.dll
+2026-10-11 06:51:16.524   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.524   Installing the file.
+2026-10-11 06:51:16.527   Successfully installed the file.
+2026-10-11 06:51:16.527   -- File entry --
+2026-10-11 06:51:16.527   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.MemoryMappedFiles.dll
+2026-10-11 06:51:16.527   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.527   Installing the file.
+2026-10-11 06:51:16.529   Successfully installed the file.
+2026-10-11 06:51:16.529   -- File entry --
+2026-10-11 06:51:16.529   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Packaging.dll
+2026-10-11 06:51:16.529   Time stamp of our file: 2026-04-29 21:48:10.000
+2026-10-11 06:51:16.529   Installing the file.
+2026-10-11 06:51:16.537   Successfully installed the file.
+2026-10-11 06:51:16.537   -- File entry --
+2026-10-11 06:51:16.537   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Pipelines.dll
+2026-10-11 06:51:16.537   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.537   Installing the file.
+2026-10-11 06:51:16.542   Successfully installed the file.
+2026-10-11 06:51:16.542   -- File entry --
+2026-10-11 06:51:16.542   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Pipes.AccessControl.dll
+2026-10-11 06:51:16.542   Time stamp of our file: 2026-04-29 20:27:58.000
+2026-10-11 06:51:16.542   Installing the file.
+2026-10-11 06:51:16.543   Successfully installed the file.
+2026-10-11 06:51:16.543   -- File entry --
+2026-10-11 06:51:16.543   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.Pipes.dll
+2026-10-11 06:51:16.543   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.543   Installing the file.
+2026-10-11 06:51:16.547   Successfully installed the file.
+2026-10-11 06:51:16.547   -- File entry --
+2026-10-11 06:51:16.547   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.IO.UnmanagedMemoryStream.dll
+2026-10-11 06:51:16.548   Time stamp of our file: 2026-04-29 20:30:30.000
+2026-10-11 06:51:16.548   Installing the file.
+2026-10-11 06:51:16.549   Successfully installed the file.
+2026-10-11 06:51:16.549   -- File entry --
+2026-10-11 06:51:16.549   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Linq.AsyncEnumerable.dll
+2026-10-11 06:51:16.549   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.549   Installing the file.
+2026-10-11 06:51:16.569   Successfully installed the file.
+2026-10-11 06:51:16.569   -- File entry --
+2026-10-11 06:51:16.569   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Linq.dll
+2026-10-11 06:51:16.569   Time stamp of our file: 2026-04-29 20:43:30.000
+2026-10-11 06:51:16.569   Installing the file.
+2026-10-11 06:51:16.584   Successfully installed the file.
+2026-10-11 06:51:16.584   -- File entry --
+2026-10-11 06:51:16.584   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Linq.Expressions.dll
+2026-10-11 06:51:16.584   Time stamp of our file: 2026-04-29 20:43:32.000
+2026-10-11 06:51:16.584   Installing the file.
+2026-10-11 06:51:16.640   Successfully installed the file.
+2026-10-11 06:51:16.640   -- File entry --
+2026-10-11 06:51:16.640   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Linq.Parallel.dll
+2026-10-11 06:51:16.640   Time stamp of our file: 2026-04-29 20:43:32.000
+2026-10-11 06:51:16.640   Installing the file.
+2026-10-11 06:51:16.654   Successfully installed the file.
+2026-10-11 06:51:16.654   -- File entry --
+2026-10-11 06:51:16.654   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Linq.Queryable.dll
+2026-10-11 06:51:16.655   Time stamp of our file: 2026-04-29 20:43:32.000
+2026-10-11 06:51:16.655   Installing the file.
+2026-10-11 06:51:16.669   Successfully installed the file.
+2026-10-11 06:51:16.669   -- File entry --
+2026-10-11 06:51:16.669   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Memory.dll
+2026-10-11 06:51:16.669   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.669   Installing the file.
+2026-10-11 06:51:16.674   Successfully installed the file.
+2026-10-11 06:51:16.674   -- File entry --
+2026-10-11 06:51:16.674   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.dll
+2026-10-11 06:51:16.674   Time stamp of our file: 2026-04-29 20:31:06.000
+2026-10-11 06:51:16.674   Installing the file.
+2026-10-11 06:51:16.675   Successfully installed the file.
+2026-10-11 06:51:16.675   -- File entry --
+2026-10-11 06:51:16.675   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Http.dll
+2026-10-11 06:51:16.675   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.675   Installing the file.
+2026-10-11 06:51:16.712   Successfully installed the file.
+2026-10-11 06:51:16.712   -- File entry --
+2026-10-11 06:51:16.712   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Http.Json.dll
+2026-10-11 06:51:16.713   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.713   Installing the file.
+2026-10-11 06:51:16.716   Successfully installed the file.
+2026-10-11 06:51:16.716   -- File entry --
+2026-10-11 06:51:16.716   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.HttpListener.dll
+2026-10-11 06:51:16.716   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.716   Installing the file.
+2026-10-11 06:51:16.729   Successfully installed the file.
+2026-10-11 06:51:16.729   -- File entry --
+2026-10-11 06:51:16.729   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Mail.dll
+2026-10-11 06:51:16.729   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.729   Installing the file.
+2026-10-11 06:51:16.740   Successfully installed the file.
+2026-10-11 06:51:16.740   -- File entry --
+2026-10-11 06:51:16.740   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.NameResolution.dll
+2026-10-11 06:51:16.740   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.740   Installing the file.
+2026-10-11 06:51:16.743   Successfully installed the file.
+2026-10-11 06:51:16.743   -- File entry --
+2026-10-11 06:51:16.743   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.NetworkInformation.dll
+2026-10-11 06:51:16.743   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.743   Installing the file.
+2026-10-11 06:51:16.748   Successfully installed the file.
+2026-10-11 06:51:16.748   -- File entry --
+2026-10-11 06:51:16.748   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Ping.dll
+2026-10-11 06:51:16.748   Time stamp of our file: 2026-04-29 20:43:34.000
+2026-10-11 06:51:16.748   Installing the file.
+2026-10-11 06:51:16.750   Successfully installed the file.
+2026-10-11 06:51:16.750   -- File entry --
+2026-10-11 06:51:16.750   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Primitives.dll
+2026-10-11 06:51:16.751   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.751   Installing the file.
+2026-10-11 06:51:16.757   Successfully installed the file.
+2026-10-11 06:51:16.757   -- File entry --
+2026-10-11 06:51:16.757   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Quic.dll
+2026-10-11 06:51:16.757   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.757   Installing the file.
+2026-10-11 06:51:16.765   Successfully installed the file.
+2026-10-11 06:51:16.765   -- File entry --
+2026-10-11 06:51:16.765   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Requests.dll
+2026-10-11 06:51:16.766   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.766   Installing the file.
+2026-10-11 06:51:16.774   Successfully installed the file.
+2026-10-11 06:51:16.775   -- File entry --
+2026-10-11 06:51:16.775   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Security.dll
+2026-10-11 06:51:16.775   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.775   Installing the file.
+2026-10-11 06:51:16.790   Successfully installed the file.
+2026-10-11 06:51:16.790   -- File entry --
+2026-10-11 06:51:16.790   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.ServerSentEvents.dll
+2026-10-11 06:51:16.790   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.790   Installing the file.
+2026-10-11 06:51:16.792   Successfully installed the file.
+2026-10-11 06:51:16.792   -- File entry --
+2026-10-11 06:51:16.792   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.ServicePoint.dll
+2026-10-11 06:51:16.792   Time stamp of our file: 2026-04-29 20:30:22.000
+2026-10-11 06:51:16.792   Installing the file.
+2026-10-11 06:51:16.795   Successfully installed the file.
+2026-10-11 06:51:16.795   -- File entry --
+2026-10-11 06:51:16.795   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.Sockets.dll
+2026-10-11 06:51:16.795   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.795   Installing the file.
+2026-10-11 06:51:16.807   Successfully installed the file.
+2026-10-11 06:51:16.807   -- File entry --
+2026-10-11 06:51:16.807   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.WebClient.dll
+2026-10-11 06:51:16.807   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.807   Installing the file.
+2026-10-11 06:51:16.812   Successfully installed the file.
+2026-10-11 06:51:16.812   -- File entry --
+2026-10-11 06:51:16.812   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.WebHeaderCollection.dll
+2026-10-11 06:51:16.812   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.812   Installing the file.
+2026-10-11 06:51:16.813   Successfully installed the file.
+2026-10-11 06:51:16.813   -- File entry --
+2026-10-11 06:51:16.813   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.WebProxy.dll
+2026-10-11 06:51:16.814   Time stamp of our file: 2026-04-29 20:43:36.000
+2026-10-11 06:51:16.814   Installing the file.
+2026-10-11 06:51:16.815   Successfully installed the file.
+2026-10-11 06:51:16.815   -- File entry --
+2026-10-11 06:51:16.815   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.WebSockets.Client.dll
+2026-10-11 06:51:16.815   Time stamp of our file: 2026-04-29 20:43:38.000
+2026-10-11 06:51:16.815   Installing the file.
+2026-10-11 06:51:16.819   Successfully installed the file.
+2026-10-11 06:51:16.819   -- File entry --
+2026-10-11 06:51:16.819   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Net.WebSockets.dll
+2026-10-11 06:51:16.819   Time stamp of our file: 2026-04-29 20:43:38.000
+2026-10-11 06:51:16.819   Installing the file.
+2026-10-11 06:51:16.824   Successfully installed the file.
+2026-10-11 06:51:16.824   -- File entry --
+2026-10-11 06:51:16.824   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Numerics.dll
+2026-10-11 06:51:16.824   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:16.824   Installing the file.
+2026-10-11 06:51:16.826   Successfully installed the file.
+2026-10-11 06:51:16.826   -- File entry --
+2026-10-11 06:51:16.826   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Numerics.Vectors.dll
+2026-10-11 06:51:16.826   Time stamp of our file: 2026-04-29 20:26:50.000
+2026-10-11 06:51:16.826   Installing the file.
+2026-10-11 06:51:16.827   Successfully installed the file.
+2026-10-11 06:51:16.827   -- File entry --
+2026-10-11 06:51:16.827   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ObjectModel.dll
+2026-10-11 06:51:16.827   Time stamp of our file: 2026-04-29 20:43:38.000
+2026-10-11 06:51:16.827   Installing the file.
+2026-10-11 06:51:16.830   Successfully installed the file.
+2026-10-11 06:51:16.830   -- File entry --
+2026-10-11 06:51:16.830   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Printing.dll
+2026-10-11 06:51:16.830   Time stamp of our file: 2026-04-29 21:48:36.000
+2026-10-11 06:51:16.830   Installing the file.
+2026-10-11 06:51:16.849   Successfully installed the file.
+2026-10-11 06:51:16.849   -- File entry --
+2026-10-11 06:51:16.849   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.CoreLib.dll
+2026-10-11 06:51:16.849   Time stamp of our file: 2026-04-29 20:13:06.000
+2026-10-11 06:51:16.849   Installing the file.
+2026-10-11 06:51:17.142   Successfully installed the file.
+2026-10-11 06:51:17.143   -- File entry --
+2026-10-11 06:51:17.143   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.DataContractSerialization.dll
+2026-10-11 06:51:17.143   Time stamp of our file: 2026-04-29 20:43:38.000
+2026-10-11 06:51:17.143   Installing the file.
+2026-10-11 06:51:17.184   Successfully installed the file.
+2026-10-11 06:51:17.184   -- File entry --
+2026-10-11 06:51:17.184   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.Uri.dll
+2026-10-11 06:51:17.184   Time stamp of our file: 2026-04-29 20:43:38.000
+2026-10-11 06:51:17.184   Installing the file.
+2026-10-11 06:51:17.191   Successfully installed the file.
+2026-10-11 06:51:17.191   -- File entry --
+2026-10-11 06:51:17.191   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.Windows.Core.dll
+2026-10-11 06:51:17.191   Time stamp of our file: 2026-04-29 21:48:14.000
+2026-10-11 06:51:17.191   Installing the file.
+2026-10-11 06:51:17.223   Successfully installed the file.
+2026-10-11 06:51:17.223   -- File entry --
+2026-10-11 06:51:17.223   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.Windows.GdiPlus.dll
+2026-10-11 06:51:17.223   Time stamp of our file: 2026-04-29 21:48:14.000
+2026-10-11 06:51:17.223   Installing the file.
+2026-10-11 06:51:17.230   Successfully installed the file.
+2026-10-11 06:51:17.230   -- File entry --
+2026-10-11 06:51:17.231   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.Xml.dll
+2026-10-11 06:51:17.231   Time stamp of our file: 2026-04-29 20:43:40.000
+2026-10-11 06:51:17.231   Installing the file.
+2026-10-11 06:51:17.382   Successfully installed the file.
+2026-10-11 06:51:17.383   -- File entry --
+2026-10-11 06:51:17.383   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Private.Xml.Linq.dll
+2026-10-11 06:51:17.383   Time stamp of our file: 2026-04-29 20:43:40.000
+2026-10-11 06:51:17.383   Installing the file.
+2026-10-11 06:51:17.392   Successfully installed the file.
+2026-10-11 06:51:17.392   -- File entry --
+2026-10-11 06:51:17.392   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.DispatchProxy.dll
+2026-10-11 06:51:17.392   Time stamp of our file: 2026-04-29 20:43:40.000
+2026-10-11 06:51:17.392   Installing the file.
+2026-10-11 06:51:17.395   Successfully installed the file.
+2026-10-11 06:51:17.395   -- File entry --
+2026-10-11 06:51:17.395   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.dll
+2026-10-11 06:51:17.395   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.395   Installing the file.
+2026-10-11 06:51:17.407   Successfully installed the file.
+2026-10-11 06:51:17.407   -- File entry --
+2026-10-11 06:51:17.407   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Emit.dll
+2026-10-11 06:51:17.408   Time stamp of our file: 2026-04-29 20:43:40.000
+2026-10-11 06:51:17.408   Installing the file.
+2026-10-11 06:51:17.414   Successfully installed the file.
+2026-10-11 06:51:17.414   -- File entry --
+2026-10-11 06:51:17.414   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Emit.ILGeneration.dll
+2026-10-11 06:51:17.415   Time stamp of our file: 2026-04-29 20:26:48.000
+2026-10-11 06:51:17.415   Installing the file.
+2026-10-11 06:51:17.416   Successfully installed the file.
+2026-10-11 06:51:17.416   -- File entry --
+2026-10-11 06:51:17.416   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Emit.Lightweight.dll
+2026-10-11 06:51:17.416   Time stamp of our file: 2026-04-29 20:26:48.000
+2026-10-11 06:51:17.416   Installing the file.
+2026-10-11 06:51:17.418   Successfully installed the file.
+2026-10-11 06:51:17.418   -- File entry --
+2026-10-11 06:51:17.418   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Extensions.dll
+2026-10-11 06:51:17.418   Time stamp of our file: 2026-04-29 20:30:18.000
+2026-10-11 06:51:17.418   Installing the file.
+2026-10-11 06:51:17.419   Successfully installed the file.
+2026-10-11 06:51:17.419   -- File entry --
+2026-10-11 06:51:17.419   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Metadata.dll
+2026-10-11 06:51:17.419   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.419   Installing the file.
+2026-10-11 06:51:17.441   Successfully installed the file.
+2026-10-11 06:51:17.441   -- File entry --
+2026-10-11 06:51:17.441   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.Primitives.dll
+2026-10-11 06:51:17.441   Time stamp of our file: 2026-04-29 20:26:42.000
+2026-10-11 06:51:17.441   Installing the file.
+2026-10-11 06:51:17.442   Successfully installed the file.
+2026-10-11 06:51:17.442   -- File entry --
+2026-10-11 06:51:17.442   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Reflection.TypeExtensions.dll
+2026-10-11 06:51:17.443   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.443   Installing the file.
+2026-10-11 06:51:17.444   Successfully installed the file.
+2026-10-11 06:51:17.444   -- File entry --
+2026-10-11 06:51:17.444   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Resources.Extensions.dll
+2026-10-11 06:51:17.444   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.444   Installing the file.
+2026-10-11 06:51:17.449   Successfully installed the file.
+2026-10-11 06:51:17.449   -- File entry --
+2026-10-11 06:51:17.449   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Resources.Reader.dll
+2026-10-11 06:51:17.449   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.449   Installing the file.
+2026-10-11 06:51:17.450   Successfully installed the file.
+2026-10-11 06:51:17.450   -- File entry --
+2026-10-11 06:51:17.450   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Resources.ResourceManager.dll
+2026-10-11 06:51:17.451   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.451   Installing the file.
+2026-10-11 06:51:17.453   Successfully installed the file.
+2026-10-11 06:51:17.453   -- File entry --
+2026-10-11 06:51:17.453   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Resources.Writer.dll
+2026-10-11 06:51:17.453   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.453   Installing the file.
+2026-10-11 06:51:17.454   Successfully installed the file.
+2026-10-11 06:51:17.455   -- File entry --
+2026-10-11 06:51:17.455   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.CompilerServices.Unsafe.dll
+2026-10-11 06:51:17.455   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.455   Installing the file.
+2026-10-11 06:51:17.456   Successfully installed the file.
+2026-10-11 06:51:17.456   -- File entry --
+2026-10-11 06:51:17.456   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.CompilerServices.VisualC.dll
+2026-10-11 06:51:17.456   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.456   Installing the file.
+2026-10-11 06:51:17.457   Successfully installed the file.
+2026-10-11 06:51:17.457   -- File entry --
+2026-10-11 06:51:17.457   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.dll
+2026-10-11 06:51:17.457   Time stamp of our file: 2026-04-29 20:26:38.000
+2026-10-11 06:51:17.457   Installing the file.
+2026-10-11 06:51:17.458   Successfully installed the file.
+2026-10-11 06:51:17.458   -- File entry --
+2026-10-11 06:51:17.458   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Extensions.dll
+2026-10-11 06:51:17.459   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.459   Installing the file.
+2026-10-11 06:51:17.460   Successfully installed the file.
+2026-10-11 06:51:17.460   -- File entry --
+2026-10-11 06:51:17.460   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Handles.dll
+2026-10-11 06:51:17.460   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.460   Installing the file.
+2026-10-11 06:51:17.461   Successfully installed the file.
+2026-10-11 06:51:17.461   -- File entry --
+2026-10-11 06:51:17.461   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.InteropServices.dll
+2026-10-11 06:51:17.461   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.461   Installing the file.
+2026-10-11 06:51:17.464   Successfully installed the file.
+2026-10-11 06:51:17.464   -- File entry --
+2026-10-11 06:51:17.464   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.InteropServices.JavaScript.dll
+2026-10-11 06:51:17.465   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.465   Installing the file.
+2026-10-11 06:51:17.466   Successfully installed the file.
+2026-10-11 06:51:17.466   -- File entry --
+2026-10-11 06:51:17.466   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.InteropServices.RuntimeInformation.dll
+2026-10-11 06:51:17.467   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.467   Installing the file.
+2026-10-11 06:51:17.467   Successfully installed the file.
+2026-10-11 06:51:17.467   -- File entry --
+2026-10-11 06:51:17.467   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Intrinsics.dll
+2026-10-11 06:51:17.467   Time stamp of our file: 2026-04-29 20:26:52.000
+2026-10-11 06:51:17.467   Installing the file.
+2026-10-11 06:51:17.469   Successfully installed the file.
+2026-10-11 06:51:17.469   -- File entry --
+2026-10-11 06:51:17.469   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Loader.dll
+2026-10-11 06:51:17.469   Time stamp of our file: 2026-04-29 20:26:46.000
+2026-10-11 06:51:17.469   Installing the file.
+2026-10-11 06:51:17.470   Successfully installed the file.
+2026-10-11 06:51:17.470   -- File entry --
+2026-10-11 06:51:17.470   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Numerics.dll
+2026-10-11 06:51:17.470   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.470   Installing the file.
+2026-10-11 06:51:17.478   Successfully installed the file.
+2026-10-11 06:51:17.478   -- File entry --
+2026-10-11 06:51:17.478   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Serialization.dll
+2026-10-11 06:51:17.478   Time stamp of our file: 2026-04-29 20:31:08.000
+2026-10-11 06:51:17.478   Installing the file.
+2026-10-11 06:51:17.479   Successfully installed the file.
+2026-10-11 06:51:17.479   -- File entry --
+2026-10-11 06:51:17.479   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Serialization.Formatters.dll
+2026-10-11 06:51:17.480   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.480   Installing the file.
+2026-10-11 06:51:17.483   Successfully installed the file.
+2026-10-11 06:51:17.483   -- File entry --
+2026-10-11 06:51:17.483   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Serialization.Json.dll
+2026-10-11 06:51:17.484   Time stamp of our file: 2026-04-29 20:31:06.000
+2026-10-11 06:51:17.484   Installing the file.
+2026-10-11 06:51:17.484   Successfully installed the file.
+2026-10-11 06:51:17.484   -- File entry --
+2026-10-11 06:51:17.484   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Serialization.Primitives.dll
+2026-10-11 06:51:17.484   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.484   Installing the file.
+2026-10-11 06:51:17.486   Successfully installed the file.
+2026-10-11 06:51:17.486   -- File entry --
+2026-10-11 06:51:17.486   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Runtime.Serialization.Xml.dll
+2026-10-11 06:51:17.486   Time stamp of our file: 2026-04-29 20:31:00.000
+2026-10-11 06:51:17.486   Installing the file.
+2026-10-11 06:51:17.487   Successfully installed the file.
+2026-10-11 06:51:17.487   -- File entry --
+2026-10-11 06:51:17.487   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.AccessControl.dll
+2026-10-11 06:51:17.487   Time stamp of our file: 2026-04-29 20:43:42.000
+2026-10-11 06:51:17.487   Installing the file.
+2026-10-11 06:51:17.492   Successfully installed the file.
+2026-10-11 06:51:17.492   -- File entry --
+2026-10-11 06:51:17.492   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Claims.dll
+2026-10-11 06:51:17.493   Time stamp of our file: 2026-04-29 20:43:44.000
+2026-10-11 06:51:17.493   Installing the file.
+2026-10-11 06:51:17.496   Successfully installed the file.
+2026-10-11 06:51:17.496   -- File entry --
+2026-10-11 06:51:17.496   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Algorithms.dll
+2026-10-11 06:51:17.496   Time stamp of our file: 2026-04-29 20:30:26.000
+2026-10-11 06:51:17.496   Installing the file.
+2026-10-11 06:51:17.497   Successfully installed the file.
+2026-10-11 06:51:17.497   -- File entry --
+2026-10-11 06:51:17.497   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Cng.dll
+2026-10-11 06:51:17.497   Time stamp of our file: 2026-04-29 20:30:22.000
+2026-10-11 06:51:17.497   Installing the file.
+2026-10-11 06:51:17.498   Successfully installed the file.
+2026-10-11 06:51:17.498   -- File entry --
+2026-10-11 06:51:17.498   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Csp.dll
+2026-10-11 06:51:17.498   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.498   Installing the file.
+2026-10-11 06:51:17.500   Successfully installed the file.
+2026-10-11 06:51:17.500   -- File entry --
+2026-10-11 06:51:17.500   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.dll
+2026-10-11 06:51:17.500   Time stamp of our file: 2026-04-29 20:43:44.000
+2026-10-11 06:51:17.500   Installing the file.
+2026-10-11 06:51:17.548   Successfully installed the file.
+2026-10-11 06:51:17.548   -- File entry --
+2026-10-11 06:51:17.548   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Encoding.dll
+2026-10-11 06:51:17.549   Time stamp of our file: 2026-04-29 20:30:22.000
+2026-10-11 06:51:17.549   Installing the file.
+2026-10-11 06:51:17.550   Successfully installed the file.
+2026-10-11 06:51:17.550   -- File entry --
+2026-10-11 06:51:17.550   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.OpenSsl.dll
+2026-10-11 06:51:17.550   Time stamp of our file: 2026-04-29 20:30:26.000
+2026-10-11 06:51:17.550   Installing the file.
+2026-10-11 06:51:17.551   Successfully installed the file.
+2026-10-11 06:51:17.551   -- File entry --
+2026-10-11 06:51:17.551   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Pkcs.dll
+2026-10-11 06:51:17.551   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.551   Installing the file.
+2026-10-11 06:51:17.576   Successfully installed the file.
+2026-10-11 06:51:17.576   -- File entry --
+2026-10-11 06:51:17.576   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Primitives.dll
+2026-10-11 06:51:17.576   Time stamp of our file: 2026-04-29 20:30:26.000
+2026-10-11 06:51:17.576   Installing the file.
+2026-10-11 06:51:17.577   Successfully installed the file.
+2026-10-11 06:51:17.577   -- File entry --
+2026-10-11 06:51:17.577   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.ProtectedData.dll
+2026-10-11 06:51:17.577   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.577   Installing the file.
+2026-10-11 06:51:17.579   Successfully installed the file.
+2026-10-11 06:51:17.579   -- File entry --
+2026-10-11 06:51:17.579   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.X509Certificates.dll
+2026-10-11 06:51:17.579   Time stamp of our file: 2026-04-29 20:30:26.000
+2026-10-11 06:51:17.579   Installing the file.
+2026-10-11 06:51:17.580   Successfully installed the file.
+2026-10-11 06:51:17.580   -- File entry --
+2026-10-11 06:51:17.580   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Cryptography.Xml.dll
+2026-10-11 06:51:17.580   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.580   Installing the file.
+2026-10-11 06:51:17.590   Successfully installed the file.
+2026-10-11 06:51:17.590   -- File entry --
+2026-10-11 06:51:17.590   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.dll
+2026-10-11 06:51:17.591   Time stamp of our file: 2026-04-29 20:30:34.000
+2026-10-11 06:51:17.591   Installing the file.
+2026-10-11 06:51:17.592   Successfully installed the file.
+2026-10-11 06:51:17.592   -- File entry --
+2026-10-11 06:51:17.592   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Permissions.dll
+2026-10-11 06:51:17.592   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.592   Installing the file.
+2026-10-11 06:51:17.596   Successfully installed the file.
+2026-10-11 06:51:17.596   -- File entry --
+2026-10-11 06:51:17.596   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Principal.dll
+2026-10-11 06:51:17.596   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.596   Installing the file.
+2026-10-11 06:51:17.597   Successfully installed the file.
+2026-10-11 06:51:17.597   -- File entry --
+2026-10-11 06:51:17.598   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.Principal.Windows.dll
+2026-10-11 06:51:17.598   Time stamp of our file: 2026-04-29 20:43:44.000
+2026-10-11 06:51:17.598   Installing the file.
+2026-10-11 06:51:17.602   Successfully installed the file.
+2026-10-11 06:51:17.602   -- File entry --
+2026-10-11 06:51:17.602   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Security.SecureString.dll
+2026-10-11 06:51:17.602   Time stamp of our file: 2026-04-29 20:30:30.000
+2026-10-11 06:51:17.602   Installing the file.
+2026-10-11 06:51:17.603   Successfully installed the file.
+2026-10-11 06:51:17.603   -- File entry --
+2026-10-11 06:51:17.603   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ServiceModel.Web.dll
+2026-10-11 06:51:17.603   Time stamp of our file: 2026-04-29 20:31:08.000
+2026-10-11 06:51:17.603   Installing the file.
+2026-10-11 06:51:17.604   Successfully installed the file.
+2026-10-11 06:51:17.605   -- File entry --
+2026-10-11 06:51:17.605   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ServiceProcess.dll
+2026-10-11 06:51:17.605   Time stamp of our file: 2026-04-29 20:30:32.000
+2026-10-11 06:51:17.605   Installing the file.
+2026-10-11 06:51:17.606   Successfully installed the file.
+2026-10-11 06:51:17.606   -- File entry --
+2026-10-11 06:51:17.606   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.Encoding.CodePages.dll
+2026-10-11 06:51:17.606   Time stamp of our file: 2026-04-29 20:43:44.000
+2026-10-11 06:51:17.606   Installing the file.
+2026-10-11 06:51:17.629   Successfully installed the file.
+2026-10-11 06:51:17.629   -- File entry --
+2026-10-11 06:51:17.629   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.Encoding.dll
+2026-10-11 06:51:17.629   Time stamp of our file: 2026-04-29 20:30:22.000
+2026-10-11 06:51:17.629   Installing the file.
+2026-10-11 06:51:17.630   Successfully installed the file.
+2026-10-11 06:51:17.630   -- File entry --
+2026-10-11 06:51:17.630   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.Encoding.Extensions.dll
+2026-10-11 06:51:17.630   Time stamp of our file: 2026-04-29 20:26:40.000
+2026-10-11 06:51:17.630   Installing the file.
+2026-10-11 06:51:17.631   Successfully installed the file.
+2026-10-11 06:51:17.631   -- File entry --
+2026-10-11 06:51:17.631   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.Encodings.Web.dll
+2026-10-11 06:51:17.632   Time stamp of our file: 2026-04-29 20:43:44.000
+2026-10-11 06:51:17.632   Installing the file.
+2026-10-11 06:51:17.635   Successfully installed the file.
+2026-10-11 06:51:17.635   -- File entry --
+2026-10-11 06:51:17.635   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.Json.dll
+2026-10-11 06:51:17.635   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.635   Installing the file.
+2026-10-11 06:51:17.670   Successfully installed the file.
+2026-10-11 06:51:17.671   -- File entry --
+2026-10-11 06:51:17.671   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Text.RegularExpressions.dll
+2026-10-11 06:51:17.671   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.671   Installing the file.
+2026-10-11 06:51:17.694   Successfully installed the file.
+2026-10-11 06:51:17.694   -- File entry --
+2026-10-11 06:51:17.694   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.AccessControl.dll
+2026-10-11 06:51:17.694   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.694   Installing the file.
+2026-10-11 06:51:17.696   Successfully installed the file.
+2026-10-11 06:51:17.696   -- File entry --
+2026-10-11 06:51:17.696   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Channels.dll
+2026-10-11 06:51:17.696   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.696   Installing the file.
+2026-10-11 06:51:17.700   Successfully installed the file.
+2026-10-11 06:51:17.700   -- File entry --
+2026-10-11 06:51:17.700   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.dll
+2026-10-11 06:51:17.701   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.701   Installing the file.
+2026-10-11 06:51:17.703   Successfully installed the file.
+2026-10-11 06:51:17.703   -- File entry --
+2026-10-11 06:51:17.703   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Overlapped.dll
+2026-10-11 06:51:17.703   Time stamp of our file: 2026-04-29 20:26:36.000
+2026-10-11 06:51:17.703   Installing the file.
+2026-10-11 06:51:17.704   Successfully installed the file.
+2026-10-11 06:51:17.704   -- File entry --
+2026-10-11 06:51:17.704   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Tasks.Dataflow.dll
+2026-10-11 06:51:17.705   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.705   Installing the file.
+2026-10-11 06:51:17.725   Successfully installed the file.
+2026-10-11 06:51:17.725   -- File entry --
+2026-10-11 06:51:17.725   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Tasks.dll
+2026-10-11 06:51:17.725   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.725   Installing the file.
+2026-10-11 06:51:17.726   Successfully installed the file.
+2026-10-11 06:51:17.726   -- File entry --
+2026-10-11 06:51:17.727   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Tasks.Extensions.dll
+2026-10-11 06:51:17.727   Time stamp of our file: 2026-04-29 20:30:30.000
+2026-10-11 06:51:17.727   Installing the file.
+2026-10-11 06:51:17.728   Successfully installed the file.
+2026-10-11 06:51:17.728   -- File entry --
+2026-10-11 06:51:17.728   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Tasks.Parallel.dll
+2026-10-11 06:51:17.728   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.728   Installing the file.
+2026-10-11 06:51:17.731   Successfully installed the file.
+2026-10-11 06:51:17.731   -- File entry --
+2026-10-11 06:51:17.731   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Thread.dll
+2026-10-11 06:51:17.731   Time stamp of our file: 2026-04-29 20:26:46.000
+2026-10-11 06:51:17.731   Installing the file.
+2026-10-11 06:51:17.732   Successfully installed the file.
+2026-10-11 06:51:17.732   -- File entry --
+2026-10-11 06:51:17.732   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.ThreadPool.dll
+2026-10-11 06:51:17.732   Time stamp of our file: 2026-04-29 20:26:44.000
+2026-10-11 06:51:17.732   Installing the file.
+2026-10-11 06:51:17.734   Successfully installed the file.
+2026-10-11 06:51:17.734   -- File entry --
+2026-10-11 06:51:17.734   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Threading.Timer.dll
+2026-10-11 06:51:17.734   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.734   Installing the file.
+2026-10-11 06:51:17.735   Successfully installed the file.
+2026-10-11 06:51:17.735   -- File entry --
+2026-10-11 06:51:17.735   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Transactions.dll
+2026-10-11 06:51:17.735   Time stamp of our file: 2026-04-29 20:30:40.000
+2026-10-11 06:51:17.735   Installing the file.
+2026-10-11 06:51:17.737   Successfully installed the file.
+2026-10-11 06:51:17.737   -- File entry --
+2026-10-11 06:51:17.737   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Transactions.Local.dll
+2026-10-11 06:51:17.737   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.737   Installing the file.
+2026-10-11 06:51:17.749   Successfully installed the file.
+2026-10-11 06:51:17.749   -- File entry --
+2026-10-11 06:51:17.749   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.ValueTuple.dll
+2026-10-11 06:51:17.749   Time stamp of our file: 2026-04-29 20:30:22.000
+2026-10-11 06:51:17.749   Installing the file.
+2026-10-11 06:51:17.750   Successfully installed the file.
+2026-10-11 06:51:17.750   -- File entry --
+2026-10-11 06:51:17.750   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Web.dll
+2026-10-11 06:51:17.750   Time stamp of our file: 2026-04-29 20:30:34.000
+2026-10-11 06:51:17.750   Installing the file.
+2026-10-11 06:51:17.752   Successfully installed the file.
+2026-10-11 06:51:17.752   -- File entry --
+2026-10-11 06:51:17.752   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Web.HttpUtility.dll
+2026-10-11 06:51:17.752   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.752   Installing the file.
+2026-10-11 06:51:17.754   Successfully installed the file.
+2026-10-11 06:51:17.754   -- File entry --
+2026-10-11 06:51:17.754   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.Controls.Ribbon.dll
+2026-10-11 06:51:17.754   Time stamp of our file: 2026-04-29 21:48:36.000
+2026-10-11 06:51:17.754   Installing the file.
+2026-10-11 06:51:17.779   Successfully installed the file.
+2026-10-11 06:51:17.779   -- File entry --
+2026-10-11 06:51:17.779   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.dll
+2026-10-11 06:51:17.779   Time stamp of our file: 2026-04-29 20:30:32.000
+2026-10-11 06:51:17.779   Installing the file.
+2026-10-11 06:51:17.780   Successfully installed the file.
+2026-10-11 06:51:17.780   -- File entry --
+2026-10-11 06:51:17.780   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.Extensions.dll
+2026-10-11 06:51:17.780   Time stamp of our file: 2026-04-29 21:48:12.000
+2026-10-11 06:51:17.780   Installing the file.
+2026-10-11 06:51:17.784   Successfully installed the file.
+2026-10-11 06:51:17.784   -- File entry --
+2026-10-11 06:51:17.784   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.Input.Manipulations.dll
+2026-10-11 06:51:17.784   Time stamp of our file: 2026-04-29 21:48:36.000
+2026-10-11 06:51:17.784   Installing the file.
+2026-10-11 06:51:17.788   Successfully installed the file.
+2026-10-11 06:51:17.788   -- File entry --
+2026-10-11 06:51:17.788   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.Presentation.dll
+2026-10-11 06:51:17.788   Time stamp of our file: 2026-04-29 21:48:36.000
+2026-10-11 06:51:17.788   Installing the file.
+2026-10-11 06:51:17.789   Successfully installed the file.
+2026-10-11 06:51:17.789   -- File entry --
+2026-10-11 06:51:17.789   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Windows.Primitives.dll
+2026-10-11 06:51:17.789   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.789   Installing the file.
+2026-10-11 06:51:17.795   Successfully installed the file.
+2026-10-11 06:51:17.795   -- File entry --
+2026-10-11 06:51:17.795   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xaml.dll
+2026-10-11 06:51:17.795   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.795   Installing the file.
+2026-10-11 06:51:17.822   Successfully installed the file.
+2026-10-11 06:51:17.822   -- File entry --
+2026-10-11 06:51:17.822   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.dll
+2026-10-11 06:51:17.822   Time stamp of our file: 2026-04-29 20:30:34.000
+2026-10-11 06:51:17.822   Installing the file.
+2026-10-11 06:51:17.824   Successfully installed the file.
+2026-10-11 06:51:17.824   -- File entry --
+2026-10-11 06:51:17.824   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.Linq.dll
+2026-10-11 06:51:17.824   Time stamp of our file: 2026-04-29 20:30:52.000
+2026-10-11 06:51:17.824   Installing the file.
+2026-10-11 06:51:17.826   Successfully installed the file.
+2026-10-11 06:51:17.826   -- File entry --
+2026-10-11 06:51:17.826   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.ReaderWriter.dll
+2026-10-11 06:51:17.826   Time stamp of our file: 2026-04-29 20:30:06.000
+2026-10-11 06:51:17.826   Installing the file.
+2026-10-11 06:51:17.827   Successfully installed the file.
+2026-10-11 06:51:17.827   -- File entry --
+2026-10-11 06:51:17.827   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.Serialization.dll
+2026-10-11 06:51:17.827   Time stamp of our file: 2026-04-29 20:30:34.000
+2026-10-11 06:51:17.827   Installing the file.
+2026-10-11 06:51:17.828   Successfully installed the file.
+2026-10-11 06:51:17.828   -- File entry --
+2026-10-11 06:51:17.828   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.XDocument.dll
+2026-10-11 06:51:17.828   Time stamp of our file: 2026-04-29 20:30:38.000
+2026-10-11 06:51:17.828   Installing the file.
+2026-10-11 06:51:17.829   Successfully installed the file.
+2026-10-11 06:51:17.829   -- File entry --
+2026-10-11 06:51:17.829   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.XmlDocument.dll
+2026-10-11 06:51:17.830   Time stamp of our file: 2026-04-29 20:30:20.000
+2026-10-11 06:51:17.830   Installing the file.
+2026-10-11 06:51:17.842   Successfully installed the file.
+2026-10-11 06:51:17.842   -- File entry --
+2026-10-11 06:51:17.842   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.XmlSerializer.dll
+2026-10-11 06:51:17.842   Time stamp of our file: 2026-04-29 20:30:32.000
+2026-10-11 06:51:17.842   Installing the file.
+2026-10-11 06:51:17.842   Successfully installed the file.
+2026-10-11 06:51:17.842   -- File entry --
+2026-10-11 06:51:17.842   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.XPath.dll
+2026-10-11 06:51:17.842   Time stamp of our file: 2026-04-29 20:30:32.000
+2026-10-11 06:51:17.842   Installing the file.
+2026-10-11 06:51:17.845   Successfully installed the file.
+2026-10-11 06:51:17.845   -- File entry --
+2026-10-11 06:51:17.845   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\System.Xml.XPath.XDocument.dll
+2026-10-11 06:51:17.845   Time stamp of our file: 2026-04-29 20:43:46.000
+2026-10-11 06:51:17.845   Installing the file.
+2026-10-11 06:51:17.847   Successfully installed the file.
+2026-10-11 06:51:17.847   -- File entry --
+2026-10-11 06:51:17.847   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\UIAutomationClient.dll
+2026-10-11 06:51:17.847   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.847   Installing the file.
+2026-10-11 06:51:17.855   Successfully installed the file.
+2026-10-11 06:51:17.855   -- File entry --
+2026-10-11 06:51:17.855   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\UIAutomationClientSideProviders.dll
+2026-10-11 06:51:17.855   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.855   Installing the file.
+2026-10-11 06:51:17.872   Successfully installed the file.
+2026-10-11 06:51:17.872   -- File entry --
+2026-10-11 06:51:17.872   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\UIAutomationProvider.dll
+2026-10-11 06:51:17.872   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.872   Installing the file.
+2026-10-11 06:51:17.874   Successfully installed the file.
+2026-10-11 06:51:17.874   -- File entry --
+2026-10-11 06:51:17.874   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\UIAutomationTypes.dll
+2026-10-11 06:51:17.874   Time stamp of our file: 2026-04-29 21:48:38.000
+2026-10-11 06:51:17.874   Installing the file.
+2026-10-11 06:51:17.880   Successfully installed the file.
+2026-10-11 06:51:17.880   -- File entry --
+2026-10-11 06:51:17.880   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\vcruntime140_cor3.dll
+2026-10-11 06:51:17.880   Time stamp of our file: 2026-04-03 14:39:00.000
+2026-10-11 06:51:17.880   Installing the file.
+2026-10-11 06:51:17.884   Successfully installed the file.
+2026-10-11 06:51:17.884   -- File entry --
+2026-10-11 06:51:17.884   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\WindowsBase.dll
+2026-10-11 06:51:17.884   Time stamp of our file: 2026-04-29 21:48:40.000
+2026-10-11 06:51:17.884   Installing the file.
+2026-10-11 06:51:17.926   Successfully installed the file.
+2026-10-11 06:51:17.926   -- File entry --
+2026-10-11 06:51:17.926   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\WinRT.Runtime.dll
+2026-10-11 06:51:17.926   Time stamp of our file: 2024-11-11 12:23:04.000
+2026-10-11 06:51:17.926   Installing the file.
+2026-10-11 06:51:17.935   Successfully installed the file.
+2026-10-11 06:51:17.935   -- File entry --
+2026-10-11 06:51:17.935   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\wpfgfx_cor3.dll
+2026-10-11 06:51:17.936   Time stamp of our file: 2026-04-29 21:36:04.000
+2026-10-11 06:51:17.936   Installing the file.
+2026-10-11 06:51:17.971   Successfully installed the file.
+2026-10-11 06:51:17.972   -- File entry --
+2026-10-11 06:51:17.972   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\PresentationCore.resources.dll
+2026-10-11 06:51:17.972   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:17.972   Installing the file.
+2026-10-11 06:51:17.972   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs
+2026-10-11 06:51:17.975   Successfully installed the file.
+2026-10-11 06:51:17.975   -- File entry --
+2026-10-11 06:51:17.975   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\PresentationFramework.resources.dll
+2026-10-11 06:51:17.975   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:17.975   Installing the file.
+2026-10-11 06:51:17.979   Successfully installed the file.
+2026-10-11 06:51:17.979   -- File entry --
+2026-10-11 06:51:17.979   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\PresentationUI.resources.dll
+2026-10-11 06:51:17.979   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:17.979   Installing the file.
+2026-10-11 06:51:17.985   Successfully installed the file.
+2026-10-11 06:51:17.985   -- File entry --
+2026-10-11 06:51:17.985   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\ReachFramework.resources.dll
+2026-10-11 06:51:17.985   Time stamp of our file: 2026-04-29 21:36:24.000
+2026-10-11 06:51:17.985   Installing the file.
+2026-10-11 06:51:17.987   Successfully installed the file.
+2026-10-11 06:51:17.987   -- File entry --
+2026-10-11 06:51:17.987   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:17.987   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:17.987   Installing the file.
+2026-10-11 06:51:17.988   Successfully installed the file.
+2026-10-11 06:51:17.988   -- File entry --
+2026-10-11 06:51:17.988   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:17.988   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:17.988   Installing the file.
+2026-10-11 06:51:17.989   Successfully installed the file.
+2026-10-11 06:51:17.989   -- File entry --
+2026-10-11 06:51:17.989   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\System.Xaml.resources.dll
+2026-10-11 06:51:17.989   Time stamp of our file: 2026-04-29 21:34:52.000
+2026-10-11 06:51:17.989   Installing the file.
+2026-10-11 06:51:17.991   Successfully installed the file.
+2026-10-11 06:51:17.991   -- File entry --
+2026-10-11 06:51:17.991   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\UIAutomationClient.resources.dll
+2026-10-11 06:51:17.991   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:17.991   Installing the file.
+2026-10-11 06:51:17.992   Successfully installed the file.
+2026-10-11 06:51:17.992   -- File entry --
+2026-10-11 06:51:17.992   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:17.992   Time stamp of our file: 2026-04-29 21:37:08.000
+2026-10-11 06:51:17.992   Installing the file.
+2026-10-11 06:51:17.993   Successfully installed the file.
+2026-10-11 06:51:17.993   -- File entry --
+2026-10-11 06:51:17.993   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\UIAutomationProvider.resources.dll
+2026-10-11 06:51:17.993   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:17.993   Installing the file.
+2026-10-11 06:51:17.994   Successfully installed the file.
+2026-10-11 06:51:17.994   -- File entry --
+2026-10-11 06:51:17.994   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\UIAutomationTypes.resources.dll
+2026-10-11 06:51:17.994   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:17.994   Installing the file.
+2026-10-11 06:51:17.996   Successfully installed the file.
+2026-10-11 06:51:17.996   -- File entry --
+2026-10-11 06:51:17.996   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\cs\WindowsBase.resources.dll
+2026-10-11 06:51:17.996   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:17.996   Installing the file.
+2026-10-11 06:51:17.997   Successfully installed the file.
+2026-10-11 06:51:17.997   -- File entry --
+2026-10-11 06:51:17.997   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\PresentationCore.resources.dll
+2026-10-11 06:51:17.999   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:17.999   Installing the file.
+2026-10-11 06:51:17.999   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de
+2026-10-11 06:51:18.001   Successfully installed the file.
+2026-10-11 06:51:18.001   -- File entry --
+2026-10-11 06:51:18.001   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\PresentationFramework.resources.dll
+2026-10-11 06:51:18.001   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.001   Installing the file.
+2026-10-11 06:51:18.006   Successfully installed the file.
+2026-10-11 06:51:18.006   -- File entry --
+2026-10-11 06:51:18.006   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\PresentationUI.resources.dll
+2026-10-11 06:51:18.006   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.006   Installing the file.
+2026-10-11 06:51:18.007   Successfully installed the file.
+2026-10-11 06:51:18.007   -- File entry --
+2026-10-11 06:51:18.007   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\ReachFramework.resources.dll
+2026-10-11 06:51:18.007   Time stamp of our file: 2026-04-29 21:36:24.000
+2026-10-11 06:51:18.007   Installing the file.
+2026-10-11 06:51:18.009   Successfully installed the file.
+2026-10-11 06:51:18.009   -- File entry --
+2026-10-11 06:51:18.009   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.009   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.009   Installing the file.
+2026-10-11 06:51:18.010   Successfully installed the file.
+2026-10-11 06:51:18.010   -- File entry --
+2026-10-11 06:51:18.010   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.010   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.010   Installing the file.
+2026-10-11 06:51:18.011   Successfully installed the file.
+2026-10-11 06:51:18.011   -- File entry --
+2026-10-11 06:51:18.011   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\System.Xaml.resources.dll
+2026-10-11 06:51:18.011   Time stamp of our file: 2026-04-29 21:34:52.000
+2026-10-11 06:51:18.011   Installing the file.
+2026-10-11 06:51:18.013   Successfully installed the file.
+2026-10-11 06:51:18.013   -- File entry --
+2026-10-11 06:51:18.013   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.013   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.013   Installing the file.
+2026-10-11 06:51:18.014   Successfully installed the file.
+2026-10-11 06:51:18.014   -- File entry --
+2026-10-11 06:51:18.014   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.014   Time stamp of our file: 2026-04-29 21:37:08.000
+2026-10-11 06:51:18.014   Installing the file.
+2026-10-11 06:51:18.016   Successfully installed the file.
+2026-10-11 06:51:18.016   -- File entry --
+2026-10-11 06:51:18.016   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.016   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.016   Installing the file.
+2026-10-11 06:51:18.017   Successfully installed the file.
+2026-10-11 06:51:18.017   -- File entry --
+2026-10-11 06:51:18.017   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.017   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.017   Installing the file.
+2026-10-11 06:51:18.018   Successfully installed the file.
+2026-10-11 06:51:18.018   -- File entry --
+2026-10-11 06:51:18.018   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\de\WindowsBase.resources.dll
+2026-10-11 06:51:18.018   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.018   Installing the file.
+2026-10-11 06:51:18.022   Successfully installed the file.
+2026-10-11 06:51:18.022   -- File entry --
+2026-10-11 06:51:18.022   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\PresentationCore.resources.dll
+2026-10-11 06:51:18.022   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.022   Installing the file.
+2026-10-11 06:51:18.022   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es
+2026-10-11 06:51:18.024   Successfully installed the file.
+2026-10-11 06:51:18.024   -- File entry --
+2026-10-11 06:51:18.024   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\PresentationFramework.resources.dll
+2026-10-11 06:51:18.025   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.025   Installing the file.
+2026-10-11 06:51:18.028   Successfully installed the file.
+2026-10-11 06:51:18.029   -- File entry --
+2026-10-11 06:51:18.029   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\PresentationUI.resources.dll
+2026-10-11 06:51:18.029   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.029   Installing the file.
+2026-10-11 06:51:18.031   Successfully installed the file.
+2026-10-11 06:51:18.031   -- File entry --
+2026-10-11 06:51:18.031   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\ReachFramework.resources.dll
+2026-10-11 06:51:18.031   Time stamp of our file: 2026-04-29 21:36:24.000
+2026-10-11 06:51:18.031   Installing the file.
+2026-10-11 06:51:18.032   Successfully installed the file.
+2026-10-11 06:51:18.032   -- File entry --
+2026-10-11 06:51:18.032   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.032   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.032   Installing the file.
+2026-10-11 06:51:18.034   Successfully installed the file.
+2026-10-11 06:51:18.034   -- File entry --
+2026-10-11 06:51:18.034   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.034   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.034   Installing the file.
+2026-10-11 06:51:18.035   Successfully installed the file.
+2026-10-11 06:51:18.035   -- File entry --
+2026-10-11 06:51:18.035   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\System.Xaml.resources.dll
+2026-10-11 06:51:18.035   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.035   Installing the file.
+2026-10-11 06:51:18.037   Successfully installed the file.
+2026-10-11 06:51:18.037   -- File entry --
+2026-10-11 06:51:18.037   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.037   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.037   Installing the file.
+2026-10-11 06:51:18.039   Successfully installed the file.
+2026-10-11 06:51:18.039   -- File entry --
+2026-10-11 06:51:18.039   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.039   Time stamp of our file: 2026-04-29 21:37:08.000
+2026-10-11 06:51:18.039   Installing the file.
+2026-10-11 06:51:18.040   Successfully installed the file.
+2026-10-11 06:51:18.040   -- File entry --
+2026-10-11 06:51:18.040   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.040   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.040   Installing the file.
+2026-10-11 06:51:18.041   Successfully installed the file.
+2026-10-11 06:51:18.041   -- File entry --
+2026-10-11 06:51:18.041   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.041   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.041   Installing the file.
+2026-10-11 06:51:18.042   Successfully installed the file.
+2026-10-11 06:51:18.042   -- File entry --
+2026-10-11 06:51:18.042   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\es\WindowsBase.resources.dll
+2026-10-11 06:51:18.042   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.042   Installing the file.
+2026-10-11 06:51:18.044   Successfully installed the file.
+2026-10-11 06:51:18.044   -- File entry --
+2026-10-11 06:51:18.044   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\PresentationCore.resources.dll
+2026-10-11 06:51:18.044   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.044   Installing the file.
+2026-10-11 06:51:18.044   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr
+2026-10-11 06:51:18.048   Successfully installed the file.
+2026-10-11 06:51:18.048   -- File entry --
+2026-10-11 06:51:18.048   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\PresentationFramework.resources.dll
+2026-10-11 06:51:18.048   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.048   Installing the file.
+2026-10-11 06:51:18.052   Successfully installed the file.
+2026-10-11 06:51:18.052   -- File entry --
+2026-10-11 06:51:18.052   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\PresentationUI.resources.dll
+2026-10-11 06:51:18.052   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.052   Installing the file.
+2026-10-11 06:51:18.054   Successfully installed the file.
+2026-10-11 06:51:18.054   -- File entry --
+2026-10-11 06:51:18.054   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\ReachFramework.resources.dll
+2026-10-11 06:51:18.054   Time stamp of our file: 2026-04-29 21:36:24.000
+2026-10-11 06:51:18.054   Installing the file.
+2026-10-11 06:51:18.056   Successfully installed the file.
+2026-10-11 06:51:18.056   -- File entry --
+2026-10-11 06:51:18.056   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.056   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.056   Installing the file.
+2026-10-11 06:51:18.057   Successfully installed the file.
+2026-10-11 06:51:18.057   -- File entry --
+2026-10-11 06:51:18.057   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.057   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.057   Installing the file.
+2026-10-11 06:51:18.058   Successfully installed the file.
+2026-10-11 06:51:18.058   -- File entry --
+2026-10-11 06:51:18.058   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\System.Xaml.resources.dll
+2026-10-11 06:51:18.058   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.058   Installing the file.
+2026-10-11 06:51:18.061   Successfully installed the file.
+2026-10-11 06:51:18.061   -- File entry --
+2026-10-11 06:51:18.061   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.061   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.061   Installing the file.
+2026-10-11 06:51:18.062   Successfully installed the file.
+2026-10-11 06:51:18.062   -- File entry --
+2026-10-11 06:51:18.062   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.062   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.062   Installing the file.
+2026-10-11 06:51:18.063   Successfully installed the file.
+2026-10-11 06:51:18.063   -- File entry --
+2026-10-11 06:51:18.063   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.063   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.063   Installing the file.
+2026-10-11 06:51:18.065   Successfully installed the file.
+2026-10-11 06:51:18.065   -- File entry --
+2026-10-11 06:51:18.065   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.065   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.065   Installing the file.
+2026-10-11 06:51:18.066   Successfully installed the file.
+2026-10-11 06:51:18.066   -- File entry --
+2026-10-11 06:51:18.066   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\fr\WindowsBase.resources.dll
+2026-10-11 06:51:18.066   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.066   Installing the file.
+2026-10-11 06:51:18.068   Successfully installed the file.
+2026-10-11 06:51:18.068   -- File entry --
+2026-10-11 06:51:18.068   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\PresentationCore.resources.dll
+2026-10-11 06:51:18.068   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.068   Installing the file.
+2026-10-11 06:51:18.068   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it
+2026-10-11 06:51:18.072   Successfully installed the file.
+2026-10-11 06:51:18.072   -- File entry --
+2026-10-11 06:51:18.072   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\PresentationFramework.resources.dll
+2026-10-11 06:51:18.072   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.072   Installing the file.
+2026-10-11 06:51:18.075   Successfully installed the file.
+2026-10-11 06:51:18.075   -- File entry --
+2026-10-11 06:51:18.075   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\PresentationUI.resources.dll
+2026-10-11 06:51:18.075   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.075   Installing the file.
+2026-10-11 06:51:18.078   Successfully installed the file.
+2026-10-11 06:51:18.078   -- File entry --
+2026-10-11 06:51:18.078   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\ReachFramework.resources.dll
+2026-10-11 06:51:18.078   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.078   Installing the file.
+2026-10-11 06:51:18.079   Successfully installed the file.
+2026-10-11 06:51:18.079   -- File entry --
+2026-10-11 06:51:18.079   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.079   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.079   Installing the file.
+2026-10-11 06:51:18.080   Successfully installed the file.
+2026-10-11 06:51:18.080   -- File entry --
+2026-10-11 06:51:18.081   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.081   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.081   Installing the file.
+2026-10-11 06:51:18.081   Successfully installed the file.
+2026-10-11 06:51:18.081   -- File entry --
+2026-10-11 06:51:18.081   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\System.Xaml.resources.dll
+2026-10-11 06:51:18.081   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.082   Installing the file.
+2026-10-11 06:51:18.084   Successfully installed the file.
+2026-10-11 06:51:18.084   -- File entry --
+2026-10-11 06:51:18.084   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.084   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.084   Installing the file.
+2026-10-11 06:51:18.085   Successfully installed the file.
+2026-10-11 06:51:18.085   -- File entry --
+2026-10-11 06:51:18.085   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.085   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.085   Installing the file.
+2026-10-11 06:51:18.086   Successfully installed the file.
+2026-10-11 06:51:18.086   -- File entry --
+2026-10-11 06:51:18.086   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.086   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.086   Installing the file.
+2026-10-11 06:51:18.087   Successfully installed the file.
+2026-10-11 06:51:18.087   -- File entry --
+2026-10-11 06:51:18.087   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.087   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.087   Installing the file.
+2026-10-11 06:51:18.088   Successfully installed the file.
+2026-10-11 06:51:18.088   -- File entry --
+2026-10-11 06:51:18.088   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\it\WindowsBase.resources.dll
+2026-10-11 06:51:18.089   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.089   Installing the file.
+2026-10-11 06:51:18.090   Successfully installed the file.
+2026-10-11 06:51:18.090   -- File entry --
+2026-10-11 06:51:18.090   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\PresentationCore.resources.dll
+2026-10-11 06:51:18.090   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.090   Installing the file.
+2026-10-11 06:51:18.090   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja
+2026-10-11 06:51:18.094   Successfully installed the file.
+2026-10-11 06:51:18.094   -- File entry --
+2026-10-11 06:51:18.094   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\PresentationFramework.resources.dll
+2026-10-11 06:51:18.094   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.094   Installing the file.
+2026-10-11 06:51:18.098   Successfully installed the file.
+2026-10-11 06:51:18.098   -- File entry --
+2026-10-11 06:51:18.098   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\PresentationUI.resources.dll
+2026-10-11 06:51:18.098   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.098   Installing the file.
+2026-10-11 06:51:18.099   Successfully installed the file.
+2026-10-11 06:51:18.099   -- File entry --
+2026-10-11 06:51:18.099   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\ReachFramework.resources.dll
+2026-10-11 06:51:18.100   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.100   Installing the file.
+2026-10-11 06:51:18.100   Successfully installed the file.
+2026-10-11 06:51:18.100   -- File entry --
+2026-10-11 06:51:18.100   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.100   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.100   Installing the file.
+2026-10-11 06:51:18.102   Successfully installed the file.
+2026-10-11 06:51:18.102   -- File entry --
+2026-10-11 06:51:18.102   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.102   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.102   Installing the file.
+2026-10-11 06:51:18.104   Successfully installed the file.
+2026-10-11 06:51:18.104   -- File entry --
+2026-10-11 06:51:18.104   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\System.Xaml.resources.dll
+2026-10-11 06:51:18.104   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.104   Installing the file.
+2026-10-11 06:51:18.106   Successfully installed the file.
+2026-10-11 06:51:18.106   -- File entry --
+2026-10-11 06:51:18.106   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.106   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.106   Installing the file.
+2026-10-11 06:51:18.107   Successfully installed the file.
+2026-10-11 06:51:18.107   -- File entry --
+2026-10-11 06:51:18.107   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.107   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.107   Installing the file.
+2026-10-11 06:51:18.108   Successfully installed the file.
+2026-10-11 06:51:18.108   -- File entry --
+2026-10-11 06:51:18.108   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.108   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.108   Installing the file.
+2026-10-11 06:51:18.109   Successfully installed the file.
+2026-10-11 06:51:18.109   -- File entry --
+2026-10-11 06:51:18.110   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.110   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.110   Installing the file.
+2026-10-11 06:51:18.110   Successfully installed the file.
+2026-10-11 06:51:18.110   -- File entry --
+2026-10-11 06:51:18.110   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ja\WindowsBase.resources.dll
+2026-10-11 06:51:18.110   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.110   Installing the file.
+2026-10-11 06:51:18.113   Successfully installed the file.
+2026-10-11 06:51:18.113   -- File entry --
+2026-10-11 06:51:18.113   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\PresentationCore.resources.dll
+2026-10-11 06:51:18.113   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.113   Installing the file.
+2026-10-11 06:51:18.113   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko
+2026-10-11 06:51:18.116   Successfully installed the file.
+2026-10-11 06:51:18.116   -- File entry --
+2026-10-11 06:51:18.116   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\PresentationFramework.resources.dll
+2026-10-11 06:51:18.116   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.116   Installing the file.
+2026-10-11 06:51:18.120   Successfully installed the file.
+2026-10-11 06:51:18.120   -- File entry --
+2026-10-11 06:51:18.120   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\PresentationUI.resources.dll
+2026-10-11 06:51:18.120   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.120   Installing the file.
+2026-10-11 06:51:18.122   Successfully installed the file.
+2026-10-11 06:51:18.122   -- File entry --
+2026-10-11 06:51:18.122   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\ReachFramework.resources.dll
+2026-10-11 06:51:18.122   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.122   Installing the file.
+2026-10-11 06:51:18.124   Successfully installed the file.
+2026-10-11 06:51:18.124   -- File entry --
+2026-10-11 06:51:18.124   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.124   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.124   Installing the file.
+2026-10-11 06:51:18.125   Successfully installed the file.
+2026-10-11 06:51:18.125   -- File entry --
+2026-10-11 06:51:18.125   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.125   Time stamp of our file: 2026-04-29 21:34:48.000
+2026-10-11 06:51:18.125   Installing the file.
+2026-10-11 06:51:18.126   Successfully installed the file.
+2026-10-11 06:51:18.126   -- File entry --
+2026-10-11 06:51:18.126   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\System.Xaml.resources.dll
+2026-10-11 06:51:18.127   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.127   Installing the file.
+2026-10-11 06:51:18.129   Successfully installed the file.
+2026-10-11 06:51:18.129   -- File entry --
+2026-10-11 06:51:18.129   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.129   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.129   Installing the file.
+2026-10-11 06:51:18.130   Successfully installed the file.
+2026-10-11 06:51:18.130   -- File entry --
+2026-10-11 06:51:18.130   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.130   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.130   Installing the file.
+2026-10-11 06:51:18.132   Successfully installed the file.
+2026-10-11 06:51:18.132   -- File entry --
+2026-10-11 06:51:18.132   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.132   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.132   Installing the file.
+2026-10-11 06:51:18.133   Successfully installed the file.
+2026-10-11 06:51:18.133   -- File entry --
+2026-10-11 06:51:18.133   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.133   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.133   Installing the file.
+2026-10-11 06:51:18.134   Successfully installed the file.
+2026-10-11 06:51:18.134   -- File entry --
+2026-10-11 06:51:18.134   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ko\WindowsBase.resources.dll
+2026-10-11 06:51:18.134   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.134   Installing the file.
+2026-10-11 06:51:18.136   Successfully installed the file.
+2026-10-11 06:51:18.136   -- File entry --
+2026-10-11 06:51:18.136   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\PresentationCore.resources.dll
+2026-10-11 06:51:18.136   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.136   Installing the file.
+2026-10-11 06:51:18.136   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl
+2026-10-11 06:51:18.139   Successfully installed the file.
+2026-10-11 06:51:18.139   -- File entry --
+2026-10-11 06:51:18.139   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\PresentationFramework.resources.dll
+2026-10-11 06:51:18.139   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.139   Installing the file.
+2026-10-11 06:51:18.143   Successfully installed the file.
+2026-10-11 06:51:18.143   -- File entry --
+2026-10-11 06:51:18.143   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\PresentationUI.resources.dll
+2026-10-11 06:51:18.143   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.143   Installing the file.
+2026-10-11 06:51:18.145   Successfully installed the file.
+2026-10-11 06:51:18.145   -- File entry --
+2026-10-11 06:51:18.145   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\ReachFramework.resources.dll
+2026-10-11 06:51:18.145   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.145   Installing the file.
+2026-10-11 06:51:18.146   Successfully installed the file.
+2026-10-11 06:51:18.146   -- File entry --
+2026-10-11 06:51:18.146   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.146   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.147   Installing the file.
+2026-10-11 06:51:18.148   Successfully installed the file.
+2026-10-11 06:51:18.148   -- File entry --
+2026-10-11 06:51:18.148   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.148   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.148   Installing the file.
+2026-10-11 06:51:18.149   Successfully installed the file.
+2026-10-11 06:51:18.149   -- File entry --
+2026-10-11 06:51:18.149   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\System.Xaml.resources.dll
+2026-10-11 06:51:18.149   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.149   Installing the file.
+2026-10-11 06:51:18.151   Successfully installed the file.
+2026-10-11 06:51:18.151   -- File entry --
+2026-10-11 06:51:18.151   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.151   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.151   Installing the file.
+2026-10-11 06:51:18.153   Successfully installed the file.
+2026-10-11 06:51:18.153   -- File entry --
+2026-10-11 06:51:18.153   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.153   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.153   Installing the file.
+2026-10-11 06:51:18.155   Successfully installed the file.
+2026-10-11 06:51:18.155   -- File entry --
+2026-10-11 06:51:18.155   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.155   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.155   Installing the file.
+2026-10-11 06:51:18.156   Successfully installed the file.
+2026-10-11 06:51:18.156   -- File entry --
+2026-10-11 06:51:18.156   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.156   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.156   Installing the file.
+2026-10-11 06:51:18.157   Successfully installed the file.
+2026-10-11 06:51:18.158   -- File entry --
+2026-10-11 06:51:18.158   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pl\WindowsBase.resources.dll
+2026-10-11 06:51:18.158   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.158   Installing the file.
+2026-10-11 06:51:18.160   Successfully installed the file.
+2026-10-11 06:51:18.160   -- File entry --
+2026-10-11 06:51:18.160   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\PresentationCore.resources.dll
+2026-10-11 06:51:18.160   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.160   Installing the file.
+2026-10-11 06:51:18.160   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR
+2026-10-11 06:51:18.163   Successfully installed the file.
+2026-10-11 06:51:18.163   -- File entry --
+2026-10-11 06:51:18.163   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\PresentationFramework.resources.dll
+2026-10-11 06:51:18.163   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.163   Installing the file.
+2026-10-11 06:51:18.167   Successfully installed the file.
+2026-10-11 06:51:18.167   -- File entry --
+2026-10-11 06:51:18.167   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\PresentationUI.resources.dll
+2026-10-11 06:51:18.167   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.167   Installing the file.
+2026-10-11 06:51:18.168   Successfully installed the file.
+2026-10-11 06:51:18.168   -- File entry --
+2026-10-11 06:51:18.168   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\ReachFramework.resources.dll
+2026-10-11 06:51:18.168   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.168   Installing the file.
+2026-10-11 06:51:18.170   Successfully installed the file.
+2026-10-11 06:51:18.170   -- File entry --
+2026-10-11 06:51:18.170   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.170   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.170   Installing the file.
+2026-10-11 06:51:18.172   Successfully installed the file.
+2026-10-11 06:51:18.172   -- File entry --
+2026-10-11 06:51:18.172   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.172   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.172   Installing the file.
+2026-10-11 06:51:18.173   Successfully installed the file.
+2026-10-11 06:51:18.173   -- File entry --
+2026-10-11 06:51:18.173   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\System.Xaml.resources.dll
+2026-10-11 06:51:18.173   Time stamp of our file: 2026-04-29 21:34:54.000
+2026-10-11 06:51:18.173   Installing the file.
+2026-10-11 06:51:18.175   Successfully installed the file.
+2026-10-11 06:51:18.175   -- File entry --
+2026-10-11 06:51:18.175   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.175   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.175   Installing the file.
+2026-10-11 06:51:18.177   Successfully installed the file.
+2026-10-11 06:51:18.177   -- File entry --
+2026-10-11 06:51:18.177   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.177   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.177   Installing the file.
+2026-10-11 06:51:18.178   Successfully installed the file.
+2026-10-11 06:51:18.178   -- File entry --
+2026-10-11 06:51:18.178   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.178   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.178   Installing the file.
+2026-10-11 06:51:18.179   Successfully installed the file.
+2026-10-11 06:51:18.179   -- File entry --
+2026-10-11 06:51:18.179   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.179   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.179   Installing the file.
+2026-10-11 06:51:18.180   Successfully installed the file.
+2026-10-11 06:51:18.180   -- File entry --
+2026-10-11 06:51:18.180   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\pt-BR\WindowsBase.resources.dll
+2026-10-11 06:51:18.180   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.180   Installing the file.
+2026-10-11 06:51:18.182   Successfully installed the file.
+2026-10-11 06:51:18.182   -- File entry --
+2026-10-11 06:51:18.182   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\PresentationCore.resources.dll
+2026-10-11 06:51:18.182   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.182   Installing the file.
+2026-10-11 06:51:18.183   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru
+2026-10-11 06:51:18.186   Successfully installed the file.
+2026-10-11 06:51:18.186   -- File entry --
+2026-10-11 06:51:18.186   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\PresentationFramework.resources.dll
+2026-10-11 06:51:18.186   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.186   Installing the file.
+2026-10-11 06:51:18.190   Successfully installed the file.
+2026-10-11 06:51:18.190   -- File entry --
+2026-10-11 06:51:18.190   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\PresentationUI.resources.dll
+2026-10-11 06:51:18.190   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.190   Installing the file.
+2026-10-11 06:51:18.193   Successfully installed the file.
+2026-10-11 06:51:18.193   -- File entry --
+2026-10-11 06:51:18.193   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\ReachFramework.resources.dll
+2026-10-11 06:51:18.193   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.193   Installing the file.
+2026-10-11 06:51:18.194   Successfully installed the file.
+2026-10-11 06:51:18.194   -- File entry --
+2026-10-11 06:51:18.194   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.194   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.194   Installing the file.
+2026-10-11 06:51:18.195   Successfully installed the file.
+2026-10-11 06:51:18.195   -- File entry --
+2026-10-11 06:51:18.195   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.196   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.196   Installing the file.
+2026-10-11 06:51:18.196   Successfully installed the file.
+2026-10-11 06:51:18.196   -- File entry --
+2026-10-11 06:51:18.197   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\System.Xaml.resources.dll
+2026-10-11 06:51:18.197   Time stamp of our file: 2026-04-29 21:34:56.000
+2026-10-11 06:51:18.197   Installing the file.
+2026-10-11 06:51:18.198   Successfully installed the file.
+2026-10-11 06:51:18.199   -- File entry --
+2026-10-11 06:51:18.199   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.199   Time stamp of our file: 2026-04-29 21:36:18.000
+2026-10-11 06:51:18.199   Installing the file.
+2026-10-11 06:51:18.201   Successfully installed the file.
+2026-10-11 06:51:18.201   -- File entry --
+2026-10-11 06:51:18.201   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.201   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.201   Installing the file.
+2026-10-11 06:51:18.202   Successfully installed the file.
+2026-10-11 06:51:18.202   -- File entry --
+2026-10-11 06:51:18.202   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.202   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.202   Installing the file.
+2026-10-11 06:51:18.202   Successfully installed the file.
+2026-10-11 06:51:18.202   -- File entry --
+2026-10-11 06:51:18.202   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.203   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.203   Installing the file.
+2026-10-11 06:51:18.204   Successfully installed the file.
+2026-10-11 06:51:18.204   -- File entry --
+2026-10-11 06:51:18.204   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\ru\WindowsBase.resources.dll
+2026-10-11 06:51:18.204   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.204   Installing the file.
+2026-10-11 06:51:18.206   Successfully installed the file.
+2026-10-11 06:51:18.206   -- File entry --
+2026-10-11 06:51:18.206   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\PresentationCore.resources.dll
+2026-10-11 06:51:18.206   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.206   Installing the file.
+2026-10-11 06:51:18.206   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr
+2026-10-11 06:51:18.209   Successfully installed the file.
+2026-10-11 06:51:18.209   -- File entry --
+2026-10-11 06:51:18.209   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\PresentationFramework.resources.dll
+2026-10-11 06:51:18.209   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.209   Installing the file.
+2026-10-11 06:51:18.213   Successfully installed the file.
+2026-10-11 06:51:18.213   -- File entry --
+2026-10-11 06:51:18.213   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\PresentationUI.resources.dll
+2026-10-11 06:51:18.213   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.213   Installing the file.
+2026-10-11 06:51:18.215   Successfully installed the file.
+2026-10-11 06:51:18.215   -- File entry --
+2026-10-11 06:51:18.215   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\ReachFramework.resources.dll
+2026-10-11 06:51:18.215   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.215   Installing the file.
+2026-10-11 06:51:18.216   Successfully installed the file.
+2026-10-11 06:51:18.216   -- File entry --
+2026-10-11 06:51:18.216   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.216   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.216   Installing the file.
+2026-10-11 06:51:18.217   Successfully installed the file.
+2026-10-11 06:51:18.217   -- File entry --
+2026-10-11 06:51:18.217   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.217   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.217   Installing the file.
+2026-10-11 06:51:18.219   Successfully installed the file.
+2026-10-11 06:51:18.219   -- File entry --
+2026-10-11 06:51:18.219   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\System.Xaml.resources.dll
+2026-10-11 06:51:18.219   Time stamp of our file: 2026-04-29 21:34:56.000
+2026-10-11 06:51:18.219   Installing the file.
+2026-10-11 06:51:18.220   Successfully installed the file.
+2026-10-11 06:51:18.220   -- File entry --
+2026-10-11 06:51:18.220   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.220   Time stamp of our file: 2026-04-29 21:36:20.000
+2026-10-11 06:51:18.220   Installing the file.
+2026-10-11 06:51:18.221   Successfully installed the file.
+2026-10-11 06:51:18.222   -- File entry --
+2026-10-11 06:51:18.222   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.222   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.222   Installing the file.
+2026-10-11 06:51:18.223   Successfully installed the file.
+2026-10-11 06:51:18.223   -- File entry --
+2026-10-11 06:51:18.223   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.223   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.223   Installing the file.
+2026-10-11 06:51:18.224   Successfully installed the file.
+2026-10-11 06:51:18.224   -- File entry --
+2026-10-11 06:51:18.224   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.224   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.225   Installing the file.
+2026-10-11 06:51:18.225   Successfully installed the file.
+2026-10-11 06:51:18.226   -- File entry --
+2026-10-11 06:51:18.226   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\tr\WindowsBase.resources.dll
+2026-10-11 06:51:18.226   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.226   Installing the file.
+2026-10-11 06:51:18.227   Successfully installed the file.
+2026-10-11 06:51:18.227   -- File entry --
+2026-10-11 06:51:18.227   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\PresentationCore.resources.dll
+2026-10-11 06:51:18.227   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.227   Installing the file.
+2026-10-11 06:51:18.228   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans
+2026-10-11 06:51:18.230   Successfully installed the file.
+2026-10-11 06:51:18.230   -- File entry --
+2026-10-11 06:51:18.230   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\PresentationFramework.resources.dll
+2026-10-11 06:51:18.230   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.230   Installing the file.
+2026-10-11 06:51:18.234   Successfully installed the file.
+2026-10-11 06:51:18.234   -- File entry --
+2026-10-11 06:51:18.234   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\PresentationUI.resources.dll
+2026-10-11 06:51:18.235   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.235   Installing the file.
+2026-10-11 06:51:18.235   Successfully installed the file.
+2026-10-11 06:51:18.235   -- File entry --
+2026-10-11 06:51:18.235   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\ReachFramework.resources.dll
+2026-10-11 06:51:18.235   Time stamp of our file: 2026-04-29 21:36:26.000
+2026-10-11 06:51:18.235   Installing the file.
+2026-10-11 06:51:18.237   Successfully installed the file.
+2026-10-11 06:51:18.237   -- File entry --
+2026-10-11 06:51:18.237   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.237   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.237   Installing the file.
+2026-10-11 06:51:18.239   Successfully installed the file.
+2026-10-11 06:51:18.239   -- File entry --
+2026-10-11 06:51:18.239   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.239   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.239   Installing the file.
+2026-10-11 06:51:18.239   Successfully installed the file.
+2026-10-11 06:51:18.239   -- File entry --
+2026-10-11 06:51:18.239   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\System.Xaml.resources.dll
+2026-10-11 06:51:18.239   Time stamp of our file: 2026-04-29 21:34:56.000
+2026-10-11 06:51:18.239   Installing the file.
+2026-10-11 06:51:18.242   Successfully installed the file.
+2026-10-11 06:51:18.242   -- File entry --
+2026-10-11 06:51:18.242   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.242   Time stamp of our file: 2026-04-29 21:36:20.000
+2026-10-11 06:51:18.242   Installing the file.
+2026-10-11 06:51:18.243   Successfully installed the file.
+2026-10-11 06:51:18.243   -- File entry --
+2026-10-11 06:51:18.243   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.243   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.243   Installing the file.
+2026-10-11 06:51:18.244   Successfully installed the file.
+2026-10-11 06:51:18.244   -- File entry --
+2026-10-11 06:51:18.244   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.244   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.244   Installing the file.
+2026-10-11 06:51:18.245   Successfully installed the file.
+2026-10-11 06:51:18.245   -- File entry --
+2026-10-11 06:51:18.245   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.245   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.245   Installing the file.
+2026-10-11 06:51:18.247   Successfully installed the file.
+2026-10-11 06:51:18.247   -- File entry --
+2026-10-11 06:51:18.247   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hans\WindowsBase.resources.dll
+2026-10-11 06:51:18.247   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.247   Installing the file.
+2026-10-11 06:51:18.250   Successfully installed the file.
+2026-10-11 06:51:18.250   -- File entry --
+2026-10-11 06:51:18.250   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\PresentationCore.resources.dll
+2026-10-11 06:51:18.250   Time stamp of our file: 2026-04-29 21:36:10.000
+2026-10-11 06:51:18.250   Installing the file.
+2026-10-11 06:51:18.250   Creating directory: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant
+2026-10-11 06:51:18.253   Successfully installed the file.
+2026-10-11 06:51:18.253   -- File entry --
+2026-10-11 06:51:18.253   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\PresentationFramework.resources.dll
+2026-10-11 06:51:18.253   Time stamp of our file: 2026-04-29 21:37:18.000
+2026-10-11 06:51:18.253   Installing the file.
+2026-10-11 06:51:18.257   Successfully installed the file.
+2026-10-11 06:51:18.257   -- File entry --
+2026-10-11 06:51:18.257   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\PresentationUI.resources.dll
+2026-10-11 06:51:18.257   Time stamp of our file: 2026-04-29 21:37:48.000
+2026-10-11 06:51:18.257   Installing the file.
+2026-10-11 06:51:18.259   Successfully installed the file.
+2026-10-11 06:51:18.259   -- File entry --
+2026-10-11 06:51:18.259   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\ReachFramework.resources.dll
+2026-10-11 06:51:18.259   Time stamp of our file: 2026-04-29 21:36:28.000
+2026-10-11 06:51:18.259   Installing the file.
+2026-10-11 06:51:18.260   Successfully installed the file.
+2026-10-11 06:51:18.261   -- File entry --
+2026-10-11 06:51:18.261   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\System.Windows.Controls.Ribbon.resources.dll
+2026-10-11 06:51:18.261   Time stamp of our file: 2026-04-29 21:38:12.000
+2026-10-11 06:51:18.261   Installing the file.
+2026-10-11 06:51:18.262   Successfully installed the file.
+2026-10-11 06:51:18.262   -- File entry --
+2026-10-11 06:51:18.262   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\System.Windows.Input.Manipulations.resources.dll
+2026-10-11 06:51:18.262   Time stamp of our file: 2026-04-29 21:34:50.000
+2026-10-11 06:51:18.262   Installing the file.
+2026-10-11 06:51:18.263   Successfully installed the file.
+2026-10-11 06:51:18.263   -- File entry --
+2026-10-11 06:51:18.263   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\System.Xaml.resources.dll
+2026-10-11 06:51:18.263   Time stamp of our file: 2026-04-29 21:34:56.000
+2026-10-11 06:51:18.263   Installing the file.
+2026-10-11 06:51:18.265   Successfully installed the file.
+2026-10-11 06:51:18.265   -- File entry --
+2026-10-11 06:51:18.265   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\UIAutomationClient.resources.dll
+2026-10-11 06:51:18.265   Time stamp of our file: 2026-04-29 21:36:20.000
+2026-10-11 06:51:18.265   Installing the file.
+2026-10-11 06:51:18.266   Successfully installed the file.
+2026-10-11 06:51:18.266   -- File entry --
+2026-10-11 06:51:18.266   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\UIAutomationClientSideProviders.resources.dll
+2026-10-11 06:51:18.266   Time stamp of our file: 2026-04-29 21:37:12.000
+2026-10-11 06:51:18.266   Installing the file.
+2026-10-11 06:51:18.267   Successfully installed the file.
+2026-10-11 06:51:18.267   -- File entry --
+2026-10-11 06:51:18.267   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\UIAutomationProvider.resources.dll
+2026-10-11 06:51:18.267   Time stamp of our file: 2026-04-29 21:35:28.000
+2026-10-11 06:51:18.267   Installing the file.
+2026-10-11 06:51:18.269   Successfully installed the file.
+2026-10-11 06:51:18.269   -- File entry --
+2026-10-11 06:51:18.269   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\UIAutomationTypes.resources.dll
+2026-10-11 06:51:18.269   Time stamp of our file: 2026-04-29 21:35:26.000
+2026-10-11 06:51:18.269   Installing the file.
+2026-10-11 06:51:18.270   Successfully installed the file.
+2026-10-11 06:51:18.270   -- File entry --
+2026-10-11 06:51:18.270   Dest filename: C:\Users\rdpro\AppData\Local\Programs\Foundry S6 toast spike\zh-Hant\WindowsBase.resources.dll
+2026-10-11 06:51:18.270   Time stamp of our file: 2026-04-29 21:35:22.000
+2026-10-11 06:51:18.270   Installing the file.
+2026-10-11 06:51:18.272   Successfully installed the file.
+2026-10-11 06:51:18.272   -- Icon entry --
+2026-10-11 06:51:18.272   Dest filename: C:\Users\rdpro\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Foundry S6 toast spike.lnk
+2026-10-11 06:51:18.272   Creating the icon.
+2026-10-11 06:51:18.317   Successfully created the icon.
+2026-10-11 06:51:18.323   Saving uninstall information.
+2026-10-11 06:51:18.323   Creating new uninstall key: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{CE1A3DDF-7D9D-4FF8-8888-D8AA5D1700AD}_is1
+2026-10-11 06:51:18.323   Writing uninstall key values.
+2026-10-11 06:51:18.324   Detected previous administrative 64-bit install? No
+2026-10-11 06:51:18.324   Detected previous administrative 32-bit install? No
+2026-10-11 06:51:18.326   Installation process succeeded.
+2026-10-11 06:51:18.326   Need to restart Windows? No
+2026-10-11 06:51:18.328   Deinitializing Setup.
+2026-10-11 06:51:18.330   Log closed.

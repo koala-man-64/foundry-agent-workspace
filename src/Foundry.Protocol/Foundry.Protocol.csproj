@@ -1,3 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><EmbeddedResource Include="Contracts.json" /><EmbeddedResource Include="TimeZoneNames.txt" /></ItemGroup>
   <!-- Records, validators, framing, JsJson and Clock.Iso. References nothing else in the solution. -->
 </Project>

@@ -1,0 +1,3 @@
+# Embedded SQL is byte-for-byte copied from the TypeScript authority, including
+# its historical spaces on blank lines. Manifest tests protect those bytes.
+*.sql -text whitespace=-blank-at-eol

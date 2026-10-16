@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ModelProfile, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
@@ -58,6 +58,7 @@ describe('runtime credential generation', () => {
   });
 
   it('drains an already-started worktree creation before closing SQLite', async () => {
+    await mkdir(join(directory, 'source', '.git'), { recursive: true });
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
     let started!: () => void;

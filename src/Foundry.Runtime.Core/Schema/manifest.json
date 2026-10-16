@@ -1,0 +1,38 @@
+[
+  {
+    "name": "V1_SCHEMA",
+    "sha256": "194e884ba96ebe116968a11be014ce47a3f39da9f503367ab01043389342eded"
+  },
+  {
+    "name": "V2_MIGRATION",
+    "sha256": "d2a8b6ff595514aa8dc62d476eb6c479e7e6e9df007a4b47b9b2df44e2b45a24"
+  },
+  {
+    "name": "V3_MIGRATION",
+    "sha256": "259dcd7ab8aca37c5d4c6b92a91b9fd8b1f236fc6cb3d5b949db54c483698d3d"
+  },
+  {
+    "name": "PHASE4_SCHEMA",
+    "sha256": "fe94cd53d5e62d91e88b61939d787cee560583e4d6eb7788448cf4630d543597"
+  },
+  {
+    "name": "V4_MIGRATION",
+    "sha256": "bb95583f2ad4dc8bba459ab017c98ee7d1062558fafa56c8a914f3b12a9af36c"
+  },
+  {
+    "name": "V5_MIGRATION",
+    "sha256": "b44e2c1075b1fbdfddb704ba219b3fad6f10d53ca7b01c0e975af854030de6b6"
+  },
+  {
+    "name": "AUTOMATION_SCHEMA",
+    "sha256": "676cad6c1c789b7824dad0c067ae673cd04b75f1169de8272f3c422f63714d35"
+  },
+  {
+    "name": "CONTINUITY_SCHEMA",
+    "sha256": "8359dbc6d27557de85f38da642cdd94b0205f9c90791cf619f6bf5924c540d20"
+  },
+  {
+    "name": "FEATURE_ADMISSION_SCHEMA",
+    "sha256": "c2152abc541ab39f6588572762a70f771f83e794811fa6be87aa45d1e6b63f71"
+  }
+]
