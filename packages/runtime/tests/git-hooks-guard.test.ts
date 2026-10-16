@@ -108,17 +108,17 @@ describe('app-owned Git hooks folder', () => {
     // An empty core.hooksPath resolves hooks at the drive root, which `git status` (post-index-change) would run.
     expect(source).not.toMatch(/'core\.hooksPath='/);
     expect(source.match(/`core\.hooksPath=\$\{git\}`/g)).toHaveLength(2);
-    // The Git behaviour that relies on: a directory hook runs on status, a hooks path below a file runs nothing.
+    // The Git behaviour that relies on: a hook below a directory runs, a hook path below a file names nothing. post-commit
+    // is the deterministic control; status only fires post-index-change when it happens to rewrite the index.
     const { base, root, marker } = await fixture();
     const executable = (await execFile('where.exe', ['git'], { windowsHide: true })).stdout.split(/\r?\n/)[0]!.trim();
-    await fs.writeFile(path.join(root, 'README.md'), 'touched\n');
     const directory = path.join(base, 'control-hooks');
-    await plant(directory, 'post-index-change', marker);
-    await git(root, ['-c', `core.hooksPath=${directory}`, 'status', '--porcelain']);
+    await plant(directory, 'post-commit', marker);
+    await git(root, ['-c', `core.hooksPath=${directory}`, 'commit', '--allow-empty', '--no-verify', '-qm', 'control']);
     expect(fsSync.existsSync(marker)).toBe(true);
     await fs.rm(marker);
-    await fs.writeFile(path.join(root, 'README.md'), 'touched again\n');
     expect(await git(root, ['-c', `core.hooksPath=${executable}`, 'rev-parse', '--git-path', 'hooks/post-index-change'])).toBe(`${executable}/post-index-change`);
+    await git(root, ['-c', `core.hooksPath=${executable}`, 'commit', '--allow-empty', '--no-verify', '-qm', 'below a file']);
     await git(root, ['-c', `core.hooksPath=${executable}`, 'status', '--porcelain']);
     expect(fsSync.existsSync(marker)).toBe(false);
   });
