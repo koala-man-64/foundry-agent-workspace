@@ -24,6 +24,8 @@ public sealed class DevelopmentChat
     private readonly Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream;
     private readonly RepositoryService repositories;
     private readonly Dictionary<string, Running> running = new(StringComparer.Ordinal);
+    private readonly HashSet<string> publishing = new(StringComparer.Ordinal);
+    private readonly HashSet<string> retiring = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Hash, Task<Dictionary<string, object?>> Work)> starts = new(StringComparer.Ordinal);
     private readonly List<TaskCompletionSource> slotWaiters = [];
     private readonly TaskCompletionSource failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -52,8 +54,12 @@ public sealed class DevelopmentChat
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
     // Other durable Store events remain retrievable; sequence gaps are expected.
+    // A retirement records two task.retired events, as TypeScript does: the status transition saveTask records, which
+    // TypeScript keeps silent, and the explicit event workspace-operations publishes with its removed-worktree count.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
-        or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning";
+        or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning"
+        or "task.committed" or "task.pushed"
+        || item.Type == "task.retired" && item.Data is IDictionary<string, object?> data && data.ContainsKey("removedWorktrees");
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
     {
@@ -106,6 +112,10 @@ public sealed class DevelopmentChat
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
             case "task.create": return await Repository(async () => await CreateTask(parameters));
+            case "task.commit": return await Repository(async () => await Commit((string)parameters["taskId"]!, (string)parameters["message"]!));
+            case "task.push": return await Repository(async () => await Push((string)parameters["taskId"]!, (string?)parameters.GetValueOrDefault("remote") ?? "origin"));
+            case "task.reconcilePublication": return await Repository(async () => await ReconcilePublication((string)parameters["taskId"]!));
+            case "task.retire": return await Repository(async () => await Retire((string)parameters["taskId"]!));
             case "files.list":
                 return await Repository(() =>
                 {
@@ -234,6 +244,197 @@ public sealed class DevelopmentChat
             throw;
         }
     }
+
+    // ---------------------------------------------------------------- explicit Git actions (workspace-operations.ts)
+
+    /// <summary>publishable: a ready chat or coding Git task with no unknown mutation, publication or retirement outcome.</summary>
+    private Dictionary<string, object?> Publishable(string taskId)
+    {
+        var task = store.ReadGitTask(taskId);
+        if (running.ContainsKey(taskId) || Equals(task["status"], "running")) throw new WorkspaceReadException("Wait for the active response to finish or cancel it first.");
+        if (Equals(task["status"], "retired")) throw new WorkspaceReadException("This task worktree is retired.");
+        if (Truthy(task.GetValueOrDefault("parentTaskId")) || Equals(task.GetValueOrDefault("role"), "child"))
+            throw new WorkspaceReadException("Child agent worktrees are published only through reviewed handoff commits and coordinator integration.");
+        if (Equals(task.GetValueOrDefault("mode"), "coordinated"))
+            throw new WorkspaceReadException("Coordinated task worktrees are integrated through reviewed operations; commit and push are available for chat and coding tasks.");
+        if (store.HasUnknownApproval(taskId)) throw new WorkspaceReadException("This task has an unknown mutation outcome. Check the outcome and inspect its worktree before publishing.");
+        if (store.UnknownPublicationIntents(taskId) is [var unknown, ..])
+            throw new WorkspaceReadException($"This task has an unknown {unknown.Kind} outcome. Reconcile publication state before attempting another operation.");
+        if (store.UnknownRetireIntents(taskId).Count > 0) throw new WorkspaceReadException("This task has an unknown worktree retirement outcome. Reconcile state before attempting another operation.");
+        return task;
+    }
+
+    private void BeginPublishing(string taskId)
+    {
+        if (!publishing.Add(taskId)) throw new WorkspaceReadException("A Git operation is already in progress for this task.");
+    }
+
+    /// <summary>Intent first; a failure is complete only when the repository reported that no mutation started.</summary>
+    private void FinishFailed(string intent, Exception error) => store.FinishIntent(intent, error is RepositoryException { Outcome: "none" } ? "complete" : "unknown");
+
+    private async Task<Dictionary<string, object?>> Commit(string taskId, string message)
+    {
+        var task = Publishable(taskId);
+        BeginPublishing(taskId);
+        try
+        {
+            var clean = redactor.Text(message);
+            if (clean != message) throw new WorkspaceReadException("The commit message contains secret-like content.");
+            var worktree = (string)task["worktreePath"]!; var branch = (string)task["branch"]!;
+            var baseCommit = await repositories.HeadCommit(worktree);
+            var intent = store.Intent("git.commit", new Dictionary<string, object?> { ["taskId"] = taskId, ["branch"] = branch, ["baseCommit"] = baseCommit, ["message"] = clean });
+            try
+            {
+                var result = await repositories.CommitAll(worktree, branch, clean);
+                store.Transaction(() =>
+                {
+                    store.FinishIntent(intent, "complete");
+                    store.SaveTask(new(store.ReadTask(taskId)) { ["updatedAt"] = Clock.Iso(now()) });
+                    store.Event("task.committed", new Dictionary<string, object?> { ["commit"] = result.Commit, ["changedPaths"] = result.ChangedPaths.Count }, taskId);
+                    return 0;
+                });
+                return new() { ["commit"] = result.Commit, ["changedPaths"] = result.ChangedPaths, ["branch"] = branch };
+            }
+            catch (Exception error) when (error is not EventDeliveryException) { FinishFailed(intent, error); throw; }
+        }
+        finally { publishing.Remove(taskId); }
+    }
+
+    private async Task<Dictionary<string, object?>> Push(string taskId, string remote)
+    {
+        var task = Publishable(taskId);
+        BeginPublishing(taskId);
+        try
+        {
+            var worktree = (string)task["worktreePath"]!; var branch = (string)task["branch"]!;
+            var commit = await repositories.HeadCommit(worktree);
+            var intent = store.Intent("git.push", new Dictionary<string, object?> { ["taskId"] = taskId, ["branch"] = branch, ["remote"] = remote, ["commit"] = commit });
+            try
+            {
+                var detail = await repositories.Push(worktree, (string)task["projectPath"]!, remote, branch);
+                store.Transaction(() =>
+                {
+                    store.FinishIntent(intent, "complete");
+                    store.Event("task.pushed", new Dictionary<string, object?> { ["remote"] = remote, ["branch"] = branch }, taskId);
+                    return 0;
+                });
+                return new() { ["remote"] = remote, ["branch"] = branch, ["detail"] = redactor.Text(detail) };
+            }
+            catch (Exception error) when (error is not EventDeliveryException) { FinishFailed(intent, error); throw; }
+        }
+        finally { publishing.Remove(taskId); }
+    }
+
+    /// <summary>
+    /// reconcilePublication: each unknown push is checked against the remote and each unknown commit against the worktree;
+    /// one that cannot be established stays unknown. An unknown retirement is complete when no listed worktree remains and
+    /// failed otherwise. A listed worktree on a network path is never probed and counts as remaining.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> ReconcilePublication(string taskId)
+    {
+        var task = store.ReadGitTask(taskId);
+        BeginPublishing(taskId);
+        try
+        {
+            var unknowns = store.UnknownPublicationIntents(taskId);
+            var retirements = store.UnknownRetireIntents(taskId);
+            if (unknowns.Count == 0 && retirements.Count == 0) return new() { ["reconciled"] = true, ["detail"] = "No unknown publication or retirement intents." };
+            var resolved = 0; var unresolved = 0;
+            foreach (var item in unknowns)
+            {
+                bool? succeeded;
+                if (item.Kind == "git.push")
+                    succeeded = await repositories.VerifyPushOutcome((string)task["projectPath"]!, (string)task["worktreePath"]!,
+                        item.Data.GetValueOrDefault("remote") as string ?? "", item.Data.GetValueOrDefault("branch") as string ?? "", item.Data.GetValueOrDefault("commit") as string);
+                else
+                    succeeded = await repositories.VerifyCommitOutcome((string)task["worktreePath"]!, item.Data.GetValueOrDefault("baseCommit") as string, item.Data.GetValueOrDefault("message") as string);
+                if (succeeded is not { } known) { unresolved++; continue; }
+                store.ClearPublicationIntent(item.Id, known ? "complete" : "failed");
+                resolved++;
+            }
+            foreach (var item in retirements)
+            {
+                var worktrees = item.Data.GetValueOrDefault("worktrees") is List<object?> listed ? listed.OfType<string>().ToList() : [(string)task["worktreePath"]!];
+                var remaining = worktrees.Any(worktree => NetworkPathPolicy.IsNetworkOrDevicePath(worktree) || !DataClassifier.IsLocal(FinalPath.Resolve(worktree)) || Present(worktree));
+                store.ClearRetireIntent(item.Id, remaining ? "failed" : "complete");
+                resolved++;
+            }
+            return new()
+            {
+                ["reconciled"] = unresolved == 0,
+                ["detail"] = unresolved > 0 ? $"Reconciled {resolved} intent(s); {unresolved} push intent(s) could not be verified against the remote." : $"Reconciled {resolved} intent(s).",
+            };
+        }
+        finally { publishing.Remove(taskId); }
+
+        static bool Present(string path)
+        {
+            try { return MetadataFile.Probe(FinalPath.Resolve(path)) is not MetadataEntryKind.Missing; }
+            catch (IOException) { return false; }
+        }
+    }
+
+    /// <summary>
+    /// retire: remove the task worktree only when Git proves it holds no uncommitted or untracked files; the branch and
+    /// every record remain. Coordinated tasks retire their children with them, which needs the orchestrator, a later slice.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> Retire(string taskId)
+    {
+        var task = store.ReadGitTask(taskId);
+        if (running.ContainsKey(taskId) || Equals(task["status"], "running")) throw new WorkspaceReadException("Wait for the active response to finish or cancel it before retiring the worktree.");
+        if (Equals(task["status"], "retired")) throw new WorkspaceReadException("This task worktree is already retired.");
+        if (Truthy(task.GetValueOrDefault("parentTaskId")) || Equals(task.GetValueOrDefault("role"), "child"))
+            throw new WorkspaceReadException("Retire a child worktree from its coordinated task; children are retired together with their root.");
+        if (Equals(task.GetValueOrDefault("mode"), "coordinated")) throw new WorkspaceReadException("Coordinated tasks are not available in this build.");
+        if (!retiring.Add(taskId)) throw new WorkspaceReadException("Worktree retirement is already in progress for this task.");
+        try
+        {
+            if (store.HasUnknownApproval(taskId) || store.UnknownPublicationIntents(taskId).Count > 0 || store.UnknownRetireIntents(taskId).Count > 0)
+                throw new WorkspaceReadException("This task has an unknown mutation outcome. Inspect the worktree before retiring it.");
+            var worktree = (string)task["worktreePath"]!;
+            // Saved before decision 8, a worktree on a share is never probed.
+            if (NetworkPathPolicy.IsNetworkOrDevicePath(worktree)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+            var present = new List<string>();
+            MetadataEntryKind kind;
+            try { kind = DataClassifier.IsLocal(FinalPath.Resolve(worktree)) ? MetadataFile.Probe(FinalPath.Resolve(worktree)) : MetadataEntryKind.Missing; }
+            catch (IOException) { kind = MetadataEntryKind.Missing; }
+            // Every worktree is checked read-only before any removal starts; a dirty one refuses the whole retirement.
+            if (kind is MetadataEntryKind.Directory or MetadataEntryKind.Reparse)
+            {
+                var dirty = await repositories.UncommittedPaths(worktree);
+                if (dirty.Count > 0)
+                    throw new WorkspaceReadException($"Worktree {worktree} has uncommitted or untracked files ({string.Join(", ", dirty.Take(10))}{(dirty.Count > 10 ? ", …" : "")}). Commit, publish or discard them yourself before retiring; nothing was deleted.");
+                present.Add(worktree);
+            }
+            var intent = store.Intent("worktree.retire", new Dictionary<string, object?> { ["taskId"] = taskId, ["worktrees"] = present });
+            var removed = new List<string>();
+            try
+            {
+                foreach (var member in present)
+                {
+                    await repositories.RemoveWorktree((string)task["projectPath"]!, member);
+                    removed.Add(member);
+                }
+                var stamp = Clock.Iso(now());
+                store.Transaction(() =>
+                {
+                    store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = "retired", ["retiredAt"] = stamp, ["updatedAt"] = stamp });
+                    store.FinishIntent(intent, "complete");
+                    store.Event("task.retired", new Dictionary<string, object?> { ["removedWorktrees"] = removed.Count }, taskId);
+                    return 0;
+                });
+                return new() { ["taskId"] = taskId, ["branch"] = task["branch"], ["removedWorktrees"] = removed };
+            }
+            catch (Exception error) when (error is not EventDeliveryException)
+            {
+                store.FinishIntent(intent, removed.Count > 0 || error is not RepositoryException { Outcome: "none" } ? "unknown" : "complete");
+                throw;
+            }
+        }
+        finally { retiring.Remove(taskId); }
+    }
+
+    private static bool Truthy(object? value) => value is not (null or false or "" or 0 or 0L or 0d);
 
     /// <summary>service.ts profileReady: the fake profile, or a probe of this exact configuration that found tools and continuation.</summary>
     private static bool ProfileReady(Dictionary<string, object?> profile) =>

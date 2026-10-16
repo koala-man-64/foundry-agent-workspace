@@ -725,6 +725,39 @@ Its remaining notes:
   A pending intent recovered on restart blocks creation too.
 - `DevelopmentChatProcessTests` drives `project.add`, `task.create` (with protocol defaults and trimming applied by the entry point), `files.list` and `task.diff` through stdio, with their notifications.
 
+### Git publication and retirement (P2.2e)
+
+**What it is.** The development runtime now serves `task.commit`, `task.push`, `task.reconcilePublication` and `task.retire`, bringing it to **34** of the 89 methods. These are the user's explicit Git actions from `workspace-operations.ts`; no model proposes or executes them.
+- **Commit.** Only a ready, non-coordinated chat or coding task with no unknown approval, publication or retirement outcome can commit, and one Git action runs per task at a time. The commit message must survive redaction unchanged. The `git.commit` intent records the base commit before anything is staged. Secret-named paths are refused, and filters are rechecked before `git add`. Hooks stay disabled, signing is off, and the identity comes from the user's Git configuration.
+- **Push.** It never forces or prompts, and only a remote configured in the project repository is accepted. The user's credential helper may run here and for the remote check of an unknown push, and nowhere else.
+- **Reconcile.** It checks unknown pushes against the remote and unknown commits against the worktree; an unresolvable one stays unknown. It completes an unknown retirement when no listed worktree remains, and marks it failed otherwise.
+- **Retire.** It removes only an app-owned worktree that Git proves clean (`git worktree remove`, no force), keeps the branch, and marks the task retired.
+- **Outcomes.** Refusals before staging, pushing or removal are "none". A failure after that point, or one whose effect cannot be established, is "unknown". It blocks the task's later Git actions until reconciled, and nothing retries.
+- **Commit together.** The completed intent, the task change and the notification commit together.
+- **Notifications.** `task.committed`, `task.pushed` and `task.retired` are sent. As in TypeScript, the status transition that retirement records stays silent.
+
+**Differences, all fail-closed or invisible on success:**
+- Coordinated tasks retire their children with them, which needs the orchestrator, so native refuses them.
+- A worktree saved on a network path is refused, and is never probed during retirement or reconciliation.
+- Each outcome commits with its intent and notification; TypeScript saves them separately.
+
+**Evidence.**
+- `tests/p2/task-publication.test.ts` drives the shipping `RuntimeService` through seven cases, using a local bare remote only:
+  - a full commit, push, reconcile and retire;
+  - every refusal before staging;
+  - a commit that fails after staging (unknown, then reconciled as failed);
+  - a push to a missing remote (unknown, unresolvable until the remote exists, then reconciled);
+  - a dirty retirement;
+  - concurrent Git actions on one task;
+  - missing tasks.
+
+  It pins results, refusals, task, intent and event rows, refs, worktrees, remote refs, and the worktree's status and recent log in `task-publication-vectors.json`. Generated identities, commit object ids and stamps are normalized in order of appearance. It is bound to the SHA-256 of `workspace-operations.ts`, `repository.ts`, `service.ts`, `store.ts` and `git-environment.ts`. Regenerating the vectors requires `P2_WRITE_TASK_PUBLICATION=1`.
+- `TaskPublicationTests` replays every case through `DevelopmentChat`. It also proves:
+  - retirement failures are classified by whether the worktree remains, and an unknown retirement is reconciled;
+  - only push and remote verification run without `credential.helper=`;
+  - an unknown approval blocks publication and retirement.
+- `DevelopmentChatProcessTests` now drives commit, push and retire through stdio with their notifications.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

@@ -27,4 +27,40 @@ public sealed partial class Store
         loop.AssertCurrent();
         return (long)Scalar("SELECT COUNT(*) FROM intents WHERE kind='worktree.create' AND state='unknown'")!;
     }
+
+    internal sealed record UnknownIntent(string Id, string Kind, Dictionary<string, object?> Data);
+
+    /// <summary>unknownPublicationIntents: unknown commits and pushes of one task, in row order; unreadable documents are skipped.</summary>
+    internal List<UnknownIntent> UnknownPublicationIntents(string taskId) => UnknownIntents("SELECT id,kind,data FROM intents WHERE kind IN ('git.push','git.commit') AND state='unknown'", taskId);
+
+    /// <summary>unknownRetireIntents: unknown worktree retirements of one task.</summary>
+    internal List<UnknownIntent> UnknownRetireIntents(string taskId) => UnknownIntents("SELECT id,kind,data FROM intents WHERE kind='worktree.retire' AND state='unknown'", taskId);
+
+    internal void ClearPublicationIntent(string intentId, string state) => ClearIntent("UPDATE intents SET state=$p0 WHERE id=$p1 AND kind IN ('git.push','git.commit')", intentId, state);
+    internal void ClearRetireIntent(string intentId, string state) => ClearIntent("UPDATE intents SET state=$p0 WHERE id=$p1 AND kind='worktree.retire'", intentId, state);
+
+    /// <summary>approvals(taskId).some(state === 'unknown'): a reviewed tool action of this task whose outcome is unknown.</summary>
+    internal bool HasUnknownApproval(string taskId) =>
+        UnknownIntents("SELECT id,kind,data FROM intents WHERE kind='tool.approval' AND state='unknown'", taskId).Count > 0;
+
+    private List<UnknownIntent> UnknownIntents(string sql, string taskId)
+    {
+        loop.AssertCurrent();
+        var found = new List<UnknownIntent>();
+        foreach (var row in Rows(sql))
+        {
+            Dictionary<string, object?> data;
+            try { if (PersistedJson.Parse((string)row["data"]!) is not Dictionary<string, object?> parsed) continue; data = parsed; }
+            catch (System.Text.Json.JsonException) { continue; }
+            if (Equals(data.GetValueOrDefault("taskId"), taskId)) found.Add(new((string)row["id"]!, (string)row["kind"]!, data));
+        }
+        return found;
+    }
+
+    private void ClearIntent(string sql, string intentId, string state)
+    {
+        loop.AssertCurrent();
+        if (state is not ("complete" or "failed")) throw new ArgumentOutOfRangeException(nameof(state));
+        Execute(sql, state, intentId);
+    }
 }

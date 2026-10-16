@@ -269,6 +269,8 @@ public sealed class DevelopmentChatProcessTests
         using var fixture = RepositoryFixture.Create("foundry-p2-stdio-create-");
         fixture.Write("repo/README.md", "hello\n");
         await fixture.Git("-C", "repo", "init", "-q"); await fixture.Git("-C", "repo", "add", "-A"); await fixture.Git("-C", "repo", "commit", "-qm", "fixture");
+        await fixture.Git("-C", "repo", "config", "user.name", "Runtime"); await fixture.Git("-C", "repo", "config", "user.email", "runtime@example.invalid");
+        await fixture.Git("init", "-q", "--bare", "remote.git"); await fixture.Git("-C", "repo", "remote", "add", "origin", fixture.Local("remote.git"));
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
         var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
         {
@@ -294,7 +296,18 @@ public sealed class DevelopmentChatProcessTests
             var replies = await Replies(process, ["list", "diff"], events);
             Assert.Equal("[{\"path\":\"README.md\",\"kind\":\"file\"}]", JsJson.Stringify(replies["list"]["result"]));
             Assert.Equal("{\"summary\":\"\",\"patch\":\"\",\"truncated\":false}", JsJson.Stringify(replies["diff"]["result"]));
-            Assert.Equal(["projects.changed", "tasks.changed"], events.Select(item => (string)item["type"]!));
+            // Commit, push and retire answer over stdio too, each with its notification.
+            File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+            await Send(process, Frame("commit", "task.commit", new { taskId = task["id"], message = "  Change over stdio  " }));
+            var committed = (Dictionary<string, object?>)(await Reply(process, "commit", events))["result"]!;
+            Assert.Equal("[\"README.md\"]", JsJson.Stringify(committed["changedPaths"])); Assert.Equal(task["branch"], committed["branch"]);
+            await Send(process, Frame("push", "task.push", new { taskId = task["id"], confirm = "push" }));
+            var pushed = (Dictionary<string, object?>)(await Reply(process, "push", events))["result"]!;
+            Assert.Equal("origin", pushed["remote"]); Assert.Contains("[new branch]", (string)pushed["detail"]!, StringComparison.Ordinal);
+            await Send(process, Frame("retire", "task.retire", new { taskId = task["id"], confirm = "retire" }));
+            var retired = (Dictionary<string, object?>)(await Reply(process, "retire", events))["result"]!;
+            Assert.Equal($"[{JsJson.Stringify(task["worktreePath"])}]", JsJson.Stringify(retired["removedWorktrees"]));
+            Assert.Equal(["projects.changed", "tasks.changed", "task.committed", "task.pushed", "task.retired"], events.Select(item => (string)item["type"]!));
             Assert.Equal(task["id"], events[1]["taskId"]);
             await Exit(process, error);
         }

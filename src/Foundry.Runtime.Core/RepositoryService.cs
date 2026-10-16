@@ -508,6 +508,128 @@ internal sealed partial class RepositoryService
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(Unavailable); }
     }
 
+    internal async Task<string> HeadCommit(string worktreePath)
+    {
+        using var repository = await RequireRepository(worktreePath);
+        return JsJson.Trim((await Run(repository, ["rev-parse", "HEAD"])).Stdout);
+    }
+
+    internal sealed record CommitResult(string Commit, List<string> ChangedPaths);
+
+    /// <summary>
+    /// commitAll: the user's explicit commit of every change in the task worktree. Refusals before staging are "none";
+    /// from `git add` on, every failure is "unknown". Admission failures before that carry no outcome, so the caller treats
+    /// them as unknown, as TypeScript does. Secret-named paths are never staged, hooks stay disabled, signing is off, and
+    /// the identity comes from the user's Git configuration.
+    /// </summary>
+    internal async Task<CommitResult> CommitAll(string root, string expectedBranch, string message)
+    {
+        using var repository = await RequireRepository(root);
+        var branch = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
+        if (branch != expectedBranch) throw new RepositoryException($"The worktree is on {branch}, not the task branch {expectedBranch}.");
+        var dirty = await UncommittedPaths(repository);
+        if (dirty.Count == 0) throw new RepositoryException("There are no changes to commit.");
+        var denied = dirty.Where(RepositoryPaths.IsDeniedRelativePath).ToList();
+        if (denied.Count > 0) throw new RepositoryException($"Refusing to commit secret-named paths: {string.Join(", ", denied.Take(5))}. Remove or ignore them first.");
+        // `git add` runs clean filters, and attributes may have changed since the worktree was created.
+        try { await RejectTrackedFilters(repository); await RejectFilters(repository, dirty); }
+        catch (Exception error) when (error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
+        try
+        {
+            await Run(repository, ["add", "--all", "--", "."]);
+            var staged = (await Run(repository, ["diff", "--cached", "--name-only", "-z"])).Stdout.Split('\0').Where(path => path.Length > 0).ToList();
+            if (staged.Count == 0) { await Run(repository, ["reset", "-q"]); throw new WorkspaceReadException("Nothing was staged."); }
+            if (staged.Any(RepositoryPaths.IsDeniedRelativePath)) { await Run(repository, ["reset", "-q"]); throw new WorkspaceReadException("A secret-named path was staged; the index was reset and nothing was committed."); }
+            await Run(repository, ["-c", "commit.gpgsign=false", "commit", "--quiet", "--no-verify", "-m", message]);
+            return new(JsJson.Trim((await Run(repository, ["rev-parse", "--verify", "HEAD^{commit}"])).Stdout), staged);
+        }
+        catch (Exception error) { throw new RepositoryException(error.Message, "unknown", error); }
+    }
+
+    /// <summary>
+    /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
+    /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
+    /// </summary>
+    internal async Task<string> Push(string root, string projectPath, string remote, string branch)
+    {
+        using var repository = await RequireRepository(root);
+        using var project = await RequireRepository(projectPath);
+        var url = await Run(project, ["remote", "get-url", "--", remote], allowNonZero: true);
+        if (url.ExitCode != 0 || JsJson.Trim(url.Stdout).Length == 0) throw new RepositoryException($"Remote {remote} is not configured in the project repository.");
+        var current = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
+        if (current != branch) throw new RepositoryException($"The worktree is on {current}, not the task branch {branch}.");
+        try
+        {
+            var result = await Run(repository, ["push", "--no-verify", "--porcelain", "--", remote, $"refs/heads/{branch}:refs/heads/{branch}"],
+                options: new(TimeSpan.FromMilliseconds(120_000), AllowCredentialHelper: true));
+            return JsJson.Trim(result.Stdout);
+        }
+        catch (Exception error) { throw new RepositoryException(error.Message, "unknown", error); }
+    }
+
+    /// <summary>verifyPushOutcome: whether the remote branch contains the attempted commit; null when that cannot be established.</summary>
+    internal async Task<bool?> VerifyPushOutcome(string projectPath, string worktreePath, string remote, string branch, string? expectedCommit)
+    {
+        try
+        {
+            using var project = await RequireRepository(projectPath);
+            var commit = expectedCommit ?? await HeadCommit(worktreePath);
+            var result = await Run(project, ["ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
+            if (result.ExitCode != 0) return null;
+            var output = JsJson.Trim(result.Stdout);
+            var match = RemoteTip().Match(output);
+            if (!match.Success) return output.Length == 0 ? false : null;
+            var tip = match.Groups[1].Value;
+            if (string.Equals(tip, commit, StringComparison.OrdinalIgnoreCase)) return true;
+            return (await Run(project, ["merge-base", "--is-ancestor", commit, tip], allowNonZero: true)).ExitCode == 0 ? true : null;
+        }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message.</summary>
+    internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string? baseCommit, string? expectedMessage)
+    {
+        if (string.IsNullOrEmpty(baseCommit)) return null;
+        try
+        {
+            using var repository = await RequireRepository(worktreePath);
+            var head = JsJson.Trim((await Run(repository, ["rev-parse", "HEAD"])).Stdout);
+            if (head == baseCommit) return false;
+            var parent = await Run(repository, ["rev-parse", "HEAD^"], allowNonZero: true);
+            var log = await Run(repository, ["log", "-1", "--format=%B", "HEAD"], allowNonZero: true);
+            var messageMatches = string.IsNullOrEmpty(expectedMessage) || JsJson.Trim(log.Stdout) == JsJson.Trim(expectedMessage);
+            var clean = (await UncommittedPaths(repository)).Count == 0;
+            return parent.ExitCode == 0 && JsJson.Trim(parent.Stdout) == baseCommit && messageMatches && clean ? true : null;
+        }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>
+    /// removeWorktree: `git worktree remove` without --force, so Git itself refuses untracked or modified files; the
+    /// branch is kept. Only a worktree inside the app-owned base qualifies. A failed removal that left the worktree in
+    /// place is "none"; one that removed it is "unknown".
+    /// </summary>
+    internal async Task RemoveWorktree(string projectPath, string worktreePath)
+    {
+        using var project = await RequireRepository(projectPath);
+        var requested = FinalPath.Resolve(WorktreeBase);
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(worktreePath)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+        if (!DataClassifier.IsLocal(requested) || !FinalPath.TryResolve(requested, out var worktreeBase)) throw new WorkspaceReadException("The app-owned worktree folder is unavailable.");
+        if (!DataClassifier.IsLocal(FinalPath.Resolve(worktreePath)) || !FinalPath.TryResolve(worktreePath, out var target)) throw new WorkspaceReadException(Missing);
+        if (!RepositoryPaths.IsInside(worktreeBase, target) || RepositoryPaths.IsInside(target, worktreeBase)) throw new RepositoryException("Only app-owned task worktrees can be retired.");
+        try { await Run(project, ["worktree", "remove", "--", target]); }
+        catch (Exception error)
+        {
+            // As TypeScript's stat, a worktree whose presence cannot be established counts as gone: the outcome is unknown.
+            bool stillThere;
+            try { stillThere = MetadataFile.Probe(target) is not MetadataEntryKind.Missing; } catch (IOException) { stillThere = false; }
+            throw new RepositoryException(error.Message, stillThere ? "none" : "unknown", error);
+        }
+    }
+
+    [GeneratedRegex(@"^([0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
+    private static partial Regex RemoteTip();
+
     /// <summary>requireTaskId: a UUID, lowercased, matched exactly as TypeScript's ASCII pattern does.</summary>
     private static string RequireTaskId(string taskId) => TaskId().IsMatch(taskId) ? taskId.ToLowerInvariant() : throw new WorkspaceReadException("Task id must be a UUID.");
 

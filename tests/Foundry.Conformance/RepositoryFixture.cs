@@ -104,11 +104,14 @@ internal sealed class RepositoryFixture : IDisposable
         "-c", $"core.hooksPath={Path.Combine(Scratch, "no-fixture-hooks")}", "-c", "commit.gpgsign=false", "-c", "init.defaultBranch=main", "-c", "core.autocrlf=false",
         "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", .. arguments], fixture: true);
 
-    internal async Task<string> GitOutput(params string[] arguments)
+    internal async Task<string> GitOutput(params string[] arguments) => (await GitText(arguments)).Trim();
+
+    /// <summary>Git's standard output exactly as written, as the Node oracles capture it.</summary>
+    internal async Task<string> GitText(params string[] arguments)
     {
         var output = new StringBuilder();
         await Command("git", arguments, fixture: true, output);
-        return output.ToString().Trim();
+        return output.ToString();
     }
 
     private static string Comspec => System.Environment.GetEnvironmentVariable("ComSpec") ?? Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.System), "cmd.exe");

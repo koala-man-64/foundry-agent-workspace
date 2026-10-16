@@ -1,0 +1,1928 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/workspace-operations.ts",
+        "sha256": "4d7d869c270202f351d9de021d6a48206c17ea6d942cd854f5f375ae36787362"
+      },
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "f31173ae128e974a194c36cf1eb96e63630fdea29221f56cd815efbc5dd714fe"
+      },
+      {
+        "path": "packages/runtime/src/service.ts",
+        "sha256": "6eaebec85b27f345559652f3adc64f4d1fa7347aacd89bb33a04e0000216bcef"
+      },
+      {
+        "path": "packages/runtime/src/store.ts",
+        "sha256": "8dd150b5251d1f40603744d29ee6354033fe7b7aaa0abc05baba7666554ca4a5"
+      },
+      {
+        "path": "packages/runtime/src/git-environment.ts",
+        "sha256": "545b68e2e0d7d2465f897eb479a8732648a7fe6e1964bdfec650a45fb30b91ca"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "commit, push, reconcile and retire a chat task",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        },
+        {
+          "git": [
+            "init",
+            "-q",
+            "--bare",
+            "remote.git"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "remote",
+            "add",
+            "origin",
+            "{scratch}\\remote.git"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo",
+        "remote.git"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "write": "{task0}\\README.md",
+          "text": "hello\nchanged\n"
+        },
+        {
+          "write": "{task0}\\new.txt",
+          "text": "new\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        },
+        {
+          "method": "task.reconcilePublication",
+          "params": {
+            "taskId": "{id0}"
+          }
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "{id0}",
+            "confirm": "retire"
+          }
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "{id0}",
+            "confirm": "retire"
+          }
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "commit": "{sha-5}",
+              "changedPaths": [
+                "README.md",
+                "new.txt"
+              ],
+              "branch": "codex/task/{id-1}"
+            }
+          },
+          {
+            "result": {
+              "remote": "origin",
+              "branch": "codex/task/{id-1}",
+              "detail": "To {scratch}\\remote.git\n*\trefs/heads/codex/task/{id-1}:refs/heads/codex/task/{id-1}\t[new branch]\nDone"
+            }
+          },
+          {
+            "result": {
+              "reconciled": true,
+              "detail": "No unknown publication or retirement intents."
+            }
+          },
+          {
+            "result": {
+              "taskId": "{id-1}",
+              "branch": "codex/task/{id-1}",
+              "removedWorktrees": [
+                "{scratch}\\data\\wt\\{id-1}"
+              ]
+            }
+          },
+          {
+            "error": "This task worktree is already retired."
+          },
+          {
+            "error": "This task worktree is retired."
+          },
+          {
+            "error": "This task worktree is retired."
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "retired",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat",
+                "retiredAt": "{stamp}"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.push",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "remote": "origin",
+                "commit": "{sha-5}"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "worktree.retire",
+              "data": {
+                "taskId": "{id-1}",
+                "worktrees": [
+                  "{scratch}\\data\\wt\\{id-1}"
+                ]
+              },
+              "state": "complete"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.committed",
+              "task_id": "{id-1}",
+              "data": {
+                "commit": "{sha-5}",
+                "changedPaths": 2
+              }
+            },
+            {
+              "offset": 4,
+              "type": "task.pushed",
+              "task_id": "{id-1}",
+              "data": {
+                "remote": "origin",
+                "branch": "codex/task/{id-1}"
+              }
+            },
+            {
+              "offset": 5,
+              "type": "task.retired",
+              "task_id": "{id-1}",
+              "data": {
+                "status": "retired",
+                "previousStatus": "idle"
+              }
+            },
+            {
+              "offset": 6,
+              "type": "task.retired",
+              "task_id": "{id-1}",
+              "data": {
+                "removedWorktrees": 1
+              }
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-5}",
+              "refs/heads/main {sha-3}",
+              "refs/remotes/origin/codex/task/{id-1} {sha-5}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main"
+            ]
+          },
+          "remote.git": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-5}"
+            ]
+          }
+        },
+        "worktree": null
+      }
+    },
+    {
+      "name": "commit refusals before staging",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Leaks sk-abcdefghijklmnopqrstuvwx"
+          }
+        },
+        {
+          "write": "{task0}\\.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "delete": "{task0}\\.env"
+        },
+        {
+          "write": "{task0}\\.gitattributes",
+          "text": "*.txt filter=lfs\n"
+        },
+        {
+          "write": "{task0}\\a.txt",
+          "text": "a\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "delete": "{task0}\\.gitattributes"
+        },
+        {
+          "delete": "{task0}\\a.txt"
+        },
+        {
+          "git": [
+            "-C",
+            "{task0}",
+            "checkout",
+            "-q",
+            "-b",
+            "other"
+          ]
+        },
+        {
+          "write": "{task0}\\x.txt",
+          "text": "x\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "error": "There are no changes to commit."
+          },
+          {
+            "error": "The commit message contains secret-like content."
+          },
+          {
+            "error": "Refusing to commit secret-named paths: .env. Remove or ignore them first."
+          },
+          {
+            "error": "Repository uses Git filters; refusing because filters may execute code."
+          },
+          {
+            "error": "The worktree is on other, not the task branch codex/task/{id-1}."
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-3}",
+              "refs/heads/main {sha-3}",
+              "refs/heads/other {sha-3}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main",
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD {sha-3}",
+              "branch refs/heads/other"
+            ]
+          }
+        },
+        "worktree": {
+          "status": "?? x.txt\n",
+          "log": "fixture\n"
+        }
+      }
+    },
+    {
+      "name": "a commit that fails after staging is unknown until reconciled",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.useConfigOnly",
+            "true"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "write": "{task0}\\README.md",
+          "text": "changed\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "{id0}",
+            "confirm": "retire"
+          }
+        },
+        {
+          "method": "task.reconcilePublication",
+          "params": {
+            "taskId": "{id0}"
+          }
+        },
+        {
+          "method": "task.reconcilePublication",
+          "params": {
+            "taskId": "{id0}"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "error": "Git command failed: Author identity unknown\n\n*** Please tell me who you are.\n\nRun\n\n  git config --global user.email \"you@example.com\"\n  git config --global user.name \"Your Name\"\n\nto set your account's default identity.\nOmit --global to set the identity only in this repository.\n\nfatal: no email was given and auto-detection is disabled"
+          },
+          {
+            "error": "This task has an unknown git.commit outcome. Reconcile publication state before attempting another operation."
+          },
+          {
+            "error": "This task has an unknown git.commit outcome. Reconcile publication state before attempting another operation."
+          },
+          {
+            "error": "This task has an unknown mutation outcome. Inspect the worktree before retiring it."
+          },
+          {
+            "result": {
+              "reconciled": true,
+              "detail": "Reconciled 1 intent(s)."
+            }
+          },
+          {
+            "result": {
+              "reconciled": true,
+              "detail": "No unknown publication or retirement intents."
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "failed"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-3}",
+              "refs/heads/main {sha-3}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main",
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD {sha-3}",
+              "branch refs/heads/codex/task/{id-1}"
+            ]
+          }
+        },
+        "worktree": {
+          "status": "M  README.md\n",
+          "log": "fixture\n"
+        }
+      }
+    },
+    {
+      "name": "a push that fails is unknown until the remote proves it absent",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo",
+        "later.git"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "write": "{task0}\\README.md",
+          "text": "changed\n"
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "remote",
+            "add",
+            "origin",
+            "{scratch}\\later.git"
+          ]
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        },
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "{id0}",
+            "message": "Change"
+          }
+        },
+        {
+          "method": "task.reconcilePublication",
+          "params": {
+            "taskId": "{id0}"
+          }
+        },
+        {
+          "git": [
+            "init",
+            "-q",
+            "--bare",
+            "later.git"
+          ]
+        },
+        {
+          "method": "task.reconcilePublication",
+          "params": {
+            "taskId": "{id0}"
+          }
+        },
+        {
+          "method": "task.push",
+          "params": {
+            "taskId": "{id0}",
+            "remote": "origin",
+            "confirm": "push"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "commit": "{sha-5}",
+              "changedPaths": [
+                "README.md"
+              ],
+              "branch": "codex/task/{id-1}"
+            }
+          },
+          {
+            "error": "Remote origin is not configured in the project repository."
+          },
+          {
+            "error": "Git command failed: fatal: '{scratch}\\later.git' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists."
+          },
+          {
+            "error": "This task has an unknown git.push outcome. Reconcile publication state before attempting another operation."
+          },
+          {
+            "result": {
+              "reconciled": false,
+              "detail": "Reconciled 0 intent(s); 1 push intent(s) could not be verified against the remote."
+            }
+          },
+          {
+            "result": {
+              "reconciled": true,
+              "detail": "Reconciled 1 intent(s)."
+            }
+          },
+          {
+            "result": {
+              "remote": "origin",
+              "branch": "codex/task/{id-1}",
+              "detail": "To {scratch}\\later.git\n*\trefs/heads/codex/task/{id-1}:refs/heads/codex/task/{id-1}\t[new branch]\nDone"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.push",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "remote": "origin",
+                "commit": "{sha-5}"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.push",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "remote": "origin",
+                "commit": "{sha-5}"
+              },
+              "state": "failed"
+            },
+            {
+              "kind": "git.push",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "remote": "origin",
+                "commit": "{sha-5}"
+              },
+              "state": "complete"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.committed",
+              "task_id": "{id-1}",
+              "data": {
+                "commit": "{sha-5}",
+                "changedPaths": 1
+              }
+            },
+            {
+              "offset": 4,
+              "type": "task.pushed",
+              "task_id": "{id-1}",
+              "data": {
+                "remote": "origin",
+                "branch": "codex/task/{id-1}"
+              }
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-5}",
+              "refs/heads/main {sha-3}",
+              "refs/remotes/origin/codex/task/{id-1} {sha-5}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main",
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD {sha-5}",
+              "branch refs/heads/codex/task/{id-1}"
+            ]
+          },
+          "later.git": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-5}"
+            ]
+          }
+        },
+        "worktree": {
+          "status": "",
+          "log": "Change\nfixture\n"
+        }
+      }
+    },
+    {
+      "name": "retirement refuses a dirty worktree and keeps the branch",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "write": "{task0}\\untracked.txt",
+          "text": "u\n"
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "{id0}",
+            "confirm": "retire"
+          }
+        },
+        {
+          "delete": "{task0}\\untracked.txt"
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "{id0}",
+            "confirm": "retire"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "error": "Worktree {scratch}\\data\\wt\\{id-1} has uncommitted or untracked files (untracked.txt). Commit, publish or discard them yourself before retiring; nothing was deleted."
+          },
+          {
+            "result": {
+              "taskId": "{id-1}",
+              "branch": "codex/task/{id-1}",
+              "removedWorktrees": [
+                "{scratch}\\data\\wt\\{id-1}"
+              ]
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "retired",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat",
+                "retiredAt": "{stamp}"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "worktree.retire",
+              "data": {
+                "taskId": "{id-1}",
+                "worktrees": [
+                  "{scratch}\\data\\wt\\{id-1}"
+                ]
+              },
+              "state": "complete"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.retired",
+              "task_id": "{id-1}",
+              "data": {
+                "status": "retired",
+                "previousStatus": "idle"
+              }
+            },
+            {
+              "offset": 4,
+              "type": "task.retired",
+              "task_id": "{id-1}",
+              "data": {
+                "removedWorktrees": 1
+              }
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-3}",
+              "refs/heads/main {sha-3}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "worktree": null
+      }
+    },
+    {
+      "name": "concurrent Git operations on one task are refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        },
+        {
+          "git": [
+            "init",
+            "-q",
+            "--bare",
+            "remote.git"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "remote",
+            "add",
+            "origin",
+            "{scratch}\\remote.git"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo",
+        "remote.git"
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Publication",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "write": "{task0}\\README.md",
+          "text": "changed\n"
+        },
+        {
+          "concurrent": [
+            {
+              "method": "task.commit",
+              "params": {
+                "taskId": "{id0}",
+                "message": "Change"
+              }
+            },
+            {
+              "method": "task.push",
+              "params": {
+                "taskId": "{id0}",
+                "remote": "origin",
+                "confirm": "push"
+              }
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Publication",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "{sha-3}",
+              "profileId": "{id-4}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "commit": "{sha-5}",
+              "changedPaths": [
+                "README.md"
+              ],
+              "branch": "codex/task/{id-1}"
+            }
+          },
+          {
+            "error": "A Git operation is already in progress for this task."
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Publication",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "profileId": "{id-4}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "git.commit",
+              "data": {
+                "taskId": "{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "{sha-3}",
+                "message": "Change"
+              },
+              "state": "complete"
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.committed",
+              "task_id": "{id-1}",
+              "data": {
+                "commit": "{sha-5}",
+                "changedPaths": 1
+              }
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} {sha-5}",
+              "refs/heads/main {sha-3}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-3}",
+              "branch refs/heads/main",
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD {sha-5}",
+              "branch refs/heads/codex/task/{id-1}"
+            ]
+          },
+          "remote.git": {
+            "refs": []
+          }
+        },
+        "worktree": {
+          "status": "",
+          "log": "Change\nfixture\n"
+        }
+      }
+    },
+    {
+      "name": "every publication operation needs an existing Git task",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.name",
+            "Runtime"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "user.email",
+            "runtime@example.invalid"
+          ]
+        }
+      ],
+      "repositories": [
+        "repo"
+      ],
+      "calls": [
+        {
+          "method": "task.commit",
+          "params": {
+            "taskId": "30303030-0000-4000-8000-000000000099",
+            "message": "x"
+          }
+        },
+        {
+          "method": "task.retire",
+          "params": {
+            "taskId": "30303030-0000-4000-8000-000000000099",
+            "confirm": "retire"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Task not found."
+          },
+          {
+            "error": "Task not found."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main {sha-1}"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD {sha-1}",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "worktree": null
+      }
+    }
+  ]
+}
