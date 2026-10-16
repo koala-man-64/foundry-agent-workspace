@@ -615,6 +615,41 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 - `DevelopmentChatProcessTests` drives the three methods through the stdio entry point: listing, redacted content, refusals, a redacted diff, and no notifications.
 - The two oracles share `tests/p2/repository-fixture.ts`. Slice a's inspection vectors are unchanged.
 
+### Project admission (P2.2c)
+
+**What it is.** The development runtime now serves `project.add`, bringing it to **29** of the 89 methods. The handler follows `service.ts`:
+1. **Refusals before any probe.** Saved projects require schema v3 or newer. A relative path is refused, and so is a network or device path, before anything is opened.
+2. **Pin and classify.** The folder is pinned from its first resolution until the row is saved. A folder that is already saved returns its project without a notification. Classification runs `isGitWorkingTree` under the pin.
+3. **Final checks.** The requested spelling must still name the pinned folder, and the Git identity read before classification must be unchanged.
+4. **Save.** Only then is the project inserted, or found again if a concurrent request saved it first. The `projects.changed` event commits in the same transaction.
+
+**Approved-path comparison by identity.** TypeScript's recheck, `resolveLocalPath(raw, path)`, becomes `RepositoryPaths.SameFolder`. It follows the reviewed guidance from the TypeScript 8.3 fix:
+- Both chains are pinned without following a reparse point, and a reparse point in either refuses.
+- The drive type is checked before the approved spelling is probed.
+- The spellings match only when they have the same root, the same depth, and the same volume serial number and 128-bit file identifier (`FileIdInfo`) at every prefix. The new `DirectoryLease.Identities` provides these.
+- So a different case or a short (8.3) spelling of one folder matches. Two folders that differ only in case inside a case-sensitive directory never do; a lowercased key would have matched them.
+- A segment ending in a dot or space is refused, as the folder lease refuses it.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages.
+- **Atomic notification.** The project row and its notification commit together, and the notification is published after the commit. TypeScript inserts the project and then records the event separately, so a failed event insert leaves a project with no notification. That gap is pre-existing in TypeScript and is not changed here.
+
+**Evidence.**
+- `tests/p2/project-admission.test.ts` adds folders through the shipping `RuntimeService`:
+  - every spelling of one repository;
+  - subfolders, plain folders, linked worktrees and nested repositories;
+  - a repository that configures `core.worktree`;
+  - root-relative, relative, network and device paths;
+  - files, missing folders, broken Git pointers and a junction;
+  - two concurrent additions of one folder.
+
+  It pins the returned projects, refusals, saved rows (path keys included) and events in `project-admission-vectors.json`, with generated identities and stamps normalized in order of appearance. It is bound to the SHA-256 of `service.ts`, `repository.ts`, `store.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_PROJECT_ADMISSION=1`.
+- `ProjectAdmissionTests` replays every case through `DevelopmentChat`. It must match each outcome or its named difference, and every committed notification must be published after its commit, in order. The class also covers:
+  - folder identity: case, separators, `..`, 8.3 where the volume generates short names, aliases in either chain, missing folders, network and device spellings, and case-sensitive directories where `fsutil` can enable them;
+  - prefix identities from the drive root;
+  - a common directory redirected while classification runs Git, which must save nothing and notify nothing.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

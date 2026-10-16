@@ -33,8 +33,7 @@ internal sealed class RepositoryFolderLease : IDisposable
             throw new WorkspaceReadException("Repository root must be an absolute path.");
         // GetFullPath drops a trailing dot or space from a segment, so "proj." would pin its sibling "proj" while Node opens
         // the literal name. Such a segment is refused outright, as P2.1 refuses it in Git references.
-        if (candidate.Split('\\', '/').Any(segment => segment is not ("." or "..") && (segment.EndsWith('.') || segment.EndsWith(' '))))
-            throw new WorkspaceReadException(Unavailable);
+        if (RepositoryPaths.HasAmbiguousSegment(candidate)) throw new WorkspaceReadException(Unavailable);
         var absolute = System.IO.Path.GetFullPath(candidate);
         if (!DataClassifier.IsLocal(absolute)) throw new WorkspaceReadException("Project folder identity cannot be established.");
         if (new DriveInfo(absolute[..3]).DriveType is DriveType.Network) throw new WorkspaceReadException(Network);

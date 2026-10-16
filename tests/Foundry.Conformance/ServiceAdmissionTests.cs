@@ -50,7 +50,8 @@ public sealed class ServiceAdmissionTests
                 var service = new DevelopmentChat(loop, store);
                 string Snapshot() => JsJson.Stringify(new { tasks = store.Rows("SELECT * FROM tasks"), starts = store.Rows("SELECT * FROM task_starts"), intents = store.Rows("SELECT * FROM intents"), projects = store.Rows("SELECT * FROM projects"), events = store.Rows("SELECT * FROM events") })!;
                 var before = Snapshot();
-                await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("project.add", new() { ["path"] = "C:\\never-probe" }));
+                // project.add is served now; a missing folder is refused before any path-key probe or write.
+                Assert.Equal("Project folder is unavailable.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("project.add", new() { ["path"] = Path.Combine(scratch, "missing-project") }))).Message);
                 await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("task.create", new() { ["projectPath"] = "C:\\never-probe" }));
                 await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("workspace.upgrade", new()));
                 foreach (var mode in DeferredModes)

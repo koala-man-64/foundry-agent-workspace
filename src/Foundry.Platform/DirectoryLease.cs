@@ -62,6 +62,25 @@ public sealed class DirectoryLease : IDisposable
     }
     public void Dispose() { foreach (var handle in handles.AsEnumerable().Reverse()) handle.Dispose(); handles.Clear(); }
 
+    /// <summary>
+    /// The identity of every pinned handle, the drive root first: its volume serial number and 128-bit file identifier
+    /// (FileIdInfo), which unlike the 64-bit index stays unique on ReFS. Two directory spellings name the same folder
+    /// exactly when their sequences are equal: the same root, the same depth, and the same object at every prefix.
+    /// </summary>
+    public unsafe IReadOnlyList<FileIdentity> Identities()
+    {
+        ObjectDisposedException.ThrowIf(handles.Count == 0, this);
+        var identities = new List<FileIdentity>(handles.Count);
+        foreach (var handle in handles)
+        {
+            Native.FileIdInformation information;
+            if (!Native.GetFileInformationByHandleEx(handle, Native.FileIdInformationClass, &information, (uint)sizeof(Native.FileIdInformation)))
+                throw new IOException("Data identity cannot be established.");
+            identities.Add(new(information.VolumeSerialNumber, new UInt128(information.FileIdHigh, information.FileIdLow)));
+        }
+        return identities;
+    }
+
     public void PinDatabase(string path) => PinDatabase(path, true);
     public void PinExistingDatabase(string path) => PinDatabase(path, false);
     private unsafe void PinDatabase(string path, bool create)
@@ -83,6 +102,9 @@ public sealed class DirectoryLease : IDisposable
         catch { handle.Dispose(); throw; }
     }
 }
+
+/// <summary>A volume serial number and 128-bit file identifier: one file system object, whatever spelling reaches it.</summary>
+public readonly record struct FileIdentity(ulong Volume, UInt128 File);
 
 /// <summary>A path component is a reparse point (junction, symbolic link, mount point or cloud placeholder); only
 /// physical local entries are admitted.</summary>

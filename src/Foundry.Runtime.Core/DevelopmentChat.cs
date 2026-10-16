@@ -31,6 +31,8 @@ public sealed class DevelopmentChat
     private int activeSlots;
     private bool closing;
     public Task Failure => failure.Task;
+    /// <summary>The repository service, for tests that observe or interrupt its Git launches.</summary>
+    internal RepositoryService Repositories => repositories;
 
     public DevelopmentChat(RuntimeLoop loop, Store store, Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
         : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), now, id) { }
@@ -102,6 +104,7 @@ public sealed class DevelopmentChat
             case "task.read": return store.TaskRead((string)parameters["taskId"]!);
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
+            case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
             case "files.list":
                 return await Repository(() => Task.FromResult<object?>(repositories.ListFiles(FileRoot(store.ReadTask((string)parameters["taskId"]!)), (string?)parameters.GetValueOrDefault("path") ?? "")));
             case "files.read":
@@ -129,6 +132,32 @@ public sealed class DevelopmentChat
     {
         try { return await operation(); }
         catch (InvalidOperationException error) { throw new WorkspaceReadException(redactor.Text(error.Message)); }
+    }
+
+    /// <summary>
+    /// service.ts project.add. The folder stays pinned from its first resolution to the saved row, so classification and
+    /// the final checks see the same physical folder; the requested spelling must still name that folder (by identity), and
+    /// the Git identity read before classification must be unchanged. The row and its notification commit together.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> AddProject(string raw)
+    {
+        store.RequireProjects();
+        if (!RepositoryPaths.IsNodeAbsolute(raw)) throw new WorkspaceReadException("Select an absolute folder path.");
+        // Before any canonicalization or probe: touching a network path makes Windows authenticate to its server.
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(raw)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+        using var folder = RepositoryFolderLease.Open(loop, raw, "Select a folder.");
+        var path = folder.Path;
+        if (store.ProjectByPath(path) is { } previous) return previous;
+        using var identity = RepositoryAdmission.Open(loop, path);
+        var kind = await repositories.IsGitWorkingTree(path) ? "git" : "folder";
+        if (!RepositoryPaths.SameFolder(raw, path)) throw new WorkspaceReadException("The saved folder now resolves to a different location.");
+        identity.Revalidate();
+        return store.Transaction(() =>
+        {
+            var project = store.ProjectByPath(path) ?? store.InsertProject(path, kind);
+            store.Event("projects.changed", new Dictionary<string, object?> { ["projectId"] = project["id"] });
+            return project;
+        });
     }
 
     /// <summary>

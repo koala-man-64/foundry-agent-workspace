@@ -32,6 +32,7 @@ internal static unsafe partial class Native
     internal const nint CurrentProcess = -1;
     internal const uint MoveFileReplaceExisting = 0x1;
     internal const uint MoveFileWriteThrough = 0x8;
+    internal const int FileIdInformationClass = 18;
 
     /// <summary>BY_HANDLE_FILE_INFORMATION.</summary>
     [StructLayout(LayoutKind.Sequential)]
@@ -182,6 +183,18 @@ internal static unsafe partial class Native
     [LibraryImport("kernel32.dll", EntryPoint = "MoveFileExW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool MoveFileEx(char* existing, char* replacement, uint flags);
+
+    /// <summary>FILE_ID_INFO: the volume serial number and the 128-bit file identifier.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct FileIdInformation
+    {
+        public ulong VolumeSerialNumber;
+        public ulong FileIdLow, FileIdHigh;
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int informationClass, void* information, uint size);
 }
 
 /// <summary>A kernel handle (job, process or thread) closed exactly once.</summary>

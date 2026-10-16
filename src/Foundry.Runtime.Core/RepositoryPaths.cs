@@ -30,9 +30,39 @@ internal static partial class RepositoryPaths
 
     internal static bool IsDeniedRelativePath(string relativePath) => relativePath.Replace('\\', '/').Split('/').Any(IsDeniedName);
 
+    /// <summary>
+    /// A segment other than "." or ".." that ends in a dot or space. GetFullPath would strip the ending and name the
+    /// sibling, while Node opens the literal name, so such a path is refused rather than resolved.
+    /// </summary>
+    internal static bool HasAmbiguousSegment(string path) =>
+        path.Split('\\', '/').Any(segment => segment is not ("." or "..") && (segment.EndsWith('.') || segment.EndsWith(' ')));
+
     /// <summary>path.win32.isAbsolute: a leading separator, or a drive letter, colon and separator.</summary>
     internal static bool IsNodeAbsolute(string value) =>
         value.Length > 0 && (value[0] is '/' or '\\' || value.Length > 2 && char.IsAsciiLetter(value[0]) && value[1] == ':' && value[2] is '/' or '\\');
+
+    /// <summary>
+    /// The approval in TypeScript's resolveLocalPath(candidate, approved), by identity rather than spelling: both chains are
+    /// pinned without following a reparse point (a reparse point in either refuses), the drive type is checked before the
+    /// approved spelling is probed, and the spellings match only when they have the same root, the same depth and the same
+    /// volume and 128-bit file identity at every prefix. A short (8.3) spelling or a different case of the same folder
+    /// therefore matches, while two folders that differ only in case inside a case-sensitive directory never do. Anything
+    /// that cannot be established, including a missing folder, is no match.
+    /// </summary>
+    internal static bool SameFolder(string candidate, string approved)
+    {
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(candidate) || NetworkPathPolicy.IsNetworkOrDevicePath(approved)) return false;
+        if (HasAmbiguousSegment(candidate) || HasAmbiguousSegment(approved)) return false;
+        var left = FinalPath.Resolve(candidate); var right = FinalPath.Resolve(approved);
+        if (!DataClassifier.IsLocal(left) || !DataClassifier.IsLocal(right)) return false;
+        try
+        {
+            using var first = DirectoryLease.AcquireExistingSharingWrites(left);
+            using var second = DirectoryLease.AcquireExistingSharingWrites(right);
+            return first.Identities().SequenceEqual(second.Identities());
+        }
+        catch (IOException) { return false; }
+    }
 
     /// <summary>TypeScript's isInside: path.relative between the resolved, lowercased paths stays at or below the root.</summary>
     internal static bool IsInside(string root, string candidate)
