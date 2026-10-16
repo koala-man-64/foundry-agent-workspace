@@ -49,7 +49,8 @@ export function build(scratch: string, home: string, tree: Step[]): string[] {
 /** Scratch paths become placeholders; long strings are pinned by length and hash so the corpus stays reviewable. */
 export function normalize(value: unknown, scratch: string): unknown {
   if (typeof value === 'string') {
-    const text = value.replaceAll(scratch, '{scratch}').replaceAll(scratch.replaceAll('\\', '/'), '{scratch/}').replaceAll(scratch.toLowerCase(), '{scratch-lower}');
+    // Raw JSON columns spell the path with doubled backslashes.
+    const text = value.replaceAll(scratch.replaceAll('\\', '\\\\'), '{scratch-json}').replaceAll(scratch, '{scratch}').replaceAll(scratch.replaceAll('\\', '/'), '{scratch/}').replaceAll(scratch.toLowerCase(), '{scratch-lower}');
     return text.length > 4096 ? { length: text.length, sha256: createHash('sha256').update(text, 'utf8').digest('hex') } : text;
   }
   if (Array.isArray(value)) return value.map(item => normalize(item, scratch));

@@ -136,7 +136,8 @@ internal sealed class RepositoryFixture : IDisposable
     /// <summary>The oracle's normalization: scratch paths become placeholders, and long strings are pinned by length and hash.</summary>
     internal object? Normalize(object? value) => value switch
     {
-        string text => Long(text.Replace(Scratch, "{scratch}", StringComparison.Ordinal).Replace(Scratch.Replace('\\', '/'), "{scratch/}", StringComparison.Ordinal)
+        // Raw JSON columns spell the path with doubled backslashes.
+        string text => Long(text.Replace(Scratch.Replace("\\", "\\\\", StringComparison.Ordinal), "{scratch-json}", StringComparison.Ordinal).Replace(Scratch, "{scratch}", StringComparison.Ordinal).Replace(Scratch.Replace('\\', '/'), "{scratch/}", StringComparison.Ordinal)
             .Replace(EcmaScriptCase.ToLower(Scratch), "{scratch-lower}", StringComparison.Ordinal)),
         IDictionary<string, object?> map => map.ToDictionary(pair => pair.Key, pair => Normalize(pair.Value)),
         System.Collections.IEnumerable items => items.Cast<object?>().Select(Normalize).ToList(),

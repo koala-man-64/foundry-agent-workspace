@@ -758,6 +758,39 @@ Its remaining notes:
   - an unknown approval blocks publication and retirement.
 - `DevelopmentChatProcessTests` now drives commit, push and retire through stdio with their notifications.
 
+### Folder-project chats (P2.2f)
+
+**What it is.** The development runtime's `task.start` now accepts a saved project folder that is not a Git repository. The method count is unchanged at 34, because `task.start` was already served for projectless chats. It follows `service.ts` `startTask` in order:
+1. An earlier request with the same ID is answered first.
+2. A missing project is refused ("Project not found."), and so is a hidden one.
+3. The saved folder must still resolve to the same physical folder under its saved spelling. It is classified while pinned, and its Git identity must be unchanged.
+4. The mode, coordination and profile are checked.
+5. The start is reserved, and the folder task and its first offline turn follow.
+
+A folder chat turns exactly as a projectless one: `prepareRequest` gives it no tool, channel or system prompt. `task.send` and `task.cancel` serve folder chats too. A failed start is retried only when the task's saved project is still the requested, visible one and its folder still resolves. The task's own spelling must name that folder by identity.
+
+**Messages now aligned with TypeScript.** A projectless chat in coding or coordinated mode is refused with TypeScript's "Coding and coordination require a Git project.", and coordination settings on a chat with its message; both were a native "not supported" before.
+
+**Differences:**
+- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan.
+- **External profiles.** These remain refused for any turn, as before.
+
+**Evidence.**
+- `tests/p2/folder-chat.test.ts` drives the shipping `RuntimeService` with the offline provider, deterministic identities and a fixed clock through 21 steps:
+  - adding the folder, starting, waiting, reading, listing files, a coalesced retry, and a second turn;
+  - refusals for coding mode, coordination settings, hidden, missing and moved projects;
+  - a restart in the restored folder;
+  - a Git-project chat.
+
+  After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
+- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
+
+**Finding outside this slice (not changed): the native Store pins every ancestor of its data folder with read-only sharing.**
+- P1's Store admission pins the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
+- Renaming a file or folder needs its parent opened for writing. So while the native runtime runs, nothing can be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that includes the profile folder itself.
+- This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
+- The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

@@ -489,31 +489,56 @@ public sealed class DevelopmentChat
         var work = loop.Invoke(() => StartDeferred(parameters, hash)); starts.Add(requestId, (hash, work)); return work;
     }
 
-    private Task<Dictionary<string, object?>> StartDeferred(Dictionary<string, object?> parameters, string hash)
+    private const string ProjectUnavailable = "Project folder is unavailable or resolves to a different location.";
+    private const string GitProjectChat = "Chats in Git projects need the native tool loop, which a later runtime slice ports.";
+
+    /// <summary>
+    /// service.ts startTask, for projectless chats and chats in saved folders that are not Git repositories. Its order
+    /// is kept: an earlier request with this ID is answered first, then the project and its folder are checked and the
+    /// folder classified, then the mode, coordination and profile. A Git project is refused before any reservation:
+    /// its chats advertise project-channel and coding tools, which need the native tool loop.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> StartDeferred(Dictionary<string, object?> parameters, string hash)
     {
         loop.AssertCurrent(); var requestId = (string)parameters["requestId"]!;
         try
         {
             if (closing) throw new InvalidOperationException("Runtime is shutting down.");
             store.RequireProjects();
-            if (parameters["projectId"] is not null || !Equals(parameters["mode"], "chat") || parameters.ContainsKey("coordination"))
-                throw new NotSupportedException("The development chat runtime supports projectless ordinary chat only.");
             var prior = store.TaskStart(requestId);
             if (prior is not null)
             {
                 if (!Equals(prior["inputHash"], hash)) throw new InvalidOperationException("This request ID belongs to different chat settings.");
-                if (Equals(prior["state"], "complete")) return Task.FromResult(store.ReadTask((string)prior["taskId"]!));
+                if (Equals(prior["state"], "complete")) return store.ReadTask((string)prior["taskId"]!);
                 if (Equals(prior["state"], "failed"))
                 {
                     var existing = store.ReadTask((string)prior["taskId"]!);
-                    if (store.HasTaskUserMessage((string)existing["id"]!)) { store.FinishTaskStart(requestId, "complete"); return Task.FromResult(existing); }
+                    if (store.HasTaskUserMessage((string)existing["id"]!)) { store.FinishTaskStart(requestId, "complete"); return existing; }
+                    if (!Equals(existing.GetValueOrDefault("workspaceKind"), "none")) RequireRetryableFolder(existing, parameters.GetValueOrDefault("projectId") as string);
                     store.FinishTaskStart(requestId, "pending");
-                    try { StartTurn((string)existing["id"]!, (string)parameters["content"]!); store.FinishTaskStart(requestId, "complete"); return Task.FromResult(store.ReadTask((string)existing["id"]!)); }
+                    try { StartTurn((string)existing["id"]!, (string)parameters["content"]!); store.FinishTaskStart(requestId, "complete"); return store.ReadTask((string)existing["id"]!); }
                     catch (EventDeliveryException) { throw; }
                     catch { store.FinishTaskStart(requestId, "failed"); throw; }
                 }
                 throw new InvalidOperationException("Chat creation has an unknown outcome. Inspect the saved chat and retained intent before trying again with a new request.");
             }
+            var project = parameters.GetValueOrDefault("projectId") is string projectId ? store.Project(projectId) ?? throw new WorkspaceReadException("Project not found.") : null;
+            if (project is not null && Truthy(project.GetValueOrDefault("hidden"))) throw new WorkspaceReadException("Restore this project before starting a chat.");
+            var kind = "none";
+            if (project is not null)
+            {
+                var path = (string)project["path"]!;
+                if (NetworkPathPolicy.IsNetworkOrDevicePath(path)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+                using (SavedProjectFolder(path))
+                {
+                    using var identity = RepositoryAdmission.Open(loop, path);
+                    kind = await repositories.IsGitWorkingTree(path) ? "git" : "folder";
+                    identity.Revalidate();
+                }
+            }
+            if (kind == "git") throw new NotSupportedException(GitProjectChat);
+            if (!Equals(parameters["mode"], "chat")) throw new WorkspaceReadException("Coding and coordination require a Git project.");
+            if (parameters.ContainsKey("coordination")) throw new WorkspaceReadException("Coordination settings apply only to coordinated tasks.");
             var profile = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile."); RequireFake(profile);
             var taskId = id().ToString(); var content = (string)parameters["content"]!;
             var lineEnd = content.IndexOf('\n'); var title = lineEnd < 0 ? content : content[..(lineEnd > 0 && content[lineEnd - 1] == '\r' ? lineEnd - 1 : lineEnd)];
@@ -523,13 +548,13 @@ public sealed class DevelopmentChat
             try
             {
                 var stamp = Clock.Iso(now());
-                var task = new Dictionary<string, object?>
-                {
-                    ["id"] = taskId, ["title"] = title, ["profileId"] = parameters["profileId"], ["status"] = "idle", ["createdAt"] = stamp, ["updatedAt"] = stamp,
-                    ["tokenBudget"] = parameters["tokenBudget"], ["usedTokens"] = 0, ["mode"] = "chat", ["workspaceKind"] = "none"
-                };
+                var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = title };
+                if (project is not null) task["projectId"] = project["id"];
+                task["profileId"] = parameters["profileId"]; task["status"] = "idle"; task["createdAt"] = stamp; task["updatedAt"] = stamp;
+                task["tokenBudget"] = parameters["tokenBudget"]; task["usedTokens"] = 0; task["mode"] = "chat"; task["workspaceKind"] = kind;
+                if (project is not null) task["projectPath"] = project["path"];
                 store.SaveTask(task); saved = true; store.Event("tasks.changed", new Dictionary<string, object?>(), taskId); sending = true;
-                StartTurn(taskId, content); store.FinishTaskStart(requestId, "complete"); return Task.FromResult(store.ReadTask(taskId));
+                StartTurn(taskId, content); store.FinishTaskStart(requestId, "complete"); return store.ReadTask(taskId);
             }
             catch (EventDeliveryException) { throw; }
             catch (Exception error)
@@ -541,6 +566,43 @@ public sealed class DevelopmentChat
         }
         catch (EventDeliveryException error) { Fail(error); throw; }
         finally { starts.Remove(requestId); }
+    }
+
+    /// <summary>
+    /// startTask's project check: the saved folder resolves to the same physical folder under its saved spelling and is a
+    /// directory. Every failure is the one refusal TypeScript's catch-all reports. The lease keeps the folder pinned while
+    /// the caller classifies it.
+    /// </summary>
+    private RepositoryFolderLease SavedProjectFolder(string path)
+    {
+        RepositoryFolderLease? folder = null;
+        try
+        {
+            folder = RepositoryFolderLease.Open(loop, path);
+            if (EcmaScriptCase.ToLower(folder.Path) != EcmaScriptCase.ToLower(path)) throw new WorkspaceReadException(ProjectUnavailable);
+            return folder;
+        }
+        catch (Exception error) when (error is InvalidOperationException or IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            folder?.Dispose();
+            throw new WorkspaceReadException(ProjectUnavailable);
+        }
+    }
+
+    /// <summary>
+    /// The failed-start retry of a project chat: the task's saved project is still the requested, visible project, its
+    /// folder still resolves under its saved spelling, and the task's own folder spelling names that same folder by
+    /// identity. A Git task's retry would run a tool-enabled turn, which needs a later slice.
+    /// </summary>
+    private void RequireRetryableFolder(Dictionary<string, object?> task, string? projectId)
+    {
+        if (Store.IsGitDocument(task)) throw new NotSupportedException(GitProjectChat);
+        var project = task.GetValueOrDefault("projectId") is string saved ? store.Project(saved) : null;
+        if (project is null || !Equals(project["id"], projectId) || Truthy(project.GetValueOrDefault("hidden"))) throw new WorkspaceReadException(ProjectUnavailable);
+        var path = (string)project["path"]!;
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(path)) throw new WorkspaceReadException(ProjectUnavailable);
+        using (SavedProjectFolder(path))
+            if (task.GetValueOrDefault("projectPath") is not string folder || !RepositoryPaths.SameFolder(folder, path)) throw new WorkspaceReadException(ProjectUnavailable);
     }
 
     private Running StartTurn(string taskId, string content)
@@ -707,11 +769,13 @@ public sealed class DevelopmentChat
     {
         if (!Equals(profile.GetValueOrDefault("apiKind"), "fake")) throw new NotSupportedException("External providers are not supported by the development chat runtime.");
     }
+    /// <summary>A chat turn with no tools: projectless, or in a saved folder that is not a Git repository (agent-loop.ts
+    /// prepareRequest gives neither any tool, channel or system prompt).</summary>
     private static void RequireOrdinary(Dictionary<string, object?> task)
     {
-        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat") || task.GetValueOrDefault("workspaceKind") is not "none"
+        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat") || task.GetValueOrDefault("workspaceKind") is not ("none" or "folder")
             || task.ContainsKey("parentTaskId") || task.ContainsKey("rootTaskId") || task.ContainsKey("role"))
-            throw new NotSupportedException("The development chat runtime supports projectless ordinary chat only.");
+            throw new NotSupportedException("The development chat runtime supports projectless and folder ordinary chat only.");
     }
     private static double Number(object? value) => Convert.ToDouble(value, CultureInfo.InvariantCulture);
     private static long? Ordinal(Dictionary<string, object?> value, string key) => value.TryGetValue(key, out var field) ? checked((long)Number(field)) : null;
