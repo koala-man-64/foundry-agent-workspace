@@ -46,10 +46,36 @@ export function resolveLocalPath(candidate: string, approvedPath?: string): stri
     const canonical = fsSync.realpathSync.native(absolute);
     if (isNetworkOrDevicePath(canonical)) throw new Error('Projects on network shares are not supported.');
     const key = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-    if (approvedPath && key(canonical) !== key(approvedPath)) throw new Error('The saved folder now resolves to a different location.');
+    // An 8.3 or case spelling of the approved folder is the same folder; a replaced (now linked) or different folder is not.
+    if (approvedPath && key(canonical) !== key(approvedPath) && !sameFolderSpelling(approvedPath, canonical)) {
+      throw new Error('The saved folder now resolves to a different location.');
+    }
     return canonical;
   }
   throw new Error('Repository alias depth exceeded.');
+}
+
+/**
+ * Whether `spelling` names `canonical` through the same chain of real entries, differing only by 8.3 short names or case:
+ * same drive root, same depth, and every prefix a non-link entry with the canonical prefix's file identity. Subst drives,
+ * links, mount points and different folders never qualify; the drive check runs before any probe of `spelling`.
+ */
+function sameFolderSpelling(spelling: string, canonical: string): boolean {
+  if (process.platform !== 'win32' || isNetworkOrDevicePath(spelling) || !path.isAbsolute(spelling)) return false;
+  const parts = (value: string) => {
+    const resolved = path.resolve(value); const root = path.parse(resolved).root;
+    return [root, ...resolved.slice(root.length).split(path.sep).filter(Boolean)];
+  };
+  const left = parts(spelling); const right = parts(canonical);
+  if (left.length !== right.length || left[0]!.toLowerCase() !== right[0]!.toLowerCase()) return false;
+  try {
+    for (let index = 1, a = left[0]!, b = right[0]!; index < left.length; index++) {
+      a = path.join(a, left[index]!); b = path.join(b, right[index]!);
+      const named = fsSync.lstatSync(a, { bigint: true }); const real = fsSync.lstatSync(b, { bigint: true });
+      if (named.isSymbolicLink() || real.isSymbolicLink() || named.dev !== real.dev || named.ino !== real.ino) return false;
+    }
+    return true;
+  } catch { return false; }
 }
 
 export interface GitAdmissionIdentity { path: string; root: string; gitDirectory: string; common: string }

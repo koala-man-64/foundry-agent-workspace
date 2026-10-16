@@ -50,11 +50,11 @@ it('pins read-only workspace pages, task cursors and legacy/runtime event projec
         if (era !== 'fresh') for (const file of readdirSync(`tests/fixtures/databases/${era}`).filter(file => file.startsWith('workspace.db'))) copyFileSync(`tests/fixtures/databases/${era}/${file}`, join(scratch, file));
         const store = new Store(join(scratch, 'workspace.db'));
         try {
-          const projectPaths = new Map<string, string>(); const scratchCanonical = realpathSync(scratch);
+          const projectPaths = new Map<string, string>(); const scratchCanonical = realpathSync.native(scratch);
           if (store.schemaVersion >= 3) for (const row of store.db.prepare('SELECT id,data FROM projects').all() as { id: string; data: string }[]) {
             const project = JSON.parse(row.data) as { path: string };
             const relativePath = join('projects', String(projectPaths.size)); const folder = join(scratch, relativePath);
-            mkdirSync(folder, { recursive: true }); const canonical = realpathSync(folder);
+            mkdirSync(folder, { recursive: true }); const canonical = realpathSync.native(folder);
             expect(relative(scratchCanonical, canonical)).toBe(relativePath);
             projectPaths.set(canonical, project.path); project.path = canonical;
             store.db.prepare('UPDATE projects SET data=? WHERE id=?').run(JSON.stringify(project), row.id);
