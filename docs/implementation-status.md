@@ -505,6 +505,75 @@ Both failed logs are retained. The final-component guard changed only native sou
 
 Tests do not exercise mapped-drive or subst behavior, because no network share or session drive letter is touched. P2 remains incomplete, and every hold listed above is unchanged.
 
+### P2.2 Git/files handlers and project/task admission — authority and slices
+
+Recorded 16 October 2026. Rudy wrote: "Start P2.2 in a fresh session and I authorize wiring the completed Git/files handlers into the development-only DevelopmentChat surface (FOUNDRY_RUNTIME_P2_CHAT gate only, no shipping selector); keep native alias refusal for now." He then approved this slice order:
+- **a:** an unwired foundation: Git execution, read-only inspection, the per-repository queue and intents;
+- **b:** `files.list`, `files.read` and `task.diff`;
+- **c:** `project.add`;
+- **d:** `task.create`, with worktree creation;
+- **e:** `task.commit`, `task.push`, `task.reconcilePublication` and `task.retire`;
+- **f:** project-backed `task.start` for folders that are not Git repositories;
+- **g:** an unwired one-shot primitive for editing existing files.
+
+**Left out of P2.2:**
+- `workspace.upgrade`.
+- Git-project `task.start`, and `task.send` on Git tasks. Every Git task's first turn advertises project-channel tools, and coding adds tools that need approvals and the native tool loop.
+- Coordinated mode.
+
+Everything else stays held: shipping or runtime selectors, Electron-side .NET enablement, push, PR, CI, main integration, schema v6, adoption, real data, live providers and cutover.
+
+### Local Git execution and inspection foundation (P2.2a)
+
+**What it is.** These internal classes are unwired. Nothing in `DevelopmentChat`, `Program` or the protocol calls them, so the 25-method surface is unchanged.
+- `GitRunner` is the counterpart of `RepositoryService.git` and `gitEnvironment`.
+- `RepositoryService` is the counterpart of the read-only half of `repository.ts`: `requireRoot`, `requireRepository`, `isGitWorkingTree`, `listFiles`, `readFile`, `uncommittedPaths`, `diff`, and the three filter refusals.
+- `RepositoryAdmission`, the per-common-repository queue, and the Store intent primitives.
+
+**Git execution.**
+- **Launching.** Git runs only through `JobProcess`. The executable is the first `git.exe` in an absolute `PATH` entry that is a regular file outside the repository first asked about. The choice, or the failure, is remembered for the life of the service, as in TypeScript.
+- **Environment and configuration.** Every variable whose JavaScript upper-case name starts with `GIT_` is dropped; this includes the dotless `ı`, which .NET's invariant casing would keep. `GIT_CONFIG_NOSYSTEM` and `GIT_TERMINAL_PROMPT` are pinned. Hooks point at the empty hooks directory, fsmonitor is off, and credential helpers are off unless allowed.
+- **Limits and errors.** The timeout is 15 seconds and the output cap 256 KiB. Error mapping, including which messages gain the `Git command failed:` prefix, follows `repository.ts`.
+
+**Revalidation, pins and queue (residuals 1–3 of P2.1).**
+- **Revalidation.** The admitted identity is checked again before launch, at the final boundary (`BeforeMutation`), and after exit. A folder with no repository must still have none.
+- **Pins.** A `RepositoryAdmission` holds the folder lease and the Git lease across every await of an operation. `RepositoryFolderLease` now shares writes but never deletes: renames into the folder work, and the folder chain itself cannot be renamed or deleted while held.
+- **Queue.** The queue keys on `common.toLowerCase()`. Operations with one key run in arrival order, a failure never blocks its successor, and the key is released when its last operation settles.
+
+**File access at the execution boundary.**
+- The parent chain is pinned and verified free of reparse points (`DirectoryLease`).
+- The final entry is opened by its exact namespaced name without following a reparse point (the new Platform `ExistingEntry`).
+- Containment and sensitive-name checks run on the handle's real path. Reads go through that handle, bounded at 64 KiB plus one byte, where TypeScript stats the file and then reads it unbounded.
+- Name rules reproduce JavaScript regular expressions: ASCII-only case folding (a Kelvin sign never matches `k`), `.` excluding U+2028/U+2029, and `$` meaning end of input.
+- Listings sort with the `en-US` collation, stably.
+
+**Differences from TypeScript, all of which fail closed or are invisible on success:**
+- Local aliases are refused (the approved difference).
+- Every reparse point is refused as "Symbolic links cannot be accessed.", including cloud placeholders, which Node follows.
+- Node's raw filesystem errors (`ENOENT`, `ENOTDIR`) become fixed native messages.
+- Network and device `PATH` entries are skipped before any probe.
+- A timeout or an output overflow terminates the whole job tree; Node signals only the root process.
+- Standard input is closed at launch.
+- Revalidation also runs after a non-zero exit.
+- A NUL argument gets a fixed message.
+- Truncated output is the first 256 KiB of bytes, where Node's cut point can depend on pipe chunking for multi-byte text.
+
+**Evidence.**
+- `tests/p2/repository-inspection.test.ts` builds **81** disposable trees with an isolated `HOME`, no system Git configuration and the C locale. It pins the shipping outcomes in `repository-inspection-vectors.json`, bound to the SHA-256 of `repository.ts`, `git-environment.ts` and `network-path.ts`. The cases cover listings, reads, status, diffs, classification, `core.worktree`, bare and unborn repositories, linked worktrees, and filters at the working tree and at a revision. The file also pins `gitEnvironment()`'s handling of edge variable names. Regenerating the vectors requires `P2_WRITE_REPOSITORY_INSPECTION=1`.
+- `RepositoryInspectionTests` rebuilds every tree and must match each outcome or its named difference. Mutating two expected outcomes made both cases fail.
+- `GitRunnerTests` covers:
+  - injected `GIT_*` variables that try to redirect the repository;
+  - executable selection;
+  - a timeout that must kill a grandchild holding the pipes;
+  - overflow and non-zero exits, with and without permission;
+  - identity changes before launch, at the final boundary and after exit;
+  - queue ordering and failure isolation;
+  - intent bytes and states;
+  - quoting round-tripped through `CommandLineToArgvW`;
+  - loop affinity;
+  - `ExistingEntry`.
+- `RepositoryFolderTests` now proves renames into a held folder.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
