@@ -195,6 +195,66 @@ public sealed class GitRunnerTests
         });
     }
 
+    /// <summary>
+    /// Review H1: `--no-verify` leaves post-commit, post-checkout and reference-transaction to core.hooksPath, so hooks stay
+    /// disabled only while that folder holds nothing. A planted entry, a linked folder or a file in its place is refused
+    /// before launch; an entry that appears during a run fails that run, and the next launch refuses before starting.
+    /// </summary>
+    [Fact]
+    public async Task ThePlantedHooksFolderIsRefusedBeforeLaunchAndAfterExit()
+    {
+        using var fixture = await Repository("foundry-p2-git-hooks-");
+        var hooks = Path.Join(fixture.Local("wt"), GitRunner.EmptyHooksDirectory);
+        var marker = fixture.Local("hook-ran");
+        var hook = $"#!/bin/sh\necho ran > '{marker.Replace('\\', '/')}'\n";
+        await fixture.Git("-C", "repo", "config", "user.name", "Runtime"); await fixture.Git("-C", "repo", "config", "user.email", "runtime@example.invalid");
+        // Control: the planted hook is live for Git itself.
+        fixture.Write("wt/.empty-git-hooks/post-commit", hook);
+        await fixture.Git("-C", "repo", "-c", $"core.hooksPath={hooks}", "commit", "--allow-empty", "--no-verify", "-qm", "control");
+        Assert.True(File.Exists(marker)); File.Delete(marker); File.Delete(Path.Join(hooks, "post-commit"));
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
+            Assert.Equal(hooks, service.Git.HooksPath);
+            var launches = 0;
+            service.Git.Launching = _ => launches++;
+            using var admission = await service.RequireRepository(fixture.Local("repo"));
+            fixture.Write("wt/.empty-git-hooks/post-commit", hook);
+            const string Refused = "Git command failed: " + GitRunner.HooksNotEmpty;
+            async Task Refuses()
+            {
+                var before = launches;
+                Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["commit", "--allow-empty", "--no-verify", "-qm", "refused"]))).Message);
+                Assert.Equal(before, launches);
+            }
+            await Refuses();
+            File.Delete(Path.Join(hooks, "post-commit")); Directory.CreateDirectory(Path.Join(hooks, "sub"));
+            await Refuses();
+            Directory.Delete(Path.Join(hooks, "sub"));
+            await service.Run(admission, ["commit", "--allow-empty", "--no-verify", "-qm", "empty folder"]);
+            // A folder linked elsewhere, even to an empty one, and a file in the folder's place.
+            Directory.Delete(hooks); Directory.CreateDirectory(fixture.Local("elsewhere")); await fixture.Junction("wt/.empty-git-hooks", "elsewhere");
+            await Refuses();
+            Directory.Delete(hooks); File.WriteAllText(hooks, "");
+            await Refuses();
+            File.Delete(hooks);
+            // A missing folder holds no hook; one that appears and fills during the run fails it after exit.
+            await service.Run(admission, ["rev-parse", "HEAD"]);
+            service.Git.Launching = _ => { launches++; fixture.Write("wt/.empty-git-hooks/post-commit", hook); };
+            Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
+            service.Git.Launching = _ => launches++;
+            await Refuses();
+            Directory.CreateDirectory(hooks); File.Delete(Path.Join(hooks, "post-commit"));
+            service.Git.Launching = _ => { launches++; File.WriteAllText(Path.Join(hooks, "reference-transaction"), hook); };
+            Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
+            Directory.Delete(hooks, true);
+            return 0;
+        });
+        Assert.False(File.Exists(marker));
+        Assert.Equal(["empty folder", "control", "fixture"], (await fixture.GitText("-C", "repo", "log", "--format=%s")).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
     [Fact]
     public async Task RepositoryQueueSerializesPerCommonRepository()
     {

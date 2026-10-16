@@ -261,6 +261,8 @@ public sealed class DevelopmentChat
         if (store.UnknownPublicationIntents(taskId) is [var unknown, ..])
             throw new WorkspaceReadException($"This task has an unknown {unknown.Kind} outcome. Reconcile publication state before attempting another operation.");
         if (store.UnknownRetireIntents(taskId).Count > 0) throw new WorkspaceReadException("This task has an unknown worktree retirement outcome. Reconcile state before attempting another operation.");
+        // Not in TypeScript: a retirement that removes the worktree mid-commit would leave an outcome nothing can verify.
+        if (retiring.Contains(taskId)) throw new WorkspaceReadException("Worktree retirement is already in progress for this task.");
         return task;
     }
 
@@ -386,6 +388,8 @@ public sealed class DevelopmentChat
         if (Truthy(task.GetValueOrDefault("parentTaskId")) || Equals(task.GetValueOrDefault("role"), "child"))
             throw new WorkspaceReadException("Retire a child worktree from its coordinated task; children are retired together with their root.");
         if (Equals(task.GetValueOrDefault("mode"), "coordinated")) throw new WorkspaceReadException("Coordinated tasks are not available in this build.");
+        // Not in TypeScript: a commit, push or reconciliation in flight must settle before its worktree can go.
+        if (publishing.Contains(taskId)) throw new WorkspaceReadException("A Git operation is already in progress for this task.");
         if (!retiring.Add(taskId)) throw new WorkspaceReadException("Worktree retirement is already in progress for this task.");
         try
         {

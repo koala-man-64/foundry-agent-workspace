@@ -532,7 +532,7 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 
 **Git execution.**
 - **Launching.** Git runs only through `JobProcess`. The executable is the first `git.exe` in an absolute `PATH` entry that is a regular file outside the repository first asked about. The choice, or the failure, is remembered for the life of the service, as in TypeScript.
-- **Environment and configuration.** Every variable whose JavaScript upper-case name starts with `GIT_` is dropped; this includes the dotless `ı`, which .NET's invariant casing would keep. `GIT_CONFIG_NOSYSTEM` and `GIT_TERMINAL_PROMPT` are pinned. Hooks point at the empty hooks directory, fsmonitor is off, and credential helpers are off unless allowed.
+- **Environment and configuration.** Every variable whose JavaScript upper-case name starts with `GIT_` is dropped; this includes the dotless `ı`, which .NET's invariant casing would keep. `GIT_CONFIG_NOSYSTEM` and `GIT_TERMINAL_PROMPT` are pinned. Hooks point at the empty hooks directory, which every launch now requires to be empty (review H1 under P2.2e), fsmonitor is off, and credential helpers are off unless allowed.
 - **Limits and errors.** The timeout is 15 seconds and the output cap 256 KiB. Error mapping, including which messages gain the `Git command failed:` prefix, follows `repository.ts`.
 
 **Revalidation, pins and queue (residuals 1–3 of P2.1).**
@@ -739,7 +739,8 @@ Its remaining notes:
 **Differences, all fail-closed or invisible on success:**
 - Coordinated tasks retire their children with them, which needs the orchestrator, so native refuses them.
 - A worktree saved on a network path is refused, and is never probed during retirement or reconciliation.
-- Each outcome commits with its intent and notification; TypeScript saves them separately.
+- A successful commit, push or retirement commits its completed intent, task change and notification together; TypeScript saves them separately.
+- A commit, push or reconciliation in flight and a retirement of the same task exclude each other (review L1 below).
 
 **Evidence.**
 - `tests/p2/task-publication.test.ts` drives the shipping `RuntimeService` through seven cases, using a local bare remote only:
@@ -757,6 +758,18 @@ Its remaining notes:
   - only push and remote verification run without `credential.helper=`;
   - an unknown approval blocks publication and retirement.
 - `DevelopmentChatProcessTests` now drives commit, push and retire through stdio with their notifications.
+
+**Independent review of P2.2d and P2.2e.** The same reviewer reviewed the sealed ranges `586e929..9208cf9` and `9208cf9..f199fd1` (with `0e67144`) and returned **GO for both as a port**. It verified both seals, built an export, and matched every mutation boundary's outcome classification against TypeScript: intent before mutation, no blind retry, and creation serialized per common repository. It ran one probe through `DevelopmentChat`.
+- **H1 (medium, confirmed, also in shipping TypeScript).** "Hooks stay disabled" held only while `<data>\wt\.empty-git-hooks` was empty. `--no-verify` does not cover `post-commit`, `post-checkout` or `reference-transaction`. The reviewer planted a `post-commit` hook there and it ran during `task.commit`. Anything that writes the app data folder once would gain execution in every later app-initiated checkout and commit, in every repository.
+  - **Fixed natively** for every Git launch (`GitRunner.Run`). The folder must be missing, or a directory with its whole chain pinned free of reparse points and no entries. The pin is held until exit, and the folder is checked again then.
+  - A directory handle cannot forbid new entries (probed: a read-only-shared directory handle blocks renames into the folder, not creation). So a same-user process can still add an entry during a run. That run then fails, and the next launch refuses before starting.
+  - A refusal before launch is a Git failure with no outcome. Callers classify it as before: `task.create` leaves its intent complete, and a commit refused at `git add` stays unknown until reconciled.
+  - Tests: `GitRunnerTests` covers a planted hook (with a control proving it live), a subfolder, a junction, a file in the folder's place, and a hook planted during a run. `TaskPublicationTests` shows commit and creation refusing with no Git launch and no hook execution, then working once the folder is empty. Disabling the guard made both fail.
+  - **The TypeScript half is open.** `repository.ts` `git()` and `git-operations.ts` use the same folder. AGENTS.md requires security fixes in both runtimes; where it lands is being decided with the parent session.
+- **L1 (low, parity).** Retirement could remove a worktree while that task's commit was at its final `rev-parse`, leaving an outcome nothing could verify. **Fixed natively**: retirement refuses while a commit, push or reconciliation of the task is in flight, and commit and push refuse while it retires, with TypeScript's existing messages. Tested in `TaskPublicationTests`.
+- **L2 (informational, parity), not changed.** `RemoveWorktree` resolves its target through links after the lease that refused a reparse worktree is released. Exploiting the gap needs same-user write access.
+- **L3 (informational, parity), not changed.** Reconciliation counts a retired worktree that cannot be probed as gone, as TypeScript's `stat` catch does. Nothing is deleted on that basis; the worktree and branch stay on disk.
+- **L4 (informational).** The atomic success commit is now named in the differences above.
 
 ### Folder-project chats (P2.2f)
 

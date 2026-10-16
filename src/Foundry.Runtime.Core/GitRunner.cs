@@ -131,15 +131,19 @@ internal sealed class GitRunner
         var workingDirectory = admission.Path;
         admission.Revalidate();
         Completed? completed = null;
+        DirectoryLease? hooks = null;
         try
         {
             var application = Executable(workingDirectory);
+            hooks = GuardHooks();
             admission.Revalidate();
             options.BeforeMutation?.Invoke();
             string[] prefix = ["--literal-pathspecs", "--no-pager", "-c", $"core.hooksPath={HooksPath}", "-c", "core.fsmonitor="];
             var all = options.AllowCredentialHelper ? [.. prefix, .. arguments] : (string[])[.. prefix, "-c", "credential.helper=", .. arguments];
             completed = await Execute(application, all, workingDirectory, options.Timeout ?? DefaultTimeout);
             admission.Revalidate();
+            // An entry that appeared during the run may have run as a hook: the run is not trusted.
+            if (hooks is null) hooks = GuardHooks(); else RequireNoHooks();
             if (completed.Overflowed)
             {
                 if (permitTruncation) return new(completed.Stdout, true, 0);
@@ -158,6 +162,46 @@ internal sealed class GitRunner
             var detail = JsJson.Trim(error is GitFailure failure ? failure.Stderr : error.Message);
             throw new GitCommandException("Git command failed: " + (detail.Length > 500 ? detail[..500] : detail), error);
         }
+        finally { hooks?.Dispose(); }
+    }
+
+    internal const string HooksNotEmpty = "The app-owned Git hooks folder must be empty.";
+
+    /// <summary>
+    /// Hooks stay disabled only while the hooks folder holds nothing: `--no-verify` does not cover post-commit,
+    /// post-checkout or reference-transaction. Before launch the folder must be missing, or a directory whose whole chain
+    /// is pinned free of reparse points (so it cannot be renamed, deleted or swapped for a link while held) and that has no
+    /// entries; the pin is held until exit, when the folder is checked again. A directory handle cannot forbid new entries,
+    /// so a same-user process can still add one during a run: that run then fails, and the next launch refuses before
+    /// anything starts, so one planted file never becomes lasting execution.
+    /// </summary>
+    private DirectoryLease? GuardHooks()
+    {
+        var path = HooksPath;
+        if (!DataClassifier.IsLocal(path) || RepositoryPaths.HasAmbiguousSegment(path)) throw new InvalidOperationException(HooksNotEmpty);
+        MetadataEntryKind kind;
+        try { kind = MetadataFile.Probe(path); }
+        catch (IOException error) { throw new InvalidOperationException(HooksNotEmpty, error); }
+        if (kind == MetadataEntryKind.Missing) return null;
+        if (kind != MetadataEntryKind.Directory) throw new InvalidOperationException(HooksNotEmpty);
+        DirectoryLease lease;
+        try { lease = DirectoryLease.AcquireExistingSharingWrites(path); }
+        catch (IOException error) { throw new InvalidOperationException(HooksNotEmpty, error); }
+        try { RequireNoHooks(); return lease; }
+        catch { lease.Dispose(); throw; }
+    }
+
+    private void RequireNoHooks()
+    {
+        bool any;
+        try
+        {
+            using var entries = new System.IO.Enumeration.FileSystemEnumerable<bool>(@"\\?\" + HooksPath, (ref System.IO.Enumeration.FileSystemEntry _) => true,
+                new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false, RecurseSubdirectories = false, ReturnSpecialDirectories = false }).GetEnumerator();
+            any = entries.MoveNext();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new InvalidOperationException(HooksNotEmpty, error); }
+        if (any) throw new InvalidOperationException(HooksNotEmpty);
     }
 
     private sealed class GitFailure(string stderr) : Exception(stderr) { internal string Stderr { get; } = stderr; }

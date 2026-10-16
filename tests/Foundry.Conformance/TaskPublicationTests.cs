@@ -12,6 +12,7 @@ namespace Foundry.Conformance;
 public sealed partial class TaskPublicationTests
 {
     private static readonly JsonElement Corpus = RepositoryFixture.ReadCorpus("tests/p2/task-publication-vectors.json");
+    private static readonly string[] PlantedHooks = ["post-commit", "post-checkout", "reference-transaction"];
 
     public static IEnumerable<object[]> Cases()
     {
@@ -230,6 +231,80 @@ public sealed partial class TaskPublicationTests
                 Assert.Equal("This task has an unknown mutation outcome. Inspect the worktree before retiring it.",
                     (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.retire", new() { ["taskId"] = task["id"], ["confirm"] = "retire" }))).Message);
                 Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind IN ('git.commit','worktree.retire')"));
+                await chat.Shutdown(); return 0;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Review H1: a hook planted in the app-owned hooks folder after a task exists never runs. Commit and creation refuse
+    /// before any Git process starts, nothing is recorded as started, and they work again once the folder is empty.
+    /// </summary>
+    [Fact]
+    public async Task APlantedHookStopsCommitAndCreationBeforeAnyGitRuns()
+    {
+        var (fixture, data) = await Project("foundry-p2-planted-hook-");
+        using (fixture)
+        {
+            var marker = fixture.Local("hook-ran");
+            var hook = $"#!/bin/sh\necho ran > '{marker.Replace('\\', '/')}'\n";
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var worktree = (string)task["worktreePath"]!;
+                var hooks = chat.Repositories.Git.HooksPath;
+                foreach (var name in PlantedHooks) File.WriteAllText(Path.Join(hooks, name), hook);
+                File.WriteAllText(Path.Combine(worktree, "README.md"), "changed\n");
+                var launches = 0;
+                chat.Repositories.Git.Launching = _ => launches++;
+                const string Refused = "Git command failed: " + GitRunner.HooksNotEmpty;
+                Assert.Equal(Refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Change" }))).Message);
+                Assert.Equal(Refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.create", CreateParameters(fixture)))).Message);
+                Assert.Equal(0, launches);
+                Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind='git.commit' OR state<>'complete'"));
+                Assert.Single(store.Rows("SELECT id FROM tasks"));
+                foreach (var name in PlantedHooks) File.Delete(Path.Join(hooks, name));
+                await chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Change" });
+                Assert.True(launches > 0);
+                await chat.Shutdown(); return 0;
+            });
+            Assert.False(File.Exists(marker));
+        }
+    }
+
+    /// <summary>
+    /// Review L1 (not in TypeScript): a commit, push or reconciliation in flight and a retirement of the same task exclude
+    /// each other, so retirement can never remove the worktree that an in-flight commit's outcome must be verified in.
+    /// </summary>
+    [Fact]
+    public async Task PublicationAndRetirementOfOneTaskExcludeEachOther()
+    {
+        var (fixture, data) = await Project("foundry-p2-publish-retire-");
+        using (fixture)
+        {
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var retire = new Dictionary<string, object?> { ["taskId"] = task["id"], ["confirm"] = "retire" };
+                var commit = new Dictionary<string, object?> { ["taskId"] = task["id"], ["message"] = "Change" };
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                // Each operation reserves its task before its first await, so the second request sees the first in flight.
+                var committing = chat.Dispatch("task.commit", commit);
+                Assert.Equal("A Git operation is already in progress for this task.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.retire", retire))).Message);
+                await committing;
+                var retiring = chat.Dispatch("task.retire", retire);
+                Assert.Equal("Worktree retirement is already in progress for this task.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", commit))).Message);
+                Assert.Equal("Worktree retirement is already in progress for this task.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", new() { ["taskId"] = task["id"], ["remote"] = "origin", ["confirm"] = "push" }))).Message);
+                await retiring;
+                Assert.Equal("retired", store.ReadTask((string)task["id"]!)["status"]);
+                Assert.Equal(["git.commit", "worktree.retire"], store.Rows("SELECT kind FROM intents WHERE kind IN ('git.commit','git.push','worktree.retire') ORDER BY rowid").Select(row => (string)row["kind"]!));
+                Assert.All(store.Rows("SELECT state FROM intents"), row => Assert.Equal("complete", row["state"]));
                 await chat.Shutdown(); return 0;
             });
         }
