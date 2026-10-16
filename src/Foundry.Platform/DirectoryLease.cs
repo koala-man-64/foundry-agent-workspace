@@ -5,13 +5,22 @@ using Microsoft.Win32.SafeHandles;
 namespace Foundry.Platform;
 
 /// <summary>Pins existing directory components against rename, deletion and reparse-point changes.</summary>
-public sealed partial class DirectoryLease : IDisposable
+public sealed class DirectoryLease : IDisposable
 {
     private readonly List<SafeFileHandle> handles = [];
     private DirectoryLease() { }
-    public static DirectoryLease Acquire(string directory) => Acquire(directory, false);
-    public static DirectoryLease AcquireExisting(string directory) => Acquire(directory, true);
-    private static unsafe DirectoryLease Acquire(string directory, bool requireExisting)
+    private const uint ShareRead = 1, ShareReadWrite = 3;
+    public static DirectoryLease Acquire(string directory) => Acquire(directory, false, ShareRead);
+    public static DirectoryLease AcquireExisting(string directory) => Acquire(directory, true, ShareRead);
+
+    /// <summary>
+    /// As <see cref="AcquireExisting"/>, but entries inside the pinned directories may still be renamed or replaced
+    /// (Git's lock-file renames open the target directory for writing). The pinned components themselves still cannot be
+    /// renamed or deleted, because no handle shares delete access.
+    /// </summary>
+    public static DirectoryLease AcquireExistingSharingWrites(string directory) => Acquire(directory, true, ShareReadWrite);
+
+    private static unsafe DirectoryLease Acquire(string directory, bool requireExisting, uint share)
     {
         var path = Path.GetFullPath(directory);
         var root = Path.GetPathRoot(path) ?? throw new IOException("Data identity cannot be established.");
@@ -27,7 +36,7 @@ public sealed partial class DirectoryLease : IDisposable
                 // The preceding component is pinned before probing or creating its children.
                 SafeFileHandle handle;
                 fixed (char* name = current)
-                    handle = Native.CreateFile(name, 1, 1, 0, Native.OpenExisting, Native.FileFlagBackupSemantics | 0x00200000, 0); // LIST_DIRECTORY, OPEN_REPARSE_POINT, SHARE_READ only.
+                    handle = Native.CreateFile(name, 1, share, 0, Native.OpenExisting, Native.FileFlagBackupSemantics | 0x00200000, 0); // LIST_DIRECTORY, OPEN_REPARSE_POINT, never SHARE_DELETE.
                 if (handle.IsInvalid)
                 {
                     var error = Marshal.GetLastPInvokeError(); handle.Dispose();
@@ -35,10 +44,10 @@ public sealed partial class DirectoryLease : IDisposable
                     throw new IOException("Data directory is not available for isolated access.", new Win32Exception(error));
                 }
                 lease.handles.Add(handle);
-                FileInformation information;
-                if (GetInformation(handle, &information) == 0) throw new IOException("Data identity cannot be established.");
-                if ((information.Attributes & 0x400) != 0) throw new IOException("Reparse directories require data-adoption review.");
-                if ((information.Attributes & 0x10) == 0) throw new IOException("Data identity cannot be established.");
+                Native.FileInformation information;
+                if (!Native.GetFileInformation(handle, &information)) throw new IOException("Data identity cannot be established.");
+                if ((information.Attributes & Native.FileAttributeReparsePoint) != 0) throw new ReparsePointException();
+                if ((information.Attributes & Native.FileAttributeDirectory) == 0) throw new IOException("Data identity cannot be established.");
             }
             return lease;
         }
@@ -60,20 +69,14 @@ public sealed partial class DirectoryLease : IDisposable
         }
         try
         {
-            FileInformation information;
-            if (GetInformation(handle, &information) == 0 || (information.Attributes & 0x400) != 0 || information.Links != 1) throw new IOException("Database links are not admitted.");
+            Native.FileInformation information;
+            if (!Native.GetFileInformation(handle, &information) || (information.Attributes & Native.FileAttributeReparsePoint) != 0 || information.Links != 1) throw new IOException("Database links are not admitted.");
             handles.Add(handle);
         }
         catch { handle.Dispose(); throw; }
     }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct FileInformation
-    {
-        internal uint Attributes;
-        internal uint CreationLow, CreationHigh, AccessLow, AccessHigh, WriteLow, WriteHigh;
-        internal uint VolumeSerial, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
-    }
-    [LibraryImport("kernel32.dll", EntryPoint = "GetFileInformationByHandle", SetLastError = true)]
-    private static unsafe partial int GetInformation(SafeFileHandle file, FileInformation* information);
 }
+
+/// <summary>A path component is a reparse point (junction, symbolic link, mount point or cloud placeholder); only
+/// physical local entries are admitted.</summary>
+public sealed class ReparsePointException() : IOException("Reparse directories require data-adoption review.");

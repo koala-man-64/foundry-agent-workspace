@@ -99,7 +99,7 @@ public sealed class AdmissionTests
             var alias = Path.Combine(scratch, "alias");
             await Link("/J", alias, root);
             Assert.Equal(DataDisposition.AdoptionPending, DataClassifier.Inspect(alias, root).Disposition);
-            Assert.Throws<IOException>(() => DirectoryLease.Acquire(alias));
+            Assert.Throws<ReparsePointException>(() => DirectoryLease.Acquire(alias));
             var selected = Directory.CreateDirectory(Path.Combine(scratch, "isolated")).FullName;
             var source = Path.Combine(scratch, "source.db");
             using (var connection = SqliteSetup.Open(source, SqliteOpenMode.ReadWriteCreate))

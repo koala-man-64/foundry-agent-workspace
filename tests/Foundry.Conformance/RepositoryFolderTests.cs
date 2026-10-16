@@ -140,7 +140,7 @@ public sealed class RepositoryFolderTests
             await using var loop = new RuntimeLoop();
             await loop.Invoke(() =>
             {
-                Assert.Throws<IOException>(() => DirectoryLease.Acquire(Path.Combine(alias, "missing", "child")));
+                Assert.Throws<ReparsePointException>(() => DirectoryLease.Acquire(Path.Combine(alias, "missing", "child")));
                 var error = Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(alias, "missing")));
                 Assert.Equal("Projects through reparse directories are not supported.", error.Message);
                 var state = Directory.CreateDirectory(Path.Combine(scratch, "state")).FullName;

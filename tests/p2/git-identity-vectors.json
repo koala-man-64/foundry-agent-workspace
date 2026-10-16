@@ -1,0 +1,1161 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "f31173ae128e974a194c36cf1eb96e63630fdea29221f56cd815efbc5dd714fe"
+      },
+      {
+        "path": "packages/runtime/src/network-path.ts",
+        "sha256": "6e6d1f17374bc04de9e7fc0d3abb3a2044bb684fbfaa5405d804901ea1e477ee"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "plain repository",
+      "tree": [
+        {
+          "dir": "repo/.git"
+        },
+        {
+          "dir": "repo/src"
+        }
+      ],
+      "project": "repo",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\repo",
+          "root": "{scratch}\\repo",
+          "gitDirectory": "{scratch}\\repo\\.git",
+          "common": "{scratch}\\repo\\.git"
+        }
+      }
+    },
+    {
+      "name": "subfolder binds the nearest ancestor",
+      "tree": [
+        {
+          "dir": "repo/.git"
+        },
+        {
+          "dir": "repo/src/deep"
+        }
+      ],
+      "project": "repo/src/deep",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\repo\\src\\deep",
+          "root": "{scratch}\\repo",
+          "gitDirectory": "{scratch}\\repo\\.git",
+          "common": "{scratch}\\repo\\.git"
+        }
+      }
+    },
+    {
+      "name": "nested repository binds the inner root",
+      "tree": [
+        {
+          "dir": "repo/.git"
+        },
+        {
+          "dir": "repo/inner/.git"
+        }
+      ],
+      "project": "repo/inner",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\repo\\inner",
+          "root": "{scratch}\\repo\\inner",
+          "gitDirectory": "{scratch}\\repo\\inner\\.git",
+          "common": "{scratch}\\repo\\inner\\.git"
+        }
+      }
+    },
+    {
+      "name": "spaces and non-ASCII names",
+      "tree": [
+        {
+          "dir": "space 😀/repo é/.git"
+        }
+      ],
+      "project": "space 😀/repo é",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\space 😀\\repo é",
+          "root": "{scratch}\\space 😀\\repo é",
+          "gitDirectory": "{scratch}\\space 😀\\repo é\\.git",
+          "common": "{scratch}\\space 😀\\repo é\\.git"
+        }
+      }
+    },
+    {
+      "name": "absolute forward-slash gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: {scratch/}/main/.git/worktrees/wt\n"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "absolute backslash gitdir with CRLF",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: {scratch}\\main\\.git\\worktrees\\wt\r\n"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "relative gitdir resolves against the root",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "root-relative gitdir uses the root drive",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: {scratch-nodrive}\\main\\.git\\worktrees\\wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "same-drive drive-relative gitdir resolves against the root",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: {drive}../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "cross-drive drive-relative gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: {other-drive}main"
+        }
+      ],
+      "project": "wt",
+      "native": {
+        "outcome": {
+          "error": "Invalid Git project metadata."
+        },
+        "difference": "A drive-relative reference to another drive resolves from per-drive process state, so native refuses it."
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "dot segments are normalized",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ./x/../../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "BOM and surrounding whitespace are trimmed",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "﻿  gitdir: ../main/.git/worktrees/wt \n\t"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "pointer at the 16384-byte limit",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../.."
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt",
+          "pad": 16384
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "pointer one byte over the limit",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../.."
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt",
+          "pad": 16385
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "empty .git file",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": ""
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "pointer without the separator space",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir:../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "uppercase pointer prefix",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "GITDIR: ../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "two pointer lines",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt\ngitdir: ../main/.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "UNC gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: \\\\server\\share\\repo\\.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Projects on network shares are not supported."
+      }
+    },
+    {
+      "name": "forward-slash UNC gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: //server/share/repo/.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Projects on network shares are not supported."
+      }
+    },
+    {
+      "name": "Win32 device namespace gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: \\\\?\\{drive}\\main\\.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Projects on network shares are not supported."
+      }
+    },
+    {
+      "name": "NT namespace gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: \\??\\{drive}\\main\\.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Projects on network shares are not supported."
+      }
+    },
+    {
+      "name": "gitdir naming a file",
+      "tree": [
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "target",
+          "text": "x"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../target"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "missing gitdir target",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../missing/.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "trailing-dot gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt."
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "stream-suffixed gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt:stream"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "reserved device name gitdir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../nul"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "missing commondir falls back to the Git directory",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git\\worktrees\\wt"
+        }
+      }
+    },
+    {
+      "name": "empty commondir falls back",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": ""
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git\\worktrees\\wt"
+        }
+      }
+    },
+    {
+      "name": "whitespace-only commondir falls back",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": " \r\n\t"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git\\worktrees\\wt"
+        }
+      }
+    },
+    {
+      "name": "absolute commondir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "{scratch/}/main/.git\n"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "commondir at the 16384-byte limit",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..",
+          "pad": 16384
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "commondir one byte over the limit",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..",
+          "pad": 16385
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Invalid Git project metadata."
+      }
+    },
+    {
+      "name": "UNC commondir",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "\\\\server\\share\\repo\\.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "error": "Projects on network shares are not supported."
+      }
+    },
+    {
+      "name": "missing commondir target",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../../../../missing/.git"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "commondir that is a directory",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "dir": "main/.git/worktrees/wt/commondir"
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "systemError": "EISDIR"
+      }
+    },
+    {
+      "name": "commondir naming a file",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../../../../target"
+        },
+        {
+          "file": "target",
+          "text": "x"
+        }
+      ],
+      "project": "wt",
+      "native": {
+        "outcome": {
+          "error": "Invalid Git project metadata."
+        },
+        "difference": "TypeScript accepts a common \"directory\" that is a file; native requires a directory."
+      },
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\target"
+        }
+      }
+    },
+    {
+      "name": ".git directory junction",
+      "tree": [
+        {
+          "dir": "store/git"
+        },
+        {
+          "dir": "repo"
+        },
+        {
+          "junction": "repo/.git",
+          "target": "store/git"
+        }
+      ],
+      "project": "repo",
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (open decision before handler enablement)."
+      },
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\repo",
+          "root": "{scratch}\\repo",
+          "gitDirectory": "{scratch}\\store\\git",
+          "common": "{scratch}\\store\\git"
+        }
+      }
+    },
+    {
+      "name": "gitdir through a junction",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../..\n"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../link/.git/worktrees/wt"
+        },
+        {
+          "junction": "link",
+          "target": "main"
+        }
+      ],
+      "project": "wt",
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (open decision before handler enablement)."
+      },
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "commondir through a junction",
+      "tree": [
+        {
+          "dir": "main/.git/worktrees/wt"
+        },
+        {
+          "dir": "wt"
+        },
+        {
+          "file": "wt/.git",
+          "text": "gitdir: ../main/.git/worktrees/wt"
+        },
+        {
+          "file": "main/.git/worktrees/wt/commondir",
+          "text": "../../../../link/.git"
+        },
+        {
+          "junction": "link",
+          "target": "main"
+        }
+      ],
+      "project": "wt",
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (open decision before handler enablement)."
+      },
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "project through a junction",
+      "tree": [
+        {
+          "dir": "repo/.git"
+        },
+        {
+          "dir": "repo/src"
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "project": "alias/src",
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (open decision before handler enablement)."
+      },
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\repo\\src",
+          "root": "{scratch}\\repo",
+          "gitDirectory": "{scratch}\\repo\\.git",
+          "common": "{scratch}\\repo\\.git"
+        }
+      }
+    },
+    {
+      "name": "real Git main checkout",
+      "tree": [
+        {
+          "dir": "main"
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        }
+      ],
+      "project": "main",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\main",
+          "root": "{scratch}\\main",
+          "gitDirectory": "{scratch}\\main\\.git",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    },
+    {
+      "name": "real Git linked worktree",
+      "tree": [
+        {
+          "dir": "main"
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "main",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        }
+      ],
+      "project": "wt",
+      "expected": {
+        "identity": {
+          "path": "{scratch}\\wt",
+          "root": "{scratch}\\wt",
+          "gitDirectory": "{scratch}\\main\\.git\\worktrees\\wt",
+          "common": "{scratch}\\main\\.git"
+        }
+      }
+    }
+  ]
+}

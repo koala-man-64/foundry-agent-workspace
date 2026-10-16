@@ -370,6 +370,107 @@ Local validation: Release build **zero warnings/errors**; **699/699** focused co
 
 This is a Git/files prerequisite, not complete repository inspection/admission or native Git handlers. Filesystem identity, alias/volume validation, pinned metadata and complete handlers remain future work. Electron/TypeScript remains shipping. Main integration, publication, adoption/real data, cutover/runtime selection, .NET enablement/native handler wiring, deployment, capture/installed S6, schema v6, live providers and protected approvals remain held. No push or new CI run is part of this increment.
 
+### Successor ownership transfer
+
+Recorded 16 October 2026. Ownership of the P2 port moved from Codex task `01a13d05` to a Claude Code session on branch `claude/foundry-p2-cutover-plan-11b4a7`. That branch was fast-forwarded to the retained parser commit `86827ae` (tree `94deb46`); no other source changed. The outgoing managed worktree was removed when its session was archived, and its ignored `test-results/` went with it.
+
+**Lost evidence.** The parser seal, delivery receipt and raw logs cited above are lost, and so are the 14–15 October packets: baseline qualification, admission v2, native lease, PID diagnostics, stage markers and fixture launcher. They are not reconstructed.
+
+**What survives.** The parser's independent SOURCE GO and the earlier independent reviews survive. The parser patch regenerates byte-exactly from Git.
+
+**Where evidence lives now.** The surviving evidence, its hashes and the loss record are kept outside every worktree, in the owner's evidence store at `C:\Users\rdpro\Projects\foundry-evidence\transfer-86827ae\`. New increments write their evidence to sibling folders there. Publishing this stack still needs fresh validation bound to its candidate tree.
+
+### P2 coverage for the Git/files slice
+
+P2.0 is reconciled here only for the Git/files slice. The module map for later slices remains open.
+
+**Method counts, enumerated from code at `86827ae`.**
+- `RpcMethods` declares **89** methods. They are set-equal to the 89 RPC schemas among the 99 in `Contracts.json`. The migration plan's figure of 86 (in its summary and its P2 row) is historical.
+- The development runtime's `DevelopmentChat.Dispatch` implements **25** of them. The other **64** reach its `NotSupportedException` default and execute nothing.
+
+**Deferred methods that reach Git or files:**
+- `project.add`, `task.create`, `workspace.upgrade`, and project-backed, coding or coordinated `task.start`.
+- `files.list`, `files.read`, `task.diff`, `task.commit`, `task.push`, `task.retire` and `task.reconcilePublication`.
+- The orchestration and continuity methods that create child or continued worktrees.
+
+**Seam security tests that exist today.**
+- TypeScript: `network-path`, `agent-channel` (alias coalescing; rebinding a junction, `commondir` or gitdir; legacy bindings), `projects`, `repository`, and `tests/p2/folder-admission.test.ts` (queued identity, final-boundary alias rebinding, unknown outcome after `worktree add`).
+- C#: `RepositoryFolderTests`, the network vectors in `SecurityParityTests`, and the 698 `GitMetadataReferenceTests` vectors.
+
+P2.1 below adds native identity coverage. The queued-identity, final-boundary and unknown-outcome workflows still need native worktree creation, which is P2.2.
+
+**Open reconciliation items:**
+- **Local aliases: open decision.**
+  - Native refuses every reparse point. `RepositoryFolderLease` has done so since the native-lease increment, and P2.1's Git identity now does too.
+  - TypeScript follows local junctions and symbolic links.
+  - This difference was never listed as approved. It must be decided before native Git-backed handlers are enabled: either prove that following aliases is safe, or accept refusal for projects whose folder, `.git`, gitdir or `commondir` passes through an alias.
+  - Cloud-file placeholders, such as OneDrive Files On-Demand, are also reparse points and are refused.
+- **Mapped and removable drives: conflicting docs.**
+  - The shared residuals above say the approved plan "accepts user-chosen mapped-drive resolution".
+  - The detail of migration decision 8 says projects on mapped network drives are refused.
+  - Native refuses roots that are not fixed drives, which also excludes removable drives that TypeScript admits. It now refuses network drives by drive type before any open, while TypeScript refuses them only after realpath.
+  - One decision is needed; this entry does not choose.
+
+### Local native Git identity foundation (P2.1)
+
+**What it is.** `GitRepositoryLease` is internal and unwired. It is the native counterpart of `resolveGitAdmission`.
+- Given a held `RepositoryFolderLease`, it walks up to the nearest `.git`.
+- It reads the `.git` and `commondir` pointers through `GitMetadataReference` and resolves them as `path.win32.resolve` does.
+- It returns the canonical `{path, root, gitDirectory, common}` identity, with a serialization key equal to `common.toLowerCase()`.
+
+**Differences from TypeScript, all of which fail closed:**
+- **No redirected probe.** For each referenced directory, the parent chain is opened one component at a time without following reparse points (`DirectoryLease`). Only then is the final component probed, pinned and canonicalized with `FinalPath`. When a subst or 8.3 spelling is used, the canonical chain is verified and pinned as well. None of this lease's own opens traverse an unverified reparse point. Mapped network drives are refused by drive type before any open. The shared local-reparse residual for project listing is unchanged.
+- **Bounded pointer reads.** Pointer files are pinned with read-only sharing and read through the handle up to 16,385 bytes; a 16,385th byte rejects the file. TypeScript stats the file and then reads all of it, so growth after the stat is read without bound. Shipping TypeScript is unchanged, because this is neither a security nor a data-loss fix.
+- **Pins that let Git work.** Directory pins share writes but never deletes. Git's lock-file renames inside a pinned directory keep working, while the pinned directories themselves cannot be renamed, deleted or replaced until disposal. Pins defend against races, not against a hostile process running as the same user, which could still empty a pinned directory and turn it into a mount point.
+- **Strict revalidation.** Revalidation resolves again and requires ordinal equality with both the lease and the expected binding. A null or incomplete binding never matches.
+- **Approved differences, named in the corpus:**
+  - Local aliases are refused (the open decision above).
+  - A drive-relative pointer to another drive is refused, because TypeScript resolves it from per-drive process state.
+  - A `commondir` that names a file is refused, where TypeScript accepts the file as the "common directory".
+- **Ambiguous references are refused before any open.** These are references that Win32 would normalize to a different entry: trailing dots or spaces, stream suffixes, and reserved device names. TypeScript also fails them, but later and with raw filesystem errors.
+
+**Supporting changes.**
+- `DirectoryLease` gained a write-sharing variant and a typed `ReparsePointException`, which keeps the existing message.
+- `MetadataFile`, `PinnedMetadataFile` and `PathReference` are new Platform primitives.
+- Nothing in Store, DevelopmentChat, Program or the protocol calls any of this. The 25-method surface, handler admission and selectors are unchanged.
+
+**Evidence.**
+- `tests/p2/git-identity.test.ts` builds **44** disposable trees: hand-built pointers, junctions, and a real `git worktree add`. It pins the shipping resolver's outcomes in `git-identity-vectors.json`, bound to the SHA-256 of `repository.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_GIT_IDENTITY=1`.
+- `GitRepositoryLeaseTests` rebuilds every tree and must match each outcome or its named difference. Where Node raised a raw `ENOENT` or `EISDIR`, native must refuse. The class adds tests for:
+  - pins and Git lock-file renames;
+  - revalidation;
+  - release of partial pins after a failure;
+  - loop affinity;
+  - folders with no repository;
+  - the serialization key.
+- `MetadataFileTests` covers:
+  - probe kinds;
+  - exact-limit and over-limit reads, up to 64 MiB;
+  - pin refusal of append, rename and delete;
+  - a fail-closed open while a writer holds the file;
+  - refusal of directories and junctions;
+  - reference resolution checked against Node.
+
+  The file-symbolic-link case skips when Developer Mode is off.
+
+**Local validation.**
+- Release build: **zero warnings or errors**.
+- Focused conformance: **765/765**, covering the Git identity, folder, metadata-parser and admission classes.
+- Focused platform: **23/24**; the file-symbolic-link case skipped.
+- Full native suite: **6,873 passed, zero failed, two skipped (6,875 total)**. The skips are the expected local registry-policy test and the file-symbolic-link test.
+- `pnpm check`: clean, **543 tests across 76 files**.
+- Local package creation and package/expansion smoke: **PASS**. This is Electron/TypeScript proof only.
+- `git diff --check`: clean.
+
+The first full run failed two existing assertions that expected exactly `IOException` for a junction refusal. They now assert the typed `ReparsePointException`, and the log of that failed run is retained. Logs are in `foundry-evidence\p2.1-git-identity\run1` and `run2`. No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+
+**Residuals.** These belong to P2.2:
+- the per-common-repository serialization queue;
+- revalidation at handler time;
+- the read-only sharing of `RepositoryFolderLease`, which blocks renames into the project folder while it is held.
+
+Tests do not exercise mapped-drive or subst behavior, because no network share or session drive letter is touched. P2 remains incomplete, and every hold listed above is unchanged.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
