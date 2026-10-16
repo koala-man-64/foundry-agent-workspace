@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +16,10 @@ function scratch(): string {
 
 /** The 8.3 spelling Windows generated for an existing entry, or the long name when the volume has short names disabled. */
 function shortName(entry: string): string {
-  return execFileSync('cmd.exe', ['/d', '/c', `for %I in ("${entry}") do @echo %~sI`], { encoding: 'utf8', windowsHide: true, windowsVerbatimArguments: true }).trim();
+  // Verbatim, so cmd receives the quoted path and %~sI unescaped.
+  const result = spawnSync('cmd.exe', ['/d', '/c', `for %I in ("${entry}") do @echo %~sI`], { encoding: 'utf8', windowsHide: true, windowsVerbatimArguments: true });
+  if (result.status !== 0) throw new Error(`Short-name lookup failed: ${result.stderr}`);
+  return result.stdout.trim();
 }
 
 afterEach(() => {
