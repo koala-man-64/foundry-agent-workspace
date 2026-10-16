@@ -4,7 +4,7 @@ import { constants as fsConstants, promises as fs } from 'node:fs';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import { isNetworkOrDevicePath } from './network-path';
-import { gitEnvironment } from './git-environment';
+import { assertNoGitHooks, gitEnvironment } from './git-environment';
 import { promisify } from 'node:util';
 import type { DiffResult, FileContent, FileEntry, GitTask } from '../../protocol/src/index';
 
@@ -745,10 +745,14 @@ export class RepositoryService {
     assertGitAdmission(cwd, identity);
     const hooksPath = path.join(path.resolve(this.worktreeBase), EMPTY_HOOKS_DIRECTORY);
     const env = gitEnvironment();
+    let launched = false;
     try {
       const executable = await this.getGitExecutable(cwd);
       assertGitAdmission(cwd, identity);
+      // Refused before beforeMutation, so a refused first command leaves the caller's outcome at 'none'.
+      await assertNoGitHooks(hooksPath, 'before');
       options.beforeMutation?.();
+      launched = true;
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${hooksPath}`, '-c', 'core.fsmonitor=', ...(options.allowCredentialHelper ? [] : ['-c', 'credential.helper=']), ...args], {
         cwd,
         env,
@@ -766,6 +770,9 @@ export class RepositoryService {
       if (allowNonZero && typeof value.code === 'number') return { stdout: String(value.stdout ?? ''), truncated: false, exitCode: value.code };
       const detail = String(value.stderr ?? value.message ?? 'Git command failed.').trim();
       throw new Error(`Git command failed: ${detail.slice(0, 500)}`, { cause: error });
+    } finally {
+      // Fails the call even after Git reported success: a hook planted while it ran may have run.
+      if (launched) await assertNoGitHooks(hooksPath, 'after');
     }
   }
 

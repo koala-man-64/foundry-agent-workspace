@@ -126,6 +126,14 @@ Dual-landed fixes:
   - **Fixtures fixed too.** Hosted runners exposed three more fixture problems under an 8.3 `TEMP`. `folder-admission` saved raw scratch paths as projects, and the `p1/summary` and `workspace-pages` corpus fixtures canonicalized with JavaScript `realpathSync`, which keeps 8.3 spellings. They now use native realpath, as production `project.add` does. The older `canonicalPath(x) === x` checks for saved projects are unchanged.
   - **Still refused:** subst drives, junctions and different folders. Node reports a volume mount point as a directory, so a spelling through the same mount folder is accepted; a different mount folder, or the mounted volume's own drive letter, is refused.
   - **Native side.** C# has no approved-path comparison yet. When P2.2 ports one, it must avoid this defect and must not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one. It should compare 128-bit volume and file identities per component.
+- **Refusing a planted hook in the app-owned Git hooks folder** (H1, 16 October 2026).
+  - **The defect.** Every app-invoked Git command points `core.hooksPath` at `<worktree base>\.empty-git-hooks`, but nothing checked that the folder stayed empty. A file written there, for example by an approved command running with the user's privileges, was then run by later app Git operations without approval: `post-commit` despite `--no-verify`, `post-checkout`, `reference-transaction`.
+  - **Found and fixed natively first.** The P2.2 native review found it. The native half lands with P2.2.
+  - **The TypeScript fix.** Both Git runners (`repository.ts` and `git-operations.ts`) now require the folder to be absent or a real, empty directory, through `assertNoGitHooks`:
+    - **Before every launch:** the check is refused before any mutation. For worktree creation the outcome stays "none".
+    - **After every exit:** the call fails even if Git succeeded, and callers keep their existing conservative outcome classification.
+    - A link at that path is refused, even one that points to an empty folder.
+  - **Tests.** Regression tests plant real hooks and prove that neither the commit nor the worktree creation runs them, and that a hook planted while Git runs fails the call.
 - **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
   - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
   - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
