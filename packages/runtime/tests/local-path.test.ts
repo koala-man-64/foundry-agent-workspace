@@ -57,6 +57,19 @@ describe.runIf(process.platform === 'win32')('resolveLocalPath approved spelling
     fs.rmSync(link);
   });
 
+  it('admits a candidate alias that reaches the approved folder spelled with a short name', context => {
+    const base = scratch();
+    const target = path.join(base, 'approved target folder');
+    const alias = path.join(base, 'candidate alias name');
+    fs.mkdirSync(target);
+    fs.symlinkSync(target, alias, 'junction');
+    const short = shortName(target);
+    if (short.toLowerCase() === target.toLowerCase()) context.skip('8.3 short names are disabled on this volume.');
+    expect(resolveLocalPath(alias, short)).toBe(target);
+    expect(resolveLocalPath(alias, target)).toBe(target);
+    fs.rmSync(alias);
+  });
+
   it('refuses an approved short spelling of a different real folder', context => {
     const base = scratch();
     const approved = path.join(base, 'approved project folder');

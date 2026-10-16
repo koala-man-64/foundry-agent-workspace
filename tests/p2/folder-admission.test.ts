@@ -11,6 +11,10 @@ import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { execFileSync } from 'node:child_process';
 
+// Saved project paths are canonical (project.add stores the real path), so fixtures use canonical scratch folders even
+// where TEMP is an 8.3 spelling, as on hosted Windows runners.
+const canonicalScratch = (prefix: string): string => fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), prefix)));
+
 function fixtureGit(root: string, ...args: string[]): string {
   return execFileSync('git', ['-C', root, '-c', `core.hooksPath=${path.join(root, 'no-fixture-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', ...args], { windowsHide: true, encoding: 'utf8' }).trim();
 }
@@ -24,7 +28,7 @@ function gitRoots(scratch: string): { root: string; other: string; alias: string
 const repositoryState = (root: string) => JSON.stringify([fixtureGit(root, 'for-each-ref', '--format=%(refname) %(objectname)'), fixtureGit(root, 'worktree', 'list', '--porcelain'), fixtureGit(root, 'status', '--porcelain=v1')]);
 
 it('retains admission for both queued worktree requests and refuses alias replacement before Git mutation', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-queued-identity-'));
+  const scratch = canonicalScratch('foundry-p2-queued-identity-');
   const { root, other, alias } = gitRoots(scratch);
   const repositories = new RepositoryService(path.join(scratch, 'wt'));
   const internal = repositories as unknown as { prepareWorktreeBase(): Promise<string> };
@@ -45,7 +49,7 @@ it('retains admission for both queued worktree requests and refuses alias replac
 });
 
 it('refuses alias rebinding during final Git executable lookup as a known pre-mutation failure', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-final-boundary-'));
+  const scratch = canonicalScratch('foundry-p2-final-boundary-');
   const { root, other, alias } = gitRoots(scratch);
   const repositories = new RepositoryService(path.join(scratch, 'wt'));
   const internal = repositories as unknown as { prepareWorktreeBase(): Promise<string>; getGitExecutable(root: string): Promise<string> };
@@ -65,7 +69,7 @@ it('refuses alias rebinding during final Git executable lookup as a known pre-mu
 });
 
 it('retains an unknown outcome when checkout fails after worktree add has actually run', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-post-mutation-'));
+  const scratch = canonicalScratch('foundry-p2-post-mutation-');
   const { root, alias } = gitRoots(scratch);
   const repositories = new RepositoryService(path.join(scratch, 'wt'));
   const internal = repositories as unknown as { git(root: string, args: string[], ...options: unknown[]): Promise<unknown> };
@@ -80,7 +84,7 @@ it('retains an unknown outcome when checkout fails after worktree add has actual
 });
 
 it.each(['task.create', 'task.start'] as const)('carries trusted %s admission through repository invocation instead of admitting replacement metadata afresh', async method => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-caller-identity-'));
+  const scratch = canonicalScratch('foundry-p2-caller-identity-');
   const { root, other, alias } = gitRoots(scratch);
   const store = new Store(path.join(scratch, 'workspace.db'));
   const repositories = new RepositoryService(path.join(scratch, 'wt'));
@@ -106,7 +110,7 @@ it.each(['task.create', 'task.start'] as const)('carries trusted %s admission th
 });
 
 it.each(['chat', 'coordinated'] as const)('refuses same-common Git-directory rebinding on %s retry without ledger or execution effects', async mode => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-gitdir-retry-'));
+  const scratch = canonicalScratch('foundry-p2-gitdir-retry-');
   const root = path.join(scratch, 'root'); const first = path.join(scratch, 'first'); const second = path.join(scratch, 'second'); const common = path.join(scratch, 'common');
   for (const folder of [root, first, second, common]) fs.mkdirSync(folder);
   for (const folder of [first, second]) fs.writeFileSync(path.join(folder, 'commondir'), common);
@@ -132,7 +136,7 @@ it.each(['chat', 'coordinated'] as const)('refuses same-common Git-directory reb
 });
 
 it('rechecks metadata after executable resolution before the first Git command', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-await-'));
+  const scratch = canonicalScratch('foundry-p2-git-await-');
   const root = path.join(scratch, 'root'); const metadata = path.join(scratch, 'metadata'); const other = path.join(scratch, 'other');
   fs.mkdirSync(root); fs.mkdirSync(metadata); fs.mkdirSync(other);
   fs.writeFileSync(path.join(root, '.git'), `gitdir: ${metadata}\n`);
@@ -148,7 +152,7 @@ it('rechecks metadata after executable resolution before the first Git command',
 });
 
 it('rejects a replaced approved alias after project classification without saving it', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-alias-await-'));
+  const scratch = canonicalScratch('foundry-p2-alias-await-');
   const root = path.join(scratch, 'root'); const other = path.join(scratch, 'other'); const alias = path.join(scratch, 'alias');
   fs.mkdirSync(root); fs.mkdirSync(other); fs.symlinkSync(root, alias, 'junction');
   const store = new Store(path.join(scratch, 'workspace.db'));
@@ -163,7 +167,7 @@ it('rejects a replaced approved alias after project classification without savin
 });
 
 it.each(['gitdir', 'commondir'] as const)('rejects network/device %s before classification can launch Git or mutate admission', async pointer => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-preflight-'));
+  const scratch = canonicalScratch('foundry-p2-git-preflight-');
   const root = path.join(scratch, 'root'); const metadata = path.join(scratch, 'metadata');
   fs.mkdirSync(root); fs.mkdirSync(metadata);
   const store = new Store(path.join(scratch, 'workspace.db'));
@@ -192,7 +196,7 @@ it.each(['gitdir', 'commondir'] as const)('rejects network/device %s before clas
 });
 
 it.each(['project.add', 'task.start'] as const)('rejects local metadata rebinding across %s classification without persisted changes', async method => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-classification-rebind-'));
+  const scratch = canonicalScratch('foundry-p2-classification-rebind-');
   const root = path.join(scratch, 'root'); const metadata = path.join(scratch, 'metadata'); const other = path.join(scratch, 'other');
   fs.mkdirSync(root); fs.mkdirSync(metadata); fs.mkdirSync(other);
   fs.writeFileSync(path.join(root, '.git'), `gitdir: ${metadata}\n`);
@@ -222,7 +226,7 @@ it('rejects raw network/device namespaces before any ancestor probe', () => {
 });
 
 it('checks network alias metadata before missing descendants and canonicalization', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-folder-'));
+  const scratch = canonicalScratch('foundry-p2-folder-');
   const target = path.join(scratch, 'target'); const alias = path.join(scratch, 'alias');
   fs.mkdirSync(target); fs.symlinkSync(target, alias, 'junction');
   const probes = vi.spyOn(fs, 'lstatSync'); const canonical = vi.spyOn(fs.realpathSync, 'native');
@@ -238,7 +242,7 @@ it('checks network alias metadata before missing descendants and canonicalizatio
 });
 
 it('denies network alias projects before task/worktree admission or file probes', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-folder-service-'));
+  const scratch = canonicalScratch('foundry-p2-folder-service-');
   const target = path.join(scratch, 'target'); const alias = path.join(scratch, 'alias');
   fs.mkdirSync(target); fs.symlinkSync(target, alias, 'junction');
   const store = new Store(path.join(scratch, 'workspace.db'));
@@ -267,7 +271,7 @@ it('denies network alias projects before task/worktree admission or file probes'
 });
 
 it('retains normal local folder and file-path classification', () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-folder-local-'));
+  const scratch = canonicalScratch('foundry-p2-folder-local-');
   try {
     const folder = path.join(scratch, 'space 😀'); fs.mkdirSync(folder);
     expect(() => assertNoReparseDirectories(folder)).not.toThrow();
@@ -278,7 +282,7 @@ it('retains normal local folder and file-path classification', () => {
 });
 
 it('preserves a local alias at admission and stores its canonical project identity', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-alias-positive-'));
+  const scratch = canonicalScratch('foundry-p2-alias-positive-');
   const target = path.join(scratch, 'space 😀'); const alias = path.join(scratch, 'alias');
   fs.mkdirSync(target); fs.symlinkSync(target, alias, 'junction');
   const store = new Store(path.join(scratch, 'workspace.db'));
@@ -294,7 +298,7 @@ it('preserves a local alias at admission and stores its canonical project identi
 });
 
 it('rejects a failed-start retry after root replacement without ledger or Git activity', async () => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-alias-retry-'));
+  const scratch = canonicalScratch('foundry-p2-alias-retry-');
   const approved = path.join(scratch, 'approved'); const original = path.join(scratch, 'original'); const other = path.join(scratch, 'other');
   fs.mkdirSync(approved); fs.mkdirSync(other);
   const store = new Store(path.join(scratch, 'workspace.db'));
@@ -316,7 +320,7 @@ it('rejects a failed-start retry after root replacement without ledger or Git ac
 });
 
 it.each(['chat', 'coordinated'] as const)('rejects %s retry metadata rebinding before pending, orchestration or provider work', async mode => {
-  const scratch = fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-retry-'));
+  const scratch = canonicalScratch('foundry-p2-git-retry-');
   const root = path.join(scratch, 'root'); const metadata = path.join(scratch, 'metadata'); const other = path.join(scratch, 'other');
   fs.mkdirSync(root); fs.mkdirSync(metadata); fs.mkdirSync(other);
   fs.writeFileSync(path.join(root, '.git'), `gitdir: ${metadata}\n`);

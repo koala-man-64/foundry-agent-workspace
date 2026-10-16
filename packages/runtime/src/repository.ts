@@ -46,8 +46,8 @@ export function resolveLocalPath(candidate: string, approvedPath?: string): stri
     const canonical = fsSync.realpathSync.native(absolute);
     if (isNetworkOrDevicePath(canonical)) throw new Error('Projects on network shares are not supported.');
     const key = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-    // Any followed link means a different location; otherwise an 8.3 or case spelling of the approved folder is the same one.
-    if (approvedPath && key(canonical) !== key(approvedPath) && (visited.size > 0 || !sameFolderSpelling(approvedPath, canonical))) {
+    // An 8.3 or case spelling of the approved folder is the same folder; a replaced (now linked) or different folder is not.
+    if (approvedPath && key(canonical) !== key(approvedPath) && !sameFolderSpelling(approvedPath, canonical)) {
       throw new Error('The saved folder now resolves to a different location.');
     }
     return canonical;
