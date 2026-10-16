@@ -221,11 +221,14 @@ public sealed class GitRunnerTests
             service.Git.Launching = _ => launches++;
             using var admission = await service.RequireRepository(fixture.Local("repo"));
             fixture.Write("wt/.empty-git-hooks/post-commit", hook);
-            const string Refused = "Git command failed: " + GitRunner.HooksNotEmpty;
+            var refused = "Git command failed: " + service.Git.HooksNotEmptyMessage;
+            Assert.Equal($"Git command failed: The app-owned Git hooks folder is not empty; refusing to run Git. Inspect and empty {hooks} to continue.", refused);
+            var changed = $"The app-owned Git hooks folder changed while Git ran; a hook may have run. Inspect and empty {hooks}.";
+            Assert.Equal(changed, service.Git.HooksChangedMessage);
             async Task Refuses()
             {
                 var before = launches;
-                Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["commit", "--allow-empty", "--no-verify", "-qm", "refused"]))).Message);
+                Assert.Equal(refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["commit", "--allow-empty", "--no-verify", "-qm", "refused"]))).Message);
                 Assert.Equal(before, launches);
             }
             await Refuses();
@@ -239,15 +242,23 @@ public sealed class GitRunnerTests
             Directory.Delete(hooks); File.WriteAllText(hooks, "");
             await Refuses();
             File.Delete(hooks);
-            // A missing folder holds no hook; one that appears and fills during the run fails it after exit.
+            // A missing folder holds no hook; one that appears and fills during the run fails it after exit, without the
+            // "Git command failed" prefix and whatever Git reported, as TypeScript's finally does.
             await service.Run(admission, ["rev-parse", "HEAD"]);
             service.Git.Launching = _ => { launches++; fixture.Write("wt/.empty-git-hooks/post-commit", hook); };
-            Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
+            Assert.Equal(changed, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
             service.Git.Launching = _ => launches++;
             await Refuses();
             Directory.CreateDirectory(hooks); File.Delete(Path.Join(hooks, "post-commit"));
             service.Git.Launching = _ => { launches++; File.WriteAllText(Path.Join(hooks, "reference-transaction"), hook); };
-            Assert.Equal(Refused, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
+            var superseded = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "--verify", "missing^{commit}"]));
+            Assert.Equal(changed, superseded.Message);
+            Assert.Equal("Git command failed: fatal: Needed a single revision", superseded.InnerException!.Message);
+            // A file that appears in place of a missing folder during the run also fails it.
+            Directory.Delete(hooks, true);
+            service.Git.Launching = _ => { launches++; File.WriteAllText(hooks, ""); };
+            Assert.Equal(changed, (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]))).Message);
+            File.Delete(hooks); Directory.CreateDirectory(hooks);
             Directory.Delete(hooks, true);
             return 0;
         });

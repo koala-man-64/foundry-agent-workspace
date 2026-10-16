@@ -122,28 +122,52 @@ internal sealed class GitRunner
     /// message), cut to 500 UTF-16 units. A non-zero exit returns its code only when <paramref name="allowNonZero"/> is
     /// set; an output overflow returns the first 256 KiB of standard output only when <paramref name="permitTruncation"/>
     /// is set. A running process is not cancelled by shutdown; it ends within its timeout, as TypeScript's drain waits.
+    /// Once Git has started, a hooks folder that changed while it ran fails the call whatever Git reported, as
+    /// TypeScript's finally does: a hook may have run.
     /// </summary>
     internal async Task<GitOutput> Run(RepositoryAdmission admission, IReadOnlyList<string> arguments,
         bool permitTruncation = false, bool allowNonZero = false, GitOptions? options = null)
     {
         loop.AssertCurrent();
         options ??= new();
-        var workingDirectory = admission.Path;
         admission.Revalidate();
-        Completed? completed = null;
-        DirectoryLease? hooks = null;
+        var launch = new Launch();
+        try
+        {
+            GitOutput output;
+            try { output = await RunOnce(admission, arguments, permitTruncation, allowNonZero, options, launch); }
+            catch (Exception error) when (launch.Started)
+            {
+                if (HooksChanged(launch)) throw new GitCommandException(HooksChangedMessage, error);
+                throw;
+            }
+            if (launch.Started && HooksChanged(launch)) throw new GitCommandException(HooksChangedMessage);
+            return output;
+        }
+        finally { launch.Hooks?.Dispose(); }
+    }
+
+    private sealed class Launch
+    {
+        internal bool Started;
+        internal DirectoryLease? Hooks;
+    }
+
+    private async Task<GitOutput> RunOnce(RepositoryAdmission admission, IReadOnlyList<string> arguments, bool permitTruncation, bool allowNonZero, GitOptions options, Launch launch)
+    {
+        var workingDirectory = admission.Path;
         try
         {
             var application = Executable(workingDirectory);
-            hooks = GuardHooks();
             admission.Revalidate();
+            // Refused before BeforeMutation, so a refused first command leaves the caller's outcome at "none".
+            launch.Hooks = GuardHooks();
             options.BeforeMutation?.Invoke();
+            launch.Started = true;
             string[] prefix = ["--literal-pathspecs", "--no-pager", "-c", $"core.hooksPath={HooksPath}", "-c", "core.fsmonitor="];
             var all = options.AllowCredentialHelper ? [.. prefix, .. arguments] : (string[])[.. prefix, "-c", "credential.helper=", .. arguments];
-            completed = await Execute(application, all, workingDirectory, options.Timeout ?? DefaultTimeout);
+            var completed = await Execute(application, all, workingDirectory, options.Timeout ?? DefaultTimeout);
             admission.Revalidate();
-            // An entry that appeared during the run may have run as a hook: the run is not trusted.
-            if (hooks is null) hooks = GuardHooks(); else RequireNoHooks();
             if (completed.Overflowed)
             {
                 if (permitTruncation) return new(completed.Stdout, true, 0);
@@ -162,47 +186,62 @@ internal sealed class GitRunner
             var detail = JsJson.Trim(error is GitFailure failure ? failure.Stderr : error.Message);
             throw new GitCommandException("Git command failed: " + (detail.Length > 500 ? detail[..500] : detail), error);
         }
-        finally { hooks?.Dispose(); }
     }
 
-    internal const string HooksNotEmpty = "The app-owned Git hooks folder must be empty.";
+    internal string HooksNotEmptyMessage => $"The app-owned Git hooks folder is not empty; refusing to run Git. Inspect and empty {HooksPath} to continue.";
+    internal string HooksChangedMessage => $"The app-owned Git hooks folder changed while Git ran; a hook may have run. Inspect and empty {HooksPath}.";
 
     /// <summary>
     /// Hooks stay disabled only while the hooks folder holds nothing: `--no-verify` does not cover post-commit,
     /// post-checkout or reference-transaction. Before launch the folder must be missing, or a directory whose whole chain
     /// is pinned free of reparse points (so no component can be renamed or deleted while held) and that has no entries;
-    /// the pin is held until exit, when the folder is checked again. The pin shares writes, so it cannot forbid new entries
-    /// or attribute changes: a same-user process can still add an entry, or turn the folder into a link in place, during a
-    /// run. That run then fails (the check after exit sees the entries), and the next launch refuses before anything
-    /// starts, so one planted file never becomes lasting execution.
+    /// the pin is held until exit. The pin shares writes, so it cannot forbid new entries or attribute changes: a
+    /// same-user process can still add an entry, or turn the folder into a link in place, during a run. The check after
+    /// exit then fails that run, and the next launch refuses before anything starts, so one planted file never becomes
+    /// lasting execution. A hook that removes itself before exit is not detected, as in TypeScript.
     /// </summary>
     private DirectoryLease? GuardHooks()
     {
         var path = HooksPath;
-        if (!DataClassifier.IsLocal(path) || RepositoryPaths.HasAmbiguousSegment(path)) throw new InvalidOperationException(HooksNotEmpty);
-        MetadataEntryKind kind;
-        try { kind = MetadataFile.Probe(path); }
-        catch (IOException error) { throw new InvalidOperationException(HooksNotEmpty, error); }
-        if (kind == MetadataEntryKind.Missing) return null;
-        if (kind != MetadataEntryKind.Directory) throw new InvalidOperationException(HooksNotEmpty);
-        DirectoryLease lease;
-        try { lease = DirectoryLease.AcquireExistingSharingWrites(path); }
-        catch (IOException error) { throw new InvalidOperationException(HooksNotEmpty, error); }
-        try { RequireNoHooks(); return lease; }
-        catch { lease.Dispose(); throw; }
-    }
-
-    private void RequireNoHooks()
-    {
-        bool any;
+        if (!DataClassifier.IsLocal(path) || RepositoryPaths.HasAmbiguousSegment(path)) throw new InvalidOperationException(HooksNotEmptyMessage);
         try
         {
-            using var entries = new System.IO.Enumeration.FileSystemEnumerable<bool>(@"\\?\" + HooksPath, (ref System.IO.Enumeration.FileSystemEntry _) => true,
-                new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false, RecurseSubdirectories = false, ReturnSpecialDirectories = false }).GetEnumerator();
-            any = entries.MoveNext();
+            var kind = MetadataFile.Probe(path);
+            if (kind == MetadataEntryKind.Missing) return null;
+            if (kind != MetadataEntryKind.Directory) throw new InvalidOperationException(HooksNotEmptyMessage);
+            var lease = DirectoryLease.AcquireExistingSharingWrites(path);
+            try
+            {
+                if (HasEntries()) throw new InvalidOperationException(HooksNotEmptyMessage);
+                return lease;
+            }
+            catch { lease.Dispose(); throw; }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new InvalidOperationException(HooksNotEmpty, error); }
-        if (any) throw new InvalidOperationException(HooksNotEmpty);
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new InvalidOperationException(HooksNotEmptyMessage, error); }
+    }
+
+    /// <summary>The check after exit: the folder is still missing, or still a directory (not a link) with no entries.
+    /// Anything that cannot be established counts as changed.</summary>
+    private bool HooksChanged(Launch launch)
+    {
+        try
+        {
+            var kind = MetadataFile.Probe(HooksPath);
+            if (kind == MetadataEntryKind.Missing) return false;
+            if (kind != MetadataEntryKind.Directory) return true;
+            if (launch.Hooks is not null) return HasEntries();
+            // Created while Git ran: pinned free of reparse points while it is listed.
+            using var created = DirectoryLease.AcquireExistingSharingWrites(HooksPath);
+            return HasEntries();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return true; }
+    }
+
+    private bool HasEntries()
+    {
+        using var entries = new System.IO.Enumeration.FileSystemEnumerable<bool>(@"\\?\" + HooksPath, (ref System.IO.Enumeration.FileSystemEntry _) => true,
+            new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false, RecurseSubdirectories = false, ReturnSpecialDirectories = false }).GetEnumerator();
+        return entries.MoveNext();
     }
 
     private sealed class GitFailure(string stderr) : Exception(stderr) { internal string Stderr { get; } = stderr; }

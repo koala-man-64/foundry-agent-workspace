@@ -260,9 +260,9 @@ public sealed partial class TaskPublicationTests
                 File.WriteAllText(Path.Combine(worktree, "README.md"), "changed\n");
                 var launches = 0;
                 chat.Repositories.Git.Launching = _ => launches++;
-                const string Refused = "Git command failed: " + GitRunner.HooksNotEmpty;
-                Assert.Equal(Refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Change" }))).Message);
-                Assert.Equal(Refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.create", CreateParameters(fixture)))).Message);
+                var refused = "Git command failed: " + chat.Repositories.Git.HooksNotEmptyMessage;
+                Assert.Equal(refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Change" }))).Message);
+                Assert.Equal(refused, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.create", CreateParameters(fixture)))).Message);
                 Assert.Equal(0, launches);
                 Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind='git.commit' OR state<>'complete'"));
                 Assert.Single(store.Rows("SELECT id FROM tasks"));
