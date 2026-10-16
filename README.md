@@ -87,7 +87,7 @@ Dependencies and the lockfile are pinned. `better-sqlite3` 13 ships a Node-API W
 
 ## Download a portable Windows build
 
-The [Portable Windows build workflow](.github/workflows/portable-windows.yml) runs on every push to `main`, including documentation changes, and supports manual **Run workflow** runs. It uses Windows x64, the pinned pnpm version and lockfile, offline checks and Electron user-path tests, then builds and smoke-tests the packaged runtime and portable launcher. No provider credentials or paid probes are needed.
+The [Portable Windows build workflow](.github/workflows/portable-windows.yml) runs on every push to `main`, including documentation changes, and supports manual **Run workflow** runs. It also validates every pull request with the same steps but uploads no artifact, and a newer push to the pull request cancels the older run. It uses Windows x64, the pinned pnpm version and lockfile, offline checks and Electron user-path tests, then builds and smoke-tests the packaged runtime and portable launcher. No provider credentials or paid probes are needed.
 
 Sign in to GitHub, open the repository's **Actions** tab, select a successful **Portable Windows build** run, and download its `foundry-portable-windows-x64-<commit>` artifact. Extract the ZIP and run `Foundry-Agent-Workspace-Portable-<version>-x64.exe`. The artifact also contains an SHA-256 checksum and is retained for 30 days. The target machine does not need Node.js, pnpm, or a source build; Git is still required for repository tasks.
 
