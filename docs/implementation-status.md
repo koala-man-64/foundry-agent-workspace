@@ -665,9 +665,21 @@ New coverage:
 
   It pins the returned projects, refusals, saved rows (path keys included) and events in `project-admission-vectors.json`, with generated identities and stamps normalized in order of appearance. It is bound to the SHA-256 of `service.ts`, `repository.ts`, `store.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_PROJECT_ADMISSION=1`.
 - `ProjectAdmissionTests` replays every case through `DevelopmentChat`. It must match each outcome or its named difference, and every committed notification must be published after its commit, in order. The class also covers:
-  - folder identity: case, separators, `..`, 8.3 where the volume generates short names, aliases in either chain, missing folders, network and device spellings, and case-sensitive directories where `fsutil` can enable them;
+  - folder identity: case, separators, `..`, aliases in either chain, missing folders, and network and device spellings;
+  - two tests that report a skip when the machine cannot exercise them: a short (8.3) spelling, where the volume generates short names, and case-sensitive directories, where `fsutil` can enable them. Both ran on the development machine;
   - prefix identities from the drive root;
   - a common directory redirected while classification runs Git, which must save nothing and notify nothing.
+
+**More differences, both fail-closed:**
+- A `subst` drive spelling of a folder is refused. Its chain has a different root and depth from the real path, while TypeScript's lowercased comparison admits it. This sits with the approved alias refusal and the open mapped and removable drive decision.
+- On a fixed volume that cannot report `FileIdInfo` (FAT or exFAT), the identity check fails and the project is refused.
+
+**Independent review.** The same reviewer reviewed the N1 fix and slice c at `586e929` and returned **GO for P2.2a, P2.2b and P2.2c together**. It ran the focused suites (149 passed) and the stdio NUL test on its own export. It probed `project.add` through `DevelopmentChat` with an 8.3 spelling, a case variant, and the short name of a real `dotted.` folder, with and without a child path.
+
+Its remaining notes:
+- **C1 and C3.** The two differences above, now documented.
+- **C2.** The optional identity branches now report a skip instead of passing silently.
+- **C4.** Every argument failure in a Git/files handler becomes a refusal, as TypeScript's entry handles every handler error. The cost is that a programming error there shows as a refusal, not a runtime failure.
 
 ### Git-backed task creation (P2.2d)
 

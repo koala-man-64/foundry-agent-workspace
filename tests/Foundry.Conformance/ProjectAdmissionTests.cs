@@ -106,18 +106,27 @@ public sealed partial class ProjectAdmissionTests
         Assert.False(RepositoryPaths.SameFolder(fixture.Local("missing"), folder));
         Assert.False(RepositoryPaths.SameFolder(@"\\server\share\Folder", folder));
         Assert.False(RepositoryPaths.SameFolder(folder, @"\\?\" + folder));
-        // A short (8.3) spelling of the same folder matches, where the volume generates one.
+    }
+
+    [Fact]
+    public void AShortSpellingOfOneFolderMatchesItsLongName()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-folder-short-name-");
         var longName = Directory.CreateDirectory(fixture.Local("a folder with a long name")).FullName;
         var shortName = ShortPath(longName);
-        if (shortName is not null && !string.Equals(shortName, longName, StringComparison.OrdinalIgnoreCase)) Assert.True(RepositoryPaths.SameFolder(shortName, longName));
-        // Two folders that differ only in case are different objects in a case-sensitive directory.
+        if (shortName is null || string.Equals(shortName, longName, StringComparison.OrdinalIgnoreCase)) Assert.Skip("This volume does not generate short (8.3) names.");
+        Assert.True(RepositoryPaths.SameFolder(shortName, longName));
+    }
+
+    [Fact]
+    public async Task FoldersThatDifferOnlyInCaseStayDistinctInACaseSensitiveDirectory()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-folder-case-");
         var sensitive = Directory.CreateDirectory(fixture.Local("sensitive")).FullName;
-        if (await CaseSensitive(sensitive))
-        {
-            Directory.CreateDirectory(Path.Combine(sensitive, "Foo")); Directory.CreateDirectory(Path.Combine(sensitive, "foo"));
-            Assert.False(RepositoryPaths.SameFolder(Path.Combine(sensitive, "foo"), Path.Combine(sensitive, "Foo")));
-            Assert.True(RepositoryPaths.SameFolder(Path.Combine(sensitive, "Foo"), Path.Combine(sensitive, "Foo")));
-        }
+        if (!await CaseSensitive(sensitive)) Assert.Skip("fsutil cannot enable per-directory case sensitivity here.");
+        Directory.CreateDirectory(Path.Combine(sensitive, "Foo")); Directory.CreateDirectory(Path.Combine(sensitive, "foo"));
+        Assert.False(RepositoryPaths.SameFolder(Path.Combine(sensitive, "foo"), Path.Combine(sensitive, "Foo")));
+        Assert.True(RepositoryPaths.SameFolder(Path.Combine(sensitive, "Foo"), Path.Combine(sensitive, "Foo")));
     }
 
     [Fact]
