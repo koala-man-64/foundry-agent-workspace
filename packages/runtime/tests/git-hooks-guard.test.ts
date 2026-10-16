@@ -103,6 +103,26 @@ describe('app-owned Git hooks folder', () => {
     await expect(service.git(root, ['rev-parse', 'HEAD'], false, false, { beforeMutation: planting })).rejects.toThrow(CHANGED);
   });
 
+  it('points pre-approval worktree-state Git below a regular file, where no hook can exist', async () => {
+    const source = await fs.readFile(new URL('../src/command-runner.ts', import.meta.url), 'utf8');
+    // An empty core.hooksPath resolves hooks at the drive root, which `git status` (post-index-change) would run.
+    expect(source).not.toMatch(/'core\.hooksPath='/);
+    expect(source.match(/`core\.hooksPath=\$\{git\}`/g)).toHaveLength(2);
+    // The Git behaviour that relies on: a directory hook runs on status, a hooks path below a file runs nothing.
+    const { base, root, marker } = await fixture();
+    const executable = (await execFile('where.exe', ['git'], { windowsHide: true })).stdout.split(/\r?\n/)[0]!.trim();
+    await fs.writeFile(path.join(root, 'README.md'), 'touched\n');
+    const directory = path.join(base, 'control-hooks');
+    await plant(directory, 'post-index-change', marker);
+    await git(root, ['-c', `core.hooksPath=${directory}`, 'status', '--porcelain']);
+    expect(fsSync.existsSync(marker)).toBe(true);
+    await fs.rm(marker);
+    await fs.writeFile(path.join(root, 'README.md'), 'touched again\n');
+    expect(await git(root, ['-c', `core.hooksPath=${executable}`, 'rev-parse', '--git-path', 'hooks/post-index-change'])).toBe(`${executable}/post-index-change`);
+    await git(root, ['-c', `core.hooksPath=${executable}`, 'status', '--porcelain']);
+    expect(fsSync.existsSync(marker)).toBe(false);
+  });
+
   it('refuses a child worktree before Git runs a planted post-checkout hook', async () => {
     const { root, worktreeBase, marker } = await fixture();
     await fs.mkdir(worktreeBase, { recursive: true });
