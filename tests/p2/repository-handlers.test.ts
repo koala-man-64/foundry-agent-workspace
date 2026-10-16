@@ -34,6 +34,8 @@ const changed: Step[] = [...committed(), file('repo/README.md', `hello\nchanged 
 const cases: Case[] = [
   { name: 'folder task listing, reading, redaction and Git refusal', tree: plain, tasks: [folder(1, '{scratch}\\plain')],
     calls: [list(1), list(1, 'sub'), list(1, '..'), list(1, 'missing'), read(1, 'a.txt'), read(1, 'notes.txt'), read(1, 'secret.txt'), read(1, '.env'), read(1, 'missing.txt'), diff(1)] },
+  { name: 'NUL in a requested path', tree: plain, tasks: [folder(15, '{scratch}\\plain')],
+    calls: [list(15, 'sub\u0000x'), read(15, 'sub\u0000x/b.txt'), read(15, 'notes.txt\u0000zzz'), read(15, 'id_rsa\u0000'), list(15, 'sub')] },
   { name: 'folder task saved with different case', tree: plain, tasks: [folder(2, '{scratch}\\PLAIN')], calls: [list(2), read(2, 'A.TXT')] },
   { name: 'folder task saved with a trailing separator', tree: plain, tasks: [folder(3, '{scratch}\\plain\\')], calls: [list(3), read(3, 'a.txt')] },
   { name: 'folder task whose folder disappeared', tree: [{ dir: 'present' }], tasks: [folder(4, '{scratch}\\plain')], calls: [list(4), read(4, 'a.txt')] },

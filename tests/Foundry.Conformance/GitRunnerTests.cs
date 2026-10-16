@@ -299,6 +299,8 @@ public sealed class GitRunnerTests
             File.WriteAllText(fixture.Local("dir/file.txt"), "writers are shared");
         }
         Assert.Throws<IOException>(() => ExistingEntry.TryOpen(@"\\server\share\file.txt"));
+        // NUL is refused before any open; Win32 would otherwise truncate the name and open "file.txt".
+        Assert.Throws<IOException>(() => ExistingEntry.TryOpen(fixture.Local("dir/file.txt") + "\0zzz"));
     }
 
     private static string[] Split(string commandLine)

@@ -263,6 +263,53 @@ public sealed class DevelopmentChatProcessTests
     }
 
     [Fact]
+    public async Task NulInRendererPathsIsRefusedWhileTheRuntimeKeepsServing()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-stdio-nul-");
+        fixture.Write("plain/notes.txt", "notes\n"); fixture.Write("plain/sub/b.txt", "b\n");
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        const string Folder = "21212121-0000-4000-8000-000000000011";
+        await using (var loop = new RuntimeLoop())
+        {
+            await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                store.SaveTask(new()
+                {
+                    ["id"] = Folder, ["title"] = "Seeded", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = "2026-01-02T03:04:05.678Z",
+                    ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000, ["usedTokens"] = 0, ["mode"] = "chat", ["workspaceKind"] = "folder", ["projectPath"] = fixture.Local("plain"),
+                });
+                return Task.FromResult(0);
+            });
+        }
+        var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = data; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        foreach (var (name, value) in fixture.Isolation) info.Environment[name] = value;
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var events = new List<Dictionary<string, object?>>();
+            // Each request is answered (so a crash would surface here), then the runtime must still serve a valid request.
+            string[] ids = ["middle", "final", "list", "project"];
+            await Send(process, Frame("middle", "files.read", new { taskId = Folder, path = "sub\0x/b.txt" })
+                + Frame("final", "files.read", new { taskId = Folder, path = "notes.txt\0zzz" })
+                + Frame("list", "files.list", new { taskId = Folder, path = "sub\0x" })
+                + Frame("project", "project.add", new { path = fixture.Local("pla\0in") }));
+            var replies = await Replies(process, ids, events);
+            foreach (var id in ids) Assert.True(replies[id].ContainsKey("error"), $"{id} was not refused.");
+            await Send(process, Frame("after", "files.read", new { taskId = Folder, path = "notes.txt" }));
+            Assert.Equal("notes\n", ((Dictionary<string, object?>)(await Reply(process, "after", events))["result"]!)["content"]);
+            Assert.Empty(events);
+            await Exit(process, error);
+        }
+        finally { await KillIfNeeded(process); }
+    }
+
+    [Fact]
     public async Task GitAndFileHandlersAnswerOverStdioWithRedactedContentAndRefusals()
     {
         const string Secret = "sk-abcdefghijklmnopqrstuvwx";

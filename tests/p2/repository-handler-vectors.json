@@ -194,6 +194,108 @@
       ]
     },
     {
+      "name": "NUL in a requested path",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000015",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\plain"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub\u0000x"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub\u0000x/b.txt"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "notes.txt\u0000zzz"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "id_rsa\u0000"
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "result": [
+            {
+              "path": "sub/b.txt",
+              "kind": "file"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "folder task saved with different case",
       "tree": [
         {

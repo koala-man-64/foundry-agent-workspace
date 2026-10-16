@@ -32,6 +32,7 @@ const cases: Case[] = [
   { name: 'a root-relative path resolves on the current drive', tree: committed(), paths: ['{scratch-nodrive}\\repo'] },
   { name: 'relative and drive-relative paths are refused', tree: committed(), paths: ['repo', 'C:repo'] },
   { name: 'network and device paths are refused before any probe', tree: [], paths: ['\\\\server\\share\\repo', '//server/share/repo', '\\\\?\\C:\\repo', '\\\\.\\C:\\repo', '\\??\\C:\\repo'] },
+  { name: 'a path containing NUL', tree: committed(), paths: ['{scratch}\\re\u0000po', '{scratch}\\repo\u0000', '{scratch}\\repo'] },
   { name: 'a file is not a folder', tree: plain, paths: ['{scratch}\\plain\\file.txt'] },
   { name: 'a missing folder', tree: [{ dir: 'present' }], paths: ['{scratch}\\absent', '{scratch}\\absent\\child'] },
   { name: 'a folder whose Git pointer is broken', tree: [{ dir: 'broken' }, file('broken/.git', 'gitdir: ../missing')], paths: ['{scratch}\\broken'] },

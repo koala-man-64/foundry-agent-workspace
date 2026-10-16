@@ -615,6 +615,25 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 - `DevelopmentChatProcessTests` drives the three methods through the stdio entry point: listing, redacted content, refusals, a redacted diff, and no notifications.
 - The two oracles share `tests/p2/repository-fixture.ts`. Slice a's inspection vectors are unchanged.
 
+**Independent review.** The same reviewer re-reviewed the P2.2a fixes and slice b at `ddfa750`. It confirmed M1, M2 and L1–L4 fixed, then returned **NO-GO** on one new confirmed medium. Its stdio probe against the built runtime found the defect.
+- **N1 (medium).** A NUL in a renderer-supplied `files.read` or `files.list` path made `GetFullPath` throw an unmapped `ArgumentException`, which stopped the development runtime. TypeScript answers with a redacted error and keeps serving.
+- **N1b (low).** A NUL in the final segment read the truncated name, so `notes.txt\0zzz` returned `notes.txt`. Deny-listed names stayed refused, because the real-path check caught them.
+
+Fixed in the follow-up commit:
+- Relative paths with NUL are refused as forbidden segments.
+- The folder lease and `SameFolder` refuse NUL before any path call, and `MetadataFile.Namespaced` refuses it before any open.
+- Every argument, filesystem or access failure in a Git/files handler now becomes the redacted refusal.
+
+The reviewer's informational notes were also applied:
+- A folder task's lease stays held across the list or read it checked (N2).
+- The folder lease screens the real path for dot and space endings as well as the spelling (N3).
+- Like TypeScript, listings and reads stay synchronous with no entry limit, and a stuck Git process holds shutdown until its timeout (N4); the reply size limit still applies.
+
+New coverage:
+- vectors for NUL in middle and final segments, in `files.list`, `files.read` and `project.add`; Node refuses each with `ERR_INVALID_ARG_VALUE`;
+- an `ExistingEntry` NUL test;
+- a stdio test that the runtime answers every NUL request with a refusal and then serves a valid read.
+
 ### Project admission (P2.2c)
 
 **What it is.** The development runtime now serves `project.add`, bringing it to **29** of the 89 methods. The handler follows `service.ts`:

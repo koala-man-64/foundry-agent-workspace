@@ -106,11 +106,16 @@ public sealed class DevelopmentChat
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
             case "files.list":
-                return await Repository(() => Task.FromResult<object?>(repositories.ListFiles(FileRoot(store.ReadTask((string)parameters["taskId"]!)), (string?)parameters.GetValueOrDefault("path") ?? "")));
+                return await Repository(() =>
+                {
+                    using var held = FileRoot(store.ReadTask((string)parameters["taskId"]!), out var root);
+                    return Task.FromResult<object?>(repositories.ListFiles(root, (string?)parameters.GetValueOrDefault("path") ?? ""));
+                });
             case "files.read":
                 return await Repository(() =>
                 {
-                    var file = repositories.ReadFile(FileRoot(store.ReadTask((string)parameters["taskId"]!)), (string)parameters["path"]!);
+                    using var held = FileRoot(store.ReadTask((string)parameters["taskId"]!), out var root);
+                    var file = repositories.ReadFile(root, (string)parameters["path"]!);
                     file["content"] = redactor.Text((string)file["content"]!);
                     return Task.FromResult<object?>(file);
                 });
@@ -127,11 +132,17 @@ public sealed class DevelopmentChat
         catch (EventDeliveryException error) { Fail(error); throw; }
     }
 
-    /// <summary>Repository refusals reach the caller as TypeScript's entry reports them: the message, redacted.</summary>
+    /// <summary>
+    /// Repository failures reach the caller as TypeScript's entry reports every handler error: the message, redacted, with
+    /// the runtime still serving. That includes a filesystem or argument failure, which must never stop the runtime.
+    /// </summary>
     private async Task<object?> Repository(Func<Task<object?>> operation)
     {
         try { return await operation(); }
-        catch (InvalidOperationException error) { throw new WorkspaceReadException(redactor.Text(error.Message)); }
+        catch (Exception error) when (error is InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            throw new WorkspaceReadException(redactor.Text(error.Message));
+        }
     }
 
     /// <summary>
@@ -167,16 +178,22 @@ public sealed class DevelopmentChat
     /// TypeScript currently refuses a short (8.3) or otherwise non-canonical spelling one step earlier, with the shorter
     /// "different location" message; both refuse.
     /// </summary>
-    private string FileRoot(Dictionary<string, object?> task)
+    /// <returns>For a folder task, the lease that keeps the checked folder pinned while the caller reads it.</returns>
+    private RepositoryFolderLease? FileRoot(Dictionary<string, object?> task, out string root)
     {
-        if (Store.IsGitDocument(task)) return (string)task["worktreePath"]!;
+        if (Store.IsGitDocument(task)) { root = (string)task["worktreePath"]!; return null; }
         if (!Equals(task.GetValueOrDefault("workspaceKind"), "folder")) throw new WorkspaceReadException("This chat has no folder access.");
         var projectPath = (string)task["projectPath"]!;
         if (NetworkPathPolicy.IsNetworkOrDevicePath(projectPath)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
-        using var folder = RepositoryFolderLease.Open(loop, projectPath, RepositoryService.WorkingDirectory);
-        if (EcmaScriptCase.ToLower(folder.Path) != EcmaScriptCase.ToLower(projectPath))
-            throw new WorkspaceReadException("The saved folder now resolves to a different location. Restore the original folder before browsing files.");
-        return projectPath;
+        var folder = RepositoryFolderLease.Open(loop, projectPath, RepositoryService.WorkingDirectory);
+        try
+        {
+            if (EcmaScriptCase.ToLower(folder.Path) != EcmaScriptCase.ToLower(projectPath))
+                throw new WorkspaceReadException("The saved folder now resolves to a different location. Restore the original folder before browsing files.");
+            root = projectPath;
+            return folder;
+        }
+        catch { folder.Dispose(); throw; }
     }
 
     private void Fail(Exception error)

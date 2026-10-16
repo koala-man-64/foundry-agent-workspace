@@ -978,6 +978,101 @@
       }
     },
     {
+      "name": "a path containing NUL",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\re\u0000po",
+        "{scratch}\\repo\u0000",
+        "{scratch}\\repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "systemError": "ERR_INVALID_ARG_VALUE"
+          },
+          {
+            "systemError": "ERR_INVALID_ARG_VALUE"
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "a file is not a folder",
       "tree": [
         {

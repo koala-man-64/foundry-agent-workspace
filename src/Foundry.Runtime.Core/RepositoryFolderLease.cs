@@ -33,7 +33,8 @@ internal sealed class RepositoryFolderLease : IDisposable
             throw new WorkspaceReadException("Repository root must be an absolute path.");
         // GetFullPath drops a trailing dot or space from a segment, so "proj." would pin its sibling "proj" while Node opens
         // the literal name. Such a segment is refused outright, as P2.1 refuses it in Git references.
-        if (RepositoryPaths.HasAmbiguousSegment(candidate)) throw new WorkspaceReadException(Unavailable);
+        // NUL would make GetFullPath throw (Node refuses it at its first filesystem call), and Win32 would truncate at it.
+        if (RepositoryPaths.HasAmbiguousSegment(candidate) || candidate.Contains('\0', StringComparison.Ordinal)) throw new WorkspaceReadException(Unavailable);
         var absolute = System.IO.Path.GetFullPath(candidate);
         if (!DataClassifier.IsLocal(absolute)) throw new WorkspaceReadException("Project folder identity cannot be established.");
         if (new DriveInfo(absolute[..3]).DriveType is DriveType.Network) throw new WorkspaceReadException(Network);
@@ -50,7 +51,9 @@ internal sealed class RepositoryFolderLease : IDisposable
         }
         try
         {
-            if (!FinalPath.TryResolve(absolute, out var resolved) || !DataClassifier.IsLocal(resolved) || !Directory.Exists(resolved))
+            // The real path is screened as well: a short (8.3) spelling of a folder named "x." passes the spelling screen, and
+            // later opens through GetFullPath would pin the sibling "x".
+            if (!FinalPath.TryResolve(absolute, out var resolved) || !DataClassifier.IsLocal(resolved) || RepositoryPaths.HasAmbiguousSegment(resolved) || !Directory.Exists(resolved))
                 throw new WorkspaceReadException(Unavailable);
             return new(loop, lease, resolved);
         }

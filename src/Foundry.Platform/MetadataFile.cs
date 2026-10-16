@@ -41,7 +41,8 @@ public static class MetadataFile
     /// Anything else fails closed: UNC and device paths are refused before any open.
     /// </summary>
     internal static string Namespaced(string path) =>
-        path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] == '\\'
+        // NUL is refused too: Win32 would silently truncate the name at it.
+        path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] == '\\' && !path.Contains('\0', StringComparison.Ordinal)
             ? @"\\?\" + path
             : throw new IOException("Metadata identity cannot be established.");
 

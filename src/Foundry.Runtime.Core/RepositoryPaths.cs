@@ -17,6 +17,8 @@ internal static partial class RepositoryPaths
     {
         if (relativePath is null || !allowEmpty && relativePath.Length == 0) throw new WorkspaceReadException("A relative path is required.");
         if (relativePath.Length == 0) return;
+        // Node refuses NUL at its first filesystem call (ERR_INVALID_ARG_VALUE); Win32 would truncate the name at it.
+        if (relativePath.Contains('\0', StringComparison.Ordinal)) throw new WorkspaceReadException(Forbidden);
         // path.isAbsolute, path.win32.isAbsolute and /^[a-zA-Z]:/: a leading separator or any drive prefix.
         if (relativePath[0] is '/' or '\\' || relativePath.Length >= 2 && char.IsAsciiLetter(relativePath[0]) && relativePath[1] == ':')
             throw new WorkspaceReadException("Absolute paths are not allowed.");
@@ -52,7 +54,7 @@ internal static partial class RepositoryPaths
     internal static bool SameFolder(string candidate, string approved)
     {
         if (NetworkPathPolicy.IsNetworkOrDevicePath(candidate) || NetworkPathPolicy.IsNetworkOrDevicePath(approved)) return false;
-        if (HasAmbiguousSegment(candidate) || HasAmbiguousSegment(approved)) return false;
+        if (HasAmbiguousSegment(candidate) || HasAmbiguousSegment(approved) || candidate.Contains('\0', StringComparison.Ordinal) || approved.Contains('\0', StringComparison.Ordinal)) return false;
         var left = FinalPath.Resolve(candidate); var right = FinalPath.Resolve(approved);
         if (!DataClassifier.IsLocal(left) || !DataClassifier.IsLocal(right)) return false;
         try
