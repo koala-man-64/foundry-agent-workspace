@@ -22,6 +22,11 @@ public sealed class DirectoryLease : IDisposable
 
     private static unsafe DirectoryLease Acquire(string directory, bool requireExisting, uint share)
     {
+        // GetFullPath strips a trailing dot or space from the last component, so it would pin a different entry than the
+        // one named ("a " would pin a decoy "a"). Intermediate components are kept and opened literally below.
+        var trimmed = directory.TrimEnd('\\', '/');
+        var last = trimmed[(trimmed.LastIndexOfAny(['\\', '/']) + 1)..];
+        if (last is not ("." or "..") && (last.EndsWith('.') || last.EndsWith(' '))) throw new IOException("Data identity cannot be established.");
         var path = Path.GetFullPath(directory);
         var root = Path.GetPathRoot(path) ?? throw new IOException("Data identity cannot be established.");
         if (root.StartsWith("\\\\", StringComparison.Ordinal) || new DriveInfo(root).DriveType is not DriveType.Fixed) throw new IOException("Data identity cannot be established.");

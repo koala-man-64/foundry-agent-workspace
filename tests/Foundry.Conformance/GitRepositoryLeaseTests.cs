@@ -240,6 +240,16 @@ public sealed class GitRepositoryLeaseTests
             RawJunction.Create(link, target);
             var (_, worktree, gitDirectory) = LinkedWorktree(scratch);
             Assert.Throws<ReparsePointException>(() => DirectoryLease.AcquireExisting(Path.Combine(link, "inner")));
+            // As the last component the exact name is refused outright rather than normalized onto the decoy.
+            foreach (var final in new[] { link, link + "\\" })
+            {
+                Assert.Throws<IOException>(() => DirectoryLease.AcquireExisting(final));
+                Assert.Throws<IOException>(() => DirectoryLease.AcquireExistingSharingWrites(final));
+                Assert.Throws<IOException>(() => DirectoryLease.Acquire(final));
+            }
+            using (DirectoryLease.AcquireExisting(Path.Combine(scratch, alias.TrimEnd(' ', '.')))) { }
+            using (DirectoryLease.AcquireExisting(Path.Combine(scratch, "target", "inner", "."))) { }
+            using (DirectoryLease.AcquireExisting(Path.Combine(scratch, "target", "inner", ".git", ".."))) { }
             await using var loop = new RuntimeLoop();
             await loop.Invoke(() =>
             {

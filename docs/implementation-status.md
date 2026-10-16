@@ -479,11 +479,13 @@ The reviewer also raised:
 - **Informational:** an unpinned subst chain.
 - **Informational:** a test assertion that was too weak.
 
-Each finding is fixed in the follow-up commit, with regression tests. The re-review verdict is recorded with the evidence.
+Each finding is fixed in the follow-up commit, with regression tests.
+
+Re-review of `bbf5360` returned **GO** with one low, non-blocking finding. `GetFullPath` still stripped a trailing dot or space from the *last* component, so `DirectoryLease` pinned a decoy for a name such as `a `. Inside the Git lease this could not cause an unverified traversal, but the fix is cheap: `DirectoryLease` now refuses a final component ending in a dot or space and still normalizes `.` and `..`. A final-component decoy test covers it. The reviewer's confirmation of that delta is recorded with the evidence.
 
 **Local validation of the final tree.**
 - Release build: **zero warnings or errors**.
-- Focused conformance: **768/768**.
+- Focused conformance: **792/792**. This adds the Store and Upgrade classes, which use `DirectoryLease`.
 - Focused platform: **30/31**; the file-symbolic-link case skipped.
 - Full native suite: **6,890 passed, zero failed, two skipped (6,892 total)**. The skips are the expected local registry-policy test and the file-symbolic-link test.
 - `pnpm check`: clean, **543 tests across 76 files**.
@@ -494,7 +496,7 @@ Each finding is fixed in the follow-up commit, with regression tests. The re-rev
 - The first full run failed two existing assertions that expected exactly `IOException` for a junction refusal. They now assert the typed `ReparsePointException`.
 - One final-tree `pnpm check` timed out in the unchanged `git-operations.test.ts` cherry-pick case after 20 seconds and then reported `EBUSY` during cleanup. That file took 243 seconds in the run. Run alone, it passed **27/27**, and the repeated full check passed.
 
-Both failed logs are retained. All logs are in `foundry-evidence\p2.1-git-identity\run1` through `run3`. No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+Both failed logs are retained. The final-component guard changed only native source, tests and this document. Its native checks reran in `run4`; the `run3` `pnpm check` and package proof still applies to the unchanged TypeScript and Electron sources. All logs are in `foundry-evidence\p2.1-git-identity\run1` through `run4`. No renderer, IPC or user-path source changed, so no Electron E2E run was required.
 
 **Residuals.** These belong to P2.2:
 - the per-common-repository serialization queue;
