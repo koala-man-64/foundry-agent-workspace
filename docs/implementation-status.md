@@ -538,7 +538,8 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 **Revalidation, pins and queue (residuals 1–3 of P2.1).**
 - **Revalidation.** The admitted identity is checked again before launch, at the final boundary (`BeforeMutation`), and after exit. A folder with no repository must still have none.
 - **Pins.** A `RepositoryAdmission` holds the folder lease and the Git lease across every await of an operation. `RepositoryFolderLease` now shares writes but never deletes: renames into the folder work, and the folder chain itself cannot be renamed or deleted while held.
-- **Queue.** The queue keys on `common.toLowerCase()`. Operations with one key run in arrival order, a failure never blocks its successor, and the key is released when its last operation settles.
+- **Queue.** Callers key the queue on the identity's `common.toLowerCase()`. Operations with one key run in arrival order, a failure never blocks its successor, and the key is released when its last operation settles. As TypeScript's `.then` defers, an operation starts only after its key is registered.
+- **Outcomes.** Git failures (`GitCommandException`) and plain refusals never claim an outcome. Only a caller that knows where its final mutation boundary was classifies one (`RepositoryException`, TypeScript's `RepositoryError`), as `createTaskWorktree` does with the flag its final-boundary callback sets.
 
 **File access at the execution boundary.**
 - The parent chain is pinned and verified free of reparse points (`DirectoryLease`).
@@ -551,15 +552,17 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 - Local aliases are refused (the approved difference).
 - Every reparse point is refused as "Symbolic links cannot be accessed.", including cloud placeholders, which Node follows.
 - Node's raw filesystem errors (`ENOENT`, `ENOTDIR`) become fixed native messages.
-- Network and device `PATH` entries are skipped before any probe.
+- `PATH` entries that are network or device paths, or that are not on a fixed local drive, are skipped before any probe. As in TypeScript, a link inside a local entry is still followed.
 - A timeout or an output overflow terminates the whole job tree; Node signals only the root process.
 - Standard input is closed at launch.
 - Revalidation also runs after a non-zero exit.
 - A NUL argument gets a fixed message.
+- A root or folder segment ending in a dot or space is refused by name. `GetFullPath` would otherwise strip the ending and admit the sibling, while Node opens the literal name; a real folder with such a name is refused too, as P2.1 refuses those names in Git references.
+- Filters at a revision accept only a full object id; every TypeScript caller passes the id `rev-parse` returned.
 - Truncated output is the first 256 KiB of bytes, where Node's cut point can depend on pipe chunking for multi-byte text.
 
 **Evidence.**
-- `tests/p2/repository-inspection.test.ts` builds **81** disposable trees with an isolated `HOME`, no system Git configuration and the C locale. It pins the shipping outcomes in `repository-inspection-vectors.json`, bound to the SHA-256 of `repository.ts`, `git-environment.ts` and `network-path.ts`. The cases cover listings, reads, status, diffs, classification, `core.worktree`, bare and unborn repositories, linked worktrees, and filters at the working tree and at a revision. The file also pins `gitEnvironment()`'s handling of edge variable names. Regenerating the vectors requires `P2_WRITE_REPOSITORY_INSPECTION=1`.
+- `tests/p2/repository-inspection.test.ts` builds **87** disposable trees with an isolated `HOME`, no system Git configuration and the C locale. It pins the shipping outcomes in `repository-inspection-vectors.json`, bound to the SHA-256 of `repository.ts`, `git-environment.ts` and `network-path.ts`. The cases cover listings, reads, status, diffs, classification, `core.worktree`, bare and unborn repositories, linked worktrees, and filters at the working tree and at a revision. The file also pins `gitEnvironment()`'s handling of edge variable names. Regenerating the vectors requires `P2_WRITE_REPOSITORY_INSPECTION=1`.
 - `RepositoryInspectionTests` rebuilds every tree and must match each outcome or its named difference. Mutating two expected outcomes made both cases fail.
 - `GitRunnerTests` covers:
   - injected `GIT_*` variables that try to redirect the repository;
@@ -573,6 +576,15 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
   - loop affinity;
   - `ExistingEntry`.
 - `RepositoryFolderTests` now proves renames into a held folder.
+
+**Independent review.** A read-only filesystem/security reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner, chosen for the security and data-integrity verdict) reviewed the sealed commit `c44b469`. Its verdict was **GO with conditions**. It verified the seal, built an archive export and probed each finding.
+- **M1 (medium).** The runner reported every failure after launch as "no mutation started". A probe ran an alias that updated a ref and then outlived its timeout; the ref landed. Fixed: the runner and plain refusals carry no outcome, and a test proves that a mutating command that times out is not reported as "none".
+- **M2 (medium).** `GetFullPath` stripped a trailing dot or space from a root segment, so native listed `repo` for `repo.`, `repo ` and `repo...`, which Node reports as missing. Fixed by the name screen above, with four new vectors.
+- **L1 (low).** Classifying a file root threw where TypeScript returns false. Fixed, with two vectors; the catch now covers every failure TypeScript's catch-all would.
+- **L2 (low).** An operation with no predecessor started before its queue key was registered. Fixed, with a test.
+- **L3 (low).** The documentation overstated how far the `PATH` lookup avoids the network. Fixed by the drive-type check and the corrected wording above.
+- **L4 (low).** The runner took a working directory separate from the admitted folder. It now always runs in the admitted folder.
+- **Informational.** Applied: unreadable untracked files are skipped as TypeScript skips them; Git's reported top-level path is opened only on a fixed local drive; revisions must be full object ids. Not changed: a running Git process is not cancelled by shutdown and ends within its timeout, as TypeScript's drain waits; `ExistingEntry.Links` stays unused, because hard-linked reads match TypeScript.
 
 ### Read-only Git/files handlers (P2.2b)
 

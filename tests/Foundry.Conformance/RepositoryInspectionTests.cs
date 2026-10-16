@@ -75,8 +75,11 @@ public sealed class RepositoryInspectionTests
                 }
             case "revisionFilters":
                 {
+                    // {HEAD} becomes the commit object id, as every runtime caller passes the id rev-parse returned.
+                    var revision = operation.GetProperty("revision").GetString()!;
+                    if (revision == "{HEAD}") revision = await fixture.GitOutput("-C", root, "rev-parse", "HEAD");
                     using var admission = await service.RequireRepository(root);
-                    await service.RejectTrackedFiltersAtRevision(admission, operation.GetProperty("revision").GetString()!);
+                    await service.RejectTrackedFiltersAtRevision(admission, revision);
                     return null;
                 }
             default: throw new InvalidDataException("Unknown operation.");

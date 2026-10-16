@@ -4,7 +4,7 @@ import path from 'node:path';
 import { expect, it } from 'vitest';
 import { gitEnvironment } from '../../packages/runtime/src/git-environment';
 import { RepositoryService } from '../../packages/runtime/src/repository';
-import { build, committed, file, git, isolatedGitEnvironment, normalize, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { build, committed, file, git, isolatedGitEnvironment, normalize, runGit, sha256File, withIsolatedGit, type Step } from './repository-fixture';
 
 // Read-only repository inspection outcomes of the shipping TypeScript RepositoryService over disposable fixture trees.
 // The C# conformance suite (RepositoryInspectionTests) rebuilds every tree and must reproduce each outcome, except where a
@@ -68,6 +68,11 @@ const cases: Case[] = [
   { name: 'list a missing root', tree: [{ dir: 'present' }], operation: list('', 'absent') },
   { name: 'list a Git directory root', tree: committed(), operation: list('', 'repo/.git') },
   { name: 'list a file root', tree: committed(), operation: list('', 'repo/README.md') },
+  { name: 'list a root spelled with a trailing dot', tree: committed(), operation: list('', 'repo.') },
+  { name: 'list a root spelled with a trailing space', tree: committed(), operation: list('', 'repo ') },
+  { name: 'list a root spelled with trailing dots', tree: committed(), operation: list('', 'repo...') },
+  { name: 'list a real folder whose name ends in a dot', tree: [...committed(), file('dotted./inside.txt', 'literal\n')], operation: list('', 'dotted.'),
+    native: { outcome: { error: 'Project folder is unavailable.' }, difference: 'Native refuses a folder whose name ends in a dot or space, as P2.1 refuses such names in Git references; Node opens the literal name.' } },
   { name: 'read a tracked file', tree: reading, operation: read('README.md') },
   { name: 'read with different case', tree: reading, operation: read('readme.MD') },
   { name: 'read with a backslash separator', tree: reading, operation: read('docs\\b.md') },
@@ -124,16 +129,19 @@ const cases: Case[] = [
   { name: 'classify a folder that is not a repository', tree: [file('plain/a.txt', 'a\n')], operation: { op: 'isGit', root: 'plain' } },
   { name: 'classify a linked worktree', tree: linked, operation: { op: 'isGit', root: 'wt' } },
   { name: 'classify a pointer to a missing Git directory', tree: [{ dir: 'broken' }, file('broken/.git', 'gitdir: ../missing')], operation: { op: 'isGit', root: 'broken' } },
+  { name: 'classify a file inside a repository', tree: committed(), operation: { op: 'isGit', root: 'repo/README.md' } },
+  { name: 'classify a file outside any repository', tree: [file('plain/a.txt', 'a\n')], operation: { op: 'isGit', root: 'plain/a.txt' } },
   { name: 'classify a repository that configures core.worktree', tree: [...committed(), git('-C', 'repo', 'config', 'core.worktree', '../elsewhere')], operation: { op: 'isGit', root: 'repo' } },
   { name: 'tracked filters are refused', tree: filtered('*.txt filter=lfs\n', true), operation: { op: 'trackedFilters', root: 'repo' } },
   { name: 'tracked paths without filters pass', tree: filtered('*.txt text\n', true), operation: { op: 'trackedFilters', root: 'repo' } },
   { name: 'a filter on a candidate path is refused', tree: filtered('*.bin filter=custom\n', false), operation: { op: 'filters', root: 'repo', paths: ['a.bin'] } },
   { name: 'unfiltered candidate paths pass', tree: filtered('*.bin filter=custom\n', false), operation: { op: 'filters', root: 'repo', paths: ['data.txt', 'missing.txt'] } },
-  { name: 'filters at the selected revision are refused', tree: filtered('*.txt filter=lfs\n', true), operation: { op: 'revisionFilters', root: 'repo', revision: 'HEAD' } },
-  { name: 'working-tree attributes do not affect the selected revision', tree: filtered('*.txt filter=lfs\n', false), operation: { op: 'revisionFilters', root: 'repo', revision: 'HEAD' } },
+  { name: 'filters at the selected revision are refused', tree: filtered('*.txt filter=lfs\n', true), operation: { op: 'revisionFilters', root: 'repo', revision: '{HEAD}' } },
+  { name: 'working-tree attributes do not affect the selected revision', tree: filtered('*.txt filter=lfs\n', false), operation: { op: 'revisionFilters', root: 'repo', revision: '{HEAD}' } },
 ];
 
-async function perform(service: RepositoryService, operation: Op, scratch: string): Promise<unknown> {
+/** {HEAD} becomes the commit object id, as every runtime caller passes the id rev-parse returned. */
+async function perform(service: RepositoryService, operation: Op, scratch: string, home: string): Promise<unknown> {
   const root = path.join(scratch, operation.root);
   const internal = service as unknown as { requireRepository(root: string): Promise<string>; rejectTrackedFilters(root: string): Promise<void>; rejectFilters(root: string, paths: string[]): Promise<void>; rejectTrackedFiltersAtRevision(root: string, commit: string): Promise<void> };
   switch (operation.op) {
@@ -145,7 +153,10 @@ async function perform(service: RepositoryService, operation: Op, scratch: strin
     case 'repository': return internal.requireRepository(root);
     case 'trackedFilters': { const selected = await internal.requireRepository(root); await internal.rejectTrackedFilters(selected); return null; }
     case 'filters': { const selected = await internal.requireRepository(root); await internal.rejectFilters(selected, operation.paths); return null; }
-    case 'revisionFilters': { const selected = await internal.requireRepository(root); await internal.rejectTrackedFiltersAtRevision(selected, operation.revision); return null; }
+    case 'revisionFilters': {
+      const revision = operation.revision === '{HEAD}' ? runGit(scratch, home, ['-C', root, 'rev-parse', 'HEAD']).trim() : operation.revision;
+      const selected = await internal.requireRepository(root); await internal.rejectTrackedFiltersAtRevision(selected, revision); return null;
+    }
   }
 }
 async function outcome(item: Case): Promise<Outcome> {
@@ -156,7 +167,7 @@ async function outcome(item: Case): Promise<Outcome> {
     return await withIsolatedGit(home, async () => {
       try {
         const service = new RepositoryService(path.join(scratch, 'wt-base'));
-        return { result: normalize(await perform(service, item.operation, scratch), scratch) };
+        return { result: normalize(await perform(service, item.operation, scratch, home), scratch) };
       } catch (error) {
         if (!(error instanceof Error)) throw error;
         const code = (error as NodeJS.ErrnoException).code;

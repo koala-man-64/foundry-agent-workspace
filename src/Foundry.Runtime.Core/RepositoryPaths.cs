@@ -30,6 +30,10 @@ internal static partial class RepositoryPaths
 
     internal static bool IsDeniedRelativePath(string relativePath) => relativePath.Replace('\\', '/').Split('/').Any(IsDeniedName);
 
+    /// <summary>path.win32.isAbsolute: a leading separator, or a drive letter, colon and separator.</summary>
+    internal static bool IsNodeAbsolute(string value) =>
+        value.Length > 0 && (value[0] is '/' or '\\' || value.Length > 2 && char.IsAsciiLetter(value[0]) && value[1] == ':' && value[2] is '/' or '\\');
+
     /// <summary>TypeScript's isInside: path.relative between the resolved, lowercased paths stays at or below the root.</summary>
     internal static bool IsInside(string root, string candidate)
     {

@@ -35,6 +35,14 @@ internal sealed class RepositoryAdmission : IDisposable
         catch { folder.Dispose(); throw; }
     }
 
+    /// <summary>As <see cref="Open"/>, or null when the path names an existing entry that is not a directory.</summary>
+    internal static RepositoryAdmission? TryOpenDirectory(RuntimeLoop loop, string candidate)
+    {
+        if (RepositoryFolderLease.TryOpen(loop, candidate) is not { } folder) return null;
+        try { return new(loop, folder, GitRepositoryLease.Open(loop, folder), true); }
+        catch { folder.Dispose(); throw; }
+    }
+
     /// <summary>The folder alone, as TypeScript's requireRoot admits it for file access: no Git metadata is read.</summary>
     internal static RepositoryAdmission OpenFolder(RuntimeLoop loop, string candidate, string notDirectory) =>
         new(loop, RepositoryFolderLease.Open(loop, candidate, notDirectory), null, false);
@@ -61,7 +69,9 @@ internal sealed class RepositoryAdmission : IDisposable
 /// <summary>
 /// Native counterpart of TypeScript's RepositoryService (repository.ts): local, read-only repository access, with the
 /// mutation operations added by later slices. Every refusal is a <see cref="WorkspaceReadException"/> or a
-/// <see cref="RepositoryException"/> carrying TypeScript's message; Node's raw filesystem errors become fixed messages.
+/// <see cref="GitCommandException"/> carrying TypeScript's message, and neither claims an outcome: only the caller that
+/// knows its final mutation boundary classifies one (<see cref="RepositoryException"/>). Node's raw filesystem errors
+/// become fixed messages.
 /// </summary>
 internal sealed class RepositoryService
 {
@@ -100,7 +110,7 @@ internal sealed class RepositoryService
 
     private static void RequireAbsolute(string candidate)
     {
-        if (string.IsNullOrEmpty(candidate) || !(candidate[0] is '/' or '\\' || candidate.Length > 2 && char.IsAsciiLetter(candidate[0]) && candidate[1] == ':' && candidate[2] is '/' or '\\'))
+        if (string.IsNullOrEmpty(candidate) || !RepositoryPaths.IsNodeAbsolute(candidate))
             throw new WorkspaceReadException("Repository root must be an absolute path.");
         if (NetworkPathPolicy.IsNetworkOrDevicePath(candidate)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
     }
@@ -120,7 +130,7 @@ internal sealed class RepositoryService
             admission.Revalidate();
             var bare = JsJson.Trim((await Run(admission, ["rev-parse", "--is-bare-repository"])).Stdout);
             admission.Revalidate();
-            if (inside != "true" || bare != "false") throw new RepositoryException("Path must be a non-bare Git working tree.");
+            if (inside != "true" || bare != "false") throw new WorkspaceReadException("Path must be a non-bare Git working tree.");
             return admission;
         }
         catch { admission.Dispose(); throw; }
@@ -129,23 +139,29 @@ internal sealed class RepositoryService
     /// <summary>One Git process in the admitted folder; a folder with no repository is refused before anything runs.</summary>
     internal Task<GitOutput> Run(RepositoryAdmission admission, IReadOnlyList<string> arguments, bool permitTruncation = false, bool allowNonZero = false, GitOptions? options = null)
     {
-        if (admission.Identity is null) throw new RepositoryException(NoRepository);
-        return Git.Run(admission, admission.Path, arguments, permitTruncation, allowNonZero, options);
+        if (admission.Identity is null) throw new WorkspaceReadException(NoRepository);
+        return Git.Run(admission, arguments, permitTruncation, allowNonZero, options);
     }
 
     /// <summary>isGitWorkingTree: a security refusal propagates; any other failure classifies the folder as not Git.</summary>
     internal async Task<bool> IsGitWorkingTree(string root)
     {
-        using var identity = RepositoryAdmission.Open(loop, root);
-        if (identity.Identity is null) return false;
+        // TypeScript walks up from a file to the enclosing repository and then fails requireRoot inside its catch-all, so an
+        // existing entry that is not a directory is simply not a Git working tree. Native does not read the ancestors' Git
+        // metadata for it.
+        using var identity = RepositoryAdmission.TryOpenDirectory(loop, root);
+        if (identity?.Identity is null) return false;
         try
         {
             using var selected = await RequireRepository(root);
             var top = JsJson.Trim((await Run(selected, ["rev-parse", "--show-toplevel"])).Stdout);
-            if (NetworkPathPolicy.IsNetworkOrDevicePath(top) || !FinalPath.TryResolve(top, out var canonical)) return false;
+            // Git's own report is opened only when it names a fixed local drive: nothing in it can reach the network.
+            var lexical = FinalPath.Resolve(top);
+            if (NetworkPathPolicy.IsNetworkOrDevicePath(top) || !DataClassifier.IsLocal(lexical) || new DriveInfo(lexical[..3]).DriveType is not DriveType.Fixed
+                || !FinalPath.TryResolve(lexical, out var canonical)) return false;
             return EcmaScriptCase.ToLower(FinalPath.Resolve(selected.Path)) == EcmaScriptCase.ToLower(FinalPath.Resolve(canonical));
         }
-        catch (Exception error) when (error is InvalidOperationException or IOException) { return false; }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception) { return false; }
         finally { identity.Revalidate(); }
     }
 
@@ -191,7 +207,7 @@ internal sealed class RepositoryService
         byte[] bytes;
         try { bytes = target.Entry.ReadBounded(MaximumFileBytes); }
         catch (InvalidDataException) { throw new WorkspaceReadException(exceeds); }
-        catch (IOException) { throw new WorkspaceReadException(Unreadable); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(Unreadable); }
         if (bytes.Contains((byte)0)) throw new WorkspaceReadException("Binary files cannot be read.");
         string content;
         try { content = new UTF8Encoding(false, true).GetString(bytes); }
@@ -274,7 +290,8 @@ internal sealed class RepositoryService
             if (RepositoryPaths.IsDeniedRelativePath(name)) continue;
             Dictionary<string, object?> file;
             try { file = ReadFileWithin(admission.Path, name); }
-            catch (InvalidOperationException) { continue; } // Unsupported or denied untracked content remains unavailable.
+            // Unsupported, denied or unreadable untracked content remains unavailable, as TypeScript's catch-all skips it.
+            catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { continue; }
             var path = (string)file["path"]!;
             var addition = $"diff --git a/{path} b/{path}\nnew file\n--- /dev/null\n+++ b/{path}\n{string.Join('\n', ((string)file["content"]!).Split('\n').Select(line => "+" + line))}\n";
             if (Encoding.UTF8.GetByteCount(output + addition) > GitRunner.MaximumOutputBytes) { truncated = true; break; }
@@ -295,10 +312,10 @@ internal sealed class RepositoryService
             if (code.Length == 0) continue;
             var first = index < fields.Length ? fields[index++] : "";
             var second = code.StartsWith('R') || code.StartsWith('C') ? index < fields.Length ? fields[index++] : "" : null;
-            if (first.Length == 0 || second is { Length: 0 }) throw new RepositoryException("Git returned malformed changed-path data.");
+            if (first.Length == 0 || second is { Length: 0 }) throw new WorkspaceReadException("Git returned malformed changed-path data.");
             string[] paths = second is null ? [first] : [first, second];
             count += paths.Length;
-            if (count > MaximumPaths) throw new RepositoryException("Too many changed paths to safely render a diff.");
+            if (count > MaximumPaths) throw new WorkspaceReadException("Too many changed paths to safely render a diff.");
             // A rename or copy inherits the sensitive classification of either endpoint.
             if (paths.Any(RepositoryPaths.IsDeniedRelativePath)) continue;
             foreach (var path in paths) if (seen.Add(path)) safe.Add(path);
@@ -314,7 +331,7 @@ internal sealed class RepositoryService
             var code = fields[index++];
             if (code.Length == 0) continue;
             var path = index < fields.Length ? fields[index++] : "";
-            if (path.Length == 0) throw new RepositoryException("Git returned malformed changed-path data.");
+            if (path.Length == 0) throw new WorkspaceReadException("Git returned malformed changed-path data.");
             if (code.StartsWith('D') && RepositoryPaths.IsDeniedRelativePath(path)) return true;
         }
         return false;
@@ -324,57 +341,64 @@ internal sealed class RepositoryService
     {
         var result = await Run(admission, ["config", "--null", "--get-all", "core.worktree"], allowNonZero: true);
         if (result.ExitCode == 1) return;
-        if (result.ExitCode != 0) throw new RepositoryException("Unable to inspect Git core.worktree configuration.");
-        if (result.Stdout.Length > 0) throw new RepositoryException("Repository configures core.worktree; refusing to materialize files outside the app-owned worktree.");
+        if (result.ExitCode != 0) throw new WorkspaceReadException("Unable to inspect Git core.worktree configuration.");
+        if (result.Stdout.Length > 0) throw new WorkspaceReadException("Repository configures core.worktree; refusing to materialize files outside the app-owned worktree.");
     }
 
     internal async Task RejectTrackedFilters(RepositoryAdmission admission)
     {
         var tracked = (await Run(admission, ["ls-files", "-z"])).Stdout.Split('\0').Where(name => name.Length > 0).ToList();
-        if (tracked.Count > MaximumPaths) throw new RepositoryException("Repository has too many tracked paths to safely inspect filters.");
+        if (tracked.Count > MaximumPaths) throw new WorkspaceReadException("Repository has too many tracked paths to safely inspect filters.");
         await RejectFilters(admission, tracked);
     }
 
     /// <summary>Any path with a filter attribute is refused: clean and smudge filters run arbitrary commands during add and checkout.</summary>
     internal async Task RejectFilters(RepositoryAdmission admission, IReadOnlyList<string> candidates)
     {
-        if (candidates.Count > MaximumPaths) throw new RepositoryException("Too many paths to safely inspect filters.");
+        if (candidates.Count > MaximumPaths) throw new WorkspaceReadException("Too many paths to safely inspect filters.");
         for (var index = 0; index < candidates.Count; index += 100)
         {
             var values = (await Run(admission, ["check-attr", "-z", "filter", "--", .. candidates.Skip(index).Take(100)])).Stdout.Split('\0');
-            if (Filtered(values)) throw new RepositoryException("Repository uses Git filters; refusing because filters may execute code.");
+            if (Filtered(values)) throw new WorkspaceReadException("Repository uses Git filters; refusing because filters may execute code.");
         }
     }
 
     /// <summary>Filter attributes come from the selected tree, which may differ from the current checkout.</summary>
     internal async Task RejectTrackedFiltersAtRevision(RepositoryAdmission admission, string commit)
     {
+        // Callers pass the full object id rev-parse returned, never a name Git could read as an option or another revision.
+        if (!(commit.Length is 40 or 64) || !commit.All(char.IsAsciiHexDigitLower)) throw new WorkspaceReadException("A full local commit object id is required.");
         var tracked = (await Run(admission, ["ls-tree", "-r", "-z", "--name-only", commit])).Stdout.Split('\0').Where(name => name.Length > 0).ToList();
-        if (tracked.Count > MaximumPaths) throw new RepositoryException("Repository has too many tracked paths to safely inspect filters.");
+        if (tracked.Count > MaximumPaths) throw new WorkspaceReadException("Repository has too many tracked paths to safely inspect filters.");
         for (var index = 0; index < tracked.Count; index += 100)
         {
             var values = (await Run(admission, ["check-attr", $"--source={commit}", "-z", "filter", "--", .. tracked.Skip(index).Take(100)])).Stdout.Split('\0');
-            if (Filtered(values)) throw new RepositoryException("Selected revision uses Git filters; refusing because checkout may execute code.");
+            if (Filtered(values)) throw new WorkspaceReadException("Selected revision uses Git filters; refusing because checkout may execute code.");
         }
     }
 
     private static bool Filtered(string[] values) => values.Where((value, position) => position % 3 == 2 && value.Length > 0 && value != "unspecified").Any();
 
     /// <summary>
-    /// The per-common-repository queue (TypeScript's creating map): operations with one key run one at a time in arrival
-    /// order, a failure never blocks its successor, and the key is released when its last operation settles.
+    /// The per-common-repository queue (TypeScript's creating map), keyed by <see cref="GitAdmissionIdentity.SerializationKey"/>:
+    /// operations with one key run one at a time in arrival order, a failure never blocks its successor, and the key is
+    /// released when its last operation settles. As TypeScript's .then always defers, an operation starts only after its
+    /// key is registered and the caller has its task, never synchronously inside this call.
     /// </summary>
     internal async Task<T> Serialize<T>(string key, Func<Task<T>> operation)
     {
         loop.AssertCurrent();
         var previous = creating.GetValueOrDefault(key) ?? Task.CompletedTask;
-        var current = After(previous, operation);
+        var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var current = After(previous, registered.Task, operation);
         creating[key] = current;
+        registered.SetResult();
         try { return await current; }
         finally { if (creating.TryGetValue(key, out var latest) && ReferenceEquals(latest, current)) creating.Remove(key); }
 
-        static async Task<T> After(Task previous, Func<Task<T>> operation)
+        static async Task<T> After(Task previous, Task registered, Func<Task<T>> operation)
         {
+            await registered;
             try { await previous; } catch (Exception) { /* A failed predecessor never blocks its successor. */ }
             return await operation();
         }

@@ -2565,6 +2565,233 @@
       }
     },
     {
+      "name": "list a root spelled with a trailing dot",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo.",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a root spelled with a trailing space",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo ",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a root spelled with trailing dots",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo...",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a real folder whose name ends in a dot",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "dotted./inside.txt",
+          "text": "literal\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "dotted.",
+        "path": ""
+      },
+      "native": {
+        "outcome": {
+          "error": "Project folder is unavailable."
+        },
+        "difference": "Native refuses a folder whose name ends in a dot or space, as P2.1 refuses such names in Git references; Node opens the literal name."
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "inside.txt",
+            "kind": "file"
+          }
+        ]
+      }
+    },
+    {
       "name": "read a tracked file",
       "tree": [
         {
@@ -7463,6 +7690,74 @@
       }
     },
     {
+      "name": "classify a file inside a repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "repo/README.md"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "classify a file outside any repository",
+      "tree": [
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "plain/a.txt"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
       "name": "classify a repository that configures core.worktree",
       "tree": [
         {
@@ -7845,7 +8140,7 @@
       "operation": {
         "op": "revisionFilters",
         "root": "repo",
-        "revision": "HEAD"
+        "revision": "{HEAD}"
       },
       "expected": {
         "error": "Selected revision uses Git filters; refusing because checkout may execute code."
@@ -7910,7 +8205,7 @@
       "operation": {
         "op": "revisionFilters",
         "root": "repo",
-        "revision": "HEAD"
+        "revision": "{HEAD}"
       },
       "expected": {
         "result": null

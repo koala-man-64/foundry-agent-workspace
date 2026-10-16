@@ -69,7 +69,7 @@ internal sealed class RepositoryFixture : IDisposable
     {
         foreach (var step in tree.EnumerateArray())
         {
-            if (step.TryGetProperty("dir", out var directory)) Directory.CreateDirectory(Local(directory.GetString()!));
+            if (step.TryGetProperty("dir", out var directory)) Directory.CreateDirectory(@"\\?\" + Local(directory.GetString()!));
             else if (step.TryGetProperty("file", out var file))
             {
                 byte[] bytes = step.TryGetProperty("base64", out var base64) ? Convert.FromBase64String(base64.GetString()!)
@@ -88,7 +88,7 @@ internal sealed class RepositoryFixture : IDisposable
     internal void Write(string relative, byte[] bytes)
     {
         var target = Local(relative);
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        Directory.CreateDirectory(@"\\?\" + Path.GetDirectoryName(target)!);
         File.WriteAllBytes(@"\\?\" + target, bytes);
     }
 
@@ -133,7 +133,8 @@ internal sealed class RepositoryFixture : IDisposable
     /// <summary>The oracle's normalization: scratch paths become placeholders, and long strings are pinned by length and hash.</summary>
     internal object? Normalize(object? value) => value switch
     {
-        string text => Long(text.Replace(Scratch, "{scratch}", StringComparison.Ordinal).Replace(Scratch.Replace('\\', '/'), "{scratch/}", StringComparison.Ordinal)),
+        string text => Long(text.Replace(Scratch, "{scratch}", StringComparison.Ordinal).Replace(Scratch.Replace('\\', '/'), "{scratch/}", StringComparison.Ordinal)
+            .Replace(EcmaScriptCase.ToLower(Scratch), "{scratch-lower}", StringComparison.Ordinal)),
         IDictionary<string, object?> map => map.ToDictionary(pair => pair.Key, pair => Normalize(pair.Value)),
         System.Collections.IEnumerable items => items.Cast<object?>().Select(Normalize).ToList(),
         _ => value,

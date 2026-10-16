@@ -109,12 +109,33 @@ public sealed class GitRunnerTests
             using var admission = await service.RequireRepository(fixture.Local("repo"));
             var clock = Stopwatch.StartNew();
             // The alias runs through Git's shell; sleep is a grandchild that keeps the output pipes open until the job dies.
-            var error = await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["-c", "alias.hang=!sleep 60", "hang"], options: new(TimeSpan.FromSeconds(1))));
+            var error = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["-c", "alias.hang=!sleep 60", "hang"], options: new(TimeSpan.FromSeconds(1))));
             Assert.StartsWith("Git command failed:", error.Message, StringComparison.Ordinal);
-            Assert.Equal("none", error.Outcome);
             return clock.Elapsed;
         });
         Assert.True(elapsed < TimeSpan.FromSeconds(30), $"The tree outlived its timeout: {elapsed}.");
+    }
+
+    [Fact]
+    public async Task FailuresAfterTheFinalBoundaryNeverClaimThatNothingChanged()
+    {
+        using var fixture = await Repository("foundry-p2-git-mutation-timeout-");
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
+            using var admission = await service.RequireRepository(fixture.Local("repo"));
+            var started = false;
+            // The command mutates, then outlives its timeout: the ref lands although the run fails.
+            var error = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission,
+                ["-c", "alias.mutate=!git update-ref refs/heads/probe HEAD && sleep 60", "mutate"], options: new(TimeSpan.FromSeconds(5), BeforeMutation: () => started = true)));
+            // The runner reports the failure without an outcome; only a caller that knows its boundary may classify, and
+            // with the final boundary passed that classification is unknown.
+            Assert.IsNotType<RepositoryException>(error);
+            Assert.True(started);
+            return 0;
+        });
+        Assert.Contains("refs/heads/probe", await fixture.GitOutput("-C", "repo", "show-ref"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -128,13 +149,13 @@ public sealed class GitRunnerTests
             using var admission = await service.RequireRepository(fixture.Local("repo"));
             var truncated = await service.Run(admission, ["cat-file", "-p", "HEAD:big.txt"], permitTruncation: true);
             Assert.True(truncated.Truncated); Assert.Equal(GitRunner.MaximumOutputBytes, truncated.Stdout.Length); Assert.Equal(0L, truncated.ExitCode);
-            var refused = await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["cat-file", "-p", "HEAD:big.txt"]));
+            var refused = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["cat-file", "-p", "HEAD:big.txt"]));
             Assert.Equal("Git command failed: ", refused.Message);
             Assert.Equal(1L, (await service.Run(admission, ["config", "--get", "no.such"], allowNonZero: true)).ExitCode);
-            Assert.Equal("Git command failed: ", (await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["config", "--get", "no.such"]))).Message);
-            var failed = await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["rev-parse", "--verify", "missing^{commit}"]));
+            Assert.Equal("Git command failed: ", (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["config", "--get", "no.such"]))).Message);
+            var failed = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "--verify", "missing^{commit}"]));
             Assert.Equal("Git command failed: fatal: Needed a single revision", failed.Message);
-            Assert.Equal("Git command failed: The argument must be a string without null bytes.", (await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["log", "a\0b"]))).Message);
+            Assert.Equal("Git command failed: The argument must be a string without null bytes.", (await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["log", "a\0b"]))).Message);
             return 0;
         });
     }
@@ -163,11 +184,11 @@ public sealed class GitRunnerTests
                 Assert.Empty(order);
                 File.Delete(commondir);
                 service.Git.Launching = _ => File.WriteAllText(commondir, "../../other/.git\n");
-                var after = await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["rev-parse", "HEAD"]));
+                var after = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"]));
                 Assert.Equal("Git command failed: Project channel identity changed during admission.", after.Message);
                 File.Delete(commondir);
                 service.Git.Launching = null;
-                var boundary = await Assert.ThrowsAsync<RepositoryException>(() => service.Run(admission, ["rev-parse", "HEAD"], options: new(BeforeMutation: () => throw new WorkspaceReadException("Project channel identity changed during admission."))));
+                var boundary = await Assert.ThrowsAsync<GitCommandException>(() => service.Run(admission, ["rev-parse", "HEAD"], options: new(BeforeMutation: () => throw new WorkspaceReadException("Project channel identity changed during admission."))));
                 Assert.Equal("Git command failed: Project channel identity changed during admission.", boundary.Message);
             }
             return 0;
@@ -185,11 +206,20 @@ public sealed class GitRunnerTests
             var events = new List<string>();
             var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var releaseOther = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var first = service.Serialize<int>("common", async () => { events.Add("first start"); await releaseFirst.Task; events.Add("first fail"); throw new RepositoryException("first failed"); });
+            var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var otherStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = service.Serialize<int>("common", async () =>
+            {
+                // Registered before it starts, even with no predecessor, as TypeScript's .then defers.
+                Assert.True(service.IsSerializing("common"));
+                events.Add("first start"); firstStarted.SetResult(); await releaseFirst.Task; events.Add("first fail"); throw new RepositoryException("first failed");
+            });
             var second = service.Serialize("common", () => { events.Add("second start"); return Task.FromResult(2); });
-            var other = service.Serialize("other", async () => { events.Add("other start"); await releaseOther.Task; return 3; });
-            Assert.Equal(["first start", "other start"], events);
+            var other = service.Serialize("other", async () => { events.Add("other start"); otherStarted.SetResult(); await releaseOther.Task; return 3; });
+            Assert.Empty(events);
             Assert.True(service.IsSerializing("common")); Assert.True(service.IsSerializing("other"));
+            await firstStarted.Task; await otherStarted.Task;
+            Assert.Equal(["first start", "other start"], events);
             releaseFirst.SetResult();
             await Assert.ThrowsAsync<RepositoryException>(() => first);
             Assert.Equal(2, await second);

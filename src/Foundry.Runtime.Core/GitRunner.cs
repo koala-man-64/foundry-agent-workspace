@@ -5,12 +5,23 @@ using Foundry.Protocol;
 
 namespace Foundry.Runtime;
 
-/// <summary>A refused or failed repository operation. "unknown" means a mutation may have started and needs reconciliation.</summary>
+/// <summary>
+/// TypeScript's RepositoryError: a repository operation whose caller classified the outcome. "none" means no mutation
+/// started; "unknown" means one may have, and the retained intent needs reconciliation. Only the caller that knows where
+/// its final mutation boundary was may classify; plain refusals and Git failures carry no outcome.
+/// </summary>
 public sealed class RepositoryException(string message, string outcome = "none", Exception? inner = null) : InvalidOperationException(message, inner)
 {
     public string Outcome { get; } = outcome is "none" or "unknown" ? outcome : throw new ArgumentOutOfRangeException(nameof(outcome));
     public bool MutationStarted => Outcome == "unknown";
 }
+
+/// <summary>
+/// A Git process that failed, timed out, overflowed or ran while the admitted identity changed: TypeScript's plain
+/// "Git command failed: " error. It never claims whether the command mutated anything; callers decide, as TypeScript's
+/// createTaskWorktree does with the flag its final-boundary callback sets.
+/// </summary>
+public sealed class GitCommandException(string message, Exception? inner = null) : InvalidOperationException(message, inner);
 
 internal sealed record GitOutput(string Stdout, bool Truncated, long ExitCode);
 
@@ -69,8 +80,9 @@ internal sealed class GitRunner
 
     /// <summary>
     /// getGitExecutable: the first git.exe in an absolute PATH entry that is a regular file outside the repository first
-    /// asked about, remembered (with a failure) for the life of the service. Network and device entries are skipped before
-    /// any probe, which TypeScript resolves; the selected executable must never be inside the current repository.
+    /// asked about, remembered (with a failure) for the life of the service. Entries that are network or device paths, or
+    /// that are not on a fixed local drive, are skipped before any probe (TypeScript resolves them); as in TypeScript, a
+    /// link inside a local entry is still followed. The selected executable must never be inside the current repository.
     /// </summary>
     internal string Executable(string excludedRoot)
     {
@@ -93,8 +105,10 @@ internal sealed class GitRunner
             var entry = JsJson.Trim(raw);
             if (entry.StartsWith('"')) entry = entry[1..];
             if (entry.EndsWith('"')) entry = entry[..^1];
-            if (!IsNodeAbsolute(entry) || NetworkPathPolicy.IsNetworkOrDevicePath(entry)) continue;
+            if (!RepositoryPaths.IsNodeAbsolute(entry) || NetworkPathPolicy.IsNetworkOrDevicePath(entry)) continue;
             var candidate = FinalPath.Resolve(Path.Join(entry, "git.exe"));
+            // Mapped network and removable drives are refused by type before anything on them is opened.
+            if (!DataClassifier.IsLocal(candidate) || new DriveInfo(candidate[..3]).DriveType is not DriveType.Fixed) continue;
             if (!FinalPath.TryResolve(candidate, out var resolved) || !DataClassifier.IsLocal(resolved)) continue;
             if (RepositoryPaths.IsInside(excludedRoot, resolved) || !File.Exists(resolved)) continue;
             return resolved;
@@ -102,20 +116,19 @@ internal sealed class GitRunner
         throw new InvalidOperationException("A Git executable was not found in an absolute PATH entry outside the selected repository.");
     }
 
-    private static bool IsNodeAbsolute(string value) =>
-        value.Length > 0 && (value[0] is '/' or '\\' || value.Length > 2 && char.IsAsciiLetter(value[0]) && value[1] == ':' && value[2] is '/' or '\\');
-
     /// <summary>
-    /// One Git process with TypeScript's error mapping: failures inside the run become "Git command failed: " with the
-    /// trimmed standard error (or the failure's own message), cut to 500 UTF-16 units. A non-zero exit returns its code
-    /// only when <paramref name="allowNonZero"/> is set; an output overflow returns the first 256 KiB of standard output
-    /// only when <paramref name="permitTruncation"/> is set.
+    /// One Git process in the admitted folder, with TypeScript's error mapping: failures inside the run become a
+    /// <see cref="GitCommandException"/> "Git command failed: " with the trimmed standard error (or the failure's own
+    /// message), cut to 500 UTF-16 units. A non-zero exit returns its code only when <paramref name="allowNonZero"/> is
+    /// set; an output overflow returns the first 256 KiB of standard output only when <paramref name="permitTruncation"/>
+    /// is set. A running process is not cancelled by shutdown; it ends within its timeout, as TypeScript's drain waits.
     /// </summary>
-    internal async Task<GitOutput> Run(RepositoryAdmission admission, string workingDirectory, IReadOnlyList<string> arguments,
+    internal async Task<GitOutput> Run(RepositoryAdmission admission, IReadOnlyList<string> arguments,
         bool permitTruncation = false, bool allowNonZero = false, GitOptions? options = null)
     {
         loop.AssertCurrent();
         options ??= new();
+        var workingDirectory = admission.Path;
         admission.Revalidate();
         Completed? completed = null;
         try
@@ -143,7 +156,7 @@ internal sealed class GitRunner
         catch (Exception error) when (error is GitFailure or InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
         {
             var detail = JsJson.Trim(error is GitFailure failure ? failure.Stderr : error.Message);
-            throw new RepositoryException("Git command failed: " + (detail.Length > 500 ? detail[..500] : detail), "none", error);
+            throw new GitCommandException("Git command failed: " + (detail.Length > 500 ? detail[..500] : detail), error);
         }
     }
 
