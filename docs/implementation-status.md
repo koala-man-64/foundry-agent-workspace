@@ -762,7 +762,7 @@ Its remaining notes:
 **Independent review of P2.2d and P2.2e.** The same reviewer reviewed the sealed ranges `586e929..9208cf9` and `9208cf9..f199fd1` (with `0e67144`) and returned **GO for both as a port**. It verified both seals, built an export, and matched every mutation boundary's outcome classification against TypeScript: intent before mutation, no blind retry, and creation serialized per common repository. It ran one probe through `DevelopmentChat`.
 - **H1 (medium, confirmed, also in shipping TypeScript).** "Hooks stay disabled" held only while `<data>\wt\.empty-git-hooks` was empty. `--no-verify` does not cover `post-commit`, `post-checkout` or `reference-transaction`. The reviewer planted a `post-commit` hook there and it ran during `task.commit`. Anything that writes the app data folder once would gain execution in every later app-initiated checkout and commit, in every repository.
   - **Fixed natively** for every Git launch (`GitRunner.Run`). The folder must be missing, or a directory with its whole chain pinned free of reparse points and no entries. The pin is held until exit, and the folder is checked again then.
-  - A directory handle cannot forbid new entries (probed: a read-only-shared directory handle blocks renames into the folder, not creation). So a same-user process can still add an entry during a run. That run then fails, and the next launch refuses before starting.
+  - A directory handle cannot forbid new entries (probed: a read-only-shared directory handle blocks renames into the folder, not creation), and a pin that shares writes cannot forbid attribute changes. So a same-user process can still add an entry, or turn the folder into a link in place, during a run. That run then fails, and the next launch refuses before starting.
   - A refusal before launch is a Git failure with no outcome. Callers classify it as before: `task.create` leaves its intent complete, and a commit refused at `git add` stays unknown until reconciled.
   - Tests: `GitRunnerTests` covers a planted hook (with a control proving it live), a subfolder, a junction, a file in the folder's place, and a hook planted during a run. `TaskPublicationTests` shows commit and creation refusing with no Git launch and no hook execution, then working once the folder is empty. Disabling the guard made both fail.
   - **Open for TypeScript.** AGENTS.md requires security and data-loss fixes to land in both runtimes, and the shipping runtime still has H1. `repository.ts` (`prepareWorktreeBase` and `git()`) and `git-operations.ts` (`hooksDirectory()` and its Git calls) create and use the same folder with no emptiness check, and have done so since the foundation commit.
@@ -849,6 +849,18 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - failures are classified by whether the write started;
   - the primitive requires the owning loop.
 - Mutations were caught. Opening the rewrite with full sharing failed the two exclusivity tests. Skipping the fingerprint comparison failed the tampered-approval case.
+
+**Independent review of P2.2f, the H1/L1 fixes and P2.2g.** The same reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner) reviewed four sealed ranges: `f199fd1..df2d46c`, `df2d46c..9116b45`, `9116b45..b0a27fd` and the documentation commit `b0a27fd..a8fa711`. It returned **GO for all four**, with no critical, high or medium finding.
+- **What it did.** It verified every seal, built an export of `a8fa711`, and ran the publication, runner, edit, folder-chat and creation suites (93 passed). It confirmed that Git 2.53 has no `hook.*` setting that bypasses `core.hooksPath`.
+- **What it confirmed:**
+  - folder `task.start` follows `startTask`'s order, and a Git-project chat is refused before any reservation;
+  - the H1 guard covers every native launch, and its refusals keep TypeScript's outcome classification;
+  - L1 cannot deadlock or strand a reservation;
+  - the edit primitive matches `repository.ts` in order and messages, and nothing is written before the fingerprint and content checks;
+  - its exclusive window holds, `RandomAccess` is valid on the synchronous handle, and nothing in `DevelopmentChat`, `Program` or the protocol reaches it.
+- **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
+- **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
+- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
 
 ## Personal workspace expansion — local implementation
 

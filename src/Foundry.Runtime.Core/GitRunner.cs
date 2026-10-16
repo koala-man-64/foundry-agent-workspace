@@ -170,10 +170,11 @@ internal sealed class GitRunner
     /// <summary>
     /// Hooks stay disabled only while the hooks folder holds nothing: `--no-verify` does not cover post-commit,
     /// post-checkout or reference-transaction. Before launch the folder must be missing, or a directory whose whole chain
-    /// is pinned free of reparse points (so it cannot be renamed, deleted or swapped for a link while held) and that has no
-    /// entries; the pin is held until exit, when the folder is checked again. A directory handle cannot forbid new entries,
-    /// so a same-user process can still add one during a run: that run then fails, and the next launch refuses before
-    /// anything starts, so one planted file never becomes lasting execution.
+    /// is pinned free of reparse points (so no component can be renamed or deleted while held) and that has no entries;
+    /// the pin is held until exit, when the folder is checked again. The pin shares writes, so it cannot forbid new entries
+    /// or attribute changes: a same-user process can still add an entry, or turn the folder into a link in place, during a
+    /// run. That run then fails (the check after exit sees the entries), and the next launch refuses before anything
+    /// starts, so one planted file never becomes lasting execution.
     /// </summary>
     private DirectoryLease? GuardHooks()
     {
