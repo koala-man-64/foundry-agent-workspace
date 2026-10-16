@@ -52,7 +52,8 @@ public sealed class ServiceAdmissionTests
                 var before = Snapshot();
                 // project.add is served now; a missing folder is refused before any path-key probe or write.
                 Assert.Equal("Project folder is unavailable.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("project.add", new() { ["path"] = Path.Combine(scratch, "missing-project") }))).Message);
-                await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("task.create", new() { ["projectPath"] = "C:\\never-probe" }));
+                // task.create is served now; a missing folder is refused before any intent, path-key probe or write.
+                await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("task.create", new() { ["projectPath"] = Path.Combine(scratch, "missing-project") }));
                 await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("workspace.upgrade", new()));
                 foreach (var mode in DeferredModes)
                     await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("task.start", new()

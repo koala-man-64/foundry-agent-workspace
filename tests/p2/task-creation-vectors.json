@@ -1,0 +1,3173 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/service.ts",
+        "sha256": "6eaebec85b27f345559652f3adc64f4d1fa7347aacd89bb33a04e0000216bcef"
+      },
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "f31173ae128e974a194c36cf1eb96e63630fdea29221f56cd815efbc5dd714fe"
+      },
+      {
+        "path": "packages/runtime/src/agent-channel.ts",
+        "sha256": "4014707a4bd78ce2e0553e185594cb0959abd3e211cf89215c7c642ade5e72f9"
+      },
+      {
+        "path": "packages/runtime/src/store.ts",
+        "sha256": "8dd150b5251d1f40603744d29ee6354033fe7b7aaa0abc05baba7666554ca4a5"
+      },
+      {
+        "path": "packages/runtime/src/git-environment.ts",
+        "sha256": "545b68e2e0d7d2465f897eb479a8732648a7fe6e1964bdfec650a45fb30b91ca"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "a chat task gets its own worktree, branch, project and channel binding",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a coding task with the offline profile",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "coding"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "coding"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "coding"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "coding"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "two tasks in one repository reuse its project",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Second",
+            "projectPath": "{scratch}\\REPO",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "id": "{id-4}",
+              "title": "Second",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\REPO",
+              "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+              "branch": "codex/task/{id-4}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            },
+            {
+              "data": {
+                "id": "{id-4}",
+                "title": "Second",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\REPO",
+                "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+                "branch": "codex/task/{id-4}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-4}",
+                "projectPath": "{scratch}\\REPO"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-4}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.created",
+              "task_id": "{id-4}",
+              "data": {
+                "taskId": "{id-4}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 4,
+              "type": "tasks.changed",
+              "task_id": "{id-4}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/codex/task/{id-4} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/data/wt/{id-4}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-4}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          },
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "concurrent tasks in one repository are serialized",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Second",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "concurrent": true,
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "id": "{id-4}",
+              "title": "Second",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+              "branch": "codex/task/{id-4}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            },
+            {
+              "data": {
+                "id": "{id-4}",
+                "title": "Second",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+                "branch": "codex/task/{id-4}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-4}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-4}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.created",
+              "task_id": "{id-4}",
+              "data": {
+                "taskId": "{id-4}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 4,
+              "type": "tasks.changed",
+              "task_id": "{id-4}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/codex/task/{id-4} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/data/wt/{id-4}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-4}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          },
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a repository subfolder",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo\\src",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo\\src",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo\\src",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo\\src"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo\\src",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo\\src",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo\\src",
+                "name": "src",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a linked worktree shares its common repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\wt",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\wt",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\wt",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\wt"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\wt",
+                  "root": "{scratch}\\wt",
+                  "gitDirectory": "{scratch}\\repo\\.git\\worktrees\\wt",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\wt",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\wt",
+                "name": "wt",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/wt a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main",
+              "worktree {scratch/}/wt",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/wt"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a saved folder project becomes a Git project",
+      "tree": [
+        {
+          "dir": "later"
+        },
+        {
+          "file": "later/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "calls": [
+        {
+          "method": "project.add",
+          "params": {
+            "path": "{scratch}\\later"
+          }
+        },
+        {
+          "step": {
+            "git": [
+              "-C",
+              "later",
+              "init",
+              "-q"
+            ]
+          }
+        },
+        {
+          "step": {
+            "git": [
+              "-C",
+              "later",
+              "add",
+              "-A"
+            ]
+          }
+        },
+        {
+          "step": {
+            "git": [
+              "-C",
+              "later",
+              "commit",
+              "-qm",
+              "later"
+            ]
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\later",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "repositories": [
+        "later"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "path": "{scratch}\\later",
+              "name": "later",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{id-2}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-1}",
+              "projectPath": "{scratch}\\later",
+              "worktreePath": "{scratch}\\data\\wt\\{id-2}",
+              "branch": "codex/task/{id-2}",
+              "baseCommit": "b352134c059920d4cede644552ed8c2caa488d70",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-2}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-1}",
+                "projectPath": "{scratch}\\later",
+                "worktreePath": "{scratch}\\data\\wt\\{id-2}",
+                "branch": "codex/task/{id-2}",
+                "baseCommit": "b352134c059920d4cede644552ed8c2caa488d70",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-2}",
+                "projectPath": "{scratch}\\later"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-2}",
+                "identity": {
+                  "path": "{scratch}\\later",
+                  "root": "{scratch}\\later",
+                  "gitDirectory": "{scratch}\\later\\.git",
+                  "common": "{scratch}\\later\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\later",
+              "data": {
+                "id": "{id-1}",
+                "path": "{scratch}\\later",
+                "name": "later",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "projects.changed",
+              "task_id": null,
+              "data": {
+                "projectId": "{id-1}"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "task.created",
+              "task_id": "{id-2}",
+              "data": {
+                "taskId": "{id-2}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 3,
+              "type": "tasks.changed",
+              "task_id": "{id-2}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "later": {
+            "refs": [
+              "refs/heads/codex/task/{id-2} b352134c059920d4cede644552ed8c2caa488d70",
+              "refs/heads/main b352134c059920d4cede644552ed8c2caa488d70"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-2}",
+              "HEAD b352134c059920d4cede644552ed8c2caa488d70",
+              "branch refs/heads/codex/task/{id-2}",
+              "worktree {scratch/}/later",
+              "HEAD b352134c059920d4cede644552ed8c2caa488d70",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "a.txt"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a secret-like title is redacted",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Token sk-abcdefghijklmnopqrstuvwx",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Token [REDACTED]",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Token [REDACTED]",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "an external profile may create a chat task but needs a probe for coding",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "profiles": [
+        {
+          "id": "30303030-0000-4000-8000-000000000001",
+          "name": "External",
+          "apiKind": "responses",
+          "endpoint": "https://fixture.openai.azure.com/",
+          "deployment": "fixture",
+          "contextLimit": 128000,
+          "outputLimit": 4096
+        },
+        {
+          "id": "30303030-0000-4000-8000-000000000002",
+          "name": "External",
+          "apiKind": "responses",
+          "endpoint": "https://fixture.openai.azure.com/",
+          "deployment": "fixture",
+          "contextLimit": 128000,
+          "outputLimit": 4096,
+          "verificationFingerprint": "0216ad0e26aa1372f41ffb5ba77f144a53b8abd38f0b7a7d2cfd3f3c33232dbe",
+          "capabilities": {
+            "streaming": true,
+            "tools": true,
+            "continuation": true,
+            "cancellation": true,
+            "usage": true
+          }
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "30303030-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "coding"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "30303030-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Probed",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "30303030-0000-4000-8000-000000000002",
+            "tokenBudget": 100000,
+            "mode": "coding"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Probe tool and continuation capabilities before creating a coding task."
+          },
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          },
+          {
+            "result": {
+              "id": "{id-4}",
+              "title": "Probed",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+              "branch": "codex/task/{id-4}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-5}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "coding"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            },
+            {
+              "data": {
+                "id": "{id-4}",
+                "title": "Probed",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-4}",
+                "branch": "codex/task/{id-4}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-5}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "coding"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-4}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-4}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            },
+            {
+              "offset": 3,
+              "type": "task.created",
+              "task_id": "{id-4}",
+              "data": {
+                "taskId": "{id-4}",
+                "mode": "coding"
+              }
+            },
+            {
+              "offset": 4,
+              "type": "tasks.changed",
+              "task_id": "{id-4}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/codex/task/{id-4} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/data/wt/{id-4}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-4}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          },
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "coordination settings on a chat task are refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat",
+            "coordination": {
+              "childProfileIds": [
+                "00000000-0000-4000-8000-000000000001"
+              ],
+              "requiredValidation": {
+                "command": "pnpm check",
+                "cwd": "",
+                "timeoutMs": 600000
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Coordination settings apply only to coordinated tasks."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "an unknown profile is refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "30303030-0000-4000-8000-000000000009",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Select an existing model profile."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "a folder that is not a repository is refused before any intent",
+      "tree": [
+        {
+          "dir": "plain"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\plain",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "repositories": [],
+      "expected": {
+        "calls": [
+          {
+            "error": "Project channel requires an available local Git project."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [],
+          "projects": [],
+          "events": []
+        },
+        "git": {},
+        "created": []
+      }
+    },
+    {
+      "name": "missing, relative and network paths are refused before any intent",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\absent",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "\\\\server\\share\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        },
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\re\u0000po",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "systemError": "ENOENT"
+          },
+          {
+            "error": "Repository root must be an absolute path."
+          },
+          {
+            "error": "Projects on network shares are not supported."
+          },
+          {
+            "systemError": "ERR_INVALID_ARG_VALUE"
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "an unborn repository fails before any mutation",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "file": "repo/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Git command failed: fatal: Needed a single revision"
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD 0000000000000000000000000000000000000000",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "filters at the base revision fail before any mutation",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.txt filter=lfs\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Selected revision uses Git filters; refusing because checkout may execute code."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main 37e559e0caa5bd94f4414f9d8d04fc52fa748361"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD 37e559e0caa5bd94f4414f9d8d04fc52fa748361",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "core.worktree fails before any mutation",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "core.worktree",
+            ".."
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Repository configures core.worktree; refusing to materialize files outside the app-owned worktree."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "an earlier unknown worktree creation blocks every new one",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "intents": [
+        {
+          "id": "30303030-0000-4000-8000-000000000020",
+          "kind": "worktree.create",
+          "data": {
+            "taskId": "30303030-0000-4000-8000-000000000021",
+            "projectPath": "C:\\earlier"
+          },
+          "state": "unknown"
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "An earlier worktree creation has an unknown outcome. Inspect the retained worktree and database intent before creating another task."
+          }
+        ],
+        "rows": {
+          "tasks": [],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "C:\\earlier"
+              },
+              "state": "unknown"
+            }
+          ],
+          "projects": [],
+          "events": []
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": []
+      }
+    },
+    {
+      "name": "a junction to a repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\alias",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "chat"
+          }
+        }
+      ],
+      "native": {
+        "outcomes": {
+          "0": {
+            "error": "Projects through reparse directories are not supported."
+          }
+        },
+        "state": "unchanged",
+        "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+      },
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\alias",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "chat"
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\alias",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "chat"
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\alias"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "chat"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a coordinated task",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "calls": [
+        {
+          "method": "task.create",
+          "params": {
+            "title": "Fixture task",
+            "projectPath": "{scratch}\\repo",
+            "profileId": "00000000-0000-4000-8000-000000000001",
+            "tokenBudget": 100000,
+            "mode": "coordinated",
+            "coordination": {
+              "childProfileIds": [
+                "00000000-0000-4000-8000-000000000001"
+              ],
+              "requiredValidation": {
+                "command": "pnpm check",
+                "cwd": "",
+                "timeoutMs": 600000
+              }
+            }
+          }
+        }
+      ],
+      "native": {
+        "outcomes": {
+          "0": {
+            "error": "Coordinated tasks are not available in this build."
+          }
+        },
+        "state": "unchanged",
+        "difference": "Coordinated tasks need the native orchestrator, a later slice; native refuses them before any intent."
+      },
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{id-1}",
+              "title": "Fixture task",
+              "workspaceKind": "git",
+              "projectId": "{id-2}",
+              "projectPath": "{scratch}\\repo",
+              "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+              "branch": "codex/task/{id-1}",
+              "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "profileId": "{id-3}",
+              "status": "idle",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}",
+              "tokenBudget": 100000,
+              "usedTokens": 0,
+              "mode": "coordinated",
+              "role": "coordinator",
+              "rootTaskId": "{id-1}",
+              "coordination": {
+                "childProfileIds": [
+                  "{id-3}"
+                ],
+                "requiredValidation": {
+                  "command": "pnpm check",
+                  "cwd": "",
+                  "timeoutMs": 600000
+                }
+              }
+            }
+          }
+        ],
+        "rows": {
+          "tasks": [
+            {
+              "data": {
+                "id": "{id-1}",
+                "title": "Fixture task",
+                "workspaceKind": "git",
+                "projectId": "{id-2}",
+                "projectPath": "{scratch}\\repo",
+                "worktreePath": "{scratch}\\data\\wt\\{id-1}",
+                "branch": "codex/task/{id-1}",
+                "baseCommit": "a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+                "profileId": "{id-3}",
+                "status": "idle",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}",
+                "tokenBudget": 100000,
+                "usedTokens": 0,
+                "mode": "coordinated",
+                "role": "coordinator",
+                "rootTaskId": "{id-1}",
+                "coordination": {
+                  "childProfileIds": [
+                    "{id-3}"
+                  ],
+                  "requiredValidation": {
+                    "command": "pnpm check",
+                    "cwd": "",
+                    "timeoutMs": 600000
+                  }
+                }
+              }
+            }
+          ],
+          "intents": [
+            {
+              "kind": "worktree.create",
+              "data": {
+                "taskId": "{id-1}",
+                "projectPath": "{scratch}\\repo"
+              },
+              "state": "complete"
+            },
+            {
+              "kind": "channel.identity",
+              "data": {
+                "taskId": "{id-1}",
+                "identity": {
+                  "path": "{scratch}\\repo",
+                  "root": "{scratch}\\repo",
+                  "gitDirectory": "{scratch}\\repo\\.git",
+                  "common": "{scratch}\\repo\\.git"
+                }
+              },
+              "state": "complete"
+            }
+          ],
+          "projects": [
+            {
+              "path_key": "{scratch-lower}\\repo",
+              "data": {
+                "id": "{id-2}",
+                "path": "{scratch}\\repo",
+                "name": "repo",
+                "hidden": false,
+                "kind": "git",
+                "createdAt": "{stamp}",
+                "updatedAt": "{stamp}"
+              }
+            }
+          ],
+          "events": [
+            {
+              "offset": 1,
+              "type": "task.created",
+              "task_id": "{id-1}",
+              "data": {
+                "taskId": "{id-1}",
+                "mode": "coordinated"
+              }
+            },
+            {
+              "offset": 2,
+              "type": "tasks.changed",
+              "task_id": "{id-1}",
+              "data": {}
+            }
+          ]
+        },
+        "git": {
+          "repo": {
+            "refs": [
+              "refs/heads/codex/task/{id-1} a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "refs/heads/main a4d4dd41e4c73b01e30aa313caec6a170bfd181f"
+            ],
+            "worktrees": [
+              "worktree {scratch/}/data/wt/{id-1}",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/codex/task/{id-1}",
+              "worktree {scratch/}/repo",
+              "HEAD a4d4dd41e4c73b01e30aa313caec6a170bfd181f",
+              "branch refs/heads/main"
+            ]
+          }
+        },
+        "created": [
+          {
+            "status": "",
+            "files": [
+              "README.md",
+              "docs/b.md",
+              "src/a.ts"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

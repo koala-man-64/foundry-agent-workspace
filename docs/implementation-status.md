@@ -669,6 +669,50 @@ New coverage:
   - prefix identities from the drive root;
   - a common directory redirected while classification runs Git, which must save nothing and notify nothing.
 
+### Git-backed task creation (P2.2d)
+
+**What it is.** The development runtime now serves `task.create`, bringing it to **30** of the 89 methods. It creates a chat or coding task with its own app-owned worktree, following `service.ts`, `RepositoryService.createTaskWorktree` and `agent-channel.ts`:
+1. **Refusals before any intent.** These come first, in TypeScript's order:
+   - network and device paths, missing paths and aliases;
+   - profiles;
+   - coordination settings on a chat task;
+   - the coding-profile probe;
+   - an earlier unknown creation;
+   - a folder that is not a repository.
+2. **Durable intent.** The `worktree.create` intent is written next, before any Git mutation.
+3. **Serialized creation.** The worktree is created under the per-common-repository queue. The caller's admitted identity is revalidated across every await, at the final boundary before `git worktree add --no-checkout`, and before `checkout --no-recurse-submodules`. Filters are refused at the base revision, and the worktree base `<data>\wt` is pinned free of reparse points while the worktree is added.
+4. **One commit.** The project (upserted, and promoted from folder to Git), the task, the channel identity binding, the completed intent and the `tasks.changed` notification commit together.
+
+**Outcomes.** A failure before the final boundary leaves the intent complete. Any failure after it leaves the intent unknown, saves no task, and refuses every later creation until someone inspects the retained worktree. Restart recovery turns an interrupted (pending) intent into unknown. Nothing retries.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Coordinated tasks need the orchestrator, a later slice, so native refuses them before any intent with TypeScript's "not available in this build" message.
+- A project path that names a file is refused before any intent. TypeScript refuses it inside worktree creation and leaves a complete intent row.
+- Node's raw filesystem errors become fixed messages.
+- **Atomic project upsert.** The project upsert commits with the task. TypeScript saves it before the task's transaction.
+
+**Evidence.**
+- `tests/p2/task-creation.test.ts` drives the shipping `RuntimeService` through 19 cases:
+  - chat and coding tasks;
+  - repeated, concurrent, subfolder and linked-worktree creation;
+  - a folder project that later becomes a repository;
+  - redaction, external profiles with and without a probe, and coordination settings;
+  - unknown profiles;
+  - non-repositories, and missing, relative, network and NUL paths;
+  - unborn repositories, base-revision filters and `core.worktree`;
+  - an earlier unknown creation;
+  - a junction and a coordinated task.
+
+  It pins every outcome in `task-creation-vectors.json`, bound to the SHA-256 of `service.ts`, `repository.ts`, `agent-channel.ts`, `store.ts` and `git-environment.ts`. The pinned state covers every task, intent, project and event row, plus the repository's refs, worktrees, and each new checkout's status and files. Generated identities and stamps are normalized in order of appearance, and refs and worktrees are ordered by placeholder. Regenerating the vectors requires `P2_WRITE_TASK_CREATION=1`.
+- `TaskCreationTests` replays every case through `DevelopmentChat`. Where a difference is named, it requires the refusal and unchanged rows and repository. It also ports `folder-admission.test.ts`'s three workflows to native form:
+  - queued requests whose identity changes while the first waits (via a redirected common directory, since aliases are refused) both fail before mutation;
+  - an identity change at the final boundary is a known pre-mutation failure;
+  - a failure after `worktree add` keeps the branch and worktree, marks the intent unknown, blocks later creation and stays unknown across a restart.
+
+  A pending intent recovered on restart blocks creation too.
+- `DevelopmentChatProcessTests` drives `project.add`, `task.create` (with protocol defaults and trimming applied by the entry point), `files.list` and `task.diff` through stdio, with their notifications.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

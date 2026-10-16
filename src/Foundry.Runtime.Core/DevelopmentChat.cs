@@ -105,6 +105,7 @@ public sealed class DevelopmentChat
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
+            case "task.create": return await Repository(async () => await CreateTask(parameters));
             case "files.list":
                 return await Repository(() =>
                 {
@@ -170,6 +171,76 @@ public sealed class DevelopmentChat
             return project;
         });
     }
+
+    /// <summary>
+    /// service.ts task.create: a Git task with its own app-owned worktree. Every refusal happens before the durable
+    /// worktree.create intent; the intent is written before any Git mutation; the task, its project, its channel binding,
+    /// the completed intent and the tasks.changed notification commit together. A failure leaves the intent complete only
+    /// when the repository reported that no mutation started; otherwise it is unknown, and it blocks every later creation
+    /// until someone inspects the retained worktree. Coordinated tasks need the orchestrator, which this runtime lacks.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> CreateTask(Dictionary<string, object?> parameters)
+    {
+        var projectPath = (string)parameters["projectPath"]!;
+        var mode = (string?)parameters.GetValueOrDefault("mode") ?? "chat";
+        // Before any canonicalization or probe: touching a network path makes Windows authenticate to its server.
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(projectPath)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
+        using (RepositoryFolderLease.Open(loop, projectPath)) { }
+        var selected = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile.");
+        if (mode != "coordinated" && parameters.ContainsKey("coordination")) throw new WorkspaceReadException("Coordination settings apply only to coordinated tasks.");
+        if (mode == "coordinated") throw new WorkspaceReadException("Coordinated tasks are not available in this build.");
+        if (mode == "coding" && !ProfileReady(selected)) throw new WorkspaceReadException("Probe tool and continuation capabilities before creating a coding task.");
+        if (store.UnknownWorktreeIntents() > 0)
+            throw new WorkspaceReadException("An earlier worktree creation has an unknown outcome. Inspect the retained worktree and database intent before creating another task.");
+        using var channel = RepositoryAdmission.Open(loop, projectPath);
+        var identity = channel.Identity ?? throw new WorkspaceReadException(RepositoryService.NoRepository);
+        var taskId = id().ToString();
+        var intent = store.Intent("worktree.create", new Dictionary<string, object?> { ["taskId"] = taskId, ["projectPath"] = projectPath });
+        try
+        {
+            var worktree = await repositories.CreateTaskWorktree(projectPath, taskId, identity);
+            var stamp = Clock.Iso(now());
+            return store.Transaction(() =>
+            {
+                string? projectId = null;
+                if (store.SchemaVersion >= 3)
+                {
+                    var project = store.ProjectByPath(projectPath) ?? store.InsertProject(FinalPath.Canonical(projectPath), "git");
+                    if (!Equals(project["kind"], "git")) store.SaveProject(new(project) { ["kind"] = "git" });
+                    projectId = (string)project["id"]!;
+                }
+                var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = redactor.Text((string)parameters["title"]!), ["workspaceKind"] = "git" };
+                if (projectId is not null) task["projectId"] = projectId;
+                task["projectPath"] = projectPath; task["worktreePath"] = worktree.WorktreePath; task["branch"] = worktree.Branch; task["baseCommit"] = worktree.BaseCommit;
+                task["profileId"] = parameters["profileId"]; task["status"] = "idle"; task["createdAt"] = stamp; task["updatedAt"] = stamp;
+                task["tokenBudget"] = parameters.GetValueOrDefault("tokenBudget") ?? 100000; task["usedTokens"] = 0; task["mode"] = mode;
+                store.SaveTask(task);
+                // agent-channel admit: the project still resolves to the identity admitted before the worktree was made.
+                channel.Revalidate(identity);
+                var binding = store.Intent("channel.identity", new Dictionary<string, object?>
+                {
+                    ["taskId"] = taskId,
+                    ["identity"] = new Dictionary<string, object?> { ["path"] = identity.Path, ["root"] = identity.Root, ["gitDirectory"] = identity.GitDirectory, ["common"] = identity.Common },
+                });
+                store.FinishIntent(binding, "complete");
+                store.FinishIntent(intent, "complete");
+                store.Event("tasks.changed", new Dictionary<string, object?>(), taskId);
+                return task;
+            });
+        }
+        catch (Exception error) when (error is not EventDeliveryException)
+        {
+            store.FinishIntent(intent, error is RepositoryException { Outcome: "none" } ? "complete" : "unknown");
+            throw;
+        }
+    }
+
+    /// <summary>service.ts profileReady: the fake profile, or a probe of this exact configuration that found tools and continuation.</summary>
+    private static bool ProfileReady(Dictionary<string, object?> profile) =>
+        Equals(profile.GetValueOrDefault("apiKind"), "fake")
+        || Equals(profile.GetValueOrDefault("verificationFingerprint"), Compatibility.ProfileFingerprint(profile))
+            && profile.GetValueOrDefault("capabilities") is Dictionary<string, object?> capabilities
+            && Equals(capabilities.GetValueOrDefault("tools"), true) && Equals(capabilities.GetValueOrDefault("continuation"), true);
 
     /// <summary>
     /// service.ts fileRoot: a Git task's worktree, or a saved folder that still resolves to the same physical folder under

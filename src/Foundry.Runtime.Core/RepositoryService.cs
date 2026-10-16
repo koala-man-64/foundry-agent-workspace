@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Foundry.Platform;
 using Foundry.Protocol;
 
@@ -73,7 +74,7 @@ internal sealed class RepositoryAdmission : IDisposable
 /// knows its final mutation boundary classifies one (<see cref="RepositoryException"/>). Node's raw filesystem errors
 /// become fixed messages.
 /// </summary>
-internal sealed class RepositoryService
+internal sealed partial class RepositoryService
 {
     internal const int MaximumFileBytes = 64 * 1024;
     internal const int MaximumPaths = 5_000;
@@ -405,4 +406,111 @@ internal sealed class RepositoryService
     }
 
     internal bool IsSerializing(string key) { loop.AssertCurrent(); return creating.ContainsKey(key); }
+
+    internal sealed record CreatedWorktree(string WorktreePath, string Branch, string BaseCommit);
+
+    /// <summary>Test seam: awaited inside the serialized section just before the worktree base is prepared, where
+    /// TypeScript's own tests intercept prepareWorktreeBase.</summary>
+    internal Func<Task>? PreparingWorktreeBase { get; set; }
+
+    /// <summary>
+    /// createTaskWorktree: an app-owned worktree for a new task, serialized per common repository. The caller's admitted
+    /// identity is revalidated across every await, at the final boundary before `worktree add`, and before checkout.
+    /// A failure before that boundary is "none"; any failure after it is "unknown", and nothing ever retries it.
+    /// </summary>
+    internal async Task<CreatedWorktree> CreateTaskWorktree(string projectPath, string taskId, GitAdmissionIdentity? admitted)
+    {
+        loop.AssertCurrent();
+        RepositoryAdmission? project = null;
+        GitAdmissionIdentity identity;
+        try
+        {
+            project = RepositoryAdmission.Open(loop, projectPath);
+            identity = admitted ?? project.Identity ?? throw new WorkspaceReadException(NoRepository);
+            project.Revalidate(identity);
+        }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            project?.Dispose();
+            throw new RepositoryException(error.Message, "none", error);
+        }
+        using (project) return await Serialize(identity.SerializationKey, () => CreateTaskWorktreeSerialized(project, taskId, identity));
+    }
+
+    private async Task<CreatedWorktree> CreateTaskWorktreeSerialized(RepositoryAdmission project, string taskId, GitAdmissionIdentity identity)
+    {
+        var mutationStarted = false;
+        try
+        {
+            project.Revalidate(identity);
+            string baseCommit;
+            using (var root = await RequireRepository(project.Path))
+            {
+                project.Revalidate(identity);
+                baseCommit = JsJson.Trim((await Run(root, ["rev-parse", "--verify", "HEAD^{commit}"])).Stdout);
+                project.Revalidate(identity);
+                if (baseCommit.Length == 0) throw new WorkspaceReadException("Repository does not have a valid HEAD commit.");
+                await RejectTrackedFiltersAtRevision(root, baseCommit);
+                project.Revalidate(identity);
+            }
+            var id = RequireTaskId(taskId);
+            var branch = "codex/task/" + id;
+            if (PreparingWorktreeBase is { } preparing) await preparing();
+            var (lease, worktreeBase) = PrepareWorktreeBase();
+            using (lease)
+            {
+                var worktreePath = Path.Join(worktreeBase, id);
+                project.Revalidate(identity);
+                await Run(project, ["worktree", "add", "--no-checkout", "-b", branch, worktreePath, baseCommit], options: new(BeforeMutation: () =>
+                {
+                    project.Revalidate(identity);
+                    // Set only at the final process boundary; every later failure leaves an unknown outcome.
+                    mutationStarted = true;
+                }));
+                project.Revalidate(identity);
+                using var worktree = RepositoryAdmission.Open(loop, worktreePath);
+                if (worktree.Identity is not { } created || !string.Equals(created.Common, identity.Common, StringComparison.Ordinal))
+                    throw new WorkspaceReadException("Created worktree does not belong to the admitted repository.");
+                // Checkout may run filters, so it follows the filter check at the selected revision, with hooks disabled.
+                await Run(worktree, ["checkout", "--no-recurse-submodules", branch], options: new(BeforeMutation: () => project.Revalidate(identity)));
+                project.Revalidate(identity);
+                return new(worktreePath, branch, baseCommit);
+            }
+        }
+        catch (RepositoryException) { throw; }
+        catch (Exception error)
+        {
+            throw new RepositoryException(error.Message, mutationStarted ? "unknown" : "none", error);
+        }
+    }
+
+    /// <summary>
+    /// prepareWorktreeBase: the base and its empty hooks directory exist. The base's existing chain is pinned and verified
+    /// free of reparse points before anything is created beneath it, and the base stays pinned while the worktree is added.
+    /// </summary>
+    private (DirectoryLease Lease, string Path) PrepareWorktreeBase()
+    {
+        const string Unavailable = "The app-owned worktree folder is unavailable.";
+        var requested = FinalPath.Resolve(WorktreeBase);
+        if (!DataClassifier.IsLocal(requested) || RepositoryPaths.HasAmbiguousSegment(requested)) throw new WorkspaceReadException(Unavailable);
+        try
+        {
+            using (DirectoryLease.Acquire(requested)) Directory.CreateDirectory(@"\\?\" + requested);
+            var lease = DirectoryLease.AcquireExistingSharingWrites(requested);
+            try
+            {
+                if (!FinalPath.TryResolve(requested, out var resolved) || !DataClassifier.IsLocal(resolved)) throw new WorkspaceReadException(Unavailable);
+                Directory.CreateDirectory(@"\\?\" + Path.Join(resolved, GitRunner.EmptyHooksDirectory));
+                return (lease, resolved);
+            }
+            catch { lease.Dispose(); throw; }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(Unavailable); }
+    }
+
+    /// <summary>requireTaskId: a UUID, lowercased, matched exactly as TypeScript's ASCII pattern does.</summary>
+    private static string RequireTaskId(string taskId) => TaskId().IsMatch(taskId) ? taskId.ToLowerInvariant() : throw new WorkspaceReadException("Task id must be a UUID.");
+
+    [GeneratedRegex(@"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\z", RegexOptions.CultureInvariant)]
+    private static partial Regex TaskId();
 }

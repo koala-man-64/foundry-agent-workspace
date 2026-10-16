@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Foundry.Platform;
 using Foundry.Protocol;
 using Foundry.Runtime;
 using Xunit;
@@ -260,6 +261,45 @@ public sealed class DevelopmentChatProcessTests
             finally { await KillIfNeeded(process); }
         }
         finally { Directory.Delete(scratch, true); }
+    }
+
+    [Fact]
+    public async Task ProjectAndTaskCreationAnswerOverStdioWithTheirNotifications()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-stdio-create-");
+        fixture.Write("repo/README.md", "hello\n");
+        await fixture.Git("-C", "repo", "init", "-q"); await fixture.Git("-C", "repo", "add", "-A"); await fixture.Git("-C", "repo", "commit", "-qm", "fixture");
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = data; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        foreach (var (name, value) in fixture.Isolation) info.Environment[name] = value;
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var events = new List<Dictionary<string, object?>>();
+            await Send(process, Frame("project", "project.add", new { path = fixture.Local("repo") }));
+            var project = (Dictionary<string, object?>)(await Reply(process, "project", events))["result"]!;
+            Assert.Equal("git", project["kind"]);
+            // tokenBudget and mode are omitted: the entry point applies the protocol defaults.
+            await Send(process, Frame("task", "task.create", new { title = "  Created over stdio  ", projectPath = fixture.Local("repo"), profileId = Store.FakeProfileId }));
+            var task = (Dictionary<string, object?>)(await Reply(process, "task", events))["result"]!;
+            Assert.Equal("Created over stdio", task["title"]); Assert.Equal("chat", task["mode"]); Assert.Equal(100000L, Convert.ToInt64(task["tokenBudget"], System.Globalization.CultureInfo.InvariantCulture));
+            Assert.Equal(project["id"], task["projectId"]); Assert.Equal($"codex/task/{task["id"]}", task["branch"]);
+            Assert.Equal(Path.Join(FinalPath.Canonical(data), "wt", (string)task["id"]!), task["worktreePath"]);
+            await Send(process, Frame("list", "files.list", new { taskId = task["id"] }) + Frame("diff", "task.diff", new { taskId = task["id"] }));
+            var replies = await Replies(process, ["list", "diff"], events);
+            Assert.Equal("[{\"path\":\"README.md\",\"kind\":\"file\"}]", JsJson.Stringify(replies["list"]["result"]));
+            Assert.Equal("{\"summary\":\"\",\"patch\":\"\",\"truncated\":false}", JsJson.Stringify(replies["diff"]["result"]));
+            Assert.Equal(["projects.changed", "tasks.changed"], events.Select(item => (string)item["type"]!));
+            Assert.Equal(task["id"], events[1]["taskId"]);
+            await Exit(process, error);
+        }
+        finally { await KillIfNeeded(process); }
+        Assert.Contains($"refs/heads/codex/task/", await fixture.GitOutput("-C", fixture.Local("repo"), "for-each-ref", "--format=%(refname)"), StringComparison.Ordinal);
     }
 
     [Fact]
