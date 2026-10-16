@@ -42,7 +42,7 @@ const cases: Case[] = [
   { name: 'cross-drive drive-relative gitdir', tree: pointer('gitdir: {other-drive}main'), project: 'wt',
     native: { outcome: { error: INVALID }, difference: 'A drive-relative reference to another drive resolves from per-drive process state, so native refuses it.' } },
   { name: 'dot segments are normalized', tree: pointer('gitdir: ./x/../../main/.git/worktrees/wt'), project: 'wt' },
-  { name: 'BOM and surrounding whitespace are trimmed', tree: pointer('﻿  gitdir: ../main/.git/worktrees/wt \n\t'), project: 'wt' },
+  { name: 'BOM and surrounding whitespace are trimmed', tree: pointer('\uFEFF  gitdir: ../main/.git/worktrees/wt \n\t'), project: 'wt' },
   { name: 'pointer at the 16384-byte limit', tree: pointer('gitdir: ../main/.git/worktrees/wt', '../..', 16384), project: 'wt' },
   { name: 'pointer one byte over the limit', tree: pointer('gitdir: ../main/.git/worktrees/wt', '../..', 16385), project: 'wt' },
   { name: 'empty .git file', tree: pointer(''), project: 'wt' },

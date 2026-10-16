@@ -129,6 +129,33 @@ public sealed class MetadataFileTests
     }
 
     [Theory]
+    [InlineData(@"\\server\share\.git"), InlineData("//server/share/.git"), InlineData(@"\\?\C:\x\.git"), InlineData(@"\\.\C:\x"), InlineData("relative\\.git"), InlineData(@"\x\.git")]
+    public void OnlyDriveAbsolutePathsAreOpened(string path)
+    {
+        Assert.Throws<IOException>(() => MetadataFile.Probe(path));
+        Assert.Throws<IOException>(() => PinnedMetadataFile.OpenExisting(path));
+        Assert.Throws<IOException>(() => DirectoryLease.AcquireExisting(path));
+    }
+
+    [Fact]
+    public void PathsBeyondMaxPathAreOpenedExactly()
+    {
+        var scratch = Scratch.Directory("foundry-metadata-long-").FullName;
+        try
+        {
+            var deep = Directory.CreateDirectory(Path.Combine(scratch, string.Join('\\', Enumerable.Repeat(new string('d', 60), 5)))).FullName;
+            var file = Path.Combine(deep, "commondir"); File.WriteAllText(file, "../..");
+            Assert.True(file.Length > 300);
+            Assert.Equal(MetadataEntryKind.Directory, MetadataFile.Probe(deep));
+            Assert.Equal(MetadataEntryKind.File, MetadataFile.Probe(file));
+            using (DirectoryLease.AcquireExisting(deep))
+            using (var pinned = PinnedMetadataFile.OpenExisting(file))
+                Assert.Equal("../.."u8.ToArray(), pinned.ReadBounded(Limit));
+        }
+        finally { Directory.Delete(scratch, true); }
+    }
+
+    [Theory]
     [InlineData(@"C:\repo\wt", "../main/.git", @"C:\repo\main\.git")]
     [InlineData(@"C:\repo\wt", "C:/repo/main/.git/worktrees/wt", @"C:\repo\main\.git\worktrees\wt")]
     [InlineData(@"C:\repo\wt", @"\other\.git", @"C:\other\.git")]

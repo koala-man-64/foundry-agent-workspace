@@ -37,8 +37,9 @@ internal sealed partial class GitRepositoryLease : IDisposable
     internal GitAdmissionIdentity Identity { get; }
 
     /// <summary>
-    /// The nearest repository at or above the folder, or null when there is none. The caller keeps the folder lease,
-    /// which pins every ancestor the walk probes, open for at least as long as this lease.
+    /// The nearest repository at or above the folder, or null when there is none. The caller keeps the folder lease open
+    /// for at least as long as this lease; the folder's canonical chain, which the walk probes, is verified and pinned
+    /// again here because a subst spelling admitted by the folder lease pins a different chain.
     /// </summary>
     internal static GitRepositoryLease? Open(RuntimeLoop loop, RepositoryFolderLease folder)
     {
@@ -79,6 +80,7 @@ internal sealed partial class GitRepositoryLease : IDisposable
 
     private static GitAdmissionIdentity? Resolve(string path, List<IDisposable> pins)
     {
+        Acquire(path, pins);
         var root = path;
         MetadataEntryKind kind;
         while ((kind = Probe(System.IO.Path.Join(root, ".git"))) == MetadataEntryKind.Missing)
@@ -135,10 +137,11 @@ internal sealed partial class GitRepositoryLease : IDisposable
     /// </summary>
     private static string PinnedDirectory(string candidate, List<IDisposable> pins)
     {
-        // Win32 path normalization would otherwise open a different entry than the one named: trailing dots and spaces
-        // are stripped, a stream suffix or NUL changes the target, and reserved device names reach devices.
+        // A name Win32 would read as another entry is refused outright: a component ending in a dot or space (which
+        // GetFullPath keeps when it is not the last), a stream suffix or NUL, or a reserved device name. Opens are also
+        // namespaced, so verification and traversal always reach the same entry.
         if (!DataClassifier.IsLocal(candidate) || !string.Equals(System.IO.Path.GetFullPath(candidate), candidate, StringComparison.Ordinal)
-            || candidate[3..].Split('\\').Any(component => ReservedName().IsMatch(component)))
+            || candidate[3..].Split('\\').Any(component => component.EndsWith('.') || component.EndsWith(' ') || ReservedName().IsMatch(component)))
             throw new WorkspaceReadException(Invalid);
         if (new DriveInfo(candidate[..3]).DriveType is DriveType.Network) throw new WorkspaceReadException(Network);
         if (System.IO.Path.GetDirectoryName(candidate) is { } parent) Acquire(parent, pins);

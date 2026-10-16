@@ -33,9 +33,11 @@ public sealed class DirectoryLease : IDisposable
             for (var index = -1; index < parts.Length; index++)
             {
                 if (index >= 0) current = Path.Combine(current, parts[index]);
-                // The preceding component is pinned before probing or creating its children.
+                // The preceding component is pinned before probing or creating its children. The namespaced name is opened
+                // exactly as spelled: Win32 would strip a trailing space or dot and verify a different entry than the one
+                // later traversal reaches.
                 SafeFileHandle handle;
-                fixed (char* name = current)
+                fixed (char* name = MetadataFile.Namespaced(current))
                     handle = Native.CreateFile(name, 1, share, 0, Native.OpenExisting, Native.FileFlagBackupSemantics | 0x00200000, 0); // LIST_DIRECTORY, OPEN_REPARSE_POINT, never SHARE_DELETE.
                 if (handle.IsInvalid)
                 {

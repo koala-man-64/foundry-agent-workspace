@@ -32,8 +32,18 @@ public static class MetadataFile
 
     internal static unsafe SafeFileHandle Open(string path, uint access, uint share, uint flags)
     {
-        fixed (char* name = path) return Native.CreateFile(name, access, share, 0, Native.OpenExisting, flags, 0);
+        fixed (char* name = Namespaced(path)) return Native.CreateFile(name, access, share, 0, Native.OpenExisting, flags, 0);
     }
+
+    /// <summary>
+    /// Node's toNamespacedPath for a drive-absolute path. Win32 normalization (stripping trailing dots and spaces,
+    /// mapping reserved device names, the MAX_PATH limit) never applies, so the entry opened is exactly the one named.
+    /// Anything else fails closed: UNC and device paths are refused before any open.
+    /// </summary>
+    internal static string Namespaced(string path) =>
+        path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] == '\\'
+            ? @"\\?\" + path
+            : throw new IOException("Metadata identity cannot be established.");
 
     internal static unsafe uint Attributes(SafeFileHandle handle)
     {

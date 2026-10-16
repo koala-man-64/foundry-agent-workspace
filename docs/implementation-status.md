@@ -419,7 +419,11 @@ P2.1 below adds native identity coverage. The queued-identity, final-boundary an
 - It returns the canonical `{path, root, gitDirectory, common}` identity, with a serialization key equal to `common.toLowerCase()`.
 
 **Differences from TypeScript, all of which fail closed:**
-- **No redirected probe.** For each referenced directory, the parent chain is opened one component at a time without following reparse points (`DirectoryLease`). Only then is the final component probed, pinned and canonicalized with `FinalPath`. When a subst or 8.3 spelling is used, the canonical chain is verified and pinned as well. None of this lease's own opens traverse an unverified reparse point. Mapped network drives are refused by drive type before any open. The shared local-reparse residual for project listing is unchanged.
+- **No redirected probe.**
+  - **Chain first.** For the folder's canonical path and for each referenced directory, the parent chain is opened one component at a time without following reparse points (`DirectoryLease`). Only then is the final component probed, pinned and canonicalized with `FinalPath`. When a subst or 8.3 spelling is used, the canonical chain is verified and pinned as well.
+  - **Exact names.** Every component and metadata open uses its `\\?\` namespaced name, so Win32 cannot strip a trailing space or dot and verify a different entry than the one traversal later reaches. Referenced paths with a component ending in a dot or space are refused outright.
+  - **Drives.** Mapped network drives are refused by drive type before any open.
+  - The shared local-reparse residual for project listing is unchanged.
 - **Bounded pointer reads.** Pointer files are pinned with read-only sharing and read through the handle up to 16,385 bytes; a 16,385th byte rejects the file. TypeScript stats the file and then reads all of it, so growth after the stat is read without bound. Shipping TypeScript is unchanged, because this is neither a security nor a data-loss fix.
 - **Pins that let Git work.** Directory pins share writes but never deletes. Git's lock-file renames inside a pinned directory keep working, while the pinned directories themselves cannot be renamed, deleted or replaced until disposal. Pins defend against races, not against a hostile process running as the same user, which could still empty a pinned directory and turn it into a mount point.
 - **Strict revalidation.** Revalidation resolves again and requires ordinal equality with both the lease and the expected binding. A null or incomplete binding never matches.
@@ -427,42 +431,70 @@ P2.1 below adds native identity coverage. The queued-identity, final-boundary an
   - Local aliases are refused (the open decision above).
   - A drive-relative pointer to another drive is refused, because TypeScript resolves it from per-drive process state.
   - A `commondir` that names a file is refused, where TypeScript accepts the file as the "common directory".
-- **Ambiguous references are refused before any open.** These are references that Win32 would normalize to a different entry: trailing dots or spaces, stream suffixes, and reserved device names. TypeScript also fails them, but later and with raw filesystem errors.
+- **Ambiguous references are refused before the lease opens them.** These are references that Win32 would read as another entry: a component ending in a dot or space, a stream suffix, or a reserved device name. TypeScript also fails them, but later and with raw filesystem errors. A real directory whose name ends in a dot or space is refused too, which is stricter than TypeScript.
 
 **Supporting changes.**
 - `DirectoryLease` gained a write-sharing variant and a typed `ReparsePointException`, which keeps the existing message.
+- `DirectoryLease` now opens each component by its namespaced name. This also affects data-directory and folder admission:
+  - an intermediate name ending in a space or dot is taken literally, so a junction with such a name is refused rather than verified through a decoy (the same exposure existed in `RepositoryFolderLease`);
+  - paths longer than `MAX_PATH` now work instead of failing closed.
+
+  `PinDatabase` still opens its file by its Win32 path.
 - `MetadataFile`, `PinnedMetadataFile` and `PathReference` are new Platform primitives.
 - Nothing in Store, DevelopmentChat, Program or the protocol calls any of this. The 25-method surface, handler admission and selectors are unchanged.
 
 **Evidence.**
-- `tests/p2/git-identity.test.ts` builds **44** disposable trees: hand-built pointers, junctions, and a real `git worktree add`. It pins the shipping resolver's outcomes in `git-identity-vectors.json`, bound to the SHA-256 of `repository.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_GIT_IDENTITY=1`.
+- `tests/p2/git-identity.test.ts` builds **43** disposable trees: hand-built pointers, junctions, and a real `git worktree add`. It pins the shipping resolver's outcomes in `git-identity-vectors.json`, bound to the SHA-256 of `repository.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_GIT_IDENTITY=1`.
 - `GitRepositoryLeaseTests` rebuilds every tree and must match each outcome or its named difference. Where Node raised a raw `ENOENT` or `EISDIR`, native must refuse. The class adds tests for:
   - pins and Git lock-file renames;
   - revalidation;
   - release of partial pins after a failure;
   - loop affinity;
   - folders with no repository;
-  - the serialization key.
+  - the serialization key;
+  - decoy-plus-junction regressions for names ending in a space or `..`, covering the folder lease, the gitdir and the `commondir`;
+  - exact refusal messages for each screened name form;
+  - paths longer than `MAX_PATH`.
 - `MetadataFileTests` covers:
   - probe kinds;
   - exact-limit and over-limit reads, up to 64 MiB;
   - pin refusal of append, rename and delete;
   - a fail-closed open while a writer holds the file;
   - refusal of directories and junctions;
+  - refusal of anything that is not a drive-absolute path, before any open;
+  - paths longer than `MAX_PATH`;
   - reference resolution checked against Node.
 
   The file-symbolic-link case skips when Developer Mode is off.
 
-**Local validation.**
+**Independent review.** A read-only filesystem/security reviewer (Opus, high effort, below the xhigh owner) reviewed the first committed tree, `a9c88b6`. It returned **NO-GO** on one confirmed medium finding:
+- `GetFullPath` keeps an intermediate component ending in a space or `..`.
+- `DirectoryLease` opened that component without a namespace, so Win32 stripped the suffix. Verification therefore checked a plain decoy directory while traversal went through an unverified junction with the exact name.
+- The reviewer reproduced this with a decoy and a junction named `a `.
+- The same root cause also reached `RepositoryFolderLease`.
+
+The reviewer also raised:
+- **Low:** the case count was overstated (44 instead of 43), and two claims overreached.
+- **Low:** paths longer than `MAX_PATH` failed without being listed as a difference.
+- **Informational:** an unpinned subst chain.
+- **Informational:** a test assertion that was too weak.
+
+Each finding is fixed in the follow-up commit, with regression tests. The re-review verdict is recorded with the evidence.
+
+**Local validation of the final tree.**
 - Release build: **zero warnings or errors**.
-- Focused conformance: **765/765**, covering the Git identity, folder, metadata-parser and admission classes.
-- Focused platform: **23/24**; the file-symbolic-link case skipped.
-- Full native suite: **6,873 passed, zero failed, two skipped (6,875 total)**. The skips are the expected local registry-policy test and the file-symbolic-link test.
+- Focused conformance: **768/768**.
+- Focused platform: **30/31**; the file-symbolic-link case skipped.
+- Full native suite: **6,890 passed, zero failed, two skipped (6,892 total)**. The skips are the expected local registry-policy test and the file-symbolic-link test.
 - `pnpm check`: clean, **543 tests across 76 files**.
 - Local package creation and package/expansion smoke: **PASS**. This is Electron/TypeScript proof only.
 - `git diff --check`: clean.
 
-The first full run failed two existing assertions that expected exactly `IOException` for a junction refusal. They now assert the typed `ReparsePointException`, and the log of that failed run is retained. Logs are in `foundry-evidence\p2.1-git-identity\run1` and `run2`. No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+**Failures that are retained.**
+- The first full run failed two existing assertions that expected exactly `IOException` for a junction refusal. They now assert the typed `ReparsePointException`.
+- One final-tree `pnpm check` timed out in the unchanged `git-operations.test.ts` cherry-pick case after 20 seconds and then reported `EBUSY` during cleanup. That file took 243 seconds in the run. Run alone, it passed **27/27**, and the repeated full check passed.
+
+Both failed logs are retained. All logs are in `foundry-evidence\p2.1-git-identity\run1` through `run3`. No renderer, IPC or user-path source changed, so no Electron E2E run was required.
 
 **Residuals.** These belong to P2.2:
 - the per-common-repository serialization queue;

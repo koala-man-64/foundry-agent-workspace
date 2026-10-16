@@ -221,6 +221,88 @@ public sealed class GitRepositoryLeaseTests
         finally { Remove(scratch, []); }
     }
 
+    private const string Invalid = "Invalid Git project metadata.";
+    private const string Reparse = "Projects through reparse directories are not supported.";
+
+    [Theory]
+    [InlineData("a ")]
+    [InlineData("b..")]
+    public async Task NamesWin32WouldNormalizeCannotRedirectVerificationToADecoy(string alias)
+    {
+        var scratch = NewScratch();
+        var link = Path.Combine(scratch, alias);
+        try
+        {
+            // The normalized name is a plain decoy; the exact name is a junction. Verifying one and traversing the other
+            // would admit an alias (or reach a network target) unchecked.
+            var target = Directory.CreateDirectory(Path.Combine(scratch, "target", "inner", ".git")).Parent!.Parent!.FullName;
+            Directory.CreateDirectory(Path.Combine(scratch, alias.TrimEnd(' ', '.'), "inner", ".git"));
+            RawJunction.Create(link, target);
+            var (_, worktree, gitDirectory) = LinkedWorktree(scratch);
+            Assert.Throws<ReparsePointException>(() => DirectoryLease.AcquireExisting(Path.Combine(link, "inner")));
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(() =>
+            {
+                Assert.Equal(Reparse, Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(link, "inner"))).Message);
+                using var folder = RepositoryFolderLease.Open(loop, worktree);
+                File.WriteAllText(Path.Combine(worktree, ".git"), $"gitdir: ../{alias}/inner/.git");
+                Assert.Equal(Invalid, Assert.Throws<WorkspaceReadException>(() => GitRepositoryLease.Open(loop, folder)).Message);
+                File.WriteAllText(Path.Combine(worktree, ".git"), "gitdir: ../main/.git/worktrees/wt");
+                File.WriteAllText(Path.Combine(gitDirectory, "commondir"), $"../../../../{alias}/inner/.git");
+                Assert.Equal(Invalid, Assert.Throws<WorkspaceReadException>(() => GitRepositoryLease.Open(loop, folder)).Message);
+                return Task.FromResult(0);
+            });
+        }
+        finally { RawJunction.Delete(link); Remove(scratch, []); }
+    }
+
+    [Theory]
+    [InlineData("gitdir: ../main/.git/worktrees/wt.")]
+    [InlineData("gitdir: ../main /.git/worktrees/wt")]
+    [InlineData("gitdir: ../main./.git/worktrees/wt")]
+    [InlineData("gitdir: ../main/.git/worktrees/wt:stream")]
+    [InlineData("gitdir: ../nul")]
+    [InlineData("gitdir: ../main/con.txt/x")]
+    [InlineData("gitdir: ../COM\u00b9")]
+    public async Task NamesWin32WouldReadAsAnotherEntryAreRefusedAsInvalidMetadata(string contents)
+    {
+        var scratch = NewScratch();
+        try
+        {
+            var (_, worktree, _) = LinkedWorktree(scratch);
+            File.WriteAllText(Path.Combine(worktree, ".git"), contents);
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(() =>
+            {
+                using var folder = RepositoryFolderLease.Open(loop, worktree);
+                Assert.Equal(Invalid, Assert.Throws<WorkspaceReadException>(() => GitRepositoryLease.Open(loop, folder)).Message);
+                return Task.FromResult(0);
+            });
+        }
+        finally { Remove(scratch, []); }
+    }
+
+    [Fact]
+    public async Task PathsBeyondMaxPathResolveLikeShortOnes()
+    {
+        var scratch = NewScratch();
+        try
+        {
+            var deep = Directory.CreateDirectory(Path.Combine(scratch, string.Join('\\', Enumerable.Repeat(new string('d', 60), 5)))).FullName;
+            var (main, worktree, gitDirectory) = LinkedWorktree(deep);
+            Assert.True(gitDirectory.Length > 300);
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(() =>
+            {
+                using var folder = RepositoryFolderLease.Open(loop, worktree);
+                using var lease = GitRepositoryLease.Open(loop, folder)!;
+                Assert.Equal(new GitAdmissionIdentity(worktree, worktree, gitDirectory, Path.Combine(main, ".git")), lease.Identity);
+                return Task.FromResult(0);
+            });
+        }
+        finally { Remove(scratch, []); }
+    }
+
     [Fact]
     public void SerializationKeyIsTheEcmaScriptLowercaseCommonDirectory()
     {
