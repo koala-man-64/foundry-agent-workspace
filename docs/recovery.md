@@ -37,7 +37,7 @@ Nothing is reconciled at restart. An in-app check runs only when you click it, o
 | Unknown or blocked coordinated **integration** | Coordinated task, **Orchestration** tab | **Check outcome** on the integration | Read-only reconciliation from Git state. Read section 3 before using it on a conflict. |
 | Unknown coordinated **handoff** or **child provisioning** | Coordinated task | Send the coordinated task its next message | Before the new turn starts, the runtime reconciles unknown integrations, handoffs and child provisioning read-only. |
 
-Coordinated tasks have no **Publish** tab. They cannot be committed, pushed or retired from the app.
+Coordinated tasks open in the coordinated view, which has no task inspector and so no **Publish** tab. The runtime's `task.retire` can retire a coordinated root together with its children once every run is terminal, but no control in the app calls it. Commit, push, retirement and **Check publication outcome** are therefore unavailable for coordinated tasks.
 
 ### 1.3 How commit, push and retirement outcomes are decided
 
