@@ -54,7 +54,8 @@ function admitChild(store: Store, rootId: string, records: OrchestrationRecords,
   return { childId, assignmentId: assignment.id };
 }
 
-describe('schema versions and backed-up upgrade', () => {
+// Each verified backup restricts its folder through Windows PowerShell, which can take several seconds per launch on hosted runners.
+describe('schema versions and backed-up upgrade', { timeout: 60_000 }, () => {
   it('creates a fresh database directly at v5 with orchestration available', () => {
     const store = open(join(directory, 'fresh.db'));
     expect(store.schemaVersion).toBe(5); expect(store.orchestrationAvailable).toBe(true);

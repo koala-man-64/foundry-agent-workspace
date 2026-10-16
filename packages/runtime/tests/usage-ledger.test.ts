@@ -8,6 +8,9 @@ import type { ModelProfile, Task } from '../../protocol/src/index';
 import { Store } from '../src/store';
 import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION } from '../src/schema';
 
+// Each verified backup restricts its folder through Windows PowerShell, which can take several seconds per launch on hosted runners.
+const BACKUP_TEST_TIMEOUT_MS = 60_000;
+
 let dir: string; const stores: Store[] = [];
 const open = (name: string, options?: ConstructorParameters<typeof Store>[1]) => { const s = new Store(join(dir, name), options); stores.push(s); return s; };
 beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'foundry-usage-')); });
@@ -81,7 +84,7 @@ describe('canonical usage ledger', () => {
     expect(legacy.usageRequests({}).records[0]).toMatchObject({ requestId: id, outcome: 'unknown', attributionKnown: false, profileId: null });
     expect((legacy.db.prepare('SELECT COUNT(*) AS n FROM usage_records').get() as { n: number }).n).toBe(1);
     const backup = new Database(upgraded.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(2); backup.close();
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
   it('keeps v2 untouched after failed current backup or migration', async () => {
     createV2('older.db');
     for (const options of [{ backupFault: 'verify' as const }, { migrationFault: 'after-ddl' as const }]) {
@@ -89,7 +92,7 @@ describe('canonical usage ledger', () => {
       expect(s.schemaVersion).toBe(2); expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='provider_requests'").get()).toBeUndefined();
       s.close(); stores.splice(stores.indexOf(s), 1);
     }
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
   it('upgrades published saved-projects v3 to v5 without rewriting projects or old usage', async () => {
     const path = join(dir, 'projects-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const s = open('projects-v3.db'); const t = task(); s.saveTask(t);
@@ -111,7 +114,7 @@ describe('canonical usage ledger', () => {
     expect(backup.pragma('user_version', { simple: true })).toBe(3);
     expect((backup.prepare('SELECT COUNT(*) AS n FROM projects').get() as { n: number }).n).toBe(2);
     backup.close();
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
   it('rolls v3 back completely when current migration fails', async () => {
     const path = join(dir, 'rollback-v3.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const initial = open('rollback-v3.db'); await initial.upgradeToV3(); initial.close(); stores.splice(stores.indexOf(initial), 1);
@@ -120,14 +123,14 @@ describe('canonical usage ledger', () => {
     expect(s.schemaVersion).toBe(3);
     expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='provider_requests'").get()).toBeUndefined();
     expect(s.db.prepare("SELECT 1 FROM sqlite_master WHERE name='projects'").get()).toBeTruthy();
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
   it('upgrades a v1 database directly to v5 after backing it up', async () => {
     const path = join(dir, 'v1.db'); const raw = new Database(path); raw.exec(V1_SCHEMA); raw.pragma('user_version = 1'); raw.close();
     const s = open('v1.db'); expect(s.schemaVersion).toBe(1); const t = task(); s.saveTask(t);
     const result = await s.upgradeToCurrent(); expect(result.version).toBe(5); expect(s.orchestrationAvailable).toBe(true);
     expect(s.task(t.id).title).toBe(t.title);
     const backup = new Database(result.backupPath, { readonly: true }); expect(backup.pragma('user_version', { simple: true })).toBe(1); backup.close();
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
   it('reads existing v2 usage without changing schema or treating unavailable attribution as zero', () => {
     createV2('legacy-read.db');
     const s = open('legacy-read.db'); const t = task(); s.saveTask(t); const id = randomUUID();
