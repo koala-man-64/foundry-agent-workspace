@@ -1144,6 +1144,58 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Status.** Under the dual-landing rule this needs a TypeScript fix. That fix is draft #39, which reads standard input through a strict UTF-8 reader; its security review is GO, and it is not merged. Native is not affected.
 - **Shared limit.** PowerShell encodes command output in the console code page and both runtimes decode it as UTF-8, so non-ASCII output becomes U+FFFD in both. That is a shared fidelity limit, not an approval defect.
 
+**Reviewer probe debris.** The first review's deep-tree probe wrote 14 small untracked files (`content 1` to `content 14`) into the worktree root, though it was told to work read-only in its own export. No tracked file changed. They were removed before P2.3b, and the evidence folder records them (`notes\reviewer-probe-debris.txt`).
+
+### Approval records and reconciliation (P2.3b)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `task.approvals`, `approval.get`, `approval.content` and `approval.reconcile`, bringing it to **38** of the 89 methods. The Store reads and saves approvals as `store.ts` does. The new `ToolRuntime` holds reconciliation; the tool execution and decision paths join it in later slices.
+- **`task.approvals`.** The task's approvals, newest first, are keyed by rowid in the same SQL. Each item has the id, task, tool, the row's state, the creation time and the path; fields absent from the stored document stay absent.
+- **`approval.get`.** The whole document is redacted, then parsed back from the redacted text.
+  - When it fits in 128 KiB, it is returned whole.
+  - Otherwise a preview is returned: its identity, hashes, binding and origin, with the summary and path clipped to 1,000 bytes and the omitted fields named.
+- **`approval.content`.** One field (or the whole redacted document) is returned in a UTF-8-aligned chunk of at most 32 KiB.
+- **`approval.reconcile`.** Only an unknown outcome of the same task can be checked, and nothing is replayed.
+  - **Edits.** The file in the task's worktree is compared by hash. The approved content completes the edit, and the original content fails it. Anything else, including a file that cannot be read safely, leaves it unknown.
+  - **Everything else.** Commands, external tools, browser actions and orchestration operations stay unknown, with TypeScript's guidance.
+- **Events.** The approval is saved with its `approval.changed` event as `service.ts` records it:
+  - before schema v5, always;
+  - from v5, when the state changed, or when the task has no such event yet, because the publish falls back to recording one.
+
+  `approval.changed` is now among the notifications the development runtime sends.
+
+**Differences, all invisible on success or fail-closed:**
+- **Re-sent notifications.** When a reconciliation leaves the state unchanged and the task already has an `approval.changed` event, TypeScript re-sends that earlier event (its canonical re-read), and native sends nothing. This is the approved publication-after-commit difference, and the durable rows are identical.
+- **One commit.** The saved approval and any event recorded after it commit together; TypeScript commits them separately.
+- **Aliases.** An edit is reconciled through native file access, so a worktree reached through an alias cannot be checked: the approved alias refusal, which leaves the outcome unknown.
+- **Malformed rows.** A stored approval that is not valid JSON faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with its parser's message. Both runtimes' pages skip such rows.
+
+**Evidence.**
+- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds three tasks and 20 approval rows covering:
+  - edits, commands, rejected and secret-bearing approvals;
+  - a 140,000-byte approval with a multibyte summary and long path (preview);
+  - external tool, browser, handoff and integration approvals;
+  - unknown edits whose file holds the approved content, the original, neither, or nothing;
+  - lone surrogates, a document without a stored state, and a row that is not JSON.
+
+  It pins, in `approval-vectors.json`:
+  - every era's own approvals (each fixture era since v1 holds approved and rejected coding demos), with pages and reads;
+  - a full keyset traversal at limit 2;
+  - 127 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
+  - 18 reconciliations, each with the approval row and every event row it adds.
+
+  It is bound to the SHA-256 of `workspace-queries.ts`, `tool-runtime.ts`, `store.ts`, `service.ts`, `redaction.ts` and `repository.ts`. Regenerating the vectors requires `P2_WRITE_APPROVALS=1`.
+- **The replay.** `ApprovalTests` seeds the same rows into the same copies and replays every step through `DevelopmentChat`. Values, refusals, approval rows and event rows (sequences included) must match. A native-only test pins the malformed-row difference.
+- **Process differential.** The real Node/C# stdio differential (`tests/p2/development-chat-process.parity.ts`) now also calls each approval method. The two entry points agree on the empty page, the missing-task refusal and the missing-approval refusals.
+- **Mutations.** Each of these failed the replay:
+  - dropping the event when the state changes (v5);
+  - dropping the fallback event, and dropping the pre-v5 event;
+  - returning the unredacted document;
+  - ignoring UTF-8 boundaries in chunks;
+  - ignoring the approval's task, in reads and in reconciliation;
+  - failing an edit whose file cannot be read.
+
+  The first mutation's original edit did not build (unreachable code); its rerun was caught.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

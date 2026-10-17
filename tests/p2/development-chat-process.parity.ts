@@ -87,6 +87,12 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const preferences = await request('preferences-save', 'workspace.preferences.save', { profileId: FAKE_PROFILE_ID, mode: 'chat', collapsedProjectIds: ['none', 'none'] });
     const deniedPreferences = await request('preferences-missing', 'workspace.preferences.save', { collapsedProjectIds: ['17171717-0000-4000-8000-000000000099'] });
     const deniedProject = await request('project-missing', 'project.update', { projectId: '17171717-0000-4000-8000-000000000099', hidden: true });
+    const missingApproval = '17171717-0000-4000-8000-000000000098';
+    const approvals = await request('approvals', 'task.approvals', { taskId, limit: 50 });
+    const approvalsMissingTask = await request('approvals-missing-task', 'task.approvals', { taskId: '17171717-0000-4000-8000-000000000099' });
+    const approvalMissing = await request('approval-missing', 'approval.get', { taskId, approvalId: missingApproval });
+    const approvalContentMissing = await request('approval-content-missing', 'approval.content', { taskId, approvalId: missingApproval, field: 'full' });
+    const reconcileMissing = await request('reconcile-missing', 'approval.reconcile', { taskId, approvalId: missingApproval });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -121,6 +127,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         trends, invalidTrend: invalidTrend.error,
         exactTrend: exactTrend.result, shortFractionTrend: shortFractionTrend.result,
         schema: Object.fromEntries(Object.entries(schema.result as ObjectValue).filter(([key]) => key !== 'coordinatedAvailable')), preferences: preferences.result, deniedPreferences: deniedPreferences.error, deniedProject: deniedProject.error,
+        approvals: approvals.result, approvalsMissingTask: approvalsMissingTask.error, approvalMissing: approvalMissing.error, approvalContentMissing: approvalContentMissing.error, reconcileMissing: reconcileMissing.error,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });

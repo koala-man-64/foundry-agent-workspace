@@ -23,6 +23,7 @@ public sealed class DevelopmentChat
     private readonly Func<Guid> id;
     private readonly Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream;
     private readonly RepositoryService repositories;
+    private readonly ToolRuntime tools;
     private readonly Dictionary<string, Running> running = new(StringComparer.Ordinal);
     private readonly HashSet<string> publishing = new(StringComparer.Ordinal);
     private readonly HashSet<string> retiring = new(StringComparer.Ordinal);
@@ -50,6 +51,7 @@ public sealed class DevelopmentChat
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.stream = stream; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
+        tools = new ToolRuntime(loop, store, repositories);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
@@ -58,7 +60,7 @@ public sealed class DevelopmentChat
     // TypeScript keeps silent, and the explicit event workspace-operations publishes with its removed-worktree count.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
         or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning"
-        or "task.committed" or "task.pushed"
+        or "task.committed" or "task.pushed" or "approval.changed"
         || item.Type == "task.retired" && item.Data is IDictionary<string, object?> data && data.ContainsKey("removedWorktrees");
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
@@ -108,6 +110,11 @@ public sealed class DevelopmentChat
                 var present = running.TryGetValue((string)task["id"]!, out var entry); entry?.Abort.Cancel();
                 return new Dictionary<string, object?> { ["accepted"] = present };
             case "task.read": return store.TaskRead((string)parameters["taskId"]!);
+            case "task.approvals": return store.ApprovalPage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"));
+            case "approval.get": return store.ApprovalRead((string)parameters["taskId"]!, (string)parameters["approvalId"]!, redactor);
+            case "approval.content":
+                return store.ApprovalContent((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["field"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 32 * 1024), redactor);
+            case "approval.reconcile": return tools.Reconcile((string)parameters["taskId"]!, (string)parameters["approvalId"]!);
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
