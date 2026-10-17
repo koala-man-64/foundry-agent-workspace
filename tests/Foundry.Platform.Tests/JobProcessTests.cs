@@ -103,6 +103,9 @@ public sealed class JobProcessTests
             Scratch.EncodedCommand("[Console]::Out.Write(('o' * 2048)); [Console]::Error.Write(('e' * 2048)); exit 23"),
             directory.FullName, Scratch.Environment(directory.FullName)));
         Assert.Equal(23, await job.WaitForExitAsync(cancellation));
+        // Windows starts a conhost.exe inside the job for the console root, and it can outlive the root for a moment.
+        // Snapshots taken before it leaves would differ only in activeProcesses.
+        Assert.True(await job.WaitForEmptyAsync(TimeSpan.FromSeconds(5), cancellation), "The job did not empty within 5 seconds of the root's exit.");
         await File.WriteAllTextAsync(Path.Combine(directory.FullName, "root.pid"),
             job.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellation);
 
