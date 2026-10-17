@@ -526,7 +526,7 @@ internal sealed partial class RepositoryService
     /// commitAll: the user's explicit commit of every change in the task worktree. Refusals before staging are "none";
     /// from `git add` on, every failure is "unknown". Admission failures before that carry no outcome, so the caller treats
     /// them as unknown, as TypeScript does. Secret-named paths are never staged, hooks stay disabled, signing is off, and
-    /// the identity comes from the user's Git configuration. Not in TypeScript: the worktree must still belong to the task's
+    /// the identity comes from the user's Git configuration. Since the review of #36, in both runtimes: the worktree must still belong to the task's
     /// project repository (<see cref="RequireTaskWorktree"/>), the source of a staged rename or copy is screened as well
     /// as its destination, and the staged screen lists paths without rename detection, so a secret-named path cannot be
     /// committed under another name.
@@ -561,7 +561,7 @@ internal sealed partial class RepositoryService
     /// <summary>
     /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
     /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
-    /// Not in TypeScript: the worktree must still belong to the task's project repository, whose remotes are the ones
+    /// Since the review of #36, in both runtimes: the worktree must still belong to the task's project repository, whose remotes are the ones
     /// checked (<see cref="RequireTaskWorktree"/>), and the repository's own configuration must pass
     /// <see cref="RequireTrustedPushConfiguration"/>.
     /// </summary>
@@ -597,7 +597,7 @@ internal sealed partial class RepositoryService
         {
             using var project = await RequireRepository(projectPath);
             var commit = expectedCommit ?? await TaskWorktreeHead(worktreePath, project, boundCommon);
-            // Not in TypeScript: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
+            // Since the review of #36, in both runtimes: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
             // verified here; it stays unknown rather than being judged against another server.
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
@@ -625,8 +625,8 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>
-    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Not in
-    /// TypeScript: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
+    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Since the
+    /// review of #36, in both runtimes: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
     /// </summary>
     internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string projectPath, string? boundCommon, string? baseCommit, string? expectedMessage)
     {
@@ -750,7 +750,7 @@ internal sealed partial class RepositoryService
     };
 
     /// <summary>
-    /// Not in TypeScript (review of #36; Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
+    /// Since the review of #36, in both runtimes (Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
     /// the repository's own configuration, which can run programs (credential helpers, core.sshCommand, transport
     /// programs, ext:: URLs) or redirect where and how Git connects. Before either runs, every key that the repository's
     /// configuration sets (its local and worktree scopes, with everything they include) must be one that neither runs a
@@ -800,7 +800,7 @@ internal sealed partial class RepositoryService
     internal const string ForeignWorktree = "The task worktree no longer belongs to the task's project repository.";
 
     /// <summary>
-    /// Not in TypeScript (review of #36): before a publication mutation, the worktree must share the project repository's
+    /// Since the review of #36, in both runtimes: before a publication mutation, the worktree must share the project repository's
     /// common directory, and that must still be the one bound when the task was created (when a binding exists). A
     /// replaced folder holding another repository, with its own configuration and remotes, is never committed to or pushed
     /// from. The held worktree admission keeps that identity pinned for the rest of the operation. Refusals are "none".
@@ -820,7 +820,7 @@ internal sealed partial class RepositoryService
             throw new RepositoryException(ForeignWorktree);
     }
 
-    // SHA-1 or SHA-256 object names (review of #36: TypeScript matches 40 characters only).
+    // SHA-1 or SHA-256 object names (review of #36, in both runtimes).
     [GeneratedRegex(@"^([0-9a-fA-F]{64}|[0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
     private static partial Regex RemoteTip();
 
