@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Foundry.Platform;
 using Foundry.Protocol;
 
@@ -22,6 +23,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     private const int ParticipantPage = 50;
     private const int MessagesPerTask = 1000;
     private const int PageBytes = 64 * 1024;
+    private const int ScanBatch = 2000;
     private const string Stopped = "This agent is stopped, cancelled or finished.";
     private static readonly CompareInfo Collation = CultureInfo.GetCultureInfo("en-US").CompareInfo;
 
@@ -33,24 +35,51 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     private readonly Dictionary<string, int> counts = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> receipts = new(StringComparer.Ordinal);
 
-    /// <summary>The rebuildable index: one scan of the retained events, then only the sequences added since.</summary>
+    /// <summary>
+    /// The rebuildable index: one scan of the retained events, then only the sequences added since, read 2,000 rows at a
+    /// time with the progress kept after each batch, so a long history is never held in memory at once. It reads committed
+    /// rows only: while a transaction is open it waits, so a message that an enclosing transaction later rolls back never
+    /// enters it (TypeScript's index would keep that sequence). A row it cannot read is passed over, so one damaged row
+    /// never stops the channel; TypeScript's index fails on malformed JSON.
+    /// </summary>
     private void RefreshIndex()
     {
         loop.AssertCurrent();
+        if (store.InTransaction) return;
         var maximum = (long)store.Scalar("SELECT COALESCE(MAX(sequence),0) FROM events")!;
-        if (maximum == indexedThrough) return;
-        foreach (var row in store.Rows("SELECT sequence,type,task_id,data,created_at FROM events WHERE sequence>$p0 AND sequence<=$p1 AND type IN ($p2,$p3) ORDER BY sequence", indexedThrough, maximum, Message, Receipt))
+        while (indexedThrough < maximum)
         {
-            var taskId = (string)row["task_id"]!;
-            var data = (Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!;
-            if (Equals(row["type"], Receipt)) { receipts[taskId] = (long)(double)data["cursor"]!; continue; }
-            var project = (string)data["project"]!;
-            if (!projects.TryGetValue(project, out var messages)) projects[project] = messages = [];
-            messages.Add(new((long)row["sequence"]!, taskId, data.GetValueOrDefault("recipientTaskId") as string, (string)data["actor"]!, (string)row["created_at"]!));
-            requests[RequestKey(taskId, data.GetValueOrDefault("actor"), data.GetValueOrDefault("callId", Undefined.Value))] = (long)row["sequence"]!;
-            counts[taskId] = counts.GetValueOrDefault(taskId) + 1;
+            var rows = store.Rows("SELECT sequence,type,task_id,data,created_at FROM events WHERE sequence>$p0 AND sequence<=$p1 AND type IN ($p2,$p3) ORDER BY sequence LIMIT $p4",
+                indexedThrough, maximum, Message, Receipt, ScanBatch);
+            foreach (var row in rows) Index(row);
+            indexedThrough = rows.Count < ScanBatch ? maximum : (long)rows[^1]["sequence"]!;
         }
-        indexedThrough = maximum;
+    }
+
+    /// <summary>One event row into the index, if every field the channel reads has its type: a receipt's finite cursor, or a
+    /// message's project, actor, content, sender title and (absent, null or text) recipient.</summary>
+    private void Index(Dictionary<string, object?> row)
+    {
+        if (row["task_id"] is not string taskId || row["data"] is not string json || row["created_at"] is not string createdAt) return;
+        Dictionary<string, object?> data;
+        try
+        {
+            if (PersistedJson.Parse(json) is not Dictionary<string, object?> parsed) return;
+            data = parsed;
+        }
+        catch (JsonException) { return; }
+        var sequence = (long)row["sequence"]!;
+        if (Equals(row["type"], Receipt))
+        {
+            if (data.GetValueOrDefault("cursor") is double cursor && Math.Abs(cursor) <= 9_007_199_254_740_991 && Math.Floor(cursor) == cursor) receipts[taskId] = (long)cursor;
+            return;
+        }
+        if (data.GetValueOrDefault("project") is not string project || data.GetValueOrDefault("actor") is not string actor || data.GetValueOrDefault("content") is not string
+            || data.GetValueOrDefault("senderTitle") is not string || data.GetValueOrDefault("recipientTaskId") is not (null or string)) return;
+        if (!projects.TryGetValue(project, out var messages)) projects[project] = messages = [];
+        messages.Add(new(sequence, taskId, data.GetValueOrDefault("recipientTaskId") as string, actor, createdAt));
+        requests[RequestKey(taskId, actor, data.GetValueOrDefault("callId", Undefined.Value))] = sequence;
+        counts[taskId] = counts.GetValueOrDefault(taskId) + 1;
     }
 
     private static string RequestKey(string taskId, object? actor, object? callId) => JsJson.Stringify(new List<object?> { taskId, actor, callId })!;

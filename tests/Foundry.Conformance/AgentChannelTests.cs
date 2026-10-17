@@ -20,6 +20,9 @@ public sealed partial class AgentChannelTests
     private const string VectorPath = "tests/p2/agent-channel-vectors.json";
     private static readonly JsonElement Raw = RepositoryFixture.ReadCorpus(VectorPath);
     private static readonly string[] Outcomes = ["value", "error", "systemError", "events"];
+    private static readonly string[] UnreadableReceipts = ["{}", "{\"cursor\":\"3\"}", "{\"cursor\":1.5}"];
+    private static readonly int[] RetainedReplays = [10, 4400];
+    private static readonly double[] BoundTasks = [1, 2];
     private static readonly Dictionary<string, object?> Corpus = (Dictionary<string, object?>)PersistedJson.Parse(File.ReadAllText(Path.Combine(RepositoryFixture.Root, VectorPath)))!;
 
     public static IEnumerable<object[]> Cases() => Raw.GetProperty("cases").EnumerateArray().Select((item, index) => new object[] { item.GetProperty("name").GetString()!, index });
@@ -186,6 +189,102 @@ public sealed partial class AgentChannelTests
             await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("channel.send", new() { ["taskId"] = Id(2), ["requestId"] = RequestId(1), ["content"] = "From the alias" }));
             await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("channel.send", new() { ["taskId"] = Id(1), ["requestId"] = RequestId(2), ["recipientTaskId"] = Id(2), ["content"] = "To the alias" }));
             Assert.Empty(store.Rows("SELECT * FROM events WHERE type LIKE 'channel.%'"));
+            return 0;
+        });
+    }
+
+    /// <summary>
+    /// Review L1 of P2.3d: a channel row the index cannot read is passed over, so the channel keeps working for every
+    /// project. TypeScript's index fails on malformed JSON and files a message without a project under no project.
+    /// </summary>
+    [Fact]
+    public Task AChannelRowItCannotReadIsPassedOver() => WithChannel(async (fixture, store, chat) =>
+    {
+        var project = ProjectKey(fixture, "a");
+        foreach (var data in new[]
+        {
+            "not json", "[]", "null", "{\"recipientTaskId\":null,\"content\":\"x\",\"callId\":\"c\",\"actor\":\"user\",\"senderTitle\":\"t\"}",
+            "{\"recipientTaskId\":null,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":\"c\",\"senderTitle\":\"t\"}",
+            "{\"recipientTaskId\":5,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":\"c\",\"actor\":\"user\",\"senderTitle\":\"t\"}",
+            "{\"recipientTaskId\":null,\"content\":7,\"project\":\"" + project + "\",\"callId\":\"c\",\"actor\":\"user\",\"senderTitle\":\"t\"}",
+        })
+            store.Execute("INSERT INTO events(type,task_id,data,created_at,version,source,root_task_id) VALUES('channel.message',$p0,$p1,'2026-01-02T00:00:00.000Z',1,'runtime',$p0)", Id(1), data);
+        foreach (var data in UnreadableReceipts)
+            store.Execute("INSERT INTO events(type,task_id,data,created_at,version,source,root_task_id) VALUES('channel.received',$p0,$p1,'2026-01-02T00:00:00.000Z',1,'runtime',$p0)", Id(2), data);
+        await chat.Dispatch("channel.send", new() { ["taskId"] = Id(1), ["requestId"] = RequestId(1), ["content"] = "Readable" });
+        var view = (Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(2) }))!;
+        Assert.Equal(["Readable"], ((List<object?>)view["messages"]!).Cast<Dictionary<string, object?>>().Select(message => message["content"]));
+    });
+
+    /// <summary>Review M1 of P2.3d: a message written inside an enclosing transaction that rolls back never enters the
+    /// index, so the channel keeps answering and its request id stays free. TypeScript's index would keep that sequence.</summary>
+    [Fact]
+    public Task AMessageAnEnclosingTransactionRollsBackNeverEntersTheIndex() => WithChannel(async (fixture, store, chat) =>
+    {
+        Func<int> enclosing = () =>
+        {
+            chat.Tools.Channel.Send(Id(1), "rolled-back", new Dictionary<string, object?> { ["content"] = "Gone" }, "user");
+            throw new InvalidOperationException("Roll the enclosing transaction back.");
+        };
+        Assert.Throws<InvalidOperationException>(() => store.Transaction(enclosing));
+        var view = (Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(2) }))!;
+        Assert.Empty((List<object?>)view["messages"]!);
+        var kept = chat.Tools.Channel.Send(Id(1), "rolled-back", new Dictionary<string, object?> { ["content"] = "Kept" }, "user");
+        Assert.Equal("Kept", kept["content"]);
+        Assert.Single(store.Rows("SELECT * FROM events WHERE type='channel.message'"));
+    });
+
+    /// <summary>Review L2 of P2.3d: a long history is indexed in batches of 2,000 rows, every row of every batch counted.</summary>
+    [Fact]
+    public Task ALongHistoryIsIndexedAcrossBatches() => WithChannel(async (fixture, store, chat) =>
+    {
+        var project = ProjectKey(fixture, "a");
+        store.Transaction(() =>
+        {
+            for (var index = 0; index < 4500; index++)
+                store.Event("channel.message", new Dictionary<string, object?>
+                {
+                    ["recipientTaskId"] = null, ["content"] = $"Retained {index}", ["project"] = project, ["callId"] = $"retained-{index}", ["actor"] = "user", ["senderTitle"] = "Task 1",
+                }, Id(1));
+            return 0;
+        });
+        var view = (Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(2) }))!;
+        var messages = ((List<object?>)view["messages"]!).Cast<Dictionary<string, object?>>().ToList();
+        Assert.Equal(("Retained 4480", "Retained 4499"), ((string)messages[0]["content"]!, (string)messages[^1]["content"]!));
+        // Replays of an early and a late message prove both batches indexed; the count across all of them holds the limit.
+        foreach (var index in RetainedReplays)
+            Assert.Equal($"Retained {index}", chat.Tools.Channel.Send(Id(1), $"retained-{index}", new Dictionary<string, object?> { ["content"] = $"Retained {index}" }, "user")["content"]);
+        Assert.Equal("Task channel-message limit reached.", Assert.Throws<WorkspaceReadException>(() => chat.Tools.Channel.Send(Id(1), "new", new Dictionary<string, object?> { ["content"] = "New" }, "user")).Message);
+    });
+
+    private static string ProjectKey(RepositoryFixture fixture, string name) =>
+        Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(Path.Join(fixture.Scratch, name, ".git")))));
+
+    /// <summary>A store and chat over project a, with two running tasks bound to it.</summary>
+    private static async Task WithChannel(Func<RepositoryFixture, Store, DevelopmentChat, Task> body)
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-channel-native-");
+        Directory.CreateDirectory(fixture.Local("a/.git"));
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+            var chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), null, null, fixture.Environment);
+            Dictionary<string, object?> identity;
+            using (var admission = RepositoryAdmission.Open(loop, fixture.Local("a")))
+                identity = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
+            foreach (var number in BoundTasks)
+            {
+                store.SaveTask(new()
+                {
+                    ["id"] = Id(number), ["title"] = $"Task {number}", ["profileId"] = Store.FakeProfileId, ["status"] = "running", ["createdAt"] = "2026-01-01T00:00:00.000Z",
+                    ["updatedAt"] = "2026-01-01T00:00:00.000Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("a"),
+                    ["worktreePath"] = fixture.Local("a"), ["branch"] = "fixture", ["baseCommit"] = new string('a', 40),
+                });
+                store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(number), ["identity"] = identity }), "complete");
+            }
+            await body(fixture, store, chat);
             return 0;
         });
     }
