@@ -102,17 +102,18 @@ describe('publication guards dual-landed from the native runtime', () => {
     const fixture = project(); const { git, scratch } = fixture;
     await isolated(fixture, async () => {
       const marker = path.join(scratch, 'ext-ran.git');
-      const url = `ext::git init -q --bare ${marker.replaceAll('\\', '/').replaceAll(' ', '% ')}`;
-      // The user's global configuration is not screened, and a protocol-specific key there beats the generic one.
+      // The user's global configuration is not screened. There, a protocol-specific key beats the generic one, and a
+      // remote.*.vcs sends a URL that passes the remote check through the ext helper, which runs the URL as a command.
       git('config', '--global', 'protocol.allow', 'always'); git('config', '--global', 'protocol.ext.allow', 'always');
-      git('-C', 'repo', 'remote', 'set-url', 'origin', url);
-      // Control: under that configuration, Git itself runs the ext:: command.
+      git('config', '--global', 'remote.origin.vcs', 'ext');
+      git('-C', 'repo', 'remote', 'set-url', 'origin', `git init -q --bare ${marker.replaceAll('\\', '/').replaceAll(' ', '% ')}`);
+      // Control: under that configuration, Git itself runs the helper's command.
       expect(() => git('-C', 'repo', 'ls-remote', 'origin')).toThrow();
       expect(fs.existsSync(marker)).toBe(true);
       fs.rmSync(marker, { recursive: true, force: true });
       const head = git('-C', 'repo', 'rev-parse', 'HEAD');
       await expect(fixture.repositories.verifyPushOutcome(fixture.repo, fixture.repo, undefined, 'origin', 'main', head)).resolves.toBeUndefined();
-      await expect(fixture.repositories.push(fixture.repo, fixture.repo, undefined, 'origin', 'main')).rejects.toMatchObject({ name: 'RepositoryError', outcome: 'unknown' });
+      await expect(fixture.repositories.push(fixture.repo, fixture.repo, undefined, 'origin', 'main')).rejects.toThrow("transport 'ext' not allowed");
       expect(fs.existsSync(marker)).toBe(false);
     });
   }, 120_000);
@@ -123,7 +124,7 @@ describe('publication guards dual-landed from the native runtime', () => {
       ['https://example.invalid/owner/repo.git', false], ['ssh://git@example.invalid/owner/repo.git', false],
       ['git@example.invalid:owner/repo.git', false], ['example.invalid:repo.git', false],
       ['C:/Users/someone/repo.git', false], ['C:\\Users\\someone\\repo.git', false], ['../dest.git', false],
-      ['file:///C:/Users/someone/repo.git', false], ['file://localhost/C:/repo.git', false],
+      ['file:///C:/Users/someone/repo.git', false], ['file://localhost/C:/repo.git', true],
       ['\\\\host\\share\\repo.git', true], ['//host/share/repo.git', true], ['\\\\?\\UNC\\host\\share\\repo.git', true],
       ['file://host/share/repo.git', true], ['file:////host/share/repo.git', true], ['\\\\.\\pipe\\repo', true],
       // Git percent-decodes file:// URLs, so any file:// URL holding a percent sign is refused rather than decoded.
@@ -179,6 +180,28 @@ describe('publication guards dual-landed from the native runtime', () => {
     });
   }, 120_000);
 
+  it('refuses, with no outcome, a remote Git would refuse only once running, then pushes to the real one', async () => {
+    const fixture = project(); const { git, scratch } = fixture;
+    await isolated(fixture, async () => {
+      const real = path.join(scratch, 'remote.git').replaceAll('\\', '/');
+      // Transports the protocol restriction denies, and spellings Git resolves elsewhere than the check would.
+      const urls = ['http://127.0.0.1:9/x.git', 'git://127.0.0.1:9/x.git', 'ext::git --version', 'foo::bar', 'https::https://127.0.0.1:9/x.git',
+        'HTTPS://127.0.0.1:9/x.git', 'SSH://127.0.0.1:9/x.git', `FILE:///${real}`, `file://localhost/${real}`, '~/remote.git', `${real.slice(0, 2)}remote.git`];
+      const task = await createTask(fixture);
+      fs.writeFileSync(path.join(task.worktreePath, 'README.md'), 'changed\n');
+      await commit(fixture, task);
+      for (const url of urls) {
+        git('-C', 'repo', 'remote', 'set-url', 'origin', url);
+        await expect([url, await push(fixture, task).then(() => 'pushed', (error: Error) => error.message)]).toEqual([url, unsupportedRemoteMessage('origin')]);
+        await expect(fixture.repositories.verifyPushOutcome(fixture.repo, task.worktreePath, undefined, 'origin', task.branch)).resolves.toBeUndefined();
+      }
+      expect(states(fixture, 'git.push')).toEqual(Array(urls.length).fill('complete'));
+      git('-C', 'repo', 'remote', 'set-url', 'origin', path.join(scratch, 'remote.git'));
+      await push(fixture, task);
+      expect(git('--git-dir', path.join(scratch, 'remote.git'), 'for-each-ref')).toContain(`refs/heads/${task.branch}`);
+    });
+  }, 180_000);
+
   it('accepts only a link-free local folder on a fixed drive as a local remote', async () => {
     const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-supported-remotes-')));
     try {
@@ -189,17 +212,24 @@ describe('publication guards dual-landed from the native runtime', () => {
       const driveType = async (letter: string) => types[letter.toUpperCase()] ?? 0;
       const check = (url: string, cwd = path.join(scratch, 'repo')) => requireSupportedRemotes(cwd, 'origin', [url], driveType);
       const unsupported = unsupportedRemoteMessage('origin');
-      for (const url of ['https://example.invalid/owner/repo.git', 'git@example.invalid:owner/repo.git', path.join(scratch, 'remotes', 'dest.git'),
+      for (const url of ['https://example.invalid/owner/repo.git', 'git@example.invalid:owner/repo.git', 'ssh://git@example.invalid/owner/repo.git',
+        'git+ssh://git@example.invalid/owner/repo.git', 'ssh+git://git@example.invalid/owner/repo.git', path.join(scratch, 'remotes', 'dest.git'),
         path.join(scratch, 'remotes', 'missing', 'deeper.git'), '../remotes/dest.git', `file:///${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`]) {
         await expect(check(url)).resolves.toBeUndefined();
       }
       for (const url of [path.join(scratch, 'linked', 'dest.git'), '../linked/dest.git', path.join(scratch, 'remotes', 'bundle'), path.join(scratch, 'remotes', 'bundle', 'inside.git'),
         'R:/repo.git', 'Z:/repo.git', 'Q:/repo.git', `${scratch[0]}:relative.git`, path.join(scratch, 'remotes', 'dest.git.'), path.join(scratch, 'remotes ', 'dest.git'),
-        '', 'file://', 'file:///C:/re%70o.git', '\\\\127.0.0.1\\share\\repo.git', `${path.join(scratch, 'remotes')}\0x`]) {
+        '', 'file://', 'file:///C:/re%70o.git', '\\\\127.0.0.1\\share\\repo.git', `${path.join(scratch, 'remotes')}\0x`,
+        // Forms Git would refuse only once running, and spellings it resolves elsewhere than the check would.
+        'http://example.invalid/r.git', 'git://example.invalid/r.git', 'ext::git --version', 'foo::bar', 'https::https://example.invalid/r.git',
+        'HTTPS://example.invalid/r.git', 'SSH://example.invalid/r.git', `FILE:///${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`,
+        `file://localhost/${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`, '~/dest.git', '~user/dest.git', 'foo bar://x', '://x']) {
         await expect([url, await check(url).then(() => 'accepted', (error: Error) => error.message)]).toEqual([url, unsupported]);
       }
       // Every URL is checked: one unsupported push URL refuses the remote.
       await expect(requireSupportedRemotes(scratch, 'origin', ['https://example.invalid/r.git', path.join(scratch, 'linked', 'dest.git')], driveType)).rejects.toThrow(unsupported);
+      // A drive type that cannot be established refuses; push turns any such failure into "none".
+      await expect(requireSupportedRemotes(scratch, 'origin', ['Z:/repo.git'], () => Promise.reject(new Error('unavailable')))).rejects.toThrow('unavailable');
     } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
   }, 60_000);
 
@@ -214,16 +244,60 @@ describe('publication guards dual-landed from the native runtime', () => {
       expect(states(fixture, 'git.commit')).toEqual(['complete']);
       git('-C', task.worktreePath, 'mv', 'safe.txt', '.env');
       expect(git('-C', task.worktreePath, 'status', '--porcelain')).toBe('');
-      // A worktree rename of an intent-to-add path is reported in the second status column, so only the staged listing
-      // without rename detection names the secret file, after staging: the index is reset and the outcome is unknown.
+      // A worktree rename of an intent-to-add path, which status reports in its second column, is screened the same way.
       fs.renameSync(path.join(task.worktreePath, '.env'), path.join(task.worktreePath, 'safe.txt'));
       git('-C', task.worktreePath, 'add', '-N', 'safe.txt');
+      await expect(commit(fixture, task)).rejects.toThrow('Refusing to commit secret-named paths: .env. Remove or ignore them first.');
+      expect(states(fixture, 'git.commit')).toEqual(['complete', 'complete']);
+      expect(git('-C', task.worktreePath, 'rev-parse', 'HEAD')).toBe(head);
+    });
+  }, 120_000);
+
+  it('screens the staged paths without rename detection when a secret file is renamed while the commit runs', async () => {
+    const fixture = project({ files: { '.env': 'TOKEN=secret\n' } }); const { git } = fixture;
+    await isolated(fixture, async () => {
+      const task = await createTask(fixture);
+      const head = git('-C', task.worktreePath, 'rev-parse', 'HEAD');
+      fs.writeFileSync(path.join(task.worktreePath, 'README.md'), 'changed\n');
+      // After the status screen and before `git add`, a same-user process renames the tracked secret. The staged listing
+      // with rename detection names only safe.txt, so the listing without it is what refuses, after staging.
+      const service = fixture.repositories as unknown as { rejectFilters: (...args: unknown[]) => Promise<void> };
+      const rejectFilters = service.rejectFilters.bind(fixture.repositories); let renamed = false;
+      service.rejectFilters = async (...args: unknown[]) => {
+        await rejectFilters(...args);
+        if (!renamed) { renamed = true; fs.renameSync(path.join(task.worktreePath, '.env'), path.join(task.worktreePath, 'safe.txt')); }
+      };
       await expect(commit(fixture, task)).rejects.toThrow('A secret-named path was staged; the index was reset and nothing was committed.');
-      expect(states(fixture, 'git.commit')).toEqual(['complete', 'unknown']);
+      expect(renamed).toBe(true);
+      expect(states(fixture, 'git.commit')).toEqual(['unknown']);
       expect(git('-C', task.worktreePath, 'rev-parse', 'HEAD')).toBe(head);
       expect(git('-C', task.worktreePath, 'diff', '--cached', '--name-only')).toBe('');
       await expect(fixture.runtime.dispatch('task.reconcilePublication', { taskId: task.id })).resolves.toMatchObject({ reconciled: true });
-      expect(states(fixture, 'git.commit')).toEqual(['complete', 'failed']);
+      expect(states(fixture, 'git.commit')).toEqual(['failed']);
+    });
+  }, 120_000);
+
+  it('keeps the worktree identity pinned through a push, so a folder replaced during it is never pushed from', async () => {
+    const fixture = project(); const { git, scratch } = fixture;
+    await isolated(fixture, async () => {
+      const task = await createTask(fixture);
+      fs.writeFileSync(path.join(task.worktreePath, 'README.md'), 'changed\n');
+      await commit(fixture, task);
+      git('init', '-q', '--bare', 'evil.git');
+      // Once the configuration screen has passed, the worktree folder is replaced by a clone on the task branch whose
+      // origin is another repository. Every later Git call of the push revalidates the admitted identity.
+      const service = fixture.repositories as unknown as { requireTrustedPushConfiguration: (...args: unknown[]) => Promise<void> };
+      const screen = service.requireTrustedPushConfiguration.bind(fixture.repositories);
+      service.requireTrustedPushConfiguration = async (...args: unknown[]) => {
+        await screen(...args);
+        fs.renameSync(task.worktreePath, `${task.worktreePath}-moved`);
+        git('clone', '-q', fixture.repo, task.worktreePath);
+        git('-C', task.worktreePath, 'checkout', '-q', '-b', task.branch);
+        git('-C', task.worktreePath, 'remote', 'set-url', 'origin', path.join(scratch, 'evil.git'));
+      };
+      await expect(push(fixture, task)).rejects.toThrow('Project channel identity changed during admission.');
+      expect(git('--git-dir', path.join(scratch, 'evil.git'), 'for-each-ref')).toBe('');
+      expect(git('--git-dir', path.join(scratch, 'remote.git'), 'for-each-ref')).toBe('');
     });
   }, 120_000);
 

@@ -49,6 +49,19 @@ export async function windowsDriveType(letter: string): Promise<number> {
   return Number(stdout.trim());
 }
 
+/**
+ * Whether Git, under TRUSTED_PROTOCOLS, would use a remote URL's transport at all: https, ssh and file URLs with the
+ * lowercase schemes Git matches, scp-like ssh, and local paths (native IsPermittedRemoteForm). Git refuses any other
+ * scheme, any other spelling of these, and every `<helper>::` form only once the command runs, which would leave a push's
+ * outcome unknown and its remote check unable to resolve it.
+ */
+function isPermittedRemoteForm(url: string): boolean {
+  const value = url.trim();
+  if (/^[A-Za-z][A-Za-z0-9+.-]*::/.test(value)) return false;
+  const scheme = value.indexOf('://');
+  return scheme < 0 || ['https', 'ssh', 'git+ssh', 'ssh+git', 'file'].includes(value.slice(0, scheme));
+}
+
 /** An https, ssh, scp-like or other scheme URL that is not file:// (native IsTransportRemote). */
 function isTransportRemote(url: string): boolean {
   const value = url.trim();
@@ -59,8 +72,9 @@ function isTransportRemote(url: string): boolean {
   return colon > 1 && (separator < 0 || colon < separator);
 }
 
-/** The local path a remote URL names (a plain path, or a file:// URL without a host other than localhost and without
- * percent signs); undefined for a transport URL and for any file:// URL that is refused (native LocalRemotePath). */
+/** The local path a remote URL names (a plain path, or a file:// URL with no host and no percent sign); undefined for a
+ * transport URL and for any file:// URL that is refused. Git opens `file://localhost/...` as the UNC path
+ * `//localhost/...`, so a host, localhost included, is a share (native LocalRemotePath). */
 function localRemotePath(url: string): string | undefined {
   if (isTransportRemote(url)) return undefined;
   const value = url.trim();
@@ -70,14 +84,14 @@ function localRemotePath(url: string): string | undefined {
   if (rest.includes('%')) return undefined;
   const slash = rest.indexOf('/');
   const host = slash < 0 ? rest : rest.slice(0, slash);
-  if (host.length > 0 && !/^localhost$/i.test(host)) return undefined;
+  if (host.length > 0) return undefined;
   const local = slash < 0 ? '' : rest.slice(slash);
   return /^\/[A-Za-z]:/.test(local) ? local.slice(1) : local;
 }
 
 /**
  * Decision 8 for remotes (native IsNetworkRemote): whether a remote URL, as Git resolves it, names a network share (UNC,
- * device or file://host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
+ * device or any file://host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
  * authenticate to a server. Git percent-decodes file:// URLs before using them, so any file:// URL holding a percent sign
  * is refused outright rather than decoded here. https, ssh and scp-like URLs are transports, limited by TRUSTED_PROTOCOLS.
  */
@@ -90,19 +104,23 @@ export async function isNetworkRemote(url: string, driveType: (letter: string) =
 }
 
 /**
- * Every URL a push or remote check would use must be a transport, or a local folder on a fixed local drive whose existing
- * chain holds no link (checked from the drive root without following one), so neither a share nor a link to one is
- * reached. Relative paths resolve against the folder the command runs in. The check is not held across the push. Native
- * RequireSupportedRemotes, with its message; its chain pin refuses every reparse point, while Node's lstat recognizes
- * symbolic links, junctions and mount points. A drive-relative path (`C:repo`) is refused rather than resolved.
+ * Every URL a push or remote check would use must be in a form Git uses under TRUSTED_PROTOCOLS, and must be a transport
+ * or a local folder on a fixed local drive whose existing chain holds no link (checked from the drive root without
+ * following one), so the named path is neither a share nor reached through a link to one. Relative paths resolve against
+ * the folder the command runs in; Git's own `~` expansion and drive-relative paths (`C:repo`) are refused rather than
+ * resolved. The check is not held across the push. Native RequireSupportedRemotes, with its message; its chain pin refuses
+ * every reparse point, while Node's lstat recognizes symbolic links and junctions.
+ * Not screened, in either runtime: Git also opens the destination's own layout (`<path>/.git`, `<path>.git`, a gitfile,
+ * objects/info/alternates), which can lead elsewhere, a share included. The destination is trusted as its own receive-pack
+ * hooks are (Rudy, 17 October 2026).
  */
 export async function requireSupportedRemotes(cwd: string, remote: string, urls: string[], driveType: (letter: string) => Promise<number> = windowsDriveType): Promise<void> {
   const unsupported = () => new RepositoryError(unsupportedRemoteMessage(remote), 'none');
   for (const url of urls) {
-    if (await isNetworkRemote(url, driveType)) throw unsupported();
+    if (!isPermittedRemoteForm(url) || await isNetworkRemote(url, driveType)) throw unsupported();
     const local = localRemotePath(url);
     if (local === undefined) continue;
-    if (!local || local.includes('\0') || /^[A-Za-z]:(?![\\/])/.test(local)
+    if (!local || local.includes('\0') || local.startsWith('~') || /^[A-Za-z]:(?![\\/])/.test(local)
       || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
     const resolved = path.win32.resolve(cwd, local);
     if (!/^[A-Za-z]:\\/.test(resolved) || resolved.slice(2).includes(':') || await driveType(resolved[0]!) !== DRIVE_FIXED) throw unsupported();
@@ -415,7 +433,7 @@ export class RepositoryService {
     return (await this.changedEntries(root)).map(entry => entry.path);
   }
 
-  /** Each status entry's path and, for a rename or copy, its source, which porcelain v1 writes after it. The repository is
+  /** Each status entry's path and, for a rename or copy in either status column, its source, which porcelain v1 writes after it. The repository is
    * admitted again; with `admission`, its identity must still be that one. */
   private async changedEntries(root: string, admission?: GitAdmissionIdentity): Promise<{ path: string; source?: string }[]> {
     const repositoryRoot = await this.requireRepository(root);
@@ -426,7 +444,7 @@ export class RepositoryService {
       const entry = fields[index];
       if (!entry) continue;
       const code = entry.slice(0, 2); const changedPath = entry.slice(3);
-      if (code.startsWith('R') || code.startsWith('C')) entries.push({ path: changedPath, source: fields[++index] });
+      if (/[RC]/.test(code)) entries.push({ path: changedPath, source: fields[++index] });
       else entries.push({ path: changedPath });
     }
     return entries;
