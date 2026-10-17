@@ -211,6 +211,21 @@ Dual-landed fixes:
   - **Open, same class, TypeScript only.** These are not changed here:
     - **MCP and hook spec files.** `mcp-host.ps1` reads its spec file with `Get-Content -Raw`, which decodes in the ANSI code page. `mcp.ts` and `hook-runner.ts` write that file as UTF-8 without a byte-order mark. So the MCP server command, a trusted script's pinned arguments, the working directory and the environment can arrive altered. Measured with the same `Get-Content` call (`'café 東京 😀'` read as `'cafÃ© æ±äº¬ ðŸ˜€'`); not run end to end.
     - **Add-Type and a non-ANSI `TEMP`.** Both helpers compile their types with `Add-Type`, which cannot write its assembly when `TEMP` holds characters outside the ANSI code page. Measured: `é` compiles under code page 1252, while `東京` and `😀` fail. On such a profile no approved command can launch, with or without this fix. The MCP and hook host compiles the same way. Measured in isolation, not on such a profile.
+- **Redacting the approval `approval.reconcile` returns** (17 October 2026, review finding L1 of P2.3b).
+  - **The exposure.** `approval.reconcile` returned the whole stored approval unredacted: command, file contents, environment values, the result and patches. The three approval read methods redact all of these. A renderer call (including a compromised renderer's) received any secret in that text in clear. The only renderer caller discards the value, so nothing was kept in state.
+  - **The fix.**
+    - Reconciliation now returns exactly what `approval.get` shows: the document redacted, and a bounded preview above 128 KiB (which also keeps a large approval within the response limit).
+    - If redaction leaves the document unparseable, it returns the identity, state and outcome, every text field redacted on its own; the state is the runtime's own value. The state is already saved, so a refusal would misreport a check that happened. A field the document lacks stays absent.
+    - The stored row is unchanged. The `Approval` return type is unchanged, so the protocol is unchanged; its comment now says a large approval comes back as a preview.
+  - **Where.** `workspace-queries.ts` exports its existing projection (`readApproval`); `tool-runtime.ts` `reconcile` returns it.
+  - **Tests.** `tests/integration/coding.test.ts` covers a labelled secret, a learned secret in an edit's file contents, a 140,000-character approval, and an unparseable redaction with a learned secret in its identity fields. Returning the raw approval fails it, and so does copying the fallback's identity fields unredacted.
+  - **Independent review** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO** for `677dc16..2ff43b3`. It verified both seals and ran `coding.test.ts`.
+    - **L1-a (low), fixed in the next commit.** The fallback copied the identity fields and fingerprint unredacted, so a learned secret in a provider's `toolCallId` could leave the runtime. Every text field is now redacted, in both runtimes.
+    - **I-1, closed by the same change.** A stored approval without a summary made the fallback throw after the save; it now reports the approval without one.
+    - **I-2.** A caller cannot tell a preview from the whole approval. The protocol comment now says so.
+    - **Re-review of `b66735e`: GO.** L1-a, I-1 and I-2 are closed. Not blocking: any failure of the read after the save takes the fallback, which is now fully redacted.
+  - **Validation of `b66735e`** (run2, from a `git archive` export): native 7,164 passed, 0 failed, 2 expected skips; `pnpm check` 569 passed; `pnpm test:e2e` 21 passed; `pnpm package:dir` and `pnpm smoke:package` passed; `git diff --check` clean.
+  - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
