@@ -104,13 +104,14 @@ export class ToolRuntime {
     } else approval.result = { content: 'Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.', isError: true, cleanupVerified: false };
     this.save(approval);
     // The outcome leaves the runtime as approval.get shows it: redacted, and as a bounded preview when large. If redaction
-    // leaves the document unparseable, the identity and outcome are still reported, each field redacted on its own: the
-    // state is already saved, so a refusal here would misreport a check that happened.
+    // leaves the document unparseable, the identity and outcome are still reported, every text redacted on its own (the
+    // state is the runtime's own value): the state is already saved, so a refusal here would misreport a check that happened.
     try { return readApproval(this.store, this.redactor, { taskId, approvalId: id }).approval; }
     catch {
-      return { id: approval.id, taskId: approval.taskId, toolCallId: approval.toolCallId, nonce: approval.nonce, tool: approval.tool, state: approval.state,
-        createdAt: approval.createdAt, summary: this.redactor.text(approval.summary), fingerprint: approval.fingerprint,
-        ...(approval.result ? { result: { ...approval.result, content: this.redactor.text(approval.result.content) } } : {}) };
+      const text = <T>(value: T): T => (typeof value === 'string' ? this.redactor.text(value) as T : value);
+      return { id: text(approval.id), taskId: text(approval.taskId), toolCallId: text(approval.toolCallId), nonce: text(approval.nonce), tool: text(approval.tool), state: approval.state,
+        createdAt: text(approval.createdAt), summary: text(approval.summary), fingerprint: text(approval.fingerprint),
+        ...(approval.result ? { result: { ...approval.result, content: text(approval.result.content) } } : {}) };
     }
   }
 

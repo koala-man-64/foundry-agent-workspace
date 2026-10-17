@@ -176,10 +176,14 @@ Dual-landed fixes:
   - **The exposure.** `approval.reconcile` returned the whole stored approval unredacted: command, file contents, environment values, the result and patches. The three approval read methods redact all of these. A renderer call (including a compromised renderer's) received any secret in that text in clear. The only renderer caller discards the value, so nothing was kept in state.
   - **The fix.**
     - Reconciliation now returns exactly what `approval.get` shows: the document redacted, and a bounded preview above 128 KiB (which also keeps a large approval within the response limit).
-    - If redaction leaves the document unparseable, it returns the identity, state and outcome, each field redacted on its own. The state is already saved, so a refusal would misreport a check that happened.
-    - The stored row is unchanged. The `Approval` return type is unchanged, so the protocol is unchanged.
+    - If redaction leaves the document unparseable, it returns the identity, state and outcome, every text field redacted on its own; the state is the runtime's own value. The state is already saved, so a refusal would misreport a check that happened. A field the document lacks stays absent.
+    - The stored row is unchanged. The `Approval` return type is unchanged, so the protocol is unchanged; its comment now says a large approval comes back as a preview.
   - **Where.** `workspace-queries.ts` exports its existing projection (`readApproval`); `tool-runtime.ts` `reconcile` returns it.
-  - **Tests.** `tests/integration/coding.test.ts` covers a labelled secret, a 140,000-character approval and an unparseable redaction; returning the raw approval fails it.
+  - **Tests.** `tests/integration/coding.test.ts` covers a labelled secret, a learned secret in an edit's file contents, a 140,000-character approval, and an unparseable redaction with a learned secret in its identity fields. Returning the raw approval fails it, and so does copying the fallback's identity fields unredacted.
+  - **Independent review** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO** for `677dc16..2ff43b3`. It verified both seals and ran `coding.test.ts`.
+    - **L1-a (low), fixed in the next commit.** The fallback copied the identity fields and fingerprint unredacted, so a learned secret in a provider's `toolCallId` could leave the runtime. Every text field is now redacted, in both runtimes.
+    - **I-1, closed by the same change.** A stored approval without a summary made the fallback throw after the save; it now reports the approval without one.
+    - **I-2.** A caller cannot tell a preview from the whole approval. The protocol comment now says so.
   - **Native half (P2.3 branch).** `ToolRuntime.Reconcile` returns `Store.ApprovalRead`'s projection, using the chat's `Redactor`, with the same fallback.
     - **One difference, fail-closed.** Native takes the fallback only when the redacted document does not parse (`WorkspaceReadException`). TypeScript's catch-all also covers a store read that fails just after the save; native reports that as a runtime failure.
     - **Oracle.** The approval oracle gains four reconciliations: labelled secrets in a command and its environment, a command above the preview bound, and unterminated private keys on a command and on a completed edit without a `toolCallId`. Its vectors are regenerated from this source.

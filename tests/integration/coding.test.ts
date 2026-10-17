@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Approval, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
 import { RuntimeService, profileFingerprint } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
@@ -89,23 +89,32 @@ describe('coding approvals and recovery', () => {
       summary: 'Run this exact PowerShell command with your Windows privileges.', fingerprint: 'f', cwd: created.worktreePath,
       shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', environment: {}, timeoutMs: 1000, result: { content: 'Outcome unknown.', isError: true, cleanupVerified: false } };
     // A secret the redactor learns after review, or a labelled one in reviewed text, stays in the row but never leaves it.
+    runtime.redactor.add('learned-secret-value');
     const secret: Approval = { ...base, id: randomUUID(), command: "Write-Output 'api_key=fixture-secret-value'" };
+    const sha = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+    const before = 'old learned-secret-value\n', after = 'new learned-secret-value\n';
+    const edited: Approval = { id: randomUUID(), taskId: created.id, toolCallId: 'call', nonce: 'n'.repeat(16), tool: 'replace_text', state: 'unknown', createdAt,
+      summary: 'Edit notes.txt', path: 'notes.txt', before, after, expectedHash: sha(before), resultingHash: sha(after), fingerprint: 'f' };
+    await writeFile(join(created.worktreePath, 'notes.txt'), after);
     const large: Approval = { ...base, id: randomUUID(), command: 'Write-Output ' + 'x'.repeat(140_000) };
     // A private key with no END marker: redacting the serialized document leaves it unparseable.
-    const broken: Approval = { ...base, id: randomUUID(), command: 'Write-Output x', summary: 'Key -----BEGIN PRIVATE KEY-----abc' };
-    for (const approval of [secret, large, broken]) store.saveApproval(approval);
+    const broken: Approval = { ...base, id: randomUUID(), toolCallId: 'call learned-secret-value', fingerprint: 'f learned-secret-value', command: 'Write-Output x', summary: 'Key -----BEGIN PRIVATE KEY-----abc' };
+    for (const approval of [secret, edited, large, broken]) store.saveApproval(approval);
     const reconcile = async (id: string) => await runtime.dispatch('approval.reconcile', { taskId: created.id, approvalId: id }) as Approval;
     const checkedSecret = await reconcile(secret.id);
     expect(checkedSecret).toMatchObject({ state: 'unknown', command: "Write-Output 'api_key=[REDACTED]'", result: { content: expect.stringContaining('not be replayed') } });
     expect(JSON.stringify(checkedSecret)).not.toContain('fixture-secret-value');
     expect(store.approval(secret.id).command).toContain('fixture-secret-value');
+    const checkedEdit = await reconcile(edited.id);
+    expect(checkedEdit).toMatchObject({ state: 'complete', before: 'old [REDACTED]\n', after: 'new [REDACTED]\n' });
+    expect(JSON.stringify(checkedEdit)).not.toContain('learned-secret-value');
     const checkedLarge = await reconcile(large.id);
     expect(checkedLarge).toMatchObject({ id: large.id, state: 'unknown' }); expect(checkedLarge.command).toBeUndefined();
     expect(Buffer.byteLength(JSON.stringify(checkedLarge), 'utf8')).toBeLessThan(4096);
     expect(store.approval(large.id).result?.content).toContain('not be replayed');
     const checkedBroken = await reconcile(broken.id);
-    expect(checkedBroken).toEqual({ id: broken.id, taskId: created.id, toolCallId: 'call', nonce: 'n'.repeat(16), tool: 'run_command', state: 'unknown', createdAt,
-      summary: 'Key [REDACTED PRIVATE KEY]', fingerprint: 'f', result: { content: expect.stringContaining('not be replayed'), isError: true, cleanupVerified: false } });
+    expect(checkedBroken).toEqual({ id: broken.id, taskId: created.id, toolCallId: 'call [REDACTED]', nonce: 'n'.repeat(16), tool: 'run_command', state: 'unknown', createdAt,
+      summary: 'Key [REDACTED PRIVATE KEY]', fingerprint: 'f [REDACTED]', result: { content: expect.stringContaining('not be replayed'), isError: true, cleanupVerified: false } });
     expect(execute).not.toHaveBeenCalled();
   });
   it('never guesses successful command cleanup from a runner exception', async () => {
