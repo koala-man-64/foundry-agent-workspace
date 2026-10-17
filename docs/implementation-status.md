@@ -1333,18 +1333,36 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - an unexpected launch failure saved unknown and rethrown;
   - an unexpected failure before any proposal, which leaves no row;
   - an edit whose write began before the failure, left unknown;
+  - a command that exits 0 while its output handle is held outside its job: unknown, with cleanup unverified (review L-1);
   - three slots, and a cancelled waiter that takes none.
 - **Mutations.** 34 native mutations.
   - **First run: four survived, because no fixture reached them.** They were edit-content screening, prepared-command screening, `revokeWaiting`'s task filter and JavaScript key order. Four new cases now reach them, and each of these mutations fails the replay. The replay also bounds each call's wait at two minutes, so a call that proposes where it should refuse fails rather than hanging.
-  - **Two survive by design.** One makes a command with unverified cleanup complete; no fixture reaches it. The other drops the cancellation check after approval, which the slot repeats.
+  - **After the review's L-1 test, 33 of 34 fail.** The one that survives by design drops the cancellation check after approval, which the slot repeats.
   - **Evidence** is in `foundry-evidence\p2.3-c\mutations`.
 
-**Validation and independent review.** Recorded below once they complete.
+**Validation.** All runs are from `git archive` exports, with a locked restore and install, a Release build with warnings as errors, and a clean `git diff --check`. Evidence and seals are in `foundry-evidence\p2.3-c`.
+- **`362e728` (run1: the slice, the regenerated vectors and this record):** native 7,228 passed, 0 failed, 2 expected skips; `pnpm check` 581 passed.
+- **`39eda38` (run2: after merging main at `1b88ff8`, which carries #41 and #43):** native 7,228 passed, 0 failed, 2 expected skips; `pnpm check` 581 passed.
+- **`1472a70` (run3: with the review's L-1 test):** native 7,229 passed (the L-1 test included), 0 failed, 2 expected skips. `pnpm check` first failed one test: `publish.test.ts`'s push case took 40 seconds against its 30-second timeout. That load-sensitive test has also timed out in other sessions today, and this range changes no TypeScript. Its rerun in the same export passed 581 of 581.
+
+**Independent review** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO** for `089e894..e258793` and `5730c1d..362e728`. It verified both seals, built an export, ran the four replay classes (62 passed), audited the docs merge, and compared the code line by line with TypeScript.
+- **Confirmed.**
+  - Only the exact reviewed edit or command can run.
+  - The executing state is durable before any mutation.
+  - Every failure path is classified as TypeScript classifies it, and startup recovery covers a crash in between.
+  - Every return is redacted and bounded.
+  - Cancellation, the slots and the off-loop search keep loop affinity.
+  - Search inherits the read tools' filesystem rules.
+  - Rethrowing an unexpected failure after saving its classification is the right call.
+- **L-1 (low), fixed in `1472a70`.** The unverified-cleanup branch had no test, though P2.3a's outside-writer command reaches it natively. `ToolRuntimeNativeTests` now runs that command through `Execute`. The row is unknown with cleanup unverified, and the mutation that completed it now fails.
+- **I-1, resolved.** The bullet about regenerating these vectors when #35 and #39 merged was stale; `c4459e5` did that.
+- **I-2 to I-4** are recorded below, under Open.
+- **A correction to the record.** The first main merge (`5730c1d`) brought in main at `891cf73` (#43), which includes #35, #39 and #42; it was not `e482b03`.
 
 **Open, for later slices.**
-- **Unreached by any fixture:** a command whose cleanup is unverified is recorded unknown (its classification is TypeScript's, line for line). P2.3f's wired turns should reach it.
-- **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired.
-- **#35 and #39** also change sources these vectors are bound to (`command-runner.ts` and `job-runner.ps1`). Regenerate `tool-runtime-vectors.json` with the command-runner vectors when either merges.
+- **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired. The worktree paths stored in the six fixture eras, and where TypeScript has computed worktree paths over its history, would give that decision its evidence (review I-4).
+- **Rethrown failures, for P2.3e (review I-2).** Once turns are wired, an unexpected failure before any proposal, such as a stored task of the wrong shape, ends the development runtime, where TypeScript gives the model "Tool failed." That is fail-closed, but the agent loop must not leave a reservation or a running task behind.
+- **Commands too long to launch (review I-3).** A `run_command` longer than about 12,200 characters can be proposed and approved, then fails at launch as "none", because its `-EncodedCommand` line exceeds the 32,767-character command line. TypeScript's helper has the same limit. A preparation-time length check would spare the user an approval that cannot run.
 
 ## Personal workspace expansion — local implementation
 
