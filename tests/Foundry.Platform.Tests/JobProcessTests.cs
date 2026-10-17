@@ -145,6 +145,27 @@ public sealed class JobProcessTests
         Assert.Empty(job.ProcessImages());
     }
 
+    /// <summary>The drain keeps its limit while reading to the end, and cancellation ends a pending pipe read promptly.</summary>
+    [Fact]
+    public async Task DrainKeepsItsLimitAndCancellationEndsAPendingRead()
+    {
+        var directory = Scratch.Directory("foundry-job-drain-");
+        using (var writer = JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand("[Console]::Out.Write(('a' * 70000))"),
+            directory.FullName, Scratch.Environment(directory.FullName))))
+        {
+            writer.StandardInput.Dispose();
+            var kept = await JobProcess.DrainAsync(writer.StandardOutput, 1024, TestContext.Current.CancellationToken);
+            Assert.Equal(new string('a', 1024), System.Text.Encoding.ASCII.GetString(kept));
+        }
+        using var idle = JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand("[Threading.Thread]::Sleep(30000)"),
+            directory.FullName, Scratch.Environment(directory.FullName)));
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        var watch = Stopwatch.StartNew();
+        Assert.Empty(await JobProcess.DrainAsync(idle.StandardOutput, 1024, cancel.Token));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Cancellation took {watch.Elapsed}.");
+        idle.Terminate(1);
+    }
+
     [Fact]
     public async Task StartupDiagnosticsObserveARunningRootWithoutStoppingIt()
     {

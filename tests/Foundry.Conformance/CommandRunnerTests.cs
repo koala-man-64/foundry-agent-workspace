@@ -354,9 +354,87 @@ public sealed class CommandRunnerTests
         var host = Path.Join(Environment.SystemDirectory, "conhost.exe");
         Assert.False(CommandRunner.HasDescendant([]));
         Assert.False(CommandRunner.HasDescendant([host]));
-        Assert.False(CommandRunner.HasDescendant([host.ToUpperInvariant(), null]));
+        Assert.False(CommandRunner.HasDescendant([host.ToUpperInvariant(), host]));
         Assert.True(CommandRunner.HasDescendant([host, Shell]));
+        Assert.True(CommandRunner.HasDescendant([host, null]));
         Assert.True(CommandRunner.HasDescendant([Path.Join(Path.GetTempPath(), "conhost.exe")]));
+    }
+
+    /// <summary>
+    /// Review F1: a pipe write end held outside the job (here the command hands its standard output to this test process)
+    /// cannot keep the result open. Everything after the command ends is bounded by the settle window; the output kept so
+    /// far is returned and cleanup is unverified.
+    /// </summary>
+    [Fact(Timeout = 120_000)]
+    public async Task AWriterOutsideTheJobCannotHoldTheResultOpen()
+    {
+        using var fixture = await Repository("foundry-p2-command-outside-writer-");
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        CommandResult? result = null;
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            var command = await runner.Prepare(fixture.Local("repo"), new(
+                "$sig = '[DllImport(\"kernel32.dll\")] public static extern IntPtr GetStdHandle(int n); [DllImport(\"kernel32.dll\")] public static extern IntPtr GetCurrentProcess(); "
+                + "[DllImport(\"kernel32.dll\")] public static extern IntPtr OpenProcess(uint a, bool i, int p); "
+                + "[DllImport(\"kernel32.dll\")] public static extern bool DuplicateHandle(IntPtr sp, IntPtr h, IntPtr tp, out IntPtr d, uint a, bool i, uint o);'; "
+                + "$k = Add-Type -MemberDefinition $sig -Name K -Namespace P -PassThru; "
+                + $"$t = $k::OpenProcess(0x40, $false, {Environment.ProcessId}); $d = [IntPtr]::Zero; "
+                + "[void]$k::DuplicateHandle($k::GetCurrentProcess(), $k::GetStdHandle(-11), $t, [ref]$d, 0, $false, 2); "
+                + "[IO.File]::WriteAllText('handle.txt', [string]$d.ToInt64()); [Console]::Out.Write('hello')", "", [], 60_000));
+            result = await runner.Execute(command, TestContext.Current.CancellationToken);
+            return 0;
+        });
+        var elapsed = started.Elapsed;
+        var handle = nint.Parse(File.ReadAllText(fixture.Local("repo/handle.txt")), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(handle != 0, "The command did not hand its output to this process, so the test proves nothing.");
+        CloseHandle(handle);
+        Assert.NotNull(result);
+        Assert.Equal(("hello", (long?)0, false), (result.Stdout, result.ExitCode, result.CleanupVerified));
+        Assert.True(elapsed < TimeSpan.FromSeconds(60), $"The result took {elapsed}.");
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static extern bool CloseHandle(nint handle);
+
+    /// <summary>Review F2: the content walk keeps its own stack, so a deep tree is fingerprinted rather than crashing the
+    /// process (the recursive walk overflowed the thread's stack near 3,000 levels).</summary>
+    [Fact]
+    public async Task ADeepTreeIsFingerprintedWithoutExhaustingTheStack()
+    {
+        using var fixture = await Repository("foundry-p2-command-deep-");
+        var deep = fixture.Local("repo") + string.Concat(Enumerable.Repeat(@"\d", 3_000));
+        Directory.CreateDirectory(@"\\?\" + deep);
+        File.WriteAllText(@"\\?\" + deep + @"\leaf.txt", "leaf");
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            var before = await runner.Prepare(fixture.Local("repo"), Say("deep"));
+            File.WriteAllText(@"\\?\" + deep + @"\leaf.txt", "changed");
+            Assert.NotEqual(before.Fingerprint, (await runner.Prepare(fixture.Local("repo"), Say("deep"))).Fingerprint);
+            return 0;
+        });
+    }
+
+    /// <summary>Native difference (review F2): folders and links count against their own limit of 10,000.</summary>
+    [Fact]
+    public async Task MoreThanTenThousandFoldersAreRefused()
+    {
+        using var fixture = await Repository("foundry-p2-command-folders-");
+        for (var index = 0; index < CommandRunner.MaximumStateFolders - 1; index++) Directory.CreateDirectory(fixture.Local($"repo/many/{index:D5}"));
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            // src and many, plus 9,999 folders inside many, is 10,001.
+            Assert.Equal(CommandRunner.TooLarge, (await Assert.ThrowsAsync<WorkspaceReadException>(() => runner.Prepare(fixture.Local("repo"), Say("x")))).Message);
+            Directory.Delete(fixture.Local("repo/many/00000"));
+            await runner.Prepare(fixture.Local("repo"), Say("x"));
+            return 0;
+        });
     }
 
     /// <summary>The record keeps its own copy of the approved changes.</summary>

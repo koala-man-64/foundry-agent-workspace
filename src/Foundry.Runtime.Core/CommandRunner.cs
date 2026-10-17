@@ -51,6 +51,7 @@ internal sealed class CommandRunner
     internal const int MaximumTimeoutMilliseconds = 10 * 60 * 1000;
     internal const int MaximumStreamBytes = 64 * 1024;
     internal const int MaximumStateFiles = 10_000;
+    internal const int MaximumStateFolders = 10_000;
     internal const long MaximumStateBytes = 64L * 1024 * 1024;
     internal const string Truncated = "\n[output truncated]";
     internal const string BackgroundTerminated = "\n[background job descendants terminated]";
@@ -63,6 +64,8 @@ internal sealed class CommandRunner
     internal const string SystemRootUnavailable = "SystemRoot is unavailable.";
     internal const string ShellUnavailable = "Windows PowerShell executable is unavailable.";
     internal static readonly TimeSpan CleanupWindow = TimeSpan.FromSeconds(5);
+    /// <summary>job-runner's HELPER_GRACE_MS: the bound on everything after the command ends.</summary>
+    internal static readonly TimeSpan SettleWindow = TimeSpan.FromSeconds(10);
     private static readonly CompareInfo Collation = CultureInfo.GetCultureInfo("en-US").CompareInfo;
     private static readonly Comparer<string> LocaleOrder = Comparer<string>.Create((left, right) => Collation.Compare(left, right, CompareOptions.None));
     private static readonly string[] Words = ["credential", "secret", "token", "password", "authorization", "apikey", "api_key", "api-key", "cookie", "proxy", "node_options"];
@@ -305,68 +308,92 @@ internal sealed class CommandRunner
     /// contentState: entries in localeCompare order; ".git" skipped at every level; a directory as D, then its entries; a
     /// regular file as F with its size and bytes. Native hashes a symbolic link or junction by its stored target without
     /// following it, as TypeScript hashes readlink, and refuses any other reparse point, which Node would read through.
-    /// Files are opened by their exact names without following a reparse point.
+    /// Files are opened by their exact names without following a reparse point. The walk keeps its own stack in the same
+    /// pre-order, so a deep tree cannot exhaust the thread's stack (Node's async recursion does not grow one), and folders
+    /// and links count against their own limit of 10,000, where TypeScript counts files only.
     /// </summary>
     private static string ContentState(string root)
     {
         using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var files = 0; long bytes = 0;
+        var files = 0; var folders = 0; long bytes = 0;
         void Add(string text) => digest.AppendData(Encoding.UTF8.GetBytes(text));
-        void Visit(string directory, string prefix)
+        var pending = new Stack<Folder>();
+        pending.Push(new(root, "", Entries(root)));
+        while (pending.Count > 0)
         {
-            List<(string Name, FileAttributes Attributes)> entries;
+            var folder = pending.Peek();
+            if (folder.Next == folder.Entries.Count) { pending.Pop(); continue; }
+            var (name, attributes) = folder.Entries[folder.Next++];
+            if (name == ".git") continue;
+            var target = Path.Join(folder.Directory, name);
+            var relative = folder.Prefix.Length == 0 ? name : folder.Prefix + "/" + name;
+            if ((attributes.HasFlag(FileAttributes.ReparsePoint) || attributes.HasFlag(FileAttributes.Directory)) && ++folders > MaximumStateFolders)
+                throw new WorkspaceReadException(TooLarge);
+            if (attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                string? link;
+                try { link = (attributes.HasFlag(FileAttributes.Directory) ? (FileSystemInfo)new DirectoryInfo(@"\\?\" + target) : new FileInfo(@"\\?\" + target)).LinkTarget; }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(StateUnreadable); }
+                Add($"L\0{relative}\0{link ?? throw new WorkspaceReadException(StateUnreadable)}\0");
+                continue;
+            }
+            if (attributes.HasFlag(FileAttributes.Directory)) { Add($"D\0{relative}\0"); pending.Push(new(target, relative, Entries(target))); continue; }
+            if (attributes.HasFlag(FileAttributes.Device)) continue;
+            byte[] content;
             try
             {
-                entries = [.. new FileSystemEnumerable<(string, FileAttributes)>(@"\\?\" + directory, (ref FileSystemEntry entry) => (entry.FileName.ToString(), entry.Attributes),
-                    new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false, RecurseSubdirectories = false, ReturnSpecialDirectories = false })];
+                using var entry = ExistingEntry.TryOpen(target) ?? throw new WorkspaceReadException(StateUnreadable);
+                if (entry.IsReparsePoint || entry.IsDirectory) throw new WorkspaceReadException(StateUnreadable);
+                files++; bytes += entry.Length;
+                if (files > MaximumStateFiles || bytes > MaximumStateBytes) throw new WorkspaceReadException(TooLarge);
+                Add($"F\0{relative}\0{entry.Length.ToString(CultureInfo.InvariantCulture)}\0");
+                content = entry.ReadBounded((int)entry.Length);
             }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(StateUnreadable); }
-            foreach (var (name, attributes) in entries.OrderBy(entry => entry.Name, LocaleOrder))
-            {
-                if (name == ".git") continue;
-                var target = Path.Join(directory, name);
-                var relative = prefix.Length == 0 ? name : prefix + "/" + name;
-                if (attributes.HasFlag(FileAttributes.ReparsePoint))
-                {
-                    string? link;
-                    try { link = (attributes.HasFlag(FileAttributes.Directory) ? (FileSystemInfo)new DirectoryInfo(@"\\?\" + target) : new FileInfo(@"\\?\" + target)).LinkTarget; }
-                    catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(StateUnreadable); }
-                    Add($"L\0{relative}\0{link ?? throw new WorkspaceReadException(StateUnreadable)}\0");
-                    continue;
-                }
-                if (attributes.HasFlag(FileAttributes.Directory)) { Add($"D\0{relative}\0"); Visit(target, relative); continue; }
-                if (attributes.HasFlag(FileAttributes.Device)) continue;
-                byte[] content;
-                try
-                {
-                    using var entry = ExistingEntry.TryOpen(target) ?? throw new WorkspaceReadException(StateUnreadable);
-                    if (entry.IsReparsePoint || entry.IsDirectory) throw new WorkspaceReadException(StateUnreadable);
-                    files++; bytes += entry.Length;
-                    if (files > MaximumStateFiles || bytes > MaximumStateBytes) throw new WorkspaceReadException(TooLarge);
-                    Add($"F\0{relative}\0{entry.Length.ToString(CultureInfo.InvariantCulture)}\0");
-                    content = entry.ReadBounded((int)entry.Length);
-                }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException) { throw new WorkspaceReadException(StateUnreadable); }
-                digest.AppendData(content);
-            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException) { throw new WorkspaceReadException(StateUnreadable); }
+            digest.AppendData(content);
         }
-        Visit(root, "");
         return Convert.ToHexStringLower(digest.GetHashAndReset());
     }
 
+    /// <summary>A folder of the walk: its sorted entries and the next one to visit.</summary>
+    private sealed class Folder(string directory, string prefix, List<(string Name, FileAttributes Attributes)> entries)
+    {
+        internal string Directory { get; } = directory;
+        internal string Prefix { get; } = prefix;
+        internal List<(string Name, FileAttributes Attributes)> Entries { get; } = entries;
+        internal int Next { get; set; }
+    }
+
+    /// <summary>One folder's entries, read whole and sorted as localeCompare sorts.</summary>
+    private static List<(string Name, FileAttributes Attributes)> Entries(string directory)
+    {
+        List<(string Name, FileAttributes Attributes)> entries;
+        try
+        {
+            entries = [.. new FileSystemEnumerable<(string, FileAttributes)>(@"\\?\" + directory, (ref FileSystemEntry entry) => (entry.FileName.ToString(), entry.Attributes),
+                new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false, RecurseSubdirectories = false, ReturnSpecialDirectories = false })];
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { throw new WorkspaceReadException(StateUnreadable); }
+        return [.. entries.OrderBy(entry => entry.Name, LocaleOrder)];
+    }
+
     /// <summary>
-    /// The helper's run, in process. Cancellation and the timeout terminate the job; after a normal exit, descendants still
-    /// in the job are terminated. Cleanup is verified when the job is empty within five seconds. Each stream keeps its first
-    /// 64 KiB and is drained to its end; a stream whose writers outlive verification is closed after the same window.
+    /// The helper's run, in process. Cancellation and the timeout terminate the job. After a normal exit, anything still in
+    /// the job is terminated; it is reported as a background descendant unless it is only the system console host, which
+    /// Windows starts for the root inside the job (TypeScript's command shared its helper's console instead). Cleanup is
+    /// verified when the job is empty within five seconds. Each stream keeps its first 64 KiB, drained to its end on the
+    /// thread pool. Everything after the command ends is bounded by one settle window, as TypeScript's watchdog bounds its
+    /// helper: a process stuck in I/O that cannot be cancelled, or a pipe write end held outside the job, ends the wait with
+    /// cleanup unverified and the output kept so far.
     /// </summary>
     private async Task<CommandResult> Run(Admitted preflight, CancellationToken cancellationToken)
     {
         var command = preflight.Command;
-        var spec = new ProcessSpec(command.Shell, CommandLine(command.Shell, command.Command), command.Cwd,
-            command.Environment.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
         JobProcess process;
         try
         {
+            var spec = new ProcessSpec(command.Shell, CommandLine(command.Shell, command.Command), command.Cwd,
+                command.Environment.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
             Launching?.Invoke(spec);
             process = JobProcess.Start(spec);
         }
@@ -375,49 +402,56 @@ internal sealed class CommandRunner
         // The process holds its own working directory now; the command may manage the rest of its tree.
         finally { preflight.Dispose(); }
         using (process)
+        using (var reading = new CancellationTokenSource())
         {
-            process.StandardInput.Dispose();
-            var output = Collect(process.StandardOutput);
-            var error = Collect(process.StandardError);
-            var exited = process.WaitForExitAsync(CancellationToken.None); // Cancellation terminates the job; the exit is still awaited.
-            using var stop = new CancellationTokenSource();
-            var timer = loop.Delay(TimeSpan.FromMilliseconds(command.TimeoutMs), stop.Token);
-            var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            bool wasCancelled = false, timedOut = false;
-            using (cancellationToken.Register(() => cancelled.TrySetResult()))
+            try
             {
-                var first = await Task.WhenAny(exited, timer, cancelled.Task);
-                loop.AssertCurrent();
-                if (first == cancelled.Task) { wasCancelled = true; Terminate(process, 1); }
-                else if (first == timer) { timedOut = true; Terminate(process, 2); }
+                process.StandardInput.Dispose();
+                var output = JobProcess.DrainAsync(process.StandardOutput, MaximumStreamBytes, reading.Token);
+                var error = JobProcess.DrainAsync(process.StandardError, MaximumStreamBytes, reading.Token);
+                var exited = process.WaitForExitAsync(CancellationToken.None); // Cancellation terminates the job; the exit is still awaited.
+                Observe(exited);
+                bool wasCancelled = false, timedOut = false;
+                using (var stop = new CancellationTokenSource())
+                {
+                    var timer = loop.Delay(TimeSpan.FromMilliseconds(command.TimeoutMs), stop.Token);
+                    var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    using (cancellationToken.Register(() => cancelled.TrySetResult()))
+                    {
+                        var first = await Task.WhenAny(exited, timer, cancelled.Task);
+                        loop.AssertCurrent();
+                        if (first == cancelled.Task) { wasCancelled = true; Terminate(process, 1); }
+                        else if (first == timer) { timedOut = true; Terminate(process, 2); }
+                    }
+                    stop.Cancel();
+                    try { await timer; } catch (OperationCanceledException) { }
+                }
+                using var settling = new CancellationTokenSource();
+                var settle = loop.Delay(SettleWindow, settling.Token);
+                try
+                {
+                    long? code = await Task.WhenAny(exited, settle) == exited ? await exited : null;
+                    loop.AssertCurrent();
+                    var normalEnd = code is not null && !wasCancelled && !timedOut;
+                    var background = false;
+                    // A background descendant can keep the pipes open after the root exits; end its job membership first.
+                    if (normalEnd && process.ActiveProcesses > 0) { background = HasDescendant(process.ProcessImages()); Terminate(process, 3); }
+                    var verified = code is not null && await process.WaitForEmptyAsync(CleanupWindow, CancellationToken.None);
+                    loop.AssertCurrent();
+                    var streams = Task.WhenAll(output, error);
+                    if (await Task.WhenAny(streams, settle) != streams) { await reading.CancelAsync(); verified = false; }
+                    await streams;
+                    loop.AssertCurrent();
+                    return new(Bounded(Decode(await output)), Bounded(Decode(await error) + (background ? BackgroundTerminated : "")),
+                        normalEnd ? code : null, wasCancelled, timedOut, verified);
+                }
+                finally
+                {
+                    await settling.CancelAsync();
+                    try { await settle; } catch (OperationCanceledException) { }
+                }
             }
-            stop.Cancel();
-            try { await timer; } catch (OperationCanceledException) { }
-            var code = await exited;
-            loop.AssertCurrent();
-            var normalEnd = !wasCancelled && !timedOut;
-            var background = false;
-            // A background descendant can keep the pipes open after the root exits; end its job membership first. Windows
-            // starts a console host for the root inside the job (TypeScript's command shared its helper's console instead),
-            // and it can outlive the root briefly: that alone is not a descendant, and it exits on its own. A process whose
-            // image cannot be read has already exited; anything still running must leave the job before cleanup is verified,
-            // and disposal ends whatever remains.
-            if (normalEnd && process.ActiveProcesses > 0 && HasDescendant(process.ProcessImages())) { background = true; Terminate(process, 3); }
-            var verified = await process.WaitForEmptyAsync(CleanupWindow, CancellationToken.None);
-            loop.AssertCurrent();
-            var streams = Task.WhenAll(output, error);
-            if (!verified)
-            {
-                using var grace = new CancellationTokenSource();
-                var wait = loop.Delay(CleanupWindow, grace.Token);
-                if (await Task.WhenAny(streams, wait) != streams) process.Dispose();
-                grace.Cancel();
-                try { await wait; } catch (OperationCanceledException) { }
-            }
-            await streams;
-            loop.AssertCurrent();
-            return new(Bounded(Decode(await output)), Bounded(Decode(await error) + (background ? BackgroundTerminated : "")),
-                normalEnd ? code : null, wasCancelled, timedOut, verified);
+            finally { await reading.CancelAsync(); }
         }
     }
 
@@ -427,31 +461,20 @@ internal sealed class CommandRunner
 
     private static readonly string ConsoleHost = Path.Join(Environment.SystemDirectory, "conhost.exe");
 
-    /// <summary>Whether a job that outlived its root still holds a descendant: a process other than the system console host.
-    /// An image that cannot be read belongs to a process that has exited.</summary>
+    /// <summary>Whether a job that outlived its root still holds a descendant: a live process other than the system console
+    /// host. A live process whose image cannot be read counts as one.</summary>
     internal static bool HasDescendant(IEnumerable<string?> images) =>
-        images.Any(image => image is not null && !string.Equals(image, ConsoleHost, StringComparison.OrdinalIgnoreCase));
+        images.Any(image => image is null || !string.Equals(image, ConsoleHost, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A pending exit wait faults when the process is disposed first; nothing else reads it then.</summary>
+    private static void Observe(Task task) =>
+        task.ContinueWith(static completed => _ = completed.Exception, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private static void Terminate(JobProcess process, uint code)
     {
         // Verification, not this call, decides whether cleanup succeeded.
         try { process.Terminate(code); } catch (Win32Exception) { }
-    }
-
-    /// <summary>ReadLimited: read to the end, keeping the first 64 KiB.</summary>
-    private static async Task<byte[]> Collect(FileStream stream)
-    {
-        var kept = new MemoryStream(); var buffer = new byte[16 * 1024];
-        while (true)
-        {
-            int read;
-            try { read = await stream.ReadAsync(buffer); }
-            catch (Exception error) when (error is IOException or ObjectDisposedException) { break; } // The pipe breaks when the tree ends.
-            if (read == 0) break;
-            var room = MaximumStreamBytes - (int)kept.Length;
-            if (room > 0) kept.Write(buffer, 0, Math.Min(room, read));
-        }
-        return kept.ToArray();
     }
 
     /// <summary>The helper's decoding: UTF-8 with replacement, marked once the kept bytes reach the limit.</summary>

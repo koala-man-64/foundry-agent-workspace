@@ -128,6 +128,8 @@ internal static unsafe partial class Native
     internal const int JobObjectBasicProcessIdList = 3;
     internal const uint ProcessQueryLimitedInformation = 0x1000;
     internal const int ErrorMoreData = 234;
+    internal const int ErrorInvalidParameter = 87;
+    internal const uint StillActive = 259;
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial SafeKernelHandle OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);

@@ -55,9 +55,9 @@ public sealed class JobProcess : IDisposable
     }
 
     /// <summary>
-    /// The full image path of each process running in the job, or null where it cannot be read (the process exited, or
-    /// cannot be queried). A process id can be reused once its process exits, so an entry is evidence, not identity: it
-    /// suits a classification that fails toward the more conservative report.
+    /// The full image path of each live process in the job. A process that has already exited is left out (its id no
+    /// longer opens, or its exit code is set); a live process whose image cannot be read is null, which callers count as
+    /// the more conservative case. A process id can be reused once its process exits, so an entry is evidence, not identity.
     /// </summary>
     public unsafe IReadOnlyList<string?> ProcessImages()
     {
@@ -75,20 +75,47 @@ public sealed class JobProcess : IDisposable
                 if (!ok || listed < assigned) continue;
                 var ids = (nuint*)((byte*)buffer + 2 * sizeof(uint));
                 var images = new List<string?>((int)listed);
-                for (var index = 0; index < listed; index++) images.Add(ImagePath((uint)ids[index]));
+                for (var index = 0; index < listed; index++)
+                    if (ImagePath((uint)ids[index]) is (true, var image)) images.Add(image);
                 return images;
             }
             finally { NativeMemory.Free(buffer); }
         }
     }
 
-    private static unsafe string? ImagePath(uint processId)
+    private static unsafe (bool Live, string? Image) ImagePath(uint processId)
     {
         using var process = Native.OpenProcess(Native.ProcessQueryLimitedInformation, false, processId);
-        if (process.IsInvalid) return null;
+        // ERROR_INVALID_PARAMETER: no process has this id any more. Any other failure leaves a live process unread.
+        if (process.IsInvalid) return (Marshal.GetLastPInvokeError() != Native.ErrorInvalidParameter, null);
+        uint exitCode;
+        if (Native.GetExitCodeProcess(process, &exitCode) && exitCode != Native.StillActive) return (false, null);
         var buffer = stackalloc char[32_768];
         var length = 32_768u;
-        return Native.QueryFullProcessImageName(process, 0, buffer, &length) ? new string(buffer, 0, (int)length) : null;
+        return (true, Native.QueryFullProcessImageName(process, 0, buffer, &length) ? new string(buffer, 0, (int)length) : null);
+    }
+
+    /// <summary>
+    /// Reads a stream to its end on the thread pool, keeping its first <paramref name="keep"/> bytes. Cancellation ends the
+    /// read (a synchronous pipe read is cancelled through CancelSynchronousIo) and returns what was kept, as does a stream
+    /// that breaks or closes when its tree ends. Continuations never return to the caller's context, so output does not
+    /// queue work on it.
+    /// </summary>
+    public static async Task<byte[]> DrainAsync(Stream stream, int keep, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentOutOfRangeException.ThrowIfNegative(keep);
+        var kept = new MemoryStream(); var buffer = new byte[16 * 1024];
+        while (true)
+        {
+            int read;
+            try { read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false); }
+            catch (Exception error) when (error is IOException or ObjectDisposedException or OperationCanceledException) { break; }
+            if (read == 0) break;
+            var room = keep - (int)kept.Length;
+            if (room > 0) kept.Write(buffer, 0, Math.Min(room, read));
+        }
+        return kept.ToArray();
     }
 
     public static unsafe JobProcess Start(ProcessSpec spec)
@@ -105,6 +132,7 @@ public sealed class JobProcess : IDisposable
         }
         SafeFileHandle? inputRead = null, inputWrite = null, outputRead = null, outputWrite = null, errorRead = null, errorWrite = null;
         SafeKernelHandle? processHandle = null;
+        FileStream? input = null, output = null, error = null;
         try
         {
             var limits = new Native.JobExtendedLimitInformation { BasicLimitInformation = { LimitFlags = Native.JobObjectLimitKillOnJobClose } };
@@ -128,16 +156,19 @@ public sealed class JobProcess : IDisposable
             }
             using var thread = new SafeKernelHandle(information.Thread);
             processHandle = new SafeKernelHandle(information.Process);
+            // Everything that can fail happens before the thread resumes, so an exception from Start always means the child
+            // never ran: closing the job below kills it while it is still suspended.
+            input = new FileStream(inputWrite, FileAccess.Write, 1); output = new FileStream(outputRead, FileAccess.Read, 4096); error = new FileStream(errorRead, FileAccess.Read, 4096);
             if (Native.ResumeThread(thread) == uint.MaxValue)
             {
                 throw new Win32Exception(Marshal.GetLastPInvokeError(), "ResumeThread failed.");
             }
-            return new JobProcess(job, processHandle, (int)information.ProcessId,
-                new FileStream(inputWrite, FileAccess.Write, 1), new FileStream(outputRead, FileAccess.Read, 4096), new FileStream(errorRead, FileAccess.Read, 4096));
+            return new JobProcess(job, processHandle, (int)information.ProcessId, input, output, error);
         }
         catch
         {
             // Closing the job kills a child that was already created.
+            input?.Dispose(); output?.Dispose(); error?.Dispose();
             inputRead?.Dispose(); outputWrite?.Dispose(); errorWrite?.Dispose();
             inputWrite?.Dispose(); outputRead?.Dispose(); errorRead?.Dispose();
             processHandle?.Dispose();

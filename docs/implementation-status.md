@@ -1013,14 +1013,17 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
 - **Execution.**
   - **One shot.** A prepared command is consumed before the first await, prepared again and required to match.
   - **Launch.** It runs in process through `JobProcess`, with the helper's command line (`-EncodedCommand`, UTF-16LE Base64). Only the three pipe ends and the reviewed environment block are passed.
-  - **Termination.** A timeout or cancellation terminates the job. After a normal exit, descendants still in the job are terminated, with TypeScript's marker. Cleanup is verified when the job is empty within 5 seconds.
-  - **Output.** Each stream keeps its first 64 KiB, is drained to its end, and is bounded again to 64 Ki UTF-16 units, as `boundedText` does.
+  - **Termination.** A timeout or cancellation terminates the job. After a normal exit, anything still in the job is terminated, and reported with TypeScript's marker unless it is only the console host (below). Cleanup is verified when the job is empty within 5 seconds.
+  - **Output.** Each stream keeps its first 64 KiB, is drained to its end on the thread pool, and is bounded again to 64 Ki UTF-16 units, as `boundedText` does.
+  - **Settle window.** Everything after the command ends is bounded by 10 seconds, TypeScript's `HELPER_GRACE_MS`. Examples are an exit that never comes, a cleanup check, and a pipe write end held outside the job. When the window ends, the drains are cancelled, and the result keeps the output read so far with cleanup unverified, so the tool runtime records it as unknown.
 - **Outcomes.** Every failure through launch is a `CommandPreflightException` ("none"). Results report the exit code, cancellation, timeout and verified cleanup as TypeScript's do; the tool runtime (P2.3c) classifies them.
 
 **Differences, all fail-closed or invisible on success:**
-- **In process.** There is no helper, `%TEMP%` file, nonce or `Add-Type`. The runtime owns the kill-on-close job (plan section 8), so TypeScript's "[runtime parent exited; job terminated]" result cannot occur. The timeout counts from resume, with no helper watchdog.
+- **In process.** There is no helper, `%TEMP%` file, nonce or `Add-Type`. The runtime owns the kill-on-close job (plan section 8), so TypeScript's "[runtime parent exited; job terminated]" result cannot occur. The timeout counts from resume. The settle window replaces TypeScript's watchdog (timeout plus 70 seconds), which reports such a run as timed out, with no output.
 - **Handles.** Only the pipe ends are inherited (`HANDLE_LIST`); `job-runner.ps1` inherits every inheritable handle.
-- **Console host.** Windows starts a `conhost.exe` for the command inside its job; TypeScript's command shared its helper's console instead. After the root exits, only processes whose image is not the system `conhost.exe` count as descendants. The new Platform `JobProcess.ProcessImages` lists them, and an image that can no longer be read has exited. Measured: 2 of 30 runs left the console host for a moment, and 1 had exited between listing and opening. Without the filter, about 1 command in 15 reported a phantom descendant.
+- **Console host.** Windows starts a `conhost.exe` for the command inside its job; TypeScript's command shared its helper's console instead. Measured: 2 of 30 runs left the console host for a moment after the root exited, and 1 had exited between listing and opening. Without a filter, about 1 command in 15 reported a phantom descendant.
+  - **What happens now.** After the root exits, anything left in the job is terminated. It is reported as a background descendant unless the only processes left are the system `conhost.exe`.
+  - **Classification.** The new Platform `JobProcess.ProcessImages` leaves out a process that has exited: its id no longer opens, or its exit code is set. A live process whose image cannot be read counts as a descendant.
 - **Exact command text.** TypeScript's helper reads its stdin spec in the console code page, so non-ASCII command text reaches PowerShell altered (finding T1 below). Native runs the exact text. A vector pins both.
 - **Runtime-loader names (decision 3).** `DOTNET_*`, `COMPLUS_*`, `COR_*` and `CORECLR_*`, plus `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `PYTHONPATH`, `PYTHONSTARTUP`, `PERL5OPT`, `RUBYOPT` and `__COMPAT_LAYER`, are refused before approval, ignoring case.
 - **Case-only duplicates.** A change whose name differs only in case from another change, or from `TEMP`, `TMP` or `USERPROFILE`, is refused before approval. TypeScript prepares it; its helper then fails before launch, and the outcome is recorded as unknown.
@@ -1029,6 +1032,7 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
 - **Worktree state.**
   - **Git.** It runs through `GitRunner`, with the app's empty hooks folder and the H1 guard, and never an empty `core.hooksPath`.
   - **Content digest.** It runs off the loop (the first use of `RuntimeLoop.Offload`) and never follows a reparse point. Symbolic links and junctions are hashed by their stored target, as TypeScript hashes `readlink`. Any other reparse point (a cloud placeholder, a socket) refuses the state, where Node reads through it.
+  - **Walk.** It keeps its own stack in TypeScript's pre-order, so a deep tree cannot exhaust a thread's stack. Folders and links count against their own limit of 10,000, where TypeScript counts files only.
   - **Fingerprints.** The values differ between runtimes. They are session-scoped, because approvals awaiting a decision are revoked on restart, so the corpus compares them by identity within a case.
 - **Other refusals.** A `SystemRoot` that is not on a fixed local drive is refused before it is probed, and Node's raw errors become fixed messages.
 
@@ -1052,9 +1056,11 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
   - cancellation before launch, which never launches;
   - a timeout that ends a grandchild;
   - the console host, which is not a descendant: the decision as a pure function, and 40 real runs;
+  - a pipe write end held outside the job (the command hands its standard output to the test process): the result returns within the settle window, keeping the output, with cleanup unverified;
+  - a 3,000-folder-deep tree, which is fingerprinted, and 10,001 folders, which are refused;
   - a caller's later edit of the environment changes, which cannot alter the approved command;
   - loop affinity, and Node's `join` and `dirname`.
-- `JobProcessTests.ProcessImagesNameTheRootAndItsConsoleHost` covers the new Platform primitive.
+- `JobProcessTests` covers the new Platform primitives: `ProcessImagesNameTheRootAndItsConsoleHost`, and `DrainKeepsItsLimitAndCancellationEndsAPendingRead`.
 - **Mutations.** Each of these failed a test:
   - consuming the capability after the first await;
   - skipping the fingerprint comparison;
@@ -1065,6 +1071,32 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
   - counting the console host as a descendant.
 
   The last one first ran against the real-run test alone, which is probabilistic (the host lingers in about 1 run in 15) and passed that time. The decision is now a pure function under a deterministic test.
+
+**Independent review.** A read-only security reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner, chosen for the security verdict) reviewed the sealed range `91ac821..36ad511`. It verified the seal, built an export, and ran the runner and job suites (34 and 28 passed). Its probes confirmed T1. Its verdict was **GO with conditions**: F1 and F2 to be fixed, with regression tests, before any slice wires the runner. The approval-integrity core was found sound: no path runs anything but the freshly re-prepared command, and none reports a started command as "none".
+- **F1 (medium).** Nothing bounded `Execute` after launch. A pipe write end handed to a process outside the job kept the drains open even after `JobProcess.Dispose`, because synchronous pipe reads ignore disposal. A process stuck in I/O that cannot be cancelled kept the exit wait open. TypeScript's watchdog bounds both.
+  - **Fixed.** The settle window above bounds everything after the command ends. The drains take a cancellation token: probed, .NET cancels a pending synchronous pipe read in about 1 second. When the window ends, cleanup is unverified.
+- **F2 (medium).** The content walk recursed with no depth bound. The reviewer's probe crashed the process with a stack overflow at about 3,000 levels, which a cloned repository or an earlier command could leave. Node's async recursion has no such limit.
+  - **Fixed.** The walk keeps its own stack in the same pre-order, and folders and links count against a limit of 10,000.
+- **F3 (low).** After a normal exit, the job was terminated only when a readable image other than the console host remained. A live process whose image could not be read was treated as exited, so a descendant could outlive the root for the cleanup window without being reported.
+  - **Fixed.** Anything left in the job is terminated. `ProcessImages` now tells an exited process from an unreadable live one, which counts as a descendant.
+- **F4 (low).** Every 16 KiB of output queued a continuation on the runtime loop.
+  - **Fixed.** The drain moved into Platform (`JobProcess.DrainAsync`), where its continuations stay on the thread pool. `ConfigureAwait` is banned in `Runtime.Core`.
+- **F5 (informational).** `JobProcess.Start` built its streams after resuming the child. **Fixed:** they are built before, so every exception from `Start` means the child never ran.
+- **F6 (informational).**
+  - The process specification is now built inside the block that releases the leases.
+  - Not changed:
+    - the removal of a re-approved identical command after a run (fails closed, as in TypeScript);
+    - the unpinned walk (it affects only the hash, as in TypeScript).
+  - **Noted for P3:** any native launcher in the WebView2 or WPF process that inherits handles without a handle list could capture the pipe ends.
+- **Mutations of the fixes.** Each of these failed its regression test:
+  - removing the settle bound on the drains (the test hung until its timeout);
+  - removing the folder limit;
+  - restoring the reviewed recursive walk (a real stack overflow ended the test process);
+  - counting an unreadable image as exited.
+
+  The always-terminate rule (F3) and stream construction before resume (F5) have no deterministic trigger: an unreadable live descendant, or a stream that fails to construct. They rest on review.
+- **T1 amplification (untested).** Under a double-byte OEM code page such as 932, a UTF-8 trail byte could combine with the next ASCII byte and change a command's structure, not just its literals.
+- **Evidence manifest.** It was stale during the run and has since been regenerated.
 
 **T1 (shipping TypeScript, open).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
 - **What breaks.** Every non-ASCII character in the command, its environment values, its working directory or the result and cancel paths reaches the helper altered. An approved `'café'` runs as `'caf├⌐'`, so the command that runs is not the one approved; a filter or path with non-ASCII text matches different files.
