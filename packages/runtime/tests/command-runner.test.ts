@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CommandRunner } from '../src/command-runner.js';
+import { CommandRunner, type PreparedCommand } from '../src/command-runner.js';
 
 const execFile = promisify(execFileCallback);
 const directories: string[] = [];
@@ -34,51 +34,91 @@ async function waitFor(condition: () => Promise<boolean>, timeoutMs = 10_000): P
   throw new Error('Timed out waiting for fixture state.');
 }
 function processExited(pid: number): boolean { try { process.kill(pid, 0); return false; } catch { return true; } }
+function helperSpec(prepared: PreparedCommand, control: string): string {
+  return JSON.stringify({ ...prepared, nonce: randomUUID(), resultPath: path.join(control, 'result.json'), cancelPath: path.join(control, 'cancel'), parentPid: process.pid, parentStartedAtMs: Math.floor(Date.now() - process.uptime() * 1000) });
+}
+// Launches the helper as CommandRunner does, with caller-chosen stdin bytes.
+async function runHelperDirectly(prepared: PreparedCommand, input: Buffer): Promise<{ exitCode: number | null; stderr: string }> {
+  const helper = path.join(process.cwd(), 'packages', 'runtime', 'src', 'job-runner.ps1');
+  const child = spawn(prepared.shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true, env: prepared.environment });
+  let stderr = '';
+  child.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8'); });
+  const completion = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; child.kill(); }, 75_000);
+  try {
+    child.stdin?.end(input);
+    const exitCode = await completion;
+    expect(timedOut, stderr).toBe(false);
+    return { exitCode, stderr };
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null) child.kill();
+    await completion.catch(() => undefined);
+  }
+}
 
 afterEach(async () => { await Promise.all(directories.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true }))); });
 
 describe.runIf(process.platform === 'win32')('CommandRunner', () => {
-  it('returns a verified cancellation without launching when the helper receives a preexisting cancel marker', async () => {
+  // The non-ASCII folder covers the result and cancel paths the helper reads from its stdin spec.
+  it.each([['an ASCII', 'foundry-prelaunch-cancel-'], ['a non-ASCII', 'foundry-prelaunch-cancel-café 東京 😀-']])('returns a verified cancellation without launching when the helper receives a preexisting cancel marker in %s folder', async (_label, prefix) => {
     const { root, runner } = await fixture();
     const marker = path.join(root, 'must-not-start.txt');
     const prepared = await prepare(runner, root, `[IO.File]::WriteAllText('${marker.replace(/'/g, "''")}', 'started')`, 8_000);
-    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-prelaunch-cancel-'));
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
     directories.push(control);
-    const cancelPath = path.join(control, 'cancel');
-    const resultPath = path.join(control, 'result.json');
-    await fs.writeFile(cancelPath, 'cancelled');
-    const helper = path.join(process.cwd(), 'packages', 'runtime', 'src', 'job-runner.ps1');
-    const child = spawn(prepared.shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true, env: prepared.environment });
-    let stderr = '';
-    child.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8'); });
-    const completion = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-    let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; child.kill(); }, 75_000);
-    try {
-      child.stdin?.end(JSON.stringify({ ...prepared, nonce: randomUUID(), resultPath, cancelPath, parentPid: process.pid, parentStartedAtMs: Math.floor(Date.now() - process.uptime() * 1000) }));
-      const exitCode = await completion;
-      expect(timedOut, stderr).toBe(false);
-      expect(exitCode, stderr).toBe(0);
-      expect(JSON.parse(await fs.readFile(resultPath, 'utf8'))).toMatchObject({ exitCode: null, cancelled: true, timedOut: false, cleanupVerified: true });
-      await expect(fs.access(marker)).rejects.toThrow();
-    } finally {
-      clearTimeout(timer);
-      if (child.exitCode === null) child.kill();
-      await completion.catch(() => undefined);
-    }
+    await fs.writeFile(path.join(control, 'cancel'), 'cancelled');
+    const { exitCode, stderr } = await runHelperDirectly(prepared, Buffer.from(helperSpec(prepared, control), 'utf8'));
+    expect(exitCode, stderr).toBe(0);
+    expect(JSON.parse(await fs.readFile(path.join(control, 'result.json'), 'utf8'))).toMatchObject({ exitCode: null, cancelled: true, timedOut: false, cleanupVerified: true });
+    await expect(fs.access(marker)).rejects.toThrow();
   }, 90_000);
+
+  it('refuses a helper spec that is not plain UTF-8 before launching', async () => {
+    const { root, runner } = await fixture();
+    const marker = path.join(root, 'must-not-start.txt');
+    const prepared = await prepare(runner, root, `[IO.File]::WriteAllText('${marker.replace(/'/g, "''")}', 'started') # INVALID`, 8_000);
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-invalid-spec-'));
+    directories.push(control);
+    const spec = helperSpec(prepared, control);
+    const at = spec.indexOf('INVALID');
+    // A raw 0xFF must not decode to U+FFFD and run, and a byte-order mark must not be skipped or select another encoding.
+    const inputs = [Buffer.concat([Buffer.from(spec.slice(0, at), 'utf8'), Buffer.from([0xff]), Buffer.from(spec.slice(at + 'INVALID'.length), 'utf8')]), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(spec, 'utf8')])];
+    for (const input of inputs) {
+      const { exitCode, stderr } = await runHelperDirectly(prepared, input);
+      expect(exitCode, stderr).not.toBe(0);
+      await expect(fs.access(path.join(control, 'result.json'))).rejects.toThrow();
+      await expect(fs.access(marker)).rejects.toThrow();
+    }
+  }, 120_000);
 
   it('does not run the command while preparing, then returns bounded separated output', async () => {
     const { root, runner } = await fixture();
     const marker = path.join(root, 'marker.txt').replace(/'/g, "''");
-    const command = `[IO.File]::WriteAllText('${marker}', $env:TEST_APPROVED); Write-Output 'stdout café 東京'; [Console]::Error.WriteLine('stderr')`;
+    // ASCII output only: PowerShell encodes its output in the console code page, and the runner (like the P2.3a native one) decodes it as UTF-8.
+    const command = `[IO.File]::WriteAllText('${marker}', $env:TEST_APPROVED); Write-Output 'stdout'; [Console]::Error.WriteLine('stderr')`;
     const prepared = await prepare(runner, root, command);
     await expect(fs.access(path.join(root, 'marker.txt'))).rejects.toThrow();
     const result = await runner.execute(prepared, new AbortController().signal);
     expect(await fs.readFile(path.join(root, 'marker.txt'), 'utf8')).toBe('yes');
     expect(result).toMatchObject({ exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
-    expect(result.stdout).toContain('stdout café 東京');
+    expect(result.stdout).toBe('stdout\r\n');
     expect(result.stderr).toContain('stderr');
+  });
+
+  it('runs non-ASCII command text, environment values and working directory exactly as approved', async () => {
+    const { root, runner } = await fixture();
+    const directory = 'répertoire 東京 😀';
+    await fs.mkdir(path.join(root, directory));
+    const command = "[IO.File]::WriteAllText('approved.txt', 'café 東京 😀|' + $env:TEST_APPROVED + '|' + [Environment]::CurrentDirectory, [Text.UTF8Encoding]::new($false))";
+    const prepared = await runner.prepare(root, { command, cwd: directory, environment: { TEST_APPROVED: 'naïve Ω 東京 😀' }, timeoutMs: 5_000 });
+    expect(path.basename(prepared.cwd)).toBe(directory);
+    const result = await runner.execute(prepared, new AbortController().signal);
+    expect(result).toMatchObject({ exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
+    // UTF-8 of 'café 東京 😀|' and 'naïve Ω 東京 😀|', then the working directory the process started in.
+    const pinned = Buffer.from('636166c3a920e69db1e4baac20f09f98807c' + '6e61c3af766520cea920e69db1e4baac20f09f98807c', 'hex');
+    expect(await fs.readFile(path.join(prepared.cwd, 'approved.txt'))).toEqual(Buffer.concat([pinned, Buffer.from(prepared.cwd, 'utf8')]));
   });
 
   it('returns nonzero exits without claiming cancellation', async () => {
