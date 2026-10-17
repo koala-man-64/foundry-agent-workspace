@@ -392,7 +392,9 @@ public sealed class CommandRunnerTests
         CloseHandle(handle);
         Assert.NotNull(result);
         Assert.Equal(("hello", (long?)0, false), (result.Stdout, result.ExitCode, result.CleanupVerified));
-        Assert.True(elapsed < TimeSpan.FromSeconds(60), $"The result took {elapsed}.");
+        // The settle window plus the cleanup check, with room for PowerShell's start and Add-Type: a partial regression that
+        // waits for a second window would exceed it.
+        Assert.True(elapsed < CommandRunner.SettleWindow + CommandRunner.CleanupWindow + TimeSpan.FromSeconds(15), $"The result took {elapsed}.");
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll")]
