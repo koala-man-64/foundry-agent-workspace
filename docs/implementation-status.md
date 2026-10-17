@@ -867,6 +867,10 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
 - **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
 - **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
 - **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
+- **Re-review of the H1 alignment.** The ranges were `a8fa711..6310817` (comment and docs) and `6310817..26a8e4a`, the native guard aligned with the TypeScript fix. The reviewer returned **GO for both, with no finding at any severity**.
+  - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
+  - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
+  - It confirmed that the check after exit runs on every path once Git has started and never makes an earlier mutation look like "none", that every lease is disposed, and that no native launch can pass an empty `core.hooksPath`.
 
 ## Personal workspace expansion — local implementation
 
