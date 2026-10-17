@@ -578,7 +578,7 @@ internal sealed partial class RepositoryService
         {
             await RequireTrustedPushConfiguration(repository);
             var pushUrls = (await Run(repository, ["remote", "get-url", "--push", "--all", "--", remote])).Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            if (pushUrls.Any(IsNetworkRemote)) throw new RepositoryException(NetworkRemote(remote));
+            RequireSupportedRemotes(repository, remote, pushUrls);
         }
         catch (Exception error) when (error is not RepositoryException && error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
         try
@@ -602,7 +602,7 @@ internal sealed partial class RepositoryService
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
             if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
-            if (fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Any(IsNetworkRemote)) return null;
+            RequireSupportedRemotes(project, remote, fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries));
             await RequireTrustedPushConfiguration(project);
             var result = await Run(project, [.. TrustedProtocols, "ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
@@ -677,38 +677,70 @@ internal sealed partial class RepositoryService
         "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "protocol.file.allow=always",
     ];
 
-    internal static string NetworkRemote(string remote) => $"Remote {remote} points at a network share or an unavailable drive, which push does not use.";
+    internal static string UnsupportedRemote(string remote) => $"Remote {remote} points at a network share, through a link, or at a location push does not use.";
 
     /// <summary>
     /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or file://
     /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
-    /// authenticate to a server. https, ssh and scp-like URLs are transports, limited by <see cref="TrustedProtocols"/>.
+    /// authenticate to a server. Git percent-decodes file:// URLs before using them, so any file:// URL holding a percent
+    /// sign is refused outright rather than decoded here. https, ssh and scp-like URLs are transports, limited by
+    /// <see cref="TrustedProtocols"/>.
     /// </summary>
     internal static bool IsNetworkRemote(string url)
     {
-        var value = JsJson.Trim(url);
-        var scheme = value.IndexOf("://", StringComparison.Ordinal);
-        if (scheme > 0)
-        {
-            if (!value[..scheme].Equals("file", StringComparison.OrdinalIgnoreCase)) return false;
-            var rest = value[(scheme + 3)..];
-            var slash = rest.IndexOf('/', StringComparison.Ordinal);
-            var host = slash < 0 ? rest : rest[..slash];
-            if (host.Length > 0 && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
-            value = slash < 0 ? "" : rest[slash..];
-            if (value.Length > 2 && value[0] == '/' && char.IsAsciiLetter(value[1]) && value[2] == ':') value = value[1..];
-        }
-        else
-        {
-            // scp-like [user@]host:path: a colon before any slash, and not a drive letter.
-            var colon = value.IndexOf(':', StringComparison.Ordinal);
-            var separator = value.IndexOfAny(['/', '\\']);
-            if (colon > 1 && (separator < 0 || colon < separator)) return false;
-        }
+        if (LocalRemotePath(url) is not { } value) return !IsTransportRemote(url);
         if (NetworkPathPolicy.IsNetworkOrDevicePath(value)) return true;
         if (value.Length >= 2 && char.IsAsciiLetter(value[0]) && value[1] == ':')
             return new DriveInfo(value[..1]).DriveType is DriveType.Network or DriveType.NoRootDirectory;
         return false;
+    }
+
+    /// <summary>An https, ssh, scp-like or other scheme URL that is not file://.</summary>
+    private static bool IsTransportRemote(string url)
+    {
+        var value = JsJson.Trim(url);
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme > 0) return !value[..scheme].Equals("file", StringComparison.OrdinalIgnoreCase);
+        // scp-like [user@]host:path: a colon before any slash, and not a drive letter.
+        var colon = value.IndexOf(':', StringComparison.Ordinal);
+        var separator = value.IndexOfAny(['/', '\\']);
+        return colon > 1 && (separator < 0 || colon < separator);
+    }
+
+    /// <summary>The local path a remote URL names (a plain path, or a file:// URL without a host other than localhost and
+    /// without percent signs); null for a transport URL and for any file:// URL that is refused.</summary>
+    private static string? LocalRemotePath(string url)
+    {
+        if (IsTransportRemote(url)) return null;
+        var value = JsJson.Trim(url);
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme < 0) return value;
+        var rest = value[(scheme + 3)..];
+        if (rest.Contains('%', StringComparison.Ordinal)) return null;
+        var slash = rest.IndexOf('/', StringComparison.Ordinal);
+        var host = slash < 0 ? rest : rest[..slash];
+        if (host.Length > 0 && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return null;
+        var path = slash < 0 ? "" : rest[slash..];
+        return path.Length > 2 && path[0] == '/' && char.IsAsciiLetter(path[1]) && path[2] == ':' ? path[1..] : path;
+    }
+
+    /// <summary>
+    /// Every URL a push or remote check would use must be a transport, or a local folder on a fixed local drive whose
+    /// existing chain holds no link of any kind (checked without following one), so neither a share nor a link to one is
+    /// reached. Relative paths resolve against the folder the command runs in. The check is not held across the push.
+    /// </summary>
+    private static void RequireSupportedRemotes(RepositoryAdmission admission, string remote, IEnumerable<string> urls)
+    {
+        foreach (var url in urls)
+        {
+            if (IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
+            if (LocalRemotePath(url) is not { } local) continue;
+            if (local.Length == 0 || local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
+            var resolved = Path.GetFullPath(local, admission.Path);
+            if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
+            try { using (DirectoryLease.AcquireSharingWrites(resolved)) { } }
+            catch (IOException error) { throw new RepositoryException(UnsupportedRemote(remote), "none", error); }
+        }
     }
 
     private static readonly HashSet<string> TrustedCoreKeys = new(StringComparer.Ordinal)

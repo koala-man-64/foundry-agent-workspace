@@ -13,7 +13,7 @@ public sealed partial class TaskPublicationTests
 {
     private static readonly JsonElement Corpus = RepositoryFixture.ReadCorpus("tests/p2/task-publication-vectors.json");
     private static readonly string[] PlantedHooks = ["post-commit", "post-checkout", "reference-transaction"];
-    private static readonly string[] LoopbackShares = ["\\\\127.0.0.1\\foundry-missing-share\\repo.git", "file://127.0.0.1/foundry-missing-share/repo.git"];
+    private static readonly string[] LoopbackShares = ["\\\\127.0.0.1\\foundry-missing-share\\repo.git", "file://127.0.0.1/foundry-missing-share/repo.git", "file:///%2F%2F127.0.0.1/foundry-missing-share/repo.git"];
 
     public static IEnumerable<object[]> Cases()
     {
@@ -521,6 +521,7 @@ public sealed partial class TaskPublicationTests
     [InlineData("file:///C:/Users/someone/repo.git", false), InlineData("file://localhost/C:/repo.git", false)]
     [InlineData("\\\\host\\share\\repo.git", true), InlineData("//host/share/repo.git", true), InlineData("\\\\?\\UNC\\host\\share\\repo.git", true)]
     [InlineData("file://host/share/repo.git", true), InlineData("file:////host/share/repo.git", true), InlineData("\\\\.\\pipe\\repo", true)]
+    [InlineData("file:///%2F%2Fhost/share/repo.git", true), InlineData("FILE:///%2f%2fhost/share/repo.git", true), InlineData("file://localhost/%2F%2Fhost/share", true), InlineData("file:///C:/re%70o.git", true)]
     public void NetworkShareRemotesAreRecognized(string url, bool network) => Assert.Equal(network, RepositoryService.IsNetworkRemote(url));
 
     /// <summary>A push or remote check never reaches a remote that names a network share. The share here is loopback, so
@@ -543,13 +544,48 @@ public sealed partial class TaskPublicationTests
                 foreach (var url in LoopbackShares)
                 {
                     await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
-                    Assert.Equal(RepositoryService.NetworkRemote("origin"),
+                    Assert.Equal(RepositoryService.UnsupportedRemote("origin"),
                         (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", new() { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" }))).Message);
                     Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
                 }
                 Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
                 await chat.Shutdown(); return 0;
             });
+        }
+    }
+
+    /// <summary>
+    /// A local-path remote reached through a link is refused before any transport: a directory symbolic link could lead
+    /// to a share, and the chain is checked without following one. A junction stands in for the link (it needs no
+    /// elevation). The same remote through its real path pushes.
+    /// </summary>
+    [Fact]
+    public async Task PushRefusesALocalRemoteReachedThroughALink()
+    {
+        var (fixture, data) = await Project("foundry-p2-push-linked-");
+        using (fixture)
+        {
+            await fixture.Git("init", "-q", "--bare", "remotes/dest.git");
+            await fixture.Junction("linked", "remotes");
+            await fixture.Git("-C", "repo", "remote", "set-url", "origin", fixture.Local("linked/dest.git"));
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var branch = (string)task["branch"]!;
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                await chat.Dispatch("task.commit", new() { ["taskId"] = taskId, ["message"] = "Change" });
+                var push = new Dictionary<string, object?> { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" };
+                Assert.Equal(RepositoryService.UnsupportedRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
+                Assert.Empty(await fixture.GitText("--git-dir", fixture.Local("remotes/dest.git"), "for-each-ref"));
+                await fixture.Git("-C", "repo", "remote", "set-url", "origin", fixture.Local("remotes/dest.git"));
+                await chat.Dispatch("task.push", push);
+                await chat.Shutdown(); return 0;
+            });
+            Assert.Contains("refs/heads/codex/task/", await fixture.GitText("--git-dir", fixture.Local("remotes/dest.git"), "for-each-ref"), StringComparison.Ordinal);
         }
     }
 
