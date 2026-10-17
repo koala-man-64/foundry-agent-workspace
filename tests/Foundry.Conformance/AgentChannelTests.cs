@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Foundry.Platform;
 using Foundry.Protocol;
 using Foundry.Providers;
 using Foundry.Runtime;
@@ -66,8 +67,10 @@ public sealed partial class AgentChannelTests
                 // Trusted admission binds the identity it resolved; an incomplete older binding lacks the path.
                 using var admission = RepositoryAdmission.Open(loop, projectPath);
                 var identity = new Dictionary<string, object?> { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
-                if (binding == "incomplete") identity.Remove("path");
+                var full = new Dictionary<string, object?>(identity);
+                if (binding != "full") identity.Remove("path");
                 store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = task["id"], ["identity"] = identity }), "complete");
+                if (binding == "incomplete-then-full") store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = task["id"], ["identity"] = full }), "complete");
             }
             var cleaner = new Cleaner(fixture.Scratch);
             long? lastCursor = null;
@@ -178,10 +181,13 @@ public sealed partial class AgentChannelTests
         });
     }
 
-    /// <summary>The oracle's cleaning: scratch paths, then project keys in order of first appearance, then timestamps.</summary>
+    /// <summary>The oracle's cleaning: scratch paths, then the project keys TypeScript's formula gives for this run's common
+    /// directories, then timestamps. A key computed any other way stays visible and fails the comparison.</summary>
     private sealed partial class Cleaner(string scratch)
     {
-        private readonly Dictionary<string, string> projects = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> projects = new[] { "a", "b" }.ToDictionary(
+            name => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(Path.Join(scratch, name, ".git"))))),
+            name => $"{{project:{name}}}", StringComparer.Ordinal);
 
         internal object? Clean(object? value) => value switch
         {
@@ -194,16 +200,9 @@ public sealed partial class AgentChannelTests
         private string Text(string value)
         {
             var text = value.Replace(scratch.Replace("\\", "\\\\", StringComparison.Ordinal), "{scratch-json}", StringComparison.Ordinal).Replace(scratch, "{scratch}", StringComparison.Ordinal);
-            text = ProjectKey().Replace(text, match =>
-            {
-                if (!projects.TryGetValue(match.Value, out var placeholder)) projects[match.Value] = placeholder = $"{{project:{projects.Count + 1}}}";
-                return placeholder;
-            });
+            foreach (var (key, name) in projects) text = text.Replace(key, name, StringComparison.Ordinal);
             return Timestamp().Replace(text, "{time}");
         }
-
-        [GeneratedRegex(@"\b[0-9a-f]{64}\b", RegexOptions.CultureInvariant)]
-        private static partial Regex ProjectKey();
 
         [GeneratedRegex(@"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", RegexOptions.CultureInvariant)]
         private static partial Regex Timestamp();

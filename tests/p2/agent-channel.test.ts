@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -16,7 +17,7 @@ import { build, file, sha256File, type Step } from './repository-fixture';
 // over a disposable tree of Git metadata folders (admission reads pointers and never runs Git). Each case records every
 // step's value or refusal and the event rows it adds. Tasks are bound as trusted admission binds them, except a legacy
 // task (no binding), and an incomplete binding (no path). Outputs are cleaned: scratch paths become {scratch}, each
-// project key (a SHA-256 of the scratch-specific common directory) becomes {project:N} in order of first appearance, and
+// project key that TypeScript's formula gives for the fixture's common directories becomes {project:a} or {project:b}, and
 // each timestamp becomes {time}. Node's raw filesystem errors are recorded as { systemError }.
 const stamp = '2026-01-01T00:00:00.000Z';
 const id = (n: number) => `15151515-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -25,7 +26,7 @@ const tree: Step[] = [
   // A linked worktree of a: its .git file points into a's worktrees folder, whose commondir names a's .git.
   file('wt/.git', 'gitdir: ../a/.git/worktrees/wt\n'), file('a/.git/worktrees/wt/commondir', '../..\n'),
 ];
-type Seed = { n: number; title: string; at: string; binding?: 'full' | 'incomplete'; extra?: Record<string, unknown> };
+type Seed = { n: number; title: string; at: string; binding?: 'full' | 'incomplete' | 'incomplete-then-full'; extra?: Record<string, unknown> };
 const seeds: Seed[] = [
   { n: 1, title: 'Alpha', at: 'a', binding: 'full' }, { n: 2, title: 'Beta', at: 'a', binding: 'full' },
   { n: 3, title: 'Gamma idle', at: 'a', binding: 'full', extra: { status: 'idle' } }, { n: 4, title: 'Sub folder', at: 'a/sub', binding: 'full' },
@@ -36,6 +37,12 @@ const seeds: Seed[] = [
   { n: 14, title: 'Coordinator', at: 'a', binding: 'full', extra: { mode: 'coordinated' } },
   { n: 13, title: 'Child', at: 'a', extra: { role: 'child', parentTaskId: id(14), rootTaskId: id(14) } },
   { n: 15, title: 'Chat', at: 'a', binding: 'full', extra: { mode: 'chat' } }, { n: 16, title: 'Token api_key=fixture-secret-value', at: 'a', binding: 'full' },
+  // A child in the linked worktree falls back to its root's binding, whose approved folder is another.
+  { n: 17, title: 'Child linked', at: 'wt', extra: { role: 'child', parentTaskId: id(14), rootTaskId: id(14) } },
+  // A task created after every message: its inbox holds none of them.
+  { n: 18, title: 'Late joiner', at: 'a', binding: 'full', extra: { createdAt: '2099-01-01T00:00:00.000Z' } },
+  // The first binding wins: an incomplete one, then a complete one.
+  { n: 19, title: 'Rebound', at: 'a', binding: 'incomplete-then-full' },
 ];
 type Op =
   | { op: 'get'; task: number; before?: number; afterTask?: number }
@@ -65,6 +72,9 @@ const cases: { name: string; seeds: Seed[]; ops: Op[] }[] = [
     { op: 'enrich', task: 2, contextLimit: 128000 }, { op: 'acknowledge', task: 2 }, { op: 'enrich', task: 2, contextLimit: 128000 },
     send(1, 16, '\u0001'.repeat(2000), 2), { op: 'enrich', task: 2, contextLimit: 4000 }, { op: 'acknowledge', task: 2 }, { op: 'enrich', task: 2, contextLimit: 128000 }, { op: 'enrich', task: 7, contextLimit: 128000 },
     { op: 'enrich', task: 4, contextLimit: 128000 }, { op: 'enrich', task: 1, contextLimit: 128000 },
+    { op: 'get', task: 17 }, { op: 'get', task: 19 }, { op: 'enrich', task: 18, contextLimit: 128000 },
+    // The cut lands among astral characters: it counts code points, never splitting a pair.
+    { op: 'acknowledge', task: 2 }, send(1, 17, '\u0001'.repeat(400) + '\u{1F600}'.repeat(400), 2), { op: 'enrich', task: 2, contextLimit: 4000 },
   ] },
   { name: 'message pages', seeds: seeds.slice(0, 3), ops: [
     ...Array.from({ length: 25 }, (_, index) => send(1 + (index % 2), 100 + index, `Broadcast ${index}`)), send(1, 200, 'Direct to Beta', 2),
@@ -93,19 +103,18 @@ it('pins the project channel: definitions, channel.get/send, channel tools and m
         const task = store.saveTask({ id: id(seed.n), title: seed.title, profileId: FAKE_PROFILE_ID, status: 'running', createdAt: stamp, updatedAt: stamp, tokenBudget: 100000, usedTokens: 0,
           mode: 'coding', workspaceKind: 'git', projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), ...seed.extra } as Task);
         if (seed.binding === 'full') channel.admit(task, channel.prepareAdmission(projectPath));
-        if (seed.binding === 'incomplete') {
-          const { path: _, ...identity } = channel.prepareAdmission(projectPath);
+        if (seed.binding === 'incomplete' || seed.binding === 'incomplete-then-full') {
+          const full = channel.prepareAdmission(projectPath); const { path: _, ...identity } = full;
           store.finishIntent(store.intent('channel.identity', { taskId: task.id, identity }), 'complete');
+          if (seed.binding === 'incomplete-then-full') store.finishIntent(store.intent('channel.identity', { taskId: task.id, identity: full }), 'complete');
         }
       }
-      const projects = new Map<string, string>();
+      // A project key is TypeScript's formula over this run's common directory: only keys that match it become placeholders.
+      const projects = new Map(['a', 'b'].map(name => [createHash('sha256').update(path.join(scratch, name, '.git').toLowerCase()).digest('hex'), `{project:${name}}`]));
       const clean = (value: unknown): unknown => {
         if (typeof value === 'string') {
           let text = value.replaceAll(scratch.replaceAll('\\', '\\\\'), '{scratch-json}').replaceAll(scratch, '{scratch}');
-          text = text.replace(/\b[0-9a-f]{64}\b/g, match => {
-            if (!projects.has(match)) projects.set(match, `{project:${projects.size + 1}}`);
-            return projects.get(match)!;
-          });
+          for (const [key, name] of projects) text = text.replaceAll(key, name);
           return text.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, '{time}');
         }
         if (Array.isArray(value)) return value.map(clean);
