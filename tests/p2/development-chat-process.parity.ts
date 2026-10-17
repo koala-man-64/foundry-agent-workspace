@@ -93,6 +93,11 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
     const approvalMissing = await request('approval-missing', 'approval.get', { taskId, approvalId: missingApproval });
     const approvalContentMissing = await request('approval-content-missing', 'approval.content', { taskId, approvalId: missingApproval, field: 'full' });
     const reconcileMissing = await request('reconcile-missing', 'approval.reconcile', { taskId, approvalId: missingApproval });
+    // The project channel refuses a projectless chat, its sender and an oversized message, and a missing task.
+    const channelGet = await request('channel-get', 'channel.get', { taskId });
+    const channelSend = await request('channel-send', 'channel.send', { taskId, requestId: '88888888-0000-4000-8000-000000000002', content: 'Hello channel' });
+    const channelOversized = await request('channel-oversized', 'channel.send', { taskId, requestId: '88888888-0000-4000-8000-000000000003', content: 'x'.repeat(3000) });
+    const channelMissing = await request('channel-missing', 'channel.get', { taskId: '17171717-0000-4000-8000-000000000099' });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -128,6 +133,7 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
         exactTrend: exactTrend.result, shortFractionTrend: shortFractionTrend.result,
         schema: Object.fromEntries(Object.entries(schema.result as ObjectValue).filter(([key]) => key !== 'coordinatedAvailable')), preferences: preferences.result, deniedPreferences: deniedPreferences.error, deniedProject: deniedProject.error,
         approvals: approvals.result, approvalsMissingTask: approvalsMissingTask.error, approvalMissing: approvalMissing.error, approvalContentMissing: approvalContentMissing.error, reconcileMissing: reconcileMissing.error,
+        channelGet: channelGet.error, channelSend: channelSend.error, channelOversized: channelOversized.error, channelMissing: channelMissing.error,
         tasks: db.prepare('SELECT * FROM tasks ORDER BY rowid').all(), messagesRows: messageRows, requests: usageRows,
         starts: db.prepare('SELECT * FROM task_starts ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all(),
         notifications: events.filter(item => item.sequence !== 0) });

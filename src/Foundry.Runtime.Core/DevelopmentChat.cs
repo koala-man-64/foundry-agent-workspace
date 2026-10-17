@@ -35,6 +35,8 @@ public sealed class DevelopmentChat
     public Task Failure => failure.Task;
     /// <summary>The repository service, for tests that observe or interrupt its Git launches.</summary>
     internal RepositoryService Repositories => repositories;
+    /// <summary>The tool runtime and its project channel, for tests that drive them directly.</summary>
+    internal ToolRuntime Tools => tools;
 
     public DevelopmentChat(RuntimeLoop loop, Store store, Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
         : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), now, id) { }
@@ -60,7 +62,7 @@ public sealed class DevelopmentChat
     // TypeScript keeps silent, and the explicit event workspace-operations publishes with its removed-worktree count.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
         or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning"
-        or "task.committed" or "task.pushed" or "approval.changed"
+        or "task.committed" or "task.pushed" or "approval.changed" or "channel.changed"
         || item.Type == "task.retired" && item.Data is IDictionary<string, object?> data && data.ContainsKey("removedWorktrees");
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
@@ -115,6 +117,10 @@ public sealed class DevelopmentChat
             case "approval.content":
                 return store.ApprovalContent((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["field"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 32 * 1024), redactor);
             case "approval.reconcile": return tools.Reconcile((string)parameters["taskId"]!, (string)parameters["approvalId"]!);
+            case "channel.get": return tools.Channel.View((string)parameters["taskId"]!, Ordinal(parameters, "before"), parameters.GetValueOrDefault("afterTaskId") as string);
+            case "channel.send":
+                return tools.Channel.Send((string)parameters["taskId"]!, (string)parameters["requestId"]!,
+                    new Dictionary<string, object?> { ["recipientTaskId"] = parameters.GetValueOrDefault("recipientTaskId"), ["content"] = parameters["content"] }, "user");
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));

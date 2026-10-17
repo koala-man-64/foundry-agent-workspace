@@ -15,8 +15,9 @@ internal sealed record ToolResult(string Id, string Name, string Content, bool I
 /// <summary>
 /// TypeScript's ToolRuntime (tool-runtime.ts): one-shot decisions about reviewed tool actions. Nothing in model output,
 /// repository text or a saved intent grants approval. It is unwired: no RPC, turn or decision reaches it until the native
-/// tool loop lands, and it serves only the six repository tools of an ordinary coding task. External (MCP), browser,
-/// channel and orchestration tools, coordinated roles and hook-origin drafts refuse until their own slices.
+/// tool loop lands. It serves the six repository tools of an ordinary coding task and the project channel's three tools
+/// of any Git task. External (MCP), browser and orchestration tools, coordinated roles and hook-origin drafts refuse until
+/// their own slices.
 /// </summary>
 internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryService repositories, CommandRunner commands, Redactor redactor, ExecutionSlots slots,
     Func<DateTimeOffset> now, Func<Guid> id)
@@ -26,11 +27,13 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     private const string Aborted = "This operation was aborted";
     private const int ResultBytes = 192 * 1024;
     private static readonly string[] BrowserTools = ["browser_tabs", "browser_snapshot", "browser_action"];
-    private static readonly string[] ChannelTools = ["list_project_agents", "send_agent_message", "read_agent_messages"];
     private static readonly string[] OrchestrationTools = ["delegate_assignments", "await_children", "integrate_result", "complete_task", "commit_handoff", "submit_handoff"];
 
     private sealed record Waiter(string TaskId, TaskCompletionSource<bool> Decision, CancellationToken Cancellation);
     private readonly Dictionary<string, Waiter> waiting = new(StringComparer.Ordinal);
+
+    /// <summary>The project channel, which the tool runtime owns as TypeScript's does.</summary>
+    internal AgentChannel Channel { get; } = new(loop, store, redactor);
 
     /// <summary>
     /// execute: one tool call of an ordinary coding task (Git, mode coding, no coordinated role), checked in TypeScript's
@@ -57,8 +60,13 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             token.ThrowIfCancellationRequested();
             if (BrowserTools.Contains(call.Name, StringComparer.Ordinal)) throw new WorkspaceReadException("Browser tools are unavailable.");
             if (task.GetValueOrDefault("workspaceKind") is not (null or Undefined or "" or "git")) throw new WorkspaceReadException("Repository tools require a Git worktree.");
-            // The project channel lands with the native AgentChannel.
-            if (ChannelTools.Contains(call.Name, StringComparer.Ordinal)) throw new WorkspaceReadException(Unavailable);
+            if (ToolDefinitions.IsChannelTool(call.Name))
+            {
+                AssertNoSecrets(JsJson.Stringify(call.Arguments)!);
+                // A coordinated agent needs its orchestration binding, which native does not have.
+                if (Present(task, "rootTaskId")) throw new WorkspaceReadException("This agent is cancelled, fenced or finished.");
+                return Result(JsJson.Stringify(Channel.Execute((string)task["id"]!, call))!);
+            }
             if (task.GetValueOrDefault("mode") is null or Undefined or "" or "chat") throw new WorkspaceReadException("Chat tasks can use only project communication and attached browser tools.");
             // Coordinated roles are refused before any reservation; native has no orchestration hooks.
             if (Equals(task.GetValueOrDefault("role"), "child") && Present(task, "parentTaskId") || Equals(task.GetValueOrDefault("mode"), "coordinated")) throw new WorkspaceReadException(Unavailable);

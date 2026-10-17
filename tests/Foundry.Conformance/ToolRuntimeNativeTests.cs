@@ -16,21 +16,27 @@ public sealed class ToolRuntimeNativeTests
     private static readonly string Readme = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("hello\n"u8));
 
     /// <summary>
-    /// Native difference: the project channel, coordinated roles and their tools are not served until their slices. TypeScript
-    /// runs a coding task's channel tools, lets a coordinator read, and asks a child for its assignment scope.
+    /// Native difference: coordinated roles are not served until their slices. TypeScript lets a coordinator read, asks a child
+    /// for its assignment scope, and lets a child with its orchestration binding use the channel; native has no orchestration,
+    /// so a child's channel call is fenced as TypeScript fences one without a binding.
     /// </summary>
     [Fact]
-    public Task ChannelToolsAndCoordinatedRolesAreRefusedUntilTheirSlices() => Run(async (fixture, store, _, tools) =>
+    public Task CoordinatedRolesAreRefusedUntilTheirSlices() => Run(async (fixture, store, _, tools) =>
     {
-        var coding = SeedTask(store, fixture, 1);
         var coordinator = SeedTask(store, fixture, 2, new() { ["mode"] = "coordinated" });
         var child = SeedTask(store, fixture, 3, new() { ["role"] = "child", ["parentTaskId"] = coordinator["id"], ["rootTaskId"] = coordinator["id"] });
-        foreach (var (task, name) in new[] { (coding, "send_agent_message"), (coding, "list_project_agents"), (coordinator, "read_file"), (child, "read_file"), (child, "write_file") })
+        foreach (var (task, name, message) in new[]
         {
-            var result = await tools.Execute(task, new ToolCall("call", name, new Dictionary<string, object?> { ["path"] = "README.md" }), CancellationToken.None);
-            Assert.Equal(new ToolResult("call", name, "Tool is not available.", true), result);
+            (coordinator, "read_file", "Tool is not available."), (child, "read_file", "Tool is not available."), (child, "write_file", "Tool is not available."),
+            (child, "list_project_agents", "This agent is cancelled, fenced or finished."), (child, "send_agent_message", "This agent is cancelled, fenced or finished."),
+        })
+        {
+            var arguments = name.Contains("agent", StringComparison.Ordinal) ? new Dictionary<string, object?>() : new Dictionary<string, object?> { ["path"] = "README.md" };
+            var result = await tools.Execute(task, new ToolCall("call", name, arguments), CancellationToken.None);
+            Assert.Equal(new ToolResult("call", name, message, true), result);
         }
-        Assert.Empty(store.Rows("SELECT * FROM intents"));
+        Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind='tool.approval'"));
+        Assert.Empty(store.Rows("SELECT * FROM events WHERE type LIKE 'channel.%'"));
     });
 
     /// <summary>
