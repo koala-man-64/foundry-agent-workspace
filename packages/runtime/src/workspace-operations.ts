@@ -156,7 +156,7 @@ export class WorkspaceOperations {
       for (const item of unknowns) {
         if (item.kind === 'git.push') {
           const data = item.data as { remote: string; branch: string; commit?: string };
-          const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, data.remote, data.branch, data.commit);
+          const succeeded = await this.repositories.verifyPushOutcome(task.projectPath, task.worktreePath, this.store.boundCommon(taskId), data.remote, data.branch, data.commit);
           if (succeeded === undefined) {
             unresolved++;
             continue;
@@ -165,7 +165,7 @@ export class WorkspaceOperations {
           resolved++;
         } else if (item.kind === 'git.commit') {
           const data = item.data as { baseCommit?: string; message?: string };
-          const succeeded = await this.repositories.verifyCommitOutcome(task.worktreePath, data.baseCommit, data.message);
+          const succeeded = await this.repositories.verifyCommitOutcome(task.worktreePath, task.projectPath, this.store.boundCommon(taskId), data.baseCommit, data.message);
           if (succeeded === undefined) {
             unresolved++;
             continue;
@@ -211,7 +211,7 @@ export class WorkspaceOperations {
       const baseCommit = await this.repositories.headCommit(task.worktreePath);
       const intent = this.store.intent('git.commit', { taskId, branch: task.branch, baseCommit, message: clean });
       try {
-        const result = await this.repositories.commitAll(task.worktreePath, task.branch, clean);
+        const result = await this.repositories.commitAll(task.worktreePath, task.projectPath, this.store.boundCommon(taskId), task.branch, clean);
         this.store.finishIntent(intent, 'complete');
         this.store.saveTask({ ...this.store.task(taskId), updatedAt: new Date().toISOString() });
         this.publish('task.committed', { commit: result.commit, changedPaths: result.changedPaths.length }, taskId);
@@ -233,7 +233,7 @@ export class WorkspaceOperations {
       const commit = await this.repositories.headCommit(task.worktreePath);
       const intent = this.store.intent('git.push', { taskId, branch: task.branch, remote, commit });
       try {
-        const detail = await this.repositories.push(task.worktreePath, task.projectPath, remote, task.branch);
+        const detail = await this.repositories.push(task.worktreePath, task.projectPath, this.store.boundCommon(taskId), remote, task.branch);
         this.store.finishIntent(intent, 'complete');
         this.publish('task.pushed', { remote, branch: task.branch }, taskId);
         return { remote, branch: task.branch, detail: this.redactor.text(detail) };

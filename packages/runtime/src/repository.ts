@@ -19,6 +19,129 @@ const MAX_PATHS = 5_000;
 const EMPTY_HOOKS_DIRECTORY = '.empty-git-hooks';
 const SECRET_NAME = /^(?:\.env(?:\..*)?|\.envrc|\.npmrc|\.pypirc|\.netrc|\.pgpass|\.terraformrc|\.(?:ssh|aws|azure|kube|docker|gnupg)|id_(?:rsa|dsa|ecdsa|ed25519)|credentials?(?:\..*)?|secrets?(?:\..*)?|.*\.(?:pem|key|p12|pfx))$/i;
 const RESERVED_WINDOWS_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+/** Transports a push or remote check may use: https, ssh and local paths. Plain git, http and ext:: are denied by name too,
+ * because a protocol-specific key in the user's global configuration would beat the generic one. */
+const TRUSTED_PROTOCOLS = [
+  '-c', 'protocol.allow=never', '-c', 'protocol.ext.allow=never', '-c', 'protocol.git.allow=never', '-c', 'protocol.http.allow=never',
+  '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', '-c', 'protocol.file.allow=always',
+];
+const TRUSTED_CORE_KEYS = new Set(['repositoryformatversion', 'filemode', 'bare', 'logallrefupdates', 'symlinks', 'ignorecase',
+  'autocrlf', 'eol', 'safecrlf', 'longpaths', 'precomposeunicode', 'quotepath', 'fscache']);
+const FOREIGN_WORKTREE = "The task worktree no longer belongs to the task's project repository.";
+// System.IO.DriveType values.
+const DRIVE_NO_ROOT_DIRECTORY = 1;
+const DRIVE_FIXED = 3;
+const DRIVE_NETWORK = 4;
+const DRIVE_TYPE_QUERY = "$ErrorActionPreference = 'Stop'\n[int][System.IO.DriveInfo]::new($env:FOUNDRY_DRIVE).DriveType";
+
+export const unsupportedRemoteMessage = (remote: string): string => `Remote ${remote} points at a network share, through a link, or at a location push does not use.`;
+
+/** The Windows drive type of a drive letter, as native's DriveInfo reports it. Node has no GetDriveType, so the fixed
+ * system Windows PowerShell answers with no profile and no inherited environment; the letter is its only input. */
+export async function windowsDriveType(letter: string): Promise<number> {
+  if (!/^[A-Za-z]$/.test(letter)) throw new Error('A drive letter is required.');
+  const systemRoot = process.env.SystemRoot ?? process.env.WINDIR ?? 'C:\\Windows';
+  const shell = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const { stdout } = await execFile(shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(DRIVE_TYPE_QUERY, 'utf16le').toString('base64')], {
+    windowsHide: true, timeout: GIT_TIMEOUT_MS, env: { SystemRoot: systemRoot, WINDIR: systemRoot, FOUNDRY_DRIVE: `${letter}:\\` },
+  });
+  if (!/^[0-6]$/.test(stdout.trim())) throw new Error('The drive type of a remote could not be determined.');
+  return Number(stdout.trim());
+}
+
+/** An https, ssh, scp-like or other scheme URL that is not file:// (native IsTransportRemote). */
+function isTransportRemote(url: string): boolean {
+  const value = url.trim();
+  const scheme = value.indexOf('://');
+  if (scheme > 0) return !/^file$/i.test(value.slice(0, scheme));
+  // scp-like [user@]host:path: a colon before any slash, and not a drive letter.
+  const colon = value.indexOf(':'); const separator = value.search(/[\\/]/);
+  return colon > 1 && (separator < 0 || colon < separator);
+}
+
+/** The local path a remote URL names (a plain path, or a file:// URL without a host other than localhost and without
+ * percent signs); undefined for a transport URL and for any file:// URL that is refused (native LocalRemotePath). */
+function localRemotePath(url: string): string | undefined {
+  if (isTransportRemote(url)) return undefined;
+  const value = url.trim();
+  const scheme = value.indexOf('://');
+  if (scheme < 0) return value;
+  const rest = value.slice(scheme + 3);
+  if (rest.includes('%')) return undefined;
+  const slash = rest.indexOf('/');
+  const host = slash < 0 ? rest : rest.slice(0, slash);
+  if (host.length > 0 && !/^localhost$/i.test(host)) return undefined;
+  const local = slash < 0 ? '' : rest.slice(slash);
+  return /^\/[A-Za-z]:/.test(local) ? local.slice(1) : local;
+}
+
+/**
+ * Decision 8 for remotes (native IsNetworkRemote): whether a remote URL, as Git resolves it, names a network share (UNC,
+ * device or file://host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
+ * authenticate to a server. Git percent-decodes file:// URLs before using them, so any file:// URL holding a percent sign
+ * is refused outright rather than decoded here. https, ssh and scp-like URLs are transports, limited by TRUSTED_PROTOCOLS.
+ */
+export async function isNetworkRemote(url: string, driveType: (letter: string) => Promise<number> = windowsDriveType): Promise<boolean> {
+  const value = localRemotePath(url);
+  if (value === undefined) return !isTransportRemote(url);
+  if (isNetworkOrDevicePath(value)) return true;
+  if (/^[A-Za-z]:/.test(value)) return [DRIVE_NETWORK, DRIVE_NO_ROOT_DIRECTORY].includes(await driveType(value[0]!));
+  return false;
+}
+
+/**
+ * Every URL a push or remote check would use must be a transport, or a local folder on a fixed local drive whose existing
+ * chain holds no link (checked from the drive root without following one), so neither a share nor a link to one is
+ * reached. Relative paths resolve against the folder the command runs in. The check is not held across the push. Native
+ * RequireSupportedRemotes, with its message; its chain pin refuses every reparse point, while Node's lstat recognizes
+ * symbolic links, junctions and mount points. A drive-relative path (`C:repo`) is refused rather than resolved.
+ */
+export async function requireSupportedRemotes(cwd: string, remote: string, urls: string[], driveType: (letter: string) => Promise<number> = windowsDriveType): Promise<void> {
+  const unsupported = () => new RepositoryError(unsupportedRemoteMessage(remote), 'none');
+  for (const url of urls) {
+    if (await isNetworkRemote(url, driveType)) throw unsupported();
+    const local = localRemotePath(url);
+    if (local === undefined) continue;
+    if (!local || local.includes('\0') || /^[A-Za-z]:(?![\\/])/.test(local)
+      || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
+    const resolved = path.win32.resolve(cwd, local);
+    if (!/^[A-Za-z]:\\/.test(resolved) || resolved.slice(2).includes(':') || await driveType(resolved[0]!) !== DRIVE_FIXED) throw unsupported();
+    let current = resolved.slice(0, 3);
+    for (const component of ['', ...resolved.slice(3).split('\\').filter(Boolean)]) {
+      if (component) current = path.win32.join(current, component);
+      let stat: fsSync.Stats;
+      try { stat = await fs.lstat(current); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') break; throw unsupported(); }
+      if (stat.isSymbolicLink() || !stat.isDirectory()) throw unsupported();
+    }
+  }
+}
+
+/** The key as a push refusal names it, without its subsection, which can hold a URL with credentials; undefined when the
+ * key neither runs a program nor changes the connection (native TrustedPushKey). Git lowercases sections and variables. */
+function untrustedPushKey(key: string): string | undefined {
+  const first = key.indexOf('.'); const last = key.lastIndexOf('.');
+  const section = first > 0 ? key.slice(0, first) : key; const variable = last >= 0 && last < key.length - 1 ? key.slice(last + 1) : '';
+  const subsection = first > 0 && last > first;
+  const shown = subsection ? `${section}.*.${variable}` : key;
+  if (first <= 0 || !variable) return shown;
+  const trusted = subsection
+    ? (section === 'remote' && ['url', 'pushurl', 'fetch', 'push', 'tagopt', 'prune'].includes(variable))
+      || (section === 'branch' && ['remote', 'pushremote', 'merge', 'rebase'].includes(variable))
+    : (section === 'core' && TRUSTED_CORE_KEYS.has(variable)) || section === 'extensions'
+      || (section === 'user' && ['name', 'email', 'useconfigonly'].includes(variable))
+      || (section === 'pull' && ['rebase', 'ff'].includes(variable)) || (section === 'push' && variable === 'default');
+  return trusted ? undefined : shown;
+}
+
+/**
+ * Before a publication mutation or its reconciliation, the worktree must share the project repository's common directory,
+ * and that must still be the one bound when the task was created, when a binding exists (native RequireTaskWorktree). A
+ * replaced folder holding another repository, with its own configuration and remotes, is never committed to or pushed from.
+ */
+function requireTaskWorktree(worktree: GitAdmissionIdentity, project: GitAdmissionIdentity, boundCommon: string | undefined): void {
+  if (worktree.common !== project.common || (boundCommon !== undefined && worktree.common !== boundCommon)) throw new RepositoryError(FOREIGN_WORKTREE, 'none');
+}
 
 /** Inspect link metadata before following it; a local alias never grants network authority. */
 export function resolveLocalPath(candidate: string, approvedPath?: string): string {
@@ -289,47 +412,63 @@ export class RepositoryService {
 
   /** Tracked modifications plus untracked files (ignored files excluded), as Git reports them. Read-only. */
   public async uncommittedPaths(root: string): Promise<string[]> {
+    return (await this.changedEntries(root)).map(entry => entry.path);
+  }
+
+  /** Each status entry's path and, for a rename or copy, its source, which porcelain v1 writes after it. The repository is
+   * admitted again; with `admission`, its identity must still be that one. */
+  private async changedEntries(root: string, admission?: GitAdmissionIdentity): Promise<{ path: string; source?: string }[]> {
     const repositoryRoot = await this.requireRepository(root);
-    const output = (await this.git(repositoryRoot, ['status', '--porcelain=v1', '-z', '--untracked-files=all'])).stdout;
-    const paths: string[] = [];
+    const output = (await this.git(repositoryRoot, ['status', '--porcelain=v1', '-z', '--untracked-files=all'], false, false, { admission })).stdout;
+    const entries: { path: string; source?: string }[] = [];
     const fields = output.split('\0');
     for (let index = 0; index < fields.length; index++) {
       const entry = fields[index];
       if (!entry) continue;
       const code = entry.slice(0, 2); const changedPath = entry.slice(3);
-      paths.push(changedPath);
-      if (code.startsWith('R') || code.startsWith('C')) index++;
+      if (code.startsWith('R') || code.startsWith('C')) entries.push({ path: changedPath, source: fields[++index] });
+      else entries.push({ path: changedPath });
     }
-    return paths;
+    return entries;
   }
 
   /**
    * Explicit user commit of every change in the task worktree. Secret-named paths are never staged;
    * hooks stay disabled; the commit identity comes from the user's Git configuration and is never invented.
+   * The worktree must still belong to the task's project repository, which stays pinned for the rest of the commit; both
+   * endpoints of a rename or copy are screened before staging, and the staged paths again without rename detection, so a
+   * secret-named path cannot be committed under another name (review of #36, as native CommitAll).
    */
-  public async commitAll(root: string, expectedBranch: string, message: string): Promise<{ commit: string; changedPaths: string[] }> {
-    const repositoryRoot = await this.requireRepository(root);
-    const branch = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+  public async commitAll(root: string, projectPath: string, boundCommon: string | undefined, expectedBranch: string, message: string): Promise<{ commit: string; changedPaths: string[] }> {
+    const repository = await this.admitRepository(root);
+    let project: { identity: GitAdmissionIdentity };
+    try { project = await this.admitRepository(projectPath); }
+    catch (error) { throw new RepositoryError(error instanceof Error ? error.message : 'Repository admission failed.', 'none', { cause: error }); }
+    requireTaskWorktree(repository.identity, project.identity, boundCommon);
+    const repositoryRoot = repository.root; const pinned = { admission: repository.identity };
+    const branch = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'], false, false, pinned)).stdout.trim();
     if (branch !== expectedBranch) throw new RepositoryError(`The worktree is on ${branch}, not the task branch ${expectedBranch}.`, 'none');
-    const dirty = await this.uncommittedPaths(repositoryRoot);
+    const entries = await this.changedEntries(repositoryRoot, repository.identity);
+    const dirty = entries.map(entry => entry.path);
     if (!dirty.length) throw new RepositoryError('There are no changes to commit.', 'none');
-    const denied = dirty.filter(entry => this.isDeniedRelativePath(entry));
+    const denied = entries.flatMap(entry => entry.source === undefined ? [entry.path] : [entry.path, entry.source]).filter(entry => this.isDeniedRelativePath(entry));
     if (denied.length) throw new RepositoryError(`Refusing to commit secret-named paths: ${denied.slice(0, 5).join(', ')}. Remove or ignore them first.`, 'none');
     // `git add` runs clean filters. Attributes may have changed since the worktree was created (a .gitattributes edit is an
     // ordinary reviewed file change), so every tracked path and every path about to be staged is re-checked here.
     try {
-      await this.rejectTrackedFilters(repositoryRoot);
-      await this.rejectFilters(repositoryRoot, dirty);
+      await this.rejectTrackedFilters(repositoryRoot, repository.identity);
+      await this.rejectFilters(repositoryRoot, dirty, repository.identity);
     } catch (error) { throw new RepositoryError(error instanceof Error ? error.message : 'Filter check failed.', 'none', { cause: error }); }
     let mutationStarted = false;
     try {
       mutationStarted = true;
-      await this.git(repositoryRoot, ['add', '--all', '--', '.']);
-      const staged = (await this.git(repositoryRoot, ['diff', '--cached', '--name-only', '-z'])).stdout.split('\0').filter(Boolean);
-      if (!staged.length) { await this.git(repositoryRoot, ['reset', '-q']); throw new Error('Nothing was staged.'); }
-      if (staged.some(entry => this.isDeniedRelativePath(entry))) { await this.git(repositoryRoot, ['reset', '-q']); throw new Error('A secret-named path was staged; the index was reset and nothing was committed.'); }
-      await this.git(repositoryRoot, ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '--no-verify', '-m', message]);
-      const commit = (await this.git(repositoryRoot, ['rev-parse', '--verify', 'HEAD^{commit}'])).stdout.trim();
+      await this.git(repositoryRoot, ['add', '--all', '--', '.'], false, false, pinned);
+      const staged = (await this.git(repositoryRoot, ['diff', '--cached', '--name-only', '-z'], false, false, pinned)).stdout.split('\0').filter(Boolean);
+      if (!staged.length) { await this.git(repositoryRoot, ['reset', '-q'], false, false, pinned); throw new Error('Nothing was staged.'); }
+      const screened = (await this.git(repositoryRoot, ['diff', '--cached', '--name-only', '--no-renames', '-z'], false, false, pinned)).stdout.split('\0').filter(Boolean);
+      if ([...staged, ...screened].some(entry => this.isDeniedRelativePath(entry))) { await this.git(repositoryRoot, ['reset', '-q'], false, false, pinned); throw new Error('A secret-named path was staged; the index was reset and nothing was committed.'); }
+      await this.git(repositoryRoot, ['-c', 'commit.gpgsign=false', 'commit', '--quiet', '--no-verify', '-m', message], false, false, pinned);
+      const commit = (await this.git(repositoryRoot, ['rev-parse', '--verify', 'HEAD^{commit}'], false, false, pinned)).stdout.trim();
       return { commit, changedPaths: staged };
     } catch (error) {
       if (error instanceof RepositoryError) throw error;
@@ -337,16 +476,30 @@ export class RepositoryService {
     }
   }
 
-  /** Explicit user push of the task branch. Never forces, never prompts; the user's credential helper may run for this action only. */
-  public async push(root: string, projectPath: string, remote: string, branch: string): Promise<string> {
-    const repositoryRoot = await this.requireRepository(root);
-    const projectRoot = await this.requireRepository(projectPath);
-    const url = await this.git(projectRoot, ['remote', 'get-url', '--', remote], false, true);
+  /**
+   * Explicit user push of the task branch. Never forces, never prompts; the user's credential helper may run for this action only.
+   * The worktree must still belong to the task's project repository, its own configuration must pass
+   * requireTrustedPushConfiguration, and every push URL must pass requireSupportedRemotes; each refusal is "none" (as native Push).
+   */
+  public async push(root: string, projectPath: string, boundCommon: string | undefined, remote: string, branch: string): Promise<string> {
+    const repository = await this.admitRepository(root);
+    const project = await this.admitRepository(projectPath);
+    requireTaskWorktree(repository.identity, project.identity, boundCommon);
+    const repositoryRoot = repository.root; const pinned = { admission: repository.identity };
+    const url = await this.git(project.root, ['remote', 'get-url', '--', remote], false, true, { admission: project.identity });
     if (url.exitCode !== 0 || !url.stdout.trim()) throw new RepositoryError(`Remote ${remote} is not configured in the project repository.`, 'none');
-    const current = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+    const current = (await this.git(repositoryRoot, ['rev-parse', '--abbrev-ref', 'HEAD'], false, false, pinned)).stdout.trim();
     if (current !== branch) throw new RepositoryError(`The worktree is on ${current}, not the task branch ${branch}.`, 'none');
     try {
-      const result = await this.git(repositoryRoot, ['push', '--no-verify', '--porcelain', '--', remote, `refs/heads/${branch}:refs/heads/${branch}`], false, false, { timeoutMs: 120_000, allowCredentialHelper: true });
+      await this.requireTrustedPushConfiguration(repositoryRoot, repository.identity);
+      const pushUrls = (await this.git(repositoryRoot, ['remote', 'get-url', '--push', '--all', '--', remote], false, false, pinned)).stdout.split('\n').filter(Boolean);
+      await requireSupportedRemotes(repositoryRoot, remote, pushUrls);
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      throw new RepositoryError(error instanceof Error ? error.message : 'Push preflight failed.', 'none', { cause: error });
+    }
+    try {
+      const result = await this.git(repositoryRoot, [...TRUSTED_PROTOCOLS, 'push', '--no-verify', '--porcelain', '--', remote, `refs/heads/${branch}:refs/heads/${branch}`], false, false, { timeoutMs: 120_000, allowCredentialHelper: true, ...pinned });
       return result.stdout.trim();
     } catch (error) {
       throw new RepositoryError(error instanceof Error ? error.message : 'Push failed.', 'unknown', { cause: error });
@@ -358,20 +511,31 @@ export class RepositoryService {
     return (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
   }
 
-  /** Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains the attempted commit (or HEAD). */
-  public async verifyPushOutcome(projectPath: string, worktreePath: string, remote: string, branch: string, expectedCommit?: string): Promise<boolean | undefined> {
+  /**
+   * Reconcile whether a previously ambiguous push reached the remote by checking if the remote ref contains the attempted commit (or HEAD).
+   * ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ stays unknown rather than being judged against
+   * another server; so does one that fails requireSupportedRemotes or requireTrustedPushConfiguration (as native VerifyPushOutcome).
+   */
+  public async verifyPushOutcome(projectPath: string, worktreePath: string, boundCommon: string | undefined, remote: string, branch: string, expectedCommit?: string): Promise<boolean | undefined> {
     try {
-      const projectRoot = await this.requireRepository(projectPath);
-      const commit = expectedCommit ?? (await this.headCommit(worktreePath));
-      const result = await this.git(projectRoot, ['ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true });
+      const project = await this.admitRepository(projectPath);
+      const projectRoot = project.root; const pinned = { admission: project.identity };
+      const commit = expectedCommit ?? (await this.taskWorktreeHead(worktreePath, project.identity, boundCommon));
+      const fetchUrls = await this.git(projectRoot, ['remote', 'get-url', '--all', '--', remote], false, true, pinned);
+      const pushUrls = await this.git(projectRoot, ['remote', 'get-url', '--push', '--all', '--', remote], false, true, pinned);
+      if (fetchUrls.exitCode !== 0 || pushUrls.exitCode !== 0 || fetchUrls.stdout !== pushUrls.stdout) return undefined;
+      await requireSupportedRemotes(projectRoot, remote, fetchUrls.stdout.split('\n').filter(Boolean));
+      await this.requireTrustedPushConfiguration(projectRoot, project.identity);
+      const result = await this.git(projectRoot, [...TRUSTED_PROTOCOLS, 'ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true, ...pinned });
       if (result.exitCode !== 0) return undefined;
-      const match = result.stdout.trim().match(/^([0-9a-f]{40})\s+/i);
+      // SHA-1 or SHA-256 object names.
+      const match = result.stdout.trim().match(/^([0-9a-f]{64}|[0-9a-f]{40})\s+/i);
       if (!match) {
         return result.stdout.trim() === '' ? false : undefined;
       }
       const remoteTip = match[1]!;
       if (remoteTip.toLowerCase() === commit.toLowerCase()) return true;
-      const ancestor = await this.git(projectRoot, ['merge-base', '--is-ancestor', commit, remoteTip], false, true);
+      const ancestor = await this.git(projectRoot, ['merge-base', '--is-ancestor', commit, remoteTip], false, true, pinned);
       if (ancestor.exitCode === 0) return true;
       return undefined;
     } catch {
@@ -379,20 +543,32 @@ export class RepositoryService {
     }
   }
 
-  /** Reconcile whether an ambiguous commit succeeded by identifying the created commit against its base and expected message. */
-  public async verifyCommitOutcome(worktreePath: string, baseCommit?: string, expectedMessage?: string): Promise<boolean | undefined> {
+  /** The task worktree's HEAD, read only once the worktree still belongs to the task's project repository. */
+  private async taskWorktreeHead(worktreePath: string, project: GitAdmissionIdentity, boundCommon: string | undefined): Promise<string> {
+    const worktree = await this.admitRepository(worktreePath);
+    requireTaskWorktree(worktree.identity, project, boundCommon);
+    return (await this.git(worktree.root, ['rev-parse', 'HEAD'], false, false, { admission: worktree.identity })).stdout.trim();
+  }
+
+  /**
+   * Reconcile whether an ambiguous commit succeeded by identifying the created commit against its base and expected message.
+   * A worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown (as native).
+   */
+  public async verifyCommitOutcome(worktreePath: string, projectPath: string, boundCommon: string | undefined, baseCommit?: string, expectedMessage?: string): Promise<boolean | undefined> {
     if (!baseCommit) return undefined;
     try {
-      const repositoryRoot = await this.requireRepository(worktreePath);
-      const currentHead = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'])).stdout.trim();
+      const repository = await this.admitRepository(worktreePath);
+      requireTaskWorktree(repository.identity, (await this.admitRepository(projectPath)).identity, boundCommon);
+      const repositoryRoot = repository.root; const pinned = { admission: repository.identity };
+      const currentHead = (await this.git(repositoryRoot, ['rev-parse', 'HEAD'], false, false, pinned)).stdout.trim();
       if (currentHead === baseCommit) {
         return false;
       }
-      const parentResult = await this.git(repositoryRoot, ['rev-parse', 'HEAD^'], false, true);
+      const parentResult = await this.git(repositoryRoot, ['rev-parse', 'HEAD^'], false, true, pinned);
       const parentCommit = parentResult.exitCode === 0 ? parentResult.stdout.trim() : undefined;
-      const logResult = await this.git(repositoryRoot, ['log', '-1', '--format=%B', 'HEAD'], false, true);
+      const logResult = await this.git(repositoryRoot, ['log', '-1', '--format=%B', 'HEAD'], false, true, pinned);
       const messageMatches = expectedMessage ? logResult.stdout.trim() === expectedMessage.trim() : true;
-      const dirty = await this.uncommittedPaths(repositoryRoot);
+      const dirty = await this.changedEntries(repositoryRoot, repository.identity);
       if (parentCommit === baseCommit && messageMatches && dirty.length === 0) {
         return true;
       }
@@ -597,6 +773,11 @@ export class RepositoryService {
   }
 
   private async requireRepository(candidate: string): Promise<string> {
+    return (await this.admitRepository(candidate)).root;
+  }
+
+  /** requireRepository, with the Git identity it held throughout, for callers that pin it across later commands. */
+  private async admitRepository(candidate: string): Promise<{ root: string; identity: GitAdmissionIdentity }> {
     const identity = resolveGitAdmission(candidate);
     const root = await this.requireRoot(candidate);
     assertGitAdmission(candidate, identity);
@@ -609,7 +790,28 @@ export class RepositoryService {
     const bare = (await this.git(root, ['rev-parse', '--is-bare-repository'])).stdout.trim();
     assertGitAdmission(candidate, identity);
     if (inside !== 'true' || bare !== 'false') throw new Error('Path must be a non-bare Git working tree.');
-    return root;
+    if (!identity) throw new Error('Project channel requires an available local Git project.');
+    return { root, identity };
+  }
+
+  /**
+   * Push and remote verification honor the repository's own configuration, which can run programs (credential helpers,
+   * core.sshCommand, transport programs, ext:: URLs) or redirect where and how Git connects. Before either runs, every key
+   * that the repository's configuration sets (its local and worktree scopes, with everything they include) must be one that
+   * neither runs a program nor changes the connection; anything else, including include directives, refuses with "none".
+   * The user's global configuration is theirs and is not screened. Unknown keys refuse. Limits, accepted by Rudy on
+   * 17 October 2026: a local-folder remote runs that destination repository's own receive-pack hooks and configuration, and
+   * a same-user process that rewrites the configuration between this screen and the push is not detected. Network shares
+   * and links are refused separately (requireSupportedRemotes). Native RequireTrustedPushConfiguration, with the same message.
+   */
+  private async requireTrustedPushConfiguration(repositoryRoot: string, admission: GitAdmissionIdentity): Promise<void> {
+    const fields = (await this.git(repositoryRoot, ['config', '--list', '--show-scope', '-z'], false, false, { admission })).stdout.split('\0');
+    for (let index = 0; index + 1 < fields.length; index += 2) {
+      if (['global', 'system', 'command'].includes(fields[index]!)) continue;
+      const entry = fields[index + 1]!; const newline = entry.indexOf('\n');
+      const shown = untrustedPushKey(newline < 0 ? entry : entry.slice(0, newline));
+      if (shown !== undefined) throw new RepositoryError(`Push refused: the repository's own Git configuration sets ${shown}, which push does not trust. Move it to your global Git configuration or remove it.`, 'none');
+    }
   }
 
   private async requireRoot(candidate: string): Promise<string> {
@@ -680,18 +882,18 @@ export class RepositoryService {
     return resolved;
   }
 
-  private async rejectTrackedFilters(repositoryRoot: string): Promise<void> {
-    const tracked = (await this.git(repositoryRoot, ['ls-files', '-z'])).stdout.split('\0').filter(Boolean);
+  private async rejectTrackedFilters(repositoryRoot: string, admission?: GitAdmissionIdentity): Promise<void> {
+    const tracked = (await this.git(repositoryRoot, ['ls-files', '-z'], false, false, { admission })).stdout.split('\0').filter(Boolean);
     if (tracked.length > MAX_PATHS) throw new Error('Repository has too many tracked paths to safely inspect filters.');
-    await this.rejectFilters(repositoryRoot, tracked);
+    await this.rejectFilters(repositoryRoot, tracked, admission);
   }
 
   /** Reject any path with a `filter` attribute: clean/smudge filters run arbitrary commands during add and checkout. */
-  private async rejectFilters(repositoryRoot: string, candidates: string[]): Promise<void> {
+  private async rejectFilters(repositoryRoot: string, candidates: string[], admission?: GitAdmissionIdentity): Promise<void> {
     if (candidates.length > MAX_PATHS) throw new Error('Too many paths to safely inspect filters.');
     for (let index = 0; index < candidates.length; index += 100) {
       const paths = candidates.slice(index, index + 100);
-      const values = (await this.git(repositoryRoot, ['check-attr', '-z', 'filter', '--', ...paths])).stdout.split('\0');
+      const values = (await this.git(repositoryRoot, ['check-attr', '-z', 'filter', '--', ...paths], false, false, { admission })).stdout.split('\0');
       if (values.some((value, position) => position % 3 === 2 && value && value !== 'unspecified')) {
         throw new Error('Repository uses Git filters; refusing because filters may execute code.');
       }
