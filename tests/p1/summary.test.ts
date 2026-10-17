@@ -33,14 +33,14 @@ it('pins summary results to the shipping TypeScript queries on disposable data',
         // Keep fixture paths out of machine-global directories. Only disposable
         // copies change; wire expectations retain the committed original paths.
         const projectPaths = new Map<string, string>();
-        const scratchCanonical = realpathSync(scratch);
+        const scratchCanonical = realpathSync.native(scratch);
         if (scenario.era && store.schemaVersion >= 3) {
           for (const row of store.db.prepare('SELECT id,data FROM projects').all() as { id: string; data: string }[]) {
             const project = JSON.parse(row.data) as { path: string };
             const relativePath = join('projects', String(projectPaths.size));
             const folder = join(scratch, relativePath);
             mkdirSync(folder, { recursive: true });
-            const canonical = realpathSync(folder);
+            const canonical = realpathSync.native(folder);
             expect(relative(scratchCanonical, canonical)).toBe(relativePath);
             projectPaths.set(canonical, project.path);
             project.path = canonical;
