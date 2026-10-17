@@ -1227,6 +1227,16 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - The automation slice decides whether TypeScript's re-sent `approval.changed` matters to hooks.
     - P2.3c and P2.3f add a compare-and-set to approval saves once execution is asynchronous.
     - Corrupt-data divergences in clipping and type checks.
+- **Follow-up re-review of `f9f40ae..f519a93`** (data reviewer): **GO, no new finding.**
+  - It verified the seal and ran the replay (9 passed) and the TypeScript oracle.
+  - It confirmed that the new vectors pin each gap it had named.
+  - Five mutations of its own failed the replay: dropping the origin, ignoring the task in the fallback check, using the document state instead of the column, hard-coding the event state, and a wrong root task id.
+  - Its 40-case direct differential, rerun on `f519a93`, shows 0 differences.
+  - `Save` takes the event's approval id from the document, as `save()` does.
+- **Validation.**
+  - **`f9f40ae` (run1).** Native suite 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 570 passed; stdio differential passed.
+  - **`f519a93` (run2).** Native suite 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 570 passed.
+  - **Common to both.** Clean Release builds with warnings as errors, from `git archive` exports. Evidence, seals and mutation logs are in `foundry-evidence\p2.3-b`.
 
 ## Personal workspace expansion — local implementation
 
