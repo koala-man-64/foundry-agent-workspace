@@ -83,6 +83,31 @@ describe('coding approvals and recovery', () => {
     const checked = await runtime.dispatch('approval.reconcile', { taskId: created.id, approvalId: edit.id }) as Approval;
     expect(checked.state).toBe('complete'); expect(execute).not.toHaveBeenCalled();
   });
+  it('returns a reconciled approval as approval.get shows it: redacted, previewed when large, never raw', async () => {
+    const created = await task(); const createdAt = new Date().toISOString();
+    const base = { taskId: created.id, toolCallId: 'call', nonce: 'n'.repeat(16), tool: 'run_command', state: 'unknown' as const, createdAt,
+      summary: 'Run this exact PowerShell command with your Windows privileges.', fingerprint: 'f', cwd: created.worktreePath,
+      shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', environment: {}, timeoutMs: 1000, result: { content: 'Outcome unknown.', isError: true, cleanupVerified: false } };
+    // A secret the redactor learns after review, or a labelled one in reviewed text, stays in the row but never leaves it.
+    const secret: Approval = { ...base, id: randomUUID(), command: "Write-Output 'api_key=fixture-secret-value'" };
+    const large: Approval = { ...base, id: randomUUID(), command: 'Write-Output ' + 'x'.repeat(140_000) };
+    // A private key with no END marker: redacting the serialized document leaves it unparseable.
+    const broken: Approval = { ...base, id: randomUUID(), command: 'Write-Output x', summary: 'Key -----BEGIN PRIVATE KEY-----abc' };
+    for (const approval of [secret, large, broken]) store.saveApproval(approval);
+    const reconcile = async (id: string) => await runtime.dispatch('approval.reconcile', { taskId: created.id, approvalId: id }) as Approval;
+    const checkedSecret = await reconcile(secret.id);
+    expect(checkedSecret).toMatchObject({ state: 'unknown', command: "Write-Output 'api_key=[REDACTED]'", result: { content: expect.stringContaining('not be replayed') } });
+    expect(JSON.stringify(checkedSecret)).not.toContain('fixture-secret-value');
+    expect(store.approval(secret.id).command).toContain('fixture-secret-value');
+    const checkedLarge = await reconcile(large.id);
+    expect(checkedLarge).toMatchObject({ id: large.id, state: 'unknown' }); expect(checkedLarge.command).toBeUndefined();
+    expect(Buffer.byteLength(JSON.stringify(checkedLarge), 'utf8')).toBeLessThan(4096);
+    expect(store.approval(large.id).result?.content).toContain('not be replayed');
+    const checkedBroken = await reconcile(broken.id);
+    expect(checkedBroken).toEqual({ id: broken.id, taskId: created.id, toolCallId: 'call', nonce: 'n'.repeat(16), tool: 'run_command', state: 'unknown', createdAt,
+      summary: 'Key [REDACTED PRIVATE KEY]', fingerprint: 'f', result: { content: expect.stringContaining('not be replayed'), isError: true, cleanupVerified: false } });
+    expect(execute).not.toHaveBeenCalled();
+  });
   it('never guesses successful command cleanup from a runner exception', async () => {
     execute.mockRejectedValueOnce(new Error('helper lost'));
     const created = await task(); await start(created.id); await decide(await proposal(created.id));
