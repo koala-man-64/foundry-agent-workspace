@@ -23,15 +23,14 @@ public sealed class DevelopmentChat
     private readonly Func<Guid> id;
     private readonly Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream;
     private readonly RepositoryService repositories;
+    private readonly ExecutionSlots slots;
     private readonly ToolRuntime tools;
     private readonly Dictionary<string, Running> running = new(StringComparer.Ordinal);
     private readonly HashSet<string> publishing = new(StringComparer.Ordinal);
     private readonly HashSet<string> retiring = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Hash, Task<Dictionary<string, object?>> Work)> starts = new(StringComparer.Ordinal);
-    private readonly List<TaskCompletionSource> slotWaiters = [];
     private readonly TaskCompletionSource failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Exception? backgroundFailure;
-    private int activeSlots;
     private bool closing;
     public Task Failure => failure.Task;
     /// <summary>The repository service, for tests that observe or interrupt its Git launches.</summary>
@@ -51,7 +50,8 @@ public sealed class DevelopmentChat
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.stream = stream; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
-        tools = new ToolRuntime(loop, store, repositories, redactor);
+        slots = new ExecutionSlots(loop);
+        tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories), redactor, slots, this.now, this.id);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
@@ -683,7 +683,7 @@ public sealed class DevelopmentChat
             if (initial.Amount >= contextLimit * 0.8) store.Event("task.context-warning", new Dictionary<string, object?> { ["estimatedTokens"] = initial.Amount, ["contextLimit"] = profile["contextLimit"], ["percent"] = Math.Floor(initial.Amount / contextLimit * 100 + 0.5) }, taskId);
             try
             {
-                await UseSlot(async () =>
+                await slots.Use(async () =>
                 {
                     store.AttemptUsage(initial.RequestId); using var lifetime = new CancellationTokenSource(); var expiry = Expire(lifetime.Token);
                     try
@@ -755,20 +755,6 @@ public sealed class DevelopmentChat
             store.Transaction(() => { store.SaveMessage(answer); store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = answer["status"], ["updatedAt"] = Clock.Iso(now()) }, new() { ["reason"] = reason }); return 0; });
             if (store.SchemaVersion < 5) store.Event("task.stopped", new Dictionary<string, object?> { ["reason"] = reason }, taskId);
         }
-    }
-
-    private async Task UseSlot(Func<Task> action, CancellationToken token)
-    {
-        while (activeSlots >= 3)
-        {
-            token.ThrowIfCancellationRequested(); var waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); slotWaiters.Add(waiter);
-            using var registration = token.Register(() => waiter.TrySetResult());
-            try { await waiter.Task; }
-            finally { loop.AssertCurrent(); slotWaiters.Remove(waiter); }
-        }
-        token.ThrowIfCancellationRequested(); activeSlots++;
-        try { await action(); }
-        finally { loop.AssertCurrent(); activeSlots--; foreach (var waiter in slotWaiters.ToArray()) waiter.TrySetResult(); }
     }
 
     public async Task Shutdown()

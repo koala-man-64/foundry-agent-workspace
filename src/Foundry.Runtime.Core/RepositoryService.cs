@@ -169,7 +169,13 @@ internal sealed partial class RepositoryService
     internal List<Dictionary<string, object?>> ListFiles(string root, string relativePath = "")
     {
         using var admitted = RequireRoot(root);
-        using var target = OpenSafe(admitted.Path, relativePath, true);
+        return ListFilesWithin(admitted.Path, relativePath);
+    }
+
+    /// <summary>listFiles beneath an already admitted root.</summary>
+    internal static List<Dictionary<string, object?>> ListFilesWithin(string root, string relativePath)
+    {
+        using var target = OpenSafe(root, relativePath, true);
         if (!target.Entry.IsDirectory) throw new WorkspaceReadException(NotDirectory);
         var entries = new List<Dictionary<string, object?>>();
         List<(string Name, FileAttributes Attributes)> children;
@@ -184,7 +190,7 @@ internal sealed partial class RepositoryService
         {
             // libuv reports every reparse point as a link, which listFiles skips.
             if (RepositoryPaths.IsDeniedName(name) || attributes.HasFlag(FileAttributes.ReparsePoint) || attributes.HasFlag(FileAttributes.Device)) continue;
-            var relative = RepositoryPaths.PortableRelative(admitted.Path, System.IO.Path.Join(target.Path, name));
+            var relative = RepositoryPaths.PortableRelative(root, System.IO.Path.Join(target.Path, name));
             if (relative.Length == 0 || RepositoryPaths.IsDeniedRelativePath(relative)) continue;
             entries.Add(new() { ["path"] = relative, ["kind"] = attributes.HasFlag(FileAttributes.Directory) ? "directory" : "file" });
         }
