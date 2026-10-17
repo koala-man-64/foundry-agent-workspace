@@ -1387,6 +1387,11 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Legacy fallback by file identity.** An unbound task's Git and common directories are compared with the root's `.git` by file identity, not by lowercased paths, which in a case-sensitive directory could treat two folders as one.
 - **Coordinated children** are fenced from the channel ("This agent is cancelled, fenced or finished."), as TypeScript fences one without an orchestration binding. Native has no orchestration.
 - **A missing recipient or task** is refused with TypeScript's "Task not found." rather than faulting the runtime.
+- **The index** (review M1, L1 and L2, fixed in `779b690`):
+  - **Committed rows only.** It reads only committed rows: while a transaction is open it waits, so a message that an enclosing transaction later rolls back never enters it. TypeScript's index would keep that sequence and then fail on it.
+  - **Unreadable rows.** A row whose JSON or fields it cannot read is passed over, so one damaged row never stops the channel. TypeScript's index fails on malformed JSON, and files a message without a project under no project.
+  - **Batches.** It reads the history 2,000 rows at a time, where TypeScript streams it.
+- **Alias-refused history.** A task refused as an alias keeps its stored messages, but cannot read them after adoption.
 
 **Evidence.**
 - **The oracle.** `tests/p2/agent-channel.test.ts` drives the shipping `RuntimeService`, its `ToolRuntime` and its channel over a disposable tree of Git metadata folders. The tree holds a plain repository with a subfolder, a second project, a linked worktree through `gitdir` and `commondir` pointers, and a folder without a repository.
@@ -1397,14 +1402,45 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **Binding.** The vectors are bound to the SHA-256 of `agent-channel.ts`, `channel-tools.ts`, the protocol's `agent-channel.ts` and `limits.ts`, `tool-runtime.ts`, `repository.ts`, `redaction.ts`, `store.ts` and `service.ts`. Regenerating them requires `P2_WRITE_AGENT_CHANNEL=1`.
 - **The replay.** `AgentChannelTests` replays every step through `DevelopmentChat`, its `ToolRuntime` and its channel, with the definitions and system text byte for byte. A native-only test pins the alias refusal.
 - **Process differential.** The real Node/C# stdio differential now also calls `channel.get` and `channel.send` across the RPC boundary: a projectless chat's refusals, an oversized message, and a missing task.
-- **Mutations.** 34 native mutations; 32 fail the replay.
+- **Native tests for the review fixes.** These cover unreadable rows of eight kinds, a send rolled back with its enclosing transaction, and 4,500 retained messages indexed across batches (early and late replays and the limit count).
+- **Mutations.** 38 native mutations; 36 fail the replay. The four added for the review fixes all fail.
   - **First run.** It found three gaps, now closed: the inbox leaving out an agent's own broadcast, pages redacting a stored sender title, and zod's uuid versions and variants. One more mutation did not build and was rewritten.
   - **Two survive by design.** The idle-agent check inside `send` is one: the tool path refuses an idle agent first, in TypeScript too. The other is counting the context cut in UTF-16 units: completing a surrogate pair always costs less than a lone half, so the cut lands in the same place here.
   - **Evidence** is in `foundry-evidence\p2.3-d\mutations`.
 
-**Validation and independent reviews.** Recorded below once they complete.
+**Validation.**
+- **`59b9f34`** (run1, from a `git archive` export): native 7,236 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed; `git diff --check` clean.
+- **After the review fixes:** recorded once it completes.
 
-**Open, for later slices.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them.
+**Independent reviews of `c9ab458..f6f3d0d`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**, with no critical, high or medium finding.
+  - **What it ran:** it verified the seal, built an export, ran four replay classes (33 passed), and compared the code line by line with TypeScript.
+  - **Confirmed:**
+    - a task reads, lists and sends only within its own project, and sees only broadcasts and its own direct messages;
+    - the key is TypeScript's formula, so messages written before adoption stay visible;
+    - binding fails closed on every branch;
+    - every untrusted value is redacted on the way out;
+    - no model-reachable input faults the runtime.
+  - **I-3** (a malformed row breaks the index) is fixed with data L1.
+  - **I-1, I-2 and I-4** are recorded below, under Open.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical or high finding.
+  - **Seal and suite:** it verified the seal, built an export, and ran the replay and the TypeScript oracle.
+  - **Probes against both runtimes:**
+    - rows are byte-compatible in both directions;
+    - each runtime reads the other's messages, request ids and delivery cursors;
+    - a 30-page differential, with the 64 KiB cap binding, was identical;
+    - a restart rebuilds the same pages, replays and cursors.
+  - **M1 (medium), L1 and L2 (low):** fixed in `779b690`, as the index entry under Differences describes. M1 was a condition before P2.3e.
+  - **L3 (evidence gaps):** the rollback, corrupt-row and batch gaps are now pinned. A restart rescan and a coordinated child sender's `root_task_id` remain probe-verified only.
+  - **Re-review of the fixes:** recorded once it completes.
+
+**Open, for later slices.**
+- **Wiring.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them. With M1 fixed, the index never takes a row from that transaction before it commits.
+- **Participants cost, before P2.3e makes it model-driven** (security I-1, data L2).
+  - **The cost:** each participants page reads every task and admits each one's folder and Git identity on the loop, as TypeScript does. The data review measured 151 ms for 100 tasks and 4.7 s for 2,000.
+  - **Fix:** load the first binding of every task once, and admit only the candidates whose bound or stored common directory can equal the caller's.
+- **A lowercased key is a shared limit (security I-2).** Two repositories whose paths differ only in case, inside a case-sensitive folder, share one project key in both runtimes. Changing the key would hide messages written before adoption.
+- **Refusal text (security I-4).** Refusals tell a missing task from one in another project, as TypeScript's do. The texts are fixed strings, and ids come only from the caller's own participants.
 
 ## Personal workspace expansion — local implementation
 
