@@ -127,6 +127,24 @@ public sealed class JobProcessTests
         }
     }
 
+    /// <summary>A console program started without a window gets its own console host inside the job: the reason the
+    /// command runner tolerates the system conhost.exe, and nothing else, after the root exits.</summary>
+    [Fact]
+    public async Task ProcessImagesNameTheRootAndItsConsoleHost()
+    {
+        var directory = Scratch.Directory("foundry-job-images-");
+        using var job = JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand("[Threading.Thread]::Sleep(30000)"),
+            directory.FullName, Scratch.Environment(directory.FullName)));
+        await Scratch.WaitUntil(() => job.ActiveProcesses >= 2, "the root and its console host", seconds: 30);
+        var images = job.ProcessImages();
+        Assert.Equal(job.ActiveProcesses, images.Count);
+        Assert.Contains(images, image => string.Equals(image, FinalPath.Resolve(Scratch.PowerShell), StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(images, image => string.Equals(image, Path.Join(System.Environment.SystemDirectory, "conhost.exe"), StringComparison.OrdinalIgnoreCase));
+        job.Terminate(1);
+        Assert.True(await job.WaitForEmptyAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        Assert.Empty(job.ProcessImages());
+    }
+
     [Fact]
     public async Task StartupDiagnosticsObserveARunningRootWithoutStoppingIt()
     {

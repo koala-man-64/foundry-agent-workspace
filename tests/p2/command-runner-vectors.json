@@ -1,0 +1,6168 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/command-runner.ts",
+        "sha256": "a4caa3734438635245a581cf76c5b88444597b6da64c9d37cbcc995bcd561113"
+      },
+      {
+        "path": "packages/runtime/src/job-runner.ps1",
+        "sha256": "82eed2b2a6a3a69226f7363cb6c792ebdcf064d0bea929621a62365fda0e9e4f"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "validates the request before touching the root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "command": "",
+          "expected": {
+            "error": "Command must be non-empty, NUL-free, and within the size limit.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "  ﻿\n\t",
+          "expected": {
+            "error": "Command must be non-empty, NUL-free, and within the size limit.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": {
+            "repeat": [
+              "a",
+              65537
+            ]
+          },
+          "expected": {
+            "error": "Command must be non-empty, NUL-free, and within the size limit.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "a\u0000b",
+          "expected": {
+            "error": "Command must be non-empty, NUL-free, and within the size limit.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "timeoutMs": 0,
+          "expected": {
+            "error": "Timeout must be an integer from 1 through 600000 milliseconds.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "timeoutMs": 600001,
+          "expected": {
+            "error": "Timeout must be an integer from 1 through 600000 milliseconds.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "timeoutMs": 1.5,
+          "expected": {
+            "error": "Timeout must be an integer from 1 through 600000 milliseconds.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "",
+          "timeoutMs": 0,
+          "expected": {
+            "error": "Command must be non-empty, NUL-free, and within the size limit.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "V0",
+              "x"
+            ],
+            [
+              "V1",
+              "x"
+            ],
+            [
+              "V2",
+              "x"
+            ],
+            [
+              "V3",
+              "x"
+            ],
+            [
+              "V4",
+              "x"
+            ],
+            [
+              "V5",
+              "x"
+            ],
+            [
+              "V6",
+              "x"
+            ],
+            [
+              "V7",
+              "x"
+            ],
+            [
+              "V8",
+              "x"
+            ],
+            [
+              "V9",
+              "x"
+            ],
+            [
+              "V10",
+              "x"
+            ],
+            [
+              "V11",
+              "x"
+            ],
+            [
+              "V12",
+              "x"
+            ],
+            [
+              "V13",
+              "x"
+            ],
+            [
+              "V14",
+              "x"
+            ],
+            [
+              "V15",
+              "x"
+            ],
+            [
+              "V16",
+              "x"
+            ],
+            [
+              "V17",
+              "x"
+            ],
+            [
+              "V18",
+              "x"
+            ],
+            [
+              "V19",
+              "x"
+            ],
+            [
+              "V20",
+              "x"
+            ],
+            [
+              "V21",
+              "x"
+            ],
+            [
+              "V22",
+              "x"
+            ],
+            [
+              "V23",
+              "x"
+            ],
+            [
+              "V24",
+              "x"
+            ],
+            [
+              "V25",
+              "x"
+            ],
+            [
+              "V26",
+              "x"
+            ],
+            [
+              "V27",
+              "x"
+            ],
+            [
+              "V28",
+              "x"
+            ],
+            [
+              "V29",
+              "x"
+            ],
+            [
+              "V30",
+              "x"
+            ],
+            [
+              "V31",
+              "x"
+            ],
+            [
+              "V32",
+              "x"
+            ],
+            [
+              "V33",
+              "x"
+            ],
+            [
+              "V34",
+              "x"
+            ],
+            [
+              "V35",
+              "x"
+            ],
+            [
+              "V36",
+              "x"
+            ],
+            [
+              "V37",
+              "x"
+            ],
+            [
+              "V38",
+              "x"
+            ],
+            [
+              "V39",
+              "x"
+            ],
+            [
+              "V40",
+              "x"
+            ],
+            [
+              "V41",
+              "x"
+            ],
+            [
+              "V42",
+              "x"
+            ],
+            [
+              "V43",
+              "x"
+            ],
+            [
+              "V44",
+              "x"
+            ],
+            [
+              "V45",
+              "x"
+            ],
+            [
+              "V46",
+              "x"
+            ],
+            [
+              "V47",
+              "x"
+            ],
+            [
+              "V48",
+              "x"
+            ],
+            [
+              "V49",
+              "x"
+            ],
+            [
+              "V50",
+              "x"
+            ],
+            [
+              "V51",
+              "x"
+            ],
+            [
+              "V52",
+              "x"
+            ],
+            [
+              "V53",
+              "x"
+            ],
+            [
+              "V54",
+              "x"
+            ],
+            [
+              "V55",
+              "x"
+            ],
+            [
+              "V56",
+              "x"
+            ],
+            [
+              "V57",
+              "x"
+            ],
+            [
+              "V58",
+              "x"
+            ],
+            [
+              "V59",
+              "x"
+            ],
+            [
+              "V60",
+              "x"
+            ],
+            [
+              "V61",
+              "x"
+            ],
+            [
+              "V62",
+              "x"
+            ],
+            [
+              "V63",
+              "x"
+            ],
+            [
+              "V64",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Too many environment variables were requested.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "1A",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable 1A is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "A-B",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable A-B is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable  is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "Path",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable Path is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "PSModulePath",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable PSModulePath is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "COMSPEC",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable COMSPEC is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "windir",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable windir is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "PathExt",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable PathExt is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "SystemRoot",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable SystemRoot is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "MY_TOKEN",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable MY_TOKEN is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "OPENAI_API_KEY",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable OPENAI_API_KEY is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "APIKEY",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable APIKEY is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "node_options",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable node_options is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "HTTPS_PROXY",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable HTTPS_PROXY is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "Cookie_Jar",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable Cookie_Jar is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "db_password",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable db_password is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "AUTHORIZATION",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable AUTHORIZATION is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "gh_secret",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable gh_secret is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "Credential",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable Credential is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "OK",
+              "a\u0000b"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable OK has an invalid value.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "OK",
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable OK has an invalid value.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "FIRST",
+              "a\u0000b"
+            ],
+            [
+              "MY_TOKEN",
+              "x"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable FIRST has an invalid value.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "MY_TOKEN",
+              "x"
+            ],
+            [
+              "FIRST",
+              "a\u0000b"
+            ]
+          ],
+          "expected": {
+            "error": "Environment variable MY_TOKEN is not permitted.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": {
+            "repeat": [
+              "#",
+              65536
+            ]
+          },
+          "expected": {
+            "prepared": {
+              "command": {
+                "length": 65536,
+                "sha256": "5db9369e4054831e0a1df5a0cdcb8cc9f3f17fcf68e94f54eeae99fb8e3f1f05"
+              },
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "OK",
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+          ],
+          "timeoutMs": 600000,
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 600000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "OK",
+                  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "timeoutMs": 1,
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 1,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "admits the root and the working directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "dir": "plain"
+        },
+        {
+          "file": "plain/x.txt",
+          "text": "x\n"
+        },
+        {
+          "dir": "outside"
+        },
+        {
+          "junction": "repo/inner",
+          "target": "repo/src"
+        },
+        {
+          "junction": "repo/outer",
+          "target": "outside"
+        },
+        {
+          "dir": "unborn"
+        },
+        {
+          "git": [
+            "-C",
+            "unborn",
+            "init",
+            "-q"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "",
+          "expected": {
+            "error": "Root must be an absolute path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "relative",
+          "expected": {
+            "error": "Root must be an absolute path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "repo/README.md",
+          "expected": {
+            "error": "Root must be a directory.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "absent",
+          "expected": {
+            "systemError": "ENOENT",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "plain",
+          "expected": {
+            "systemError": "git",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "root": "unborn",
+          "expected": {
+            "systemError": "git",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "./src/",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src\\sub",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src\\sub",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "SRC",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": ".git",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\.git",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src.",
+          "expected": {
+            "systemError": "ENOENT",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src ",
+          "expected": {
+            "systemError": "ENOENT",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "inner",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "outer",
+          "expected": {
+            "error": "Working directory must remain inside the approved root.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "missing",
+          "expected": {
+            "systemError": "ENOENT",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "README.md",
+          "expected": {
+            "error": "Working directory must be a directory.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "..",
+          "expected": {
+            "error": "Working directory must not traverse outside the worktree.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src/../..",
+          "expected": {
+            "error": "Working directory must not traverse outside the worktree.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src/..",
+          "expected": {
+            "error": "Working directory must not traverse outside the worktree.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "/src",
+          "expected": {
+            "error": "Working directory must be a worktree-relative path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "C:\\src",
+          "expected": {
+            "error": "Working directory must be a worktree-relative path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "c:src",
+          "expected": {
+            "error": "Working directory must be a worktree-relative path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "\\\\server\\share",
+          "expected": {
+            "error": "Working directory must be a worktree-relative path.",
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "a\u0000b",
+          "expected": {
+            "systemError": "ERR_INVALID_ARG_VALUE",
+            "preflight": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "composes the minimal environment",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "zeta",
+              "z"
+            ],
+            [
+              "TEST_APPROVED",
+              "yes"
+            ],
+            [
+              "Alpha",
+              "a"
+            ],
+            [
+              "_under",
+              "u"
+            ],
+            [
+              "TEMP",
+              "override"
+            ],
+            [
+              "b2",
+              "x"
+            ],
+            [
+              "B1",
+              "y"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "_under",
+                  "u"
+                ],
+                [
+                  "Alpha",
+                  "a"
+                ],
+                [
+                  "B1",
+                  "y"
+                ],
+                [
+                  "b2",
+                  "x"
+                ],
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "override"
+                ],
+                [
+                  "TEST_APPROVED",
+                  "yes"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ],
+                [
+                  "zeta",
+                  "z"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "processEnv": {
+            "TEMP": null
+          },
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "processEnv": {
+            "TEMP": null,
+            "TMP": null
+          },
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{SystemRoot}\\Temp"
+                ],
+                [
+                  "TMP",
+                  "{SystemRoot}\\Temp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "processEnv": {
+            "USERPROFILE": null
+          },
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "processEnv": {
+            "SystemRoot": null,
+            "WINDIR": null
+          },
+          "expected": {
+            "error": "SystemRoot is unavailable.",
+            "preflight": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "fingerprints the reviewed worktree state",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "touch",
+          "file": "repo/README.md",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/README.md",
+          "text": "hello\n",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/README.md",
+          "text": "HELLO\n",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/x.log",
+          "text": "ignored\n",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "mkdir",
+          "dir": "repo/emptydir",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/.git/description",
+          "text": "changed\n",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "git",
+          "args": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ],
+          "expected": {}
+        },
+        {
+          "op": "git",
+          "args": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "second"
+          ],
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "junction",
+          "link": "repo/lnk",
+          "target": "repo/src",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 6
+          }
+        },
+        {
+          "op": "unlink",
+          "link": "repo/lnk",
+          "expected": {}
+        },
+        {
+          "op": "junction",
+          "link": "repo/lnk",
+          "target": "repo/docs",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "unlink",
+          "link": "repo/lnk",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "timeoutMs": 9999,
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 9999,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 8
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "cwd": "src",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 9
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "A",
+              "1"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "A",
+                  "1"
+                ],
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 10
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'other'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'other'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 11
+          }
+        }
+      ]
+    },
+    {
+      "name": "refuses to fingerprint more than 10,000 files",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "fill",
+          "dir": "repo/bulk",
+          "count": 9997,
+          "prefix": "f",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/bulk/extra.txt",
+          "text": "x",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "error": "Worktree is too large to fingerprint safely.",
+            "preflight": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "refuses to fingerprint more than 64 MiB",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "write",
+          "file": "repo/big.bin",
+          "text": {
+            "repeat": [
+              "a",
+              67108834
+            ]
+          },
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/one.bin",
+          "text": "a",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "error": "Worktree is too large to fingerprint safely.",
+            "preflight": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "refuses a status larger than the Git output limit",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "fill",
+          "dir": "repo",
+          "count": 6000,
+          "prefix": "untracked-entry-with-a-deliberately-long-name-",
+          "expected": {}
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "expected": {
+            "systemError": "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+            "preflight": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "runs exactly the approved command",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine('out'); [Console]::Error.WriteLine('err'); [Console]::Out.WriteLine([Environment]::GetEnvironmentVariable('TEST_APPROVED')); [Console]::Out.WriteLine($null -eq [Environment]::GetEnvironmentVariable('FOUNDRY_P2_CANARY')); [Console]::Out.WriteLine([Environment]::CurrentDirectory)",
+          "cwd": "src",
+          "environment": [
+            [
+              "TEST_APPROVED",
+              "yes"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('out'); [Console]::Error.WriteLine('err'); [Console]::Out.WriteLine([Environment]::GetEnvironmentVariable('TEST_APPROVED')); [Console]::Out.WriteLine($null -eq [Environment]::GetEnvironmentVariable('FOUNDRY_P2_CANARY')); [Console]::Out.WriteLine([Environment]::CurrentDirectory)",
+              "cwd": "{scratch}\\repo\\src",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TEST_APPROVED",
+                  "yes"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "out\r\nyes\r\nTrue\r\n{scratch}\\repo\\src\r\n",
+              "stderr": "err\r\n",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$k = @([Environment]::GetEnvironmentVariables().Keys); [Array]::Sort($k, [StringComparer]::OrdinalIgnoreCase); [Console]::Out.WriteLine(($k -join ','))",
+          "environment": [
+            [
+              "TEST_APPROVED",
+              "yes"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "$k = @([Environment]::GetEnvironmentVariables().Keys); [Array]::Sort($k, [StringComparer]::OrdinalIgnoreCase); [Console]::Out.WriteLine(($k -join ','))",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TEST_APPROVED",
+                  "yes"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "ComSpec,PATH,PATHEXT,PSExecutionPolicyPreference,PSMODULEPATH,SystemRoot,TEMP,TEST_APPROVED,TMP,USERPROFILE,WINDIR\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine('no'); exit 7",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('no'); exit 7",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "no\r\n",
+              "stderr": "",
+              "exitCode": 7,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "exit -1",
+          "expected": {
+            "prepared": {
+              "command": "exit -1",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": "",
+              "exitCode": -1,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine([string][char]0x00e9 + [char]0x6771)",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine([string][char]0x00e9 + [char]0x6771)",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "�?\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[IO.File]::WriteAllText('quoted.txt', 'it''s \"double\" café 東京 😀 `n', [Text.UTF8Encoding]::new($false))",
+          "expected": {
+            "prepared": {
+              "command": "[IO.File]::WriteAllText('quoted.txt', 'it''s \"double\" café 東京 😀 `n', [Text.UTF8Encoding]::new($false))",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 6
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "read",
+          "file": "repo/quoted.txt",
+          "expected": {
+            "text": "it's \"double\" caf├⌐ µ¥▒Σ║¼ ≡ƒÿÇ `n"
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine('café 東京')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('café 東京')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "café 東京\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "bounds each output stream",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 65535)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 65535)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 65535,
+                "sha256": "6e1bebca6a8229364a162a72ef064826c4cd7457bf54f190ef782bd9deff3e42"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 65536)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 65536)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 65555,
+                "sha256": "ad37430a09a5c5b93cdf69bfc93d8d5a04e805475d0cd69f2c5796bd76c0f4c5"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 70000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 70000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 65555,
+                "sha256": "ad37430a09a5c5b93cdf69bfc93d8d5a04e805475d0cd69f2c5796bd76c0f4c5"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(([string][char]0x20ac * 40000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(([string][char]0x20ac * 40000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 21865,
+                "sha256": "7a95cdfcd41c67b21cb22f1e3da46976f9a3a7fb1d775bdf29e7d7ad3ce4983f"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('aa' + [string][char]0x20ac * 30000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('aa' + [string][char]0x20ac * 30000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 21866,
+                "sha256": "daa64084996188f52014e2efcc2dc5dcf79b2d84125e0becaf1353bb2d91ce3a"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardError(); $b = [Text.Encoding]::UTF8.GetBytes(('e' * 70000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardError(); $b = [Text.Encoding]::UTF8.GetBytes(('e' * 70000)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 6
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": {
+                "length": 65555,
+                "sha256": "f282859ba9bc4b94f2162c0d514e2919dbe9ad695cb2a5e52ae1a7dc7cf071e6"
+              },
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 1048576)); $s.Write($b, 0, $b.Length); $s.Flush()",
+          "expected": {
+            "prepared": {
+              "command": "$s = [Console]::OpenStandardOutput(); $b = [Text.Encoding]::UTF8.GetBytes(('a' * 1048576)); $s.Write($b, 0, $b.Length); $s.Flush()",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": {
+                "length": 65555,
+                "sha256": "ad37430a09a5c5b93cdf69bfc93d8d5a04e805475d0cd69f2c5796bd76c0f4c5"
+              },
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ends the whole tree on timeout, cancellation and a normal exit",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Threading.Thread]::Sleep(30000)",
+          "timeoutMs": 1500,
+          "expected": {
+            "prepared": {
+              "command": "[Threading.Thread]::Sleep(30000)",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 1500,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": "",
+              "exitCode": null,
+              "cancelled": false,
+              "timedOut": true,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$a = '-NoProfile -NonInteractive -Command \"[IO.File]::WriteAllText(''cancel-started.txt'', ''x''); [Threading.Thread]::Sleep(6000); [IO.File]::WriteAllText(''orphan.txt'', ''x'')\"'; $i = [Diagnostics.ProcessStartInfo]::new(\"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\", $a); $i.UseShellExecute = $false; $i.CreateNoWindow = $true; [void][Diagnostics.Process]::Start($i); while (-not [IO.File]::Exists('cancel-started.txt')) { [Threading.Thread]::Sleep(50) }; [Threading.Thread]::Sleep(30000)",
+          "timeoutMs": 60000,
+          "expected": {
+            "prepared": {
+              "command": "$a = '-NoProfile -NonInteractive -Command \"[IO.File]::WriteAllText(''cancel-started.txt'', ''x''); [Threading.Thread]::Sleep(6000); [IO.File]::WriteAllText(''orphan.txt'', ''x'')\"'; $i = [Diagnostics.ProcessStartInfo]::new(\"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\", $a); $i.UseShellExecute = $false; $i.CreateNoWindow = $true; [void][Diagnostics.Process]::Start($i); while (-not [IO.File]::Exists('cancel-started.txt')) { [Threading.Thread]::Sleep(50) }; [Threading.Thread]::Sleep(30000)",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 60000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "abort": {
+            "afterFile": "repo/cancel-started.txt"
+          },
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": "",
+              "exitCode": null,
+              "cancelled": true,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "wait",
+          "ms": 7000,
+          "expected": {}
+        },
+        {
+          "op": "exists",
+          "file": "repo/orphan.txt",
+          "expected": {
+            "exists": false
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "$a = '-NoProfile -NonInteractive -Command \"[IO.File]::WriteAllText(''background-started.txt'', ''x''); [Threading.Thread]::Sleep(6000); [IO.File]::WriteAllText(''orphan.txt'', ''x'')\"'; $i = [Diagnostics.ProcessStartInfo]::new(\"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\", $a); $i.UseShellExecute = $false; $i.CreateNoWindow = $true; [void][Diagnostics.Process]::Start($i); while (-not [IO.File]::Exists('background-started.txt')) { [Threading.Thread]::Sleep(50) }",
+          "expected": {
+            "prepared": {
+              "command": "$a = '-NoProfile -NonInteractive -Command \"[IO.File]::WriteAllText(''background-started.txt'', ''x''); [Threading.Thread]::Sleep(6000); [IO.File]::WriteAllText(''orphan.txt'', ''x'')\"'; $i = [Diagnostics.ProcessStartInfo]::new(\"$env:SystemRoot\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\", $a); $i.UseShellExecute = $false; $i.CreateNoWindow = $true; [void][Diagnostics.Process]::Start($i); while (-not [IO.File]::Exists('background-started.txt')) { [Threading.Thread]::Sleep(50) }",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "result": {
+              "stdout": "",
+              "stderr": "\n[background job descendants terminated]",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "wait",
+          "ms": 7000,
+          "expected": {}
+        },
+        {
+          "op": "exists",
+          "file": "repo/background-started.txt",
+          "expected": {
+            "exists": true
+          }
+        },
+        {
+          "op": "exists",
+          "file": "repo/orphan.txt",
+          "expected": {
+            "exists": false
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[IO.File]::WriteAllText('never.txt', 'x')",
+          "expected": {
+            "prepared": {
+              "command": "[IO.File]::WriteAllText('never.txt', 'x')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "abort": "before",
+          "expected": {
+            "error": "This operation was aborted",
+            "preflight": true
+          }
+        },
+        {
+          "op": "exists",
+          "file": "repo/never.txt",
+          "expected": {
+            "exists": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "consumes each prepared command once",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "as": "a",
+          "command": "[Console]::Out.WriteLine('once')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('once')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "a",
+          "expected": {
+            "result": {
+              "stdout": "once\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "a",
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "b",
+          "command": "[Threading.Thread]::Sleep(300); [Console]::Out.WriteLine('once')",
+          "expected": {
+            "prepared": {
+              "command": "[Threading.Thread]::Sleep(300); [Console]::Out.WriteLine('once')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "executeTwice",
+          "prepared": "b",
+          "expected": {
+            "fulfilled": 1,
+            "rejected": [
+              {
+                "error": "Prepared command is unknown or has changed.",
+                "preflight": true
+              }
+            ]
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "c",
+          "command": "[Console]::Out.WriteLine('tampered')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('tampered')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "command",
+            "[Console]::Out.WriteLine('other')"
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "cwd",
+            "{scratch}\\repo\\src"
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "shell",
+            "{scratch}\\repo\\powershell.exe"
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "timeoutMs",
+            9999
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "environment",
+            {
+              "A": "1"
+            }
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "tamper": [
+            "fingerprint",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "c",
+          "expected": {
+            "result": {
+              "stdout": "tampered\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "d",
+          "command": "[Console]::Out.WriteLine('discarded')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('discarded')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "discard",
+          "prepared": "d",
+          "expected": {}
+        },
+        {
+          "op": "execute",
+          "prepared": "d",
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "e",
+          "command": "[Console]::Out.WriteLine('stale')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('stale')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "write",
+          "file": "repo/changed.txt",
+          "text": "changed\n",
+          "expected": {}
+        },
+        {
+          "op": "execute",
+          "prepared": "e",
+          "expected": {
+            "error": "Prepared command fingerprint is stale; request approval again.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "e",
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "e",
+          "command": "[Console]::Out.WriteLine('stale')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('stale')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 6
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "e",
+          "expected": {
+            "result": {
+              "stdout": "stale\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "f",
+          "command": "[Console]::Out.WriteLine('twin')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('twin')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "g",
+          "command": "[Console]::Out.WriteLine('twin')",
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('twin')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "g",
+          "expected": {
+            "result": {
+              "stdout": "twin\r\n",
+              "stderr": "",
+              "exitCode": 0,
+              "cancelled": false,
+              "timedOut": false,
+              "cleanupVerified": true
+            }
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "f",
+          "expected": {
+            "error": "Prepared command is unknown or has changed.",
+            "preflight": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "accepts environment names that native refuses",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "DOTNET_ROOT",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "DOTNET_ROOT",
+                  "x"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "dotnet_gcHeapHardLimit",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "dotnet_gcHeapHardLimit",
+                  "x"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "COMPlus_EnableDiagnostics",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "COMPlus_EnableDiagnostics",
+                  "x"
+                ],
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 3
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "COR_PROFILER",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "COR_PROFILER",
+                  "x"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 4
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "CORECLR_PROFILER_PATH",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "CORECLR_PROFILER_PATH",
+                  "x"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 5
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "JAVA_TOOL_OPTIONS",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "JAVA_TOOL_OPTIONS",
+                  "x"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 6
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "_JAVA_OPTIONS",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "_JAVA_OPTIONS",
+                  "x"
+                ],
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 7
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "PYTHONPATH",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "PYTHONPATH",
+                  "x"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 8
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "PythonStartup",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "PythonStartup",
+                  "x"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 9
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "PERL5OPT",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "PERL5OPT",
+                  "x"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 10
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "RUBYOPT",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "RUBYOPT",
+                  "x"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 11
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "__COMPAT_LAYER",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "__COMPAT_LAYER",
+                  "x"
+                ],
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 12
+          }
+        },
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine('case')",
+          "environment": [
+            [
+              "temp",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "[Console]::Out.WriteLine('case')",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "temp",
+                  "x"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 13
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "helperFailure": true,
+            "preflight": false
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "Tmp",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "Tmp",
+                  "x"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 14
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "UserProfile",
+              "x"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "UserProfile",
+                  "x"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 15
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "SAME",
+              "1"
+            ],
+            [
+              "same",
+              "2"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "same",
+                  "2"
+                ],
+                [
+                  "SAME",
+                  "1"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 16
+          }
+        },
+        {
+          "op": "prepare",
+          "command": "Write-Output 'never'",
+          "environment": [
+            [
+              "TEMP",
+              "x"
+            ],
+            [
+              "TMP",
+              "y"
+            ],
+            [
+              "USERPROFILE",
+              "z"
+            ]
+          ],
+          "expected": {
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "x"
+                ],
+                [
+                  "TMP",
+                  "y"
+                ],
+                [
+                  "USERPROFILE",
+                  "z"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 17
+          }
+        }
+      ]
+    },
+    {
+      "name": "refuses a command line beyond the Windows limit only when launching",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitignore",
+          "text": "*.log\n"
+        },
+        {
+          "file": "repo/src/sub/c.ts",
+          "text": "c\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "as": "p",
+          "command": "[Console]::Out.WriteLine('long') # aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expected": {
+            "prepared": {
+              "command": {
+                "length": 13035,
+                "sha256": "5b98a41d9b51ac4b78bb4b29f7a0bdf1d8cc1db83fe9af2eaa919d835f7634b4"
+              },
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 1
+          }
+        },
+        {
+          "op": "execute",
+          "prepared": "p",
+          "expected": {
+            "helperFailure": true,
+            "preflight": false
+          }
+        }
+      ]
+    }
+  ]
+}

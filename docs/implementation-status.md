@@ -979,6 +979,99 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
   - It confirmed that the check after exit runs on every path once Git has started and never makes an earlier mutation look like "none", that every lease is disposed, and that no native launch can pass an empty `core.hooksPath`.
 
+### P2.3 commands and approvals — authority and slices
+
+Recorded 17 October 2026. Rudy approved the slice plan: "Approved: P2.3 slices a–f with decisions 1–5 as recommended. Start P2.3a." The slices, each sealed, reviewed and recorded on its own:
+- **a:** the native command runner, unwired;
+- **b:** approval records, the approval read projections and `approval.reconcile`;
+- **c:** the tool runtime for the repository tools and approval decisions, unwired;
+- **d:** the project channel, with `channel.get` and `channel.send`;
+- **e:** agent-loop tool iterations and Git-project chats (`task.start`, `task.send` and `task.cancel`);
+- **f:** coding turns with approvals, and `approval.decide`.
+
+**Decisions.**
+1. The project channel and its two methods move into P2.3; the migration plan had placed the channel in a later slice. Every Git task's turn advertises channel tools.
+2. Until the MCP slice, a coding turn is refused before any reservation while an enabled MCP server has stored tools.
+3. The plan's runtime-loader environment names (section 8) are refused natively only, as a named difference. TypeScript is unchanged under the freeze.
+4. #35 (the TypeScript H1 fix, which changes `command-runner.ts`) merges before P2.3a's vectors are final; #37 lands before P2.3c.
+5. Local commits and a seal per slice; one draft pull request for the stack on Rudy's approval, merged on his approval.
+
+Every other hold is unchanged: no shipping or runtime selector, no Electron-side .NET enablement, no schema v6 or adoption, no real data or repositories, no live or paid providers, no coordinated mode, no cutover. New-file creation stays disabled. Commands run with the user's Windows privileges; approval is not a sandbox.
+
+### Native command runner (P2.3a)
+
+**What it is.** `CommandRunner` is internal and unwired, the native counterpart of `command-runner.ts` and its `job-runner.ps1` helper. Nothing in `DevelopmentChat`, `Program` or the protocol calls it, so the development runtime stays at 34 of the 89 methods.
+- **Preparation**, in TypeScript's order and with its messages:
+  1. The request is validated.
+  2. The root is admitted, with its folder and Git identity pinned.
+  3. The working directory is pinned and must stay inside the root.
+  4. Windows PowerShell 5.1 is resolved and hashed.
+  5. The minimal environment is composed in `localeCompare` order.
+  6. The worktree state is read: HEAD, porcelain status and a content digest of at most 10,000 files and 64 MiB.
+
+  The fingerprint covers all of it.
+- **Execution.**
+  - **One shot.** A prepared command is consumed before the first await, prepared again and required to match.
+  - **Launch.** It runs in process through `JobProcess`, with the helper's command line (`-EncodedCommand`, UTF-16LE Base64). Only the three pipe ends and the reviewed environment block are passed.
+  - **Termination.** A timeout or cancellation terminates the job. After a normal exit, descendants still in the job are terminated, with TypeScript's marker. Cleanup is verified when the job is empty within 5 seconds.
+  - **Output.** Each stream keeps its first 64 KiB, is drained to its end, and is bounded again to 64 Ki UTF-16 units, as `boundedText` does.
+- **Outcomes.** Every failure through launch is a `CommandPreflightException` ("none"). Results report the exit code, cancellation, timeout and verified cleanup as TypeScript's do; the tool runtime (P2.3c) classifies them.
+
+**Differences, all fail-closed or invisible on success:**
+- **In process.** There is no helper, `%TEMP%` file, nonce or `Add-Type`. The runtime owns the kill-on-close job (plan section 8), so TypeScript's "[runtime parent exited; job terminated]" result cannot occur. The timeout counts from resume, with no helper watchdog.
+- **Handles.** Only the pipe ends are inherited (`HANDLE_LIST`); `job-runner.ps1` inherits every inheritable handle.
+- **Console host.** Windows starts a `conhost.exe` for the command inside its job; TypeScript's command shared its helper's console instead. After the root exits, only processes whose image is not the system `conhost.exe` count as descendants. The new Platform `JobProcess.ProcessImages` lists them, and an image that can no longer be read has exited. Measured: 2 of 30 runs left the console host for a moment, and 1 had exited between listing and opening. Without the filter, about 1 command in 15 reported a phantom descendant.
+- **Exact command text.** TypeScript's helper reads its stdin spec in the console code page, so non-ASCII command text reaches PowerShell altered (finding T1 below). Native runs the exact text. A vector pins both.
+- **Runtime-loader names (decision 3).** `DOTNET_*`, `COMPLUS_*`, `COR_*` and `CORECLR_*`, plus `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `PYTHONPATH`, `PYTHONSTARTUP`, `PERL5OPT`, `RUBYOPT` and `__COMPAT_LAYER`, are refused before approval, ignoring case.
+- **Case-only duplicates.** A change whose name differs only in case from another change, or from `TEMP`, `TMP` or `USERPROFILE`, is refused before approval. TypeScript prepares it; its helper then fails before launch, and the outcome is recorded as unknown.
+- **Launch failures.** A launch that fails before the process resumes is "none". An example is a command line beyond `CreateProcess`'s 32,767 characters, about 12,200 command characters. TypeScript's helper cannot tell, and records unknown.
+- **Working directory.** Any reparse point in its chain is refused (the approved alias refusal); TypeScript follows a junction that stays inside the root. A segment ending in a dot or space, a colon, or NUL is refused, where Node raises a raw error.
+- **Worktree state.**
+  - **Git.** It runs through `GitRunner`, with the app's empty hooks folder and the H1 guard, and never an empty `core.hooksPath`.
+  - **Content digest.** It runs off the loop (the first use of `RuntimeLoop.Offload`) and never follows a reparse point. Symbolic links and junctions are hashed by their stored target, as TypeScript hashes `readlink`. Any other reparse point (a cloud placeholder, a socket) refuses the state, where Node reads through it.
+  - **Fingerprints.** The values differ between runtimes. They are session-scoped, because approvals awaiting a decision are revoked on restart, so the corpus compares them by identity within a case.
+- **Other refusals.** A `SystemRoot` that is not on a fixed local drive is refused before it is probed, and Node's raw errors become fixed messages.
+
+**Evidence.**
+- `tests/p2/command-runner.test.ts` drives the shipping `CommandRunner` with real Windows PowerShell 5.1 runs in disposable worktrees, through 13 cases and 193 steps, 36 of them executions:
+  - validation, and root and working-directory admission;
+  - environment composition and its fallbacks;
+  - fingerprint sensitivity: modification time only, content, ignored files, empty folders, Git metadata, commits and junction retargeting;
+  - the file and byte limits, and a Git status beyond the output limit;
+  - exact output, exit codes and environment isolation (a runtime canary is absent);
+  - output bounds: 65,535, 65,536 and 70,000 bytes, multibyte cuts, and 1 MiB drained;
+  - timeout, cancellation and background termination with a grandchild;
+  - one-shot use: replay, concurrent execution, tampering with each field, discard, stale state and identical twins.
+
+  It is bound to the SHA-256 of `command-runner.ts` and `job-runner.ps1`. Regenerating the vectors requires `P2_WRITE_COMMAND_RUNNER=1`. Commands use .NET calls only: a cmdlet makes PowerShell write a timing-dependent number of "Preparing modules for first use" progress records to standard error.
+- `CommandRunnerTests` replays every step, or its named difference. Native-only tests cover:
+  - a planted hook, which refuses preparation with no Git launch;
+  - state Git calls that name the hooks folder;
+  - a launch that is exactly the reviewed command line, directory and environment;
+  - a launch failure, which is "none";
+  - cancellation before launch, which never launches;
+  - a timeout that ends a grandchild;
+  - the console host, which is not a descendant: the decision as a pure function, and 40 real runs;
+  - a caller's later edit of the environment changes, which cannot alter the approved command;
+  - loop affinity, and Node's `join` and `dirname`.
+- `JobProcessTests.ProcessImagesNameTheRootAndItsConsoleHost` covers the new Platform primitive.
+- **Mutations.** Each of these failed a test:
+  - consuming the capability after the first await;
+  - skipping the fingerprint comparison;
+  - stopping a stream at its limit instead of draining it;
+  - dropping the runtime-loader names;
+  - dropping the case-collision refusal;
+  - hashing Git metadata into the content state;
+  - counting the console host as a descendant.
+
+  The last one first ran against the real-run test alone, which is probabilistic (the host lingers in about 1 run in 15) and passed that time. The decision is now a pure function under a deterministic test.
+
+**T1 (shipping TypeScript, open).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
+- **What breaks.** Every non-ASCII character in the command, its environment values, its working directory or the result and cancel paths reaches the helper altered. An approved `'café'` runs as `'caf├⌐'`, so the command that runs is not the one approved; a filter or path with non-ASCII text matches different files.
+- **Non-ASCII user folders.** Where the user's profile path is not ASCII, the working directory and temporary paths are altered too, so no command can launch. Each is then recorded as unknown and blocks its task.
+- **Status.** Under the dual-landing rule this needs a TypeScript fix, for example reading standard input through a UTF-8 `StreamReader`; it is raised with Rudy. Native is not affected.
+- **Shared limit.** PowerShell encodes command output in the console code page and both runtimes decode it as UTF-8, so non-ASCII output becomes U+FFFD in both. That is a shared fidelity limit, not an approval defect.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.

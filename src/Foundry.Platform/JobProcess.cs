@@ -54,6 +54,43 @@ public sealed class JobProcess : IDisposable
         }
     }
 
+    /// <summary>
+    /// The full image path of each process running in the job, or null where it cannot be read (the process exited, or
+    /// cannot be queried). A process id can be reused once its process exits, so an entry is evidence, not identity: it
+    /// suits a classification that fails toward the more conservative report.
+    /// </summary>
+    public unsafe IReadOnlyList<string?> ProcessImages()
+    {
+        for (var capacity = 16; ; capacity *= 2)
+        {
+            if (capacity > 1 << 20) throw new InvalidOperationException("The job's process list did not settle.");
+            // JOBOBJECT_BASIC_PROCESS_ID_LIST: two counts, then the ids as ULONG_PTR.
+            var size = (uint)(2 * sizeof(uint) + capacity * sizeof(nuint));
+            var buffer = NativeMemory.AllocZeroed(size);
+            try
+            {
+                var ok = Native.QueryInformationJobObject(job, Native.JobObjectBasicProcessIdList, buffer, size, null);
+                var assigned = ((uint*)buffer)[0]; var listed = ((uint*)buffer)[1];
+                if (!ok && Marshal.GetLastPInvokeError() != Native.ErrorMoreData) throw new Win32Exception(Marshal.GetLastPInvokeError(), "QueryInformationJobObject failed.");
+                if (!ok || listed < assigned) continue;
+                var ids = (nuint*)((byte*)buffer + 2 * sizeof(uint));
+                var images = new List<string?>((int)listed);
+                for (var index = 0; index < listed; index++) images.Add(ImagePath((uint)ids[index]));
+                return images;
+            }
+            finally { NativeMemory.Free(buffer); }
+        }
+    }
+
+    private static unsafe string? ImagePath(uint processId)
+    {
+        using var process = Native.OpenProcess(Native.ProcessQueryLimitedInformation, false, processId);
+        if (process.IsInvalid) return null;
+        var buffer = stackalloc char[32_768];
+        var length = 32_768u;
+        return Native.QueryFullProcessImageName(process, 0, buffer, &length) ? new string(buffer, 0, (int)length) : null;
+    }
+
     public static unsafe JobProcess Start(ProcessSpec spec)
     {
         Validate(spec);
