@@ -28,6 +28,16 @@ describe('automation authority and recovery', () => {
   });
   afterEach(async () => { await automation.close(); store.close(); await rm(directory, { recursive: true, force: true }); });
   const script = (): ScriptRegistration => ({ id: randomUUID(), name: 'Review event', language: 'javascript', source: 'process.stdout.write("[]")', triggers: ['task.completed'], projectPath: null, arguments: [], cwd: directory, inputFields: ['sequence', 'type'], timeoutMs: 30_000 });
+  /** Holds the next script launch open; resolves with its completion once the runtime hands the script to the executor. */
+  const holdNextLaunch = (): Promise<(result: HookExecution) => void> => new Promise(launched => {
+    executor.execute = async input => { executor.calls.push(input); return new Promise<HookExecution>(finish => { launched(finish); }); };
+  });
+  /** Pin validation re-hashes the interpreter before launch, so wait for the launch itself, not a fixed poll; the unit testTimeout bounds the wait. */
+  const launchedBy = async (launch: Promise<(result: HookExecution) => void>, dispatch: Promise<void>): Promise<(result: HookExecution) => void> => {
+    const finish = await Promise.race([launch, dispatch.then(() => undefined)]);
+    if (!finish) throw new Error(`Dispatch settled without launching the script: ${JSON.stringify(automation.view().runs.map(run => [run.state, run.detail]))}`);
+    return finish;
+  };
 
   it('pins PowerShell BOM bytes but returns the exact reviewed source text', async () => {
     const registration = { ...script(), language: 'powershell' as const, source: "#requires -Version 5.1\nparam([string]$Label)\n[Console]::Out.Write('café 東京 😀')" };
@@ -305,11 +315,9 @@ describe('automation authority and recovery', () => {
     await automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: '2026-09-28T15:00:00.000Z', maxRunsPer24h: 100 });
     const queued = { id: randomUUID(), ruleId: revision.id, ruleVersion: 1, eventSequence: 999, state: 'queued', createdAt: clock.toISOString(), updatedAt: clock.toISOString() };
     store.db.prepare('INSERT INTO automation_runs(id,rule_id,rule_version,event_sequence,state,data) VALUES(?,?,?,?,?,?)').run(queued.id, queued.ruleId, queued.ruleVersion, queued.eventSequence, queued.state, JSON.stringify(queued));
-    let finish!: (result: HookExecution) => void;
-    executor.execute = async input => { executor.calls.push(input); return new Promise(resolve => { finish = resolve; }); };
+    const launch = holdNextLaunch();
     const pending = automation.onEvent(store.event('task.completed', {}, undefined));
-    for (let attempt = 0; attempt < 50 && !finish; attempt++) await new Promise(resolve => setTimeout(resolve, 10));
-    expect(finish).toBeTypeOf('function');
+    const finish = await launchedBy(launch, pending);
     await automation.dispatch('automation.script.revoke', { revisionId: revision.id });
     finish({ stdout: JSON.stringify([{ kind: 'actionDraft', title: 'Late', body: 'No' }]), stderr: '', exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
     await pending;
@@ -387,11 +395,9 @@ describe('automation authority and recovery', () => {
   it('does not accept output under a replacement grant while an older grant is in flight', async () => {
     const revision = await automation.dispatch('automation.script.register', script()) as { id: string };
     await automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: '2026-09-28T15:00:00.000Z', maxRunsPer24h: 25 });
-    let finish!: (result: HookExecution) => void;
-    executor.execute = async input => { executor.calls.push(input); return new Promise(resolve => { finish = resolve; }); };
+    const launch = holdNextLaunch();
     const pending = automation.onEvent(store.event('task.completed', {}, undefined));
-    for (let attempt = 0; attempt < 50 && !finish; attempt++) await new Promise(resolve => setTimeout(resolve, 10));
-    expect(finish).toBeTypeOf('function');
+    const finish = await launchedBy(launch, pending);
     const firstId = automation.view().runs[0]?.grantSnapshot?.id;
     await automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: '2026-09-29T15:00:00.000Z', maxRunsPer24h: 10 });
     finish({ stdout: JSON.stringify([{ kind: 'notification', title: 'Late', body: 'No' }]), stderr: '', exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
