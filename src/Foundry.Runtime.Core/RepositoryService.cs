@@ -579,7 +579,7 @@ internal sealed partial class RepositoryService
         {
             await RequireTrustedPushConfiguration(repository);
             var pushUrls = (await Run(repository, ["remote", "get-url", "--push", "--all", "--", remote])).Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            RequireSupportedRemotes(repository, remote, pushUrls);
+            RequireSupportedRemotes(remote, pushUrls);
         }
         catch (Exception error) when (error is not RepositoryException && error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
         try
@@ -603,7 +603,7 @@ internal sealed partial class RepositoryService
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
             if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
-            RequireSupportedRemotes(project, remote, fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+            RequireSupportedRemotes(remote, fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries));
             await RequireTrustedPushConfiguration(project);
             var result = await Run(project, [.. TrustedProtocols, "ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
@@ -680,6 +680,8 @@ internal sealed partial class RepositoryService
 
     internal static string UnsupportedRemote(string remote) => $"Remote {remote} points at a network share, through a link, or at a location push does not use.";
 
+    internal static string RelativeRemote(string remote) => $"Remote {remote} is not a full local path, such as C:\\repos\\name.git, which push requires for a local remote.";
+
     /// <summary>
     /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or any file://
     /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
@@ -750,23 +752,25 @@ internal sealed partial class RepositoryService
 
     /// <summary>
     /// Every URL a push or remote check would use must be in a form Git uses under <see cref="TrustedProtocols"/>
-    /// (<see cref="IsPermittedRemoteForm"/>), and must be a transport or a local folder on a fixed local drive whose
-    /// existing chain holds no link of any kind (checked without following one), so the named path is neither a share nor
-    /// reached through a link to one. Relative paths resolve against the folder the command runs in; Git's own `~`
-    /// expansion and drive-relative paths (`C:repo`) are refused rather than resolved. The check is not held across the push.
-    /// Not screened, in either runtime: Git also opens the destination's own layout (`&lt;path&gt;/.git`, `&lt;path&gt;.git`, a
-    /// gitfile, objects/info/alternates), which can lead elsewhere, a share included. The destination is trusted as its own
-    /// receive-pack hooks are (Rudy, 17 October 2026).
+    /// (<see cref="IsPermittedRemoteForm"/>), and must be a transport or a fully qualified local folder (`C:\...`, `C:/...`
+    /// or `file:///C:/...`) on a fixed local drive whose existing chain holds no link of any kind (checked without following
+    /// one), so the named path is neither a share nor reached through a link to one. The check is not held across the push.
+    /// A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it, with its own message
+    /// (Rudy, 17 October 2026). Content that arrives with a project cannot know where it is unpacked, so this is how it would
+    /// name a destination the project ships, and Git opens
+    /// a destination's own layout (`&lt;path&gt;/.git`, `&lt;path&gt;.git`, a gitfile, objects/info/alternates), which can
+    /// lead elsewhere, a share included, and runs its receive-pack hooks. Neither is screened, in either runtime: a fully
+    /// qualified destination is the user's own and is trusted.
     /// </summary>
-    private static void RequireSupportedRemotes(RepositoryAdmission admission, string remote, IEnumerable<string> urls)
+    private static void RequireSupportedRemotes(string remote, IEnumerable<string> urls)
     {
         foreach (var url in urls)
         {
             if (!IsPermittedRemoteForm(url) || IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
             if (LocalRemotePath(url) is not { } local) continue;
-            if (local.Length == 0 || local.Contains('\0', StringComparison.Ordinal) || local.StartsWith('~') || RepositoryPaths.HasAmbiguousSegment(local)
-                || local.Length >= 2 && char.IsAsciiLetter(local[0]) && local[1] == ':' && (local.Length == 2 || local[2] is not ('/' or '\\'))) throw new RepositoryException(UnsupportedRemote(remote));
-            var resolved = Path.GetFullPath(local, admission.Path);
+            if (local.Length < 3 || !char.IsAsciiLetter(local[0]) || local[1] != ':' || local[2] is not ('/' or '\\')) throw new RepositoryException(RelativeRemote(remote));
+            if (local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
+            var resolved = Path.GetFullPath(local);
             if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
             try { using (DirectoryLease.AcquireSharingWrites(resolved)) { } }
             catch (IOException error) { throw new RepositoryException(UnsupportedRemote(remote), "none", error); }
