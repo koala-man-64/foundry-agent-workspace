@@ -4,7 +4,7 @@ import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { isNetworkOrDevicePath } from './network-path';
 import { promisify } from 'node:util';
-import { gitEnvironment } from './git-environment';
+import { assertNoGitHooks, gitEnvironment } from './git-environment';
 
 const execFile = promisify(execFileCallback);
 
@@ -1070,8 +1070,11 @@ export class GitOperations {
     ];
     const config = options.mutating ? [...baseConfig, ...mutatingConfig] : baseConfig;
     const env = gitEnvironment(options.mutating ? { GIT_EDITOR: ':', GIT_SEQUENCE_EDITOR: ':', GIT_NO_LAZY_FETCH: '1', GIT_MERGE_AUTOEDIT: 'no' } : {});
+    let launched = false;
     try {
       const executable = await this.getGitExecutable(cwd);
+      await assertNoGitHooks(hooksPath, 'before');
+      launched = true;
       const result = await execFile(executable, ['--literal-pathspecs', '--no-pager', ...config, ...args], {
         cwd,
         env,
@@ -1090,6 +1093,9 @@ export class GitOperations {
       }
       const detail = String(value.stderr ?? value.message ?? 'Git command failed.').trim();
       throw new Error(`Git command failed: ${detail.slice(0, 500)}`, { cause: error });
+    } finally {
+      // Fails the call even after Git reported success: a hook planted while it ran may have run.
+      if (launched) await assertNoGitHooks(hooksPath, 'after');
     }
   }
 }
