@@ -1307,7 +1307,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 
 **Differences, all fail-closed or invisible on success:**
 - **Not yet served.** These answer "Tool is not available." until their slices:
-  - the project channel's tools (P2.3d);
+  - the project channel's tools (served since P2.3d);
   - coordinated roles, which are refused before any reservation;
   - external MCP tools (decision 2);
   - hook-origin drafts.
@@ -1363,6 +1363,48 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired. The worktree paths stored in the six fixture eras, and where TypeScript has computed worktree paths over its history, would give that decision its evidence (review I-4).
 - **Rethrown failures, for P2.3e (review I-2).** Once turns are wired, an unexpected failure before any proposal, such as a stored task of the wrong shape, ends the development runtime, where TypeScript gives the model "Tool failed." That is fail-closed, but the agent loop must not leave a reservation or a running task behind.
 - **Commands too long to launch (review I-3).** A `run_command` longer than about 12,200 characters can be proposed and approved, then fails at launch as "none", because its `-EncodedCommand` line exceeds the 32,767-character command line. TypeScript's helper has the same limit. A preparation-time length check would spare the user an approval that cannot run.
+
+### Project channel (P2.3d)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `channel.get` and `channel.send`, bringing it to **40** of the 89 methods, and sends `channel.changed`. `AgentChannel` is `agent-channel.ts` line for line:
+- **No schema change.** Messages are `channel.message` events and model deliveries `channel.received` events. An index rebuilt from those events answers pages; after its first scan it reads only new sequences.
+- **Project.** A task's project is the SHA-256 of its lowercased Git common directory, the key TypeScript stores in every message.
+  - **Bound tasks.** The identity is the one bound at trusted admission: the first complete `channel.identity` binding, or the root's for a coordinated child. The project folder must still be the approved one, and its current identity must equal the binding exactly.
+  - **Legacy tasks** (no binding) keep access only from a plain repository.
+- **Participants.** The project's tasks, in `localeCompare` order of their ids, 50 at a time. A task whose channel cannot be resolved is left out. Titles are redacted, and availability is reported: retired, cancelled and fenced coordinated tasks are listed but unavailable.
+- **Sends.**
+  - A send is idempotent by its request id for one sender and actor. Reusing the id with different content is refused.
+  - The sender must be available, and running when it is an agent; a recipient must be another available task of the same project.
+  - Each task may send at most 1,000 messages. The text is trimmed, at most 2,048 characters and 2,048 UTF-8 bytes, and screened for secrets.
+  - The message and its event commit together, and `channel.changed` is recorded after, as `service.ts` publishes it.
+- **Pages.** At most 20 messages and 64 KiB of message JSON, forward from a cursor or backward before one. A task sees broadcasts and its own direct messages.
+- **Tools.** `ToolRuntime` owns the channel, as TypeScript's does, and runs `list_project_agents`, `send_agent_message` and `read_agent_messages` for any Git task, chat tasks included. The arguments are screened, then parsed as zod parses them.
+- **Model context, for the native tool loop (P2.3e).** `Enrich` adds the task's unacknowledged messages as one bounded `PROJECT_CHANNEL_DATA` user message after the system messages. It stays within a quarter of the profile's context, between 3 and 8 KiB of UTF-8. A first message too large on its own is cut at a code point and marked. Nothing counts as delivered until `Acknowledge` records the cursor.
+- **Definitions.** `ToolDefinitions` carries `CHANNEL_TOOL_DEFINITIONS` and `CHANNEL_SYSTEM` byte for byte. Its zod port now builds each field from rules (uuid, nullable, optional, trim and the UTF-8 byte refinement); the 269 argument vectors of P2.3c are unchanged.
+
+**Differences, all fail-closed or invisible on success:**
+- **Alias refusal.** A project reached through a junction or symbolic link is not resolved: its task is not listed, and its reads and sends are refused. TypeScript follows the alias to the same identity and shares the channel.
+- **Legacy fallback by file identity.** An unbound task's Git and common directories are compared with the root's `.git` by file identity, not by lowercased paths, which in a case-sensitive directory could treat two folders as one.
+- **Coordinated children** are fenced from the channel ("This agent is cancelled, fenced or finished."), as TypeScript fences one without an orchestration binding. Native has no orchestration.
+- **A missing recipient or task** is refused with TypeScript's "Task not found." rather than faulting the runtime.
+
+**Evidence.**
+- **The oracle.** `tests/p2/agent-channel.test.ts` drives the shipping `RuntimeService`, its `ToolRuntime` and its channel over a disposable tree of Git metadata folders. The tree holds a plain repository with a subfolder, a second project, a linked worktree through `gitdir` and `commondir` pointers, and a folder without a repository.
+  - **Seeds.** Tasks cover every binding and availability state: bound, legacy plain and legacy linked, an incomplete binding, a first incomplete then complete binding, retired, cancelled, a coordinated child (in the project and in the linked worktree), chat, folder, a task created after every message, and a secret-bearing title.
+  - **Planted row.** A message row written outside `send`, with a raw secret-like title and content, shows that pages redact both.
+  - **Cases.** Four: discovery, sends, reads and context (71 steps), message pages, participant pages, and the 1,000-message limit. Each step records its value or refusal and every event row it adds.
+  - **Cleaning.** Paths and timestamps become placeholders. Only the project keys TypeScript's formula gives for the fixture's common directories become `{project:a}` and `{project:b}`, so a key computed any other way fails.
+  - **Binding.** The vectors are bound to the SHA-256 of `agent-channel.ts`, `channel-tools.ts`, the protocol's `agent-channel.ts` and `limits.ts`, `tool-runtime.ts`, `repository.ts`, `redaction.ts`, `store.ts` and `service.ts`. Regenerating them requires `P2_WRITE_AGENT_CHANNEL=1`.
+- **The replay.** `AgentChannelTests` replays every step through `DevelopmentChat`, its `ToolRuntime` and its channel, with the definitions and system text byte for byte. A native-only test pins the alias refusal.
+- **Process differential.** The real Node/C# stdio differential now also calls `channel.get` and `channel.send` across the RPC boundary: a projectless chat's refusals, an oversized message, and a missing task.
+- **Mutations.** 34 native mutations; 32 fail the replay.
+  - **First run.** It found three gaps, now closed: the inbox leaving out an agent's own broadcast, pages redacting a stored sender title, and zod's uuid versions and variants. One more mutation did not build and was rewritten.
+  - **Two survive by design.** The idle-agent check inside `send` is one: the tool path refuses an idle agent first, in TypeScript too. The other is counting the context cut in UTF-16 units: completing a surrogate pair always costs less than a lone half, so the cut lands in the same place here.
+  - **Evidence** is in `foundry-evidence\p2.3-d\mutations`.
+
+**Validation and independent reviews.** Recorded below once they complete.
+
+**Open, for later slices.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them.
 
 ## Personal workspace expansion — local implementation
 
