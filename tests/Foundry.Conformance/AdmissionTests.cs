@@ -48,6 +48,44 @@ public sealed class AdmissionTests
         finally { Directory.Delete(scratch, true); }
     }
 
+    /// <summary>
+    /// The Store's leases are held while the runtime runs, so they share writes: other applications can still rename
+    /// entries inside the data folder and every folder above it. The pinned folders themselves, the database and the
+    /// isolation marker still cannot be renamed, deleted or replaced.
+    /// </summary>
+    [Fact]
+    public async Task AnOpenStoreLeavesItsFoldersOpenToRenamesButNotToReplacement()
+    {
+        var scratch = Directory.CreateTempSubdirectory("foundry-p1-admit-renames-").FullName;
+        var parent = Path.Combine(scratch, "parent");
+        var selected = Path.Combine(parent, "data");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(scratch, "sibling"));
+            File.WriteAllText(Path.Combine(scratch, "loose.txt"), "x");
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, selected, Path.Combine(scratch, "injected-root"));
+                Directory.Move(Path.Combine(scratch, "sibling"), Path.Combine(scratch, "sibling-renamed"));
+                File.Move(Path.Combine(scratch, "loose.txt"), Path.Combine(parent, "loose.txt"));
+                File.Move(Path.Combine(parent, "loose.txt"), Path.Combine(selected, "loose.txt"));
+                File.Move(Path.Combine(selected, "loose.txt"), Path.Combine(selected, "loose-renamed.txt"));
+                Assert.Throws<IOException>(() => Directory.Move(parent, parent + "-moved"));
+                Assert.Throws<IOException>(() => Directory.Move(selected, selected + "-moved"));
+                Assert.Throws<IOException>(() => File.Move(Path.Combine(selected, "workspace.db"), Path.Combine(selected, "replacement.db")));
+                // Windows reports replacing an open file that does not share deletion as access denied.
+                Assert.True(Record.Exception(() => File.Move(Path.Combine(selected, "loose-renamed.txt"), Path.Combine(selected, "workspace.db"), overwrite: true)) is IOException or UnauthorizedAccessException);
+                Assert.True(File.Exists(Path.Combine(selected, "loose-renamed.txt")));
+                Assert.Throws<IOException>(() => File.Move(Path.Combine(selected, Store.IsolationMarker), Path.Combine(selected, "marker-moved")));
+                Assert.Equal(5, store.SchemaVersion);
+                return Task.FromResult(0);
+            });
+            Directory.Move(parent, parent + "-moved");
+        }
+        finally { Directory.Delete(scratch, true); }
+    }
+
     [Theory]
     [InlineData("unmarked"), InlineData("newer"), InlineData("fenced"), InlineData("root")]
     public async Task RefusedDataIsUnchanged(string kind)

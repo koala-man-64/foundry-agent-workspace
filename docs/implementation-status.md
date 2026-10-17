@@ -802,13 +802,39 @@ Its remaining notes:
   - The held worktree admission keeps that identity pinned for the rest of the operation. A refusal is "none".
 - **Push URL during reconciliation (P2).** `ls-remote` reads the remote's fetch URLs, while push writes to its push URLs. **Fixed natively:** when the two lists differ, the push stays unknown instead of being judged against another server. Querying the push URL directly would pass a configured URL to Git where it could act as an option.
 - **SHA-256 remote tips (P2).** The remote-tip pattern accepted only 40-character object names. In a SHA-256 repository, every ambiguous push therefore stayed unknown for good. **Fixed natively:** 64-character names are accepted too.
-- **Repository-local credential helpers on push (P1), not changed; it needs a decision.** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
+- **Repository-local configuration on push (P1).** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
   - Removing only the helper would be a partial fix. A push also honors other repository settings that run programs: `core.sshCommand`, remote transport programs, `ext::` URLs once allowed, and URL rewrites.
-  - Choosing which configuration a push may trust is a security design decision for both runtimes.
-  - **Recommended option (from the independent review).** Before a push or `ls-remote`, list the repository configuration with its origins and includes (`git config --local --list --show-origin --includes -z`). Refuse with "none" unless every key is on a small allowlist: core format and filesystem keys, `extensions.*`, `remote.*.url|fetch|pushurl|tagopt|prune`, `branch.*.remote|merge|rebase`, `user.name|email`. Also pass `-c protocol.allow=never` with explicit `https` and `ssh` allowances, and `file` if local remotes are wanted.
-    - **Covers:** every repository-local route, because unknown keys are refused.
-    - **Costs:** legitimate per-repository helpers and `sshCommand`, which would need a global setting or an explicit opt-in.
-    - **Leaves:** the user's own global configuration, as theirs.
+  - **Fixed natively after P2.2, with the allowlist the independent review recommended.** Rudy chose it on 17 October 2026.
+    - Before a push or a remote check, `RequireTrustedPushConfiguration` lists the effective configuration with its scopes (`git config --list --show-scope -z`).
+    - Every key from the repository's own scopes must be on the allowlist; included files appear under their including scope. Anything else refuses with "none": "Push refused: the repository's own Git configuration sets `<key>`, which push does not trust. Move it to your global Git configuration or remove it." The key is shown without its subsection, which can hold a URL with credentials.
+    - The allowlist:
+      - `core.` `repositoryformatversion`, `filemode`, `bare`, `logallrefupdates`, `symlinks`, `ignorecase`, `autocrlf`, `eol`, `safecrlf`, `longpaths`, `precomposeunicode`, `quotepath`, `fscache`;
+      - `extensions.*`;
+      - `user.name`, `user.email`, `user.useConfigOnly`;
+      - `remote.*.` `url`, `pushurl`, `fetch`, `push`, `tagopt`, `prune`;
+      - `branch.*.` `remote`, `pushRemote`, `merge`, `rebase`;
+      - `pull.rebase`, `pull.ff`, `push.default`.
+    - Include directives themselves are refused.
+    - The push and remote check also pass `-c protocol.allow=never`, then deny `ext`, `git` and `http` by name, and allow `https`, `ssh` and `file`. The named denies exist because a protocol-specific key in the user's global configuration would otherwise beat the generic one.
+    - Remotes that name a network share are refused (decision 8): UNC, device and `file://host` forms, and drive letters that are mapped to a share or unavailable. The push refuses with "none"; a remote check stays unknown.
+      - Git percent-decodes `file://` URLs, so any `file://` URL containing `%` is refused outright rather than decoded.
+      - A local-path remote must sit on a fixed local drive with no link anywhere in its existing chain, checked without following one. A directory symbolic link could otherwise lead to a share.
+    - The user's global configuration is theirs and is not screened.
+    - **Cost:** a repository-local credential helper, `sshCommand`, proxy or include must move to the global configuration before the app pushes. A remote check under such a configuration stays unknown.
+    - **Accepted limits (Rudy, 17 October 2026).**
+      - A remote that is a local folder path runs that destination repository's own `receive-pack` hooks and configuration. Git's local transport does not pass this process's settings on; the independent review confirmed it with a probe. Rudy chose to allow local remotes and document this, rather than refuse them or harden the destination.
+      - The configuration is screened just before the push, so a same-user process that rewrites it in between is not detected.
+    - **Independent review.**
+      - The Store fix was GO.
+      - The allowlist was NO-GO as first claimed, because of the local-remote hooks. Rudy's decision narrowed the claim, and the network-share refusal and the named protocol denies were added.
+      - The re-review found that a percent-encoded `file:///%2F%2Fhost/share` URL still reached a share (medium, confirmed), and that a local path could lead through a symbolic link (low). Both are now refused, as above.
+  - **Tests.**
+    - `PushRefusesRepositoryConfigurationThatCouldRunPrograms` covers `credential.helper`, a URL-scoped helper, `core.sshCommand`, `remote.*.receivepack`, `protocol.*.allow`, `url.*.insteadOf` and an include. Each is refused with no program run and nothing pushed, and inert keys then push normally.
+    - `PushTransportsAreLimitedToHttpsSshAndLocalPaths` checks the protocol restriction on the command line and that an `ext::` URL never runs.
+    - `NetworkShareRemotesAreRecognized` classifies share spellings, including percent-encoded `file://` forms. `PushRefusesNetworkShareRemotes` refuses loopback UNC, `file://` and percent-encoded share remotes, so even a broken guard sends nothing off the machine.
+    - `PushRefusesALocalRemoteReachedThroughALink` refuses a local remote behind a junction, then pushes through the real path.
+    - Each of these failed its test: trusting every key, dropping the protocol restriction, dropping the share check, accepting `%`, or dropping the link check.
+  - The TypeScript runtime has the same exposure and is not changed.
 - **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown. Commit verification therefore also needs the project folder to be admissible. While it is unavailable, an unknown commit that TypeScript could resolve from the worktree alone stays unknown.
 - **Tests:**
   - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
@@ -842,11 +868,15 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
 - `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
 
-**Finding outside this slice (not changed): the native Store pins every ancestor of its data folder with read-only sharing.**
-- P1's Store admission pins the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
-- Renaming a file or folder needs its parent opened for writing. So while the native runtime runs, nothing can be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that includes the profile folder itself.
-- This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
-- The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
+**Finding outside this slice: the native Store pinned every ancestor of its data folder with read-only sharing. Fixed after P2.2, on Rudy's instruction (17 October 2026).**
+- P1's Store admission pinned the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
+- Renaming a file or folder needs its parent opened for writing. So while the native runtime ran, nothing could be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that included the profile folder itself.
+- This was found while a test tried to rename a project folder beside the data folder. The slice's tests keep projects in a separate subtree.
+- **Fix.** The Store's two long-lived leases (the requested chain and the admitted folder) now use `DirectoryLease.AcquireSharingWrites`, which shares writes and never deletes, as residual 3 did for project folders.
+  - Other applications can rename and create entries anywhere in the chain again.
+  - The pinned folders still cannot be renamed or deleted, and the database and isolation marker keep their own pins, so they cannot be renamed or replaced.
+  - The short leases taken during admission inspection and the backed-up upgrade still share reads only.
+- **Tests.** `AdmissionTests.AnOpenStoreLeavesItsFoldersOpenToRenamesButNotToReplacement` covers both sides. Restoring the read-only pin made it fail.
 
 ### Existing-file edit primitive (P2.2g)
 
@@ -902,7 +932,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - its exclusive window holds, `RandomAccess` is valid on the synchronous handle, and nothing in `DevelopmentChat`, `Program` or the protocol reaches it.
 - **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
 - **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
-- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
+- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector. It has since been fixed (see P2.2f).
 - **Re-review of the H1 alignment.** The ranges were `a8fa711..6310817` (comment and docs) and `6310817..26a8e4a`, the native guard aligned with the TypeScript fix. The reviewer returned **GO for both, with no finding at any severity**.
   - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
   - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
