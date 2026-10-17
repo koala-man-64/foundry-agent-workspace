@@ -194,6 +194,35 @@ public sealed partial class ToolRuntimeTests
         });
     }
 
+    [Fact]
+    public async Task DecisionsOnApprovalsNoCallAwaitsMatchNodeAndChangeNothing()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-decide-");
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            using var store = new Store(loop, fixture.Scratch, Path.Combine(fixture.Scratch, "injected-root"));
+            var repositories = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
+            var tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories, fixture.Environment), new Redactor(), new ExecutionSlots(loop), () => DateTimeOffset.UtcNow, Guid.NewGuid);
+            foreach (var task in ((List<object?>)Corpus["tasks"]!).Cast<Dictionary<string, object?>>())
+                store.SaveTask((Dictionary<string, object?>)PersistedJson.Parse(JsJson.Stringify(task)!.Replace("{scratch}", fixture.Scratch.Replace("\\", "\\\\", StringComparison.Ordinal), StringComparison.Ordinal))!);
+            foreach (var approval in ((List<object?>)Corpus["stored"]!).Cast<Dictionary<string, object?>>())
+                store.Execute("INSERT INTO intents VALUES ($p0,'tool.approval',$p1,$p2)", approval["id"], JsJson.Stringify(approval), approval["state"]);
+            string Rows() => JsJson.Stringify(store.Rows("SELECT rowid,* FROM intents")) + JsJson.Stringify(store.Rows("SELECT * FROM events"));
+            var before = Rows();
+            foreach (var item in ((List<object?>)Corpus["decisions"]!).Cast<Dictionary<string, object?>>())
+            {
+                object? value = null; string? error = null;
+                try { value = tools.Decide(Id((int)(double)item["task"]!), Id((int)(double)item["approval"]!), (string)item["nonce"]!, (string)item["decision"]!); }
+                catch (WorkspaceReadException exception) { error = exception.Message; }
+                Assert.True(JsJson.Stringify(item.GetValueOrDefault("value")) == JsJson.Stringify(value) && Equals(item.GetValueOrDefault("error"), error), $"{JsJson.Stringify(item)}: actual {JsJson.Stringify(value)} {error}");
+            }
+            Assert.Equal(before, Rows());
+            await Task.CompletedTask;
+            return 0;
+        });
+    }
+
     /// <summary>The oracle's one-pass cleaning, in its order: paths, then fingerprints, UUIDs and timestamps, then pinning.</summary>
     private sealed partial class Cleaner(string scratch, string shell, string systemRoot)
     {

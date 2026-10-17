@@ -11738,5 +11738,87 @@
         }
       ]
     }
+  ],
+  "stored": [
+    {
+      "id": "14141414-0000-4000-8000-000000000301",
+      "taskId": "14141414-0000-4000-8000-000000000001",
+      "toolCallId": "c1",
+      "nonce": "nonce-301",
+      "tool": "write_file",
+      "state": "awaiting-approval",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "summary": "Edit a",
+      "fingerprint": "f",
+      "rootTaskId": "14141414-0000-4000-8000-000000000001",
+      "assignmentId": null,
+      "generation": 1
+    },
+    {
+      "id": "14141414-0000-4000-8000-000000000302",
+      "taskId": "14141414-0000-4000-8000-000000000001",
+      "toolCallId": "c2",
+      "nonce": "nonce-302",
+      "tool": "write_file",
+      "state": "awaiting-approval",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "summary": "Edit b",
+      "fingerprint": "f"
+    },
+    {
+      "id": "14141414-0000-4000-8000-000000000303",
+      "taskId": "14141414-0000-4000-8000-000000000001",
+      "toolCallId": "c3",
+      "nonce": "nonce-303",
+      "tool": "write_file",
+      "state": "approved",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "summary": "Edit c",
+      "fingerprint": "f"
+    }
+  ],
+  "decisions": [
+    {
+      "task": 1,
+      "approval": 301,
+      "nonce": "nonce-301",
+      "decision": "approve",
+      "error": "This approval belongs to a coordinated task and requires its bound decision."
+    },
+    {
+      "task": 1,
+      "approval": 302,
+      "nonce": "nonce-302",
+      "decision": "approve",
+      "error": "This approval is stale or does not match the active task."
+    },
+    {
+      "task": 1,
+      "approval": 302,
+      "nonce": "nonce-302",
+      "decision": "reject",
+      "error": "This approval is stale or does not match the active task."
+    },
+    {
+      "task": 6,
+      "approval": 302,
+      "nonce": "nonce-302",
+      "decision": "approve",
+      "error": "This approval is stale or does not match the active task."
+    },
+    {
+      "task": 1,
+      "approval": 303,
+      "nonce": "nonce-303",
+      "decision": "approve",
+      "error": "This approval is stale or does not match the active task."
+    },
+    {
+      "task": 1,
+      "approval": 399,
+      "nonce": "nonce-399",
+      "decision": "approve",
+      "error": "Approval not found."
+    }
   ]
 }

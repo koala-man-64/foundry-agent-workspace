@@ -152,6 +152,16 @@ const executions: { name: string; tree: Step[]; calls: Call[] }[] = [
     ] },
 ];
 
+// Section 5: decisions on stored approvals that no call is waiting for (a coordinated one, one left from an earlier
+// session, a decided one, a missing one). Each refuses and leaves the rows unchanged.
+const stored = [
+  { id: id(301), taskId: id(1), toolCallId: 'c1', nonce: 'nonce-301', tool: 'write_file', state: 'awaiting-approval', createdAt: stamp, summary: 'Edit a', fingerprint: 'f', rootTaskId: id(1), assignmentId: null, generation: 1 },
+  { id: id(302), taskId: id(1), toolCallId: 'c2', nonce: 'nonce-302', tool: 'write_file', state: 'awaiting-approval', createdAt: stamp, summary: 'Edit b', fingerprint: 'f' },
+  { id: id(303), taskId: id(1), toolCallId: 'c3', nonce: 'nonce-303', tool: 'write_file', state: 'approved', createdAt: stamp, summary: 'Edit c', fingerprint: 'f' },
+];
+const decisionCalls: [number, number, string, 'approve' | 'reject'][] = [[1, 301, 'nonce-301', 'approve'], [1, 302, 'nonce-302', 'approve'], [1, 302, 'nonce-302', 'reject'], [6, 302, 'nonce-302', 'approve'],
+  [1, 303, 'nonce-303', 'approve'], [1, 399, 'nonce-399', 'approve']];
+
 type Row = Record<string, unknown>;
 it('pins the coding tools: definitions, arguments, search and executions through the shipping Node authority', async () => {
   {
@@ -266,11 +276,30 @@ it('pins the coding tools: definitions, arguments, search and executions through
       }
     }
 
+    const decisionVectors = [];
+    {
+      const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-decide-')));
+      try {
+        const store = new Store(path.join(scratch, 'workspace.db'));
+        const service = new RuntimeService(store, new RepositoryService(path.join(scratch, 'wt')), () => {});
+        const tools = (service as unknown as { tools: ToolRuntime }).tools;
+        for (const task of tasks) store.saveTask(JSON.parse(JSON.stringify(task).replaceAll('{scratch}', scratch.replaceAll('\\', '\\\\'))) as Task);
+        for (const approval of stored) store.db.prepare("INSERT INTO intents VALUES (?, 'tool.approval', ?, ?)").run(approval.id, JSON.stringify(approval), approval.state);
+        const before = JSON.stringify(store.db.prepare('SELECT rowid,* FROM intents').all()) + JSON.stringify(store.db.prepare('SELECT * FROM events').all());
+        for (const [task, approval, nonce, decision] of decisionCalls) {
+          try { decisionVectors.push({ task, approval, nonce, decision, value: tools.decide(id(task), id(approval), nonce, decision) }); }
+          catch (error) { decisionVectors.push({ task, approval, nonce, decision, error: (error as Error).message }); }
+        }
+        expect(JSON.stringify(store.db.prepare('SELECT rowid,* FROM intents').all()) + JSON.stringify(store.db.prepare('SELECT * FROM events').all())).toBe(before);
+        await service.shutdown();
+      } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
+    }
+
     const corpus = {
       schemaVersion: 1,
       oracle: { sources: ['packages/runtime/src/tool-definitions.ts', 'packages/runtime/src/tool-runtime.ts', 'packages/runtime/src/repository.ts', 'packages/runtime/src/command-runner.ts', 'packages/runtime/src/job-runner.ps1',
         'packages/runtime/src/redaction.ts', 'packages/runtime/src/store.ts', 'packages/runtime/src/service.ts', 'packages/runtime/src/execution-slots.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
-      stamp, tasks, definitions: JSON.stringify(TOOL_DEFINITIONS), arguments: argumentsVectors, search: searchVectors, executions: executionVectors,
+      stamp, tasks, definitions: JSON.stringify(TOOL_DEFINITIONS), arguments: argumentsVectors, search: searchVectors, executions: executionVectors, stored, decisions: decisionVectors,
     };
     const target = 'tests/p2/tool-runtime-vectors.json';
     if (process.env.P2_WRITE_TOOL_RUNTIME === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
