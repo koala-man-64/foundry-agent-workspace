@@ -24,7 +24,7 @@ public sealed class ApprovalTests
     }
 
     /// <summary>
-    /// Native difference: a stored approval that is not valid JSON is not answered as a refusal. It faults the request, which
+    /// Native difference: a stored approval that is not a JSON object is not answered as a refusal. It faults the request, which
     /// ends the development runtime as every native read of malformed persisted data does; TypeScript answers with its
     /// parser's message. The page skips such a row in both runtimes.
     /// </summary>
@@ -44,6 +44,11 @@ public sealed class ApprovalTests
             var parameters = new Dictionary<string, object?> { ["taskId"] = task["id"], ["approvalId"] = "13131313-0000-4000-8000-000000000318" };
             await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(() => chat.Dispatch("approval.get", parameters));
             await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(() => chat.Dispatch("approval.reconcile", parameters));
+            // Valid JSON that is not an object faults the same way.
+            store.Execute("INSERT INTO intents VALUES ('13131313-0000-4000-8000-000000000319','tool.approval','[1]','unknown')");
+            parameters["approvalId"] = "13131313-0000-4000-8000-000000000319";
+            await Assert.ThrowsAsync<InvalidCastException>(() => chat.Dispatch("approval.get", parameters));
+            await Assert.ThrowsAsync<InvalidCastException>(() => chat.Dispatch("approval.reconcile", parameters));
             Assert.Empty((List<object?>)((Dictionary<string, object?>)(await chat.Dispatch("task.approvals", new() { ["taskId"] = task["id"] }))!)["approvals"]!);
             return 0;
         });

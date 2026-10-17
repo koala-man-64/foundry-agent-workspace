@@ -41,8 +41,11 @@ public sealed partial class Store
         });
     }
 
-    /// <summary>Whether the task has any event of this type: the canonical re-read service.ts publish falls back from.</summary>
-    internal bool HasTaskEvent(string type, string taskId) => Scalar("SELECT 1 FROM events WHERE type=$p0 AND task_id=$p1 LIMIT 1", type, taskId) is not null;
+    /// <summary>Whether the task (or, without one, the workspace) has any event of this type: store.lastEvent, which
+    /// service.ts publish re-reads before it falls back to recording one.</summary>
+    internal bool HasTaskEvent(string type, string? taskId) => (taskId is null
+        ? Scalar("SELECT 1 FROM events WHERE type=$p0 AND task_id IS NULL LIMIT 1", type)
+        : Scalar("SELECT 1 FROM events WHERE type=$p0 AND task_id=$p1 LIMIT 1", type, taskId)) is not null;
 
     /// <summary>task.approvals: the task's approvals, newest first, keyed by rowid. Stored documents are never rewritten.</summary>
     internal Dictionary<string, object?> ApprovalPage(string taskId, int limit, long? before)

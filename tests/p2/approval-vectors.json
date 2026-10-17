@@ -73,12 +73,34 @@
       "worktreePath": "{work}",
       "branch": "codex/approvals",
       "baseCommit": "0000000000000000000000000000000000000000"
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000004",
+      "title": "Child",
+      "profileId": "00000000-0000-4000-8000-000000000001",
+      "status": "idle",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z",
+      "tokenBudget": 100000,
+      "usedTokens": 0,
+      "mode": "coding",
+      "workspaceKind": "git",
+      "projectPath": "{work}",
+      "worktreePath": "{work}",
+      "branch": "codex/approvals",
+      "baseCommit": "0000000000000000000000000000000000000000",
+      "rootTaskId": "13131313-0000-4000-8000-000000000001",
+      "parentTaskId": "13131313-0000-4000-8000-000000000001",
+      "role": "child",
+      "assignmentId": "13131313-0000-4000-8000-000000000990"
     }
   ],
   "files": {
     "a9.txt": "nine after\n",
     "a10.txt": "ten before\n",
-    "a11.txt": "eleven elsewhere\n"
+    "a11.txt": "eleven elsewhere\n",
+    "a21.txt": "twenty-one after\n",
+    "a23.txt": "twenty-three before\n"
   },
   "approvals": [
     {
@@ -512,6 +534,120 @@
       "id": "13131313-0000-4000-8000-000000000218",
       "state": "awaiting-approval",
       "data": "not json"
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000221",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000221",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-21",
+        "nonce": "nnnnnnnnnnnnnnnn21",
+        "tool": "replace_text",
+        "state": "unknown",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Edit a21.txt",
+        "path": "a21.txt",
+        "before": "twenty-one before\n",
+        "after": "twenty-one after\n",
+        "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+        "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+        "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+        "origin": "hook"
+      }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000222",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000222",
+        "taskId": "13131313-0000-4000-8000-000000000004",
+        "toolCallId": "call-22",
+        "nonce": "nnnnnnnnnnnnnnnn22",
+        "tool": "run_command",
+        "state": "unknown",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Run this exact PowerShell command with your Windows privileges.",
+        "command": "Write-Output 'x'",
+        "cwd": "C:\\fixture-work",
+        "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "environment": {
+          "A": "1"
+        },
+        "timeoutMs": 10000,
+        "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09"
+      }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000223",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000223",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-23",
+        "nonce": "nnnnnnnnnnnnnnnn23",
+        "tool": "replace_text",
+        "state": "executing",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Edit a23.txt",
+        "path": "a23.txt",
+        "before": "twenty-three before\n",
+        "after": "twenty-three after\n",
+        "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+        "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+        "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+      }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000224",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000224",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-24",
+        "nonce": "nnnnnnnnnnnnnnnn24",
+        "tool": "run_command",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Run this exact PowerShell command with your Windows privileges.",
+        "command": "Write-Output 'x'",
+        "cwd": "C:\\fixture-work",
+        "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "environment": {
+          "A": "1"
+        },
+        "timeoutMs": 10000,
+        "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+        "extra": {
+          "2": 2,
+          "10": 1,
+          "b": 1.5e-7,
+          "c": 1e+21,
+          "d": 0,
+          "e": 12345678901234567000
+        }
+      }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000225",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000225",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-25",
+        "nonce": "nnnnnnnnnnnnnnnn25",
+        "tool": "run_command",
+        "state": "unknown",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Run this exact PowerShell command with your Windows privileges.",
+        "command": "Write-Output 'x \ud800 y  '",
+        "cwd": "C:\\fixture-work",
+        "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "environment": {
+          "A": "1"
+        },
+        "timeoutMs": 10000,
+        "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+      }
     }
   ],
   "reads": [
@@ -730,6 +866,41 @@
       "params": {
         "taskId": "13131313-0000-4000-8000-000000000001",
         "approvalId": "13131313-0000-4000-8000-000000000217"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000221"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000222"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000223"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000224"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000225"
       }
     },
     {
@@ -1680,6 +1851,48 @@
         "taskId": "13131313-0000-4000-8000-000000000001",
         "approvalId": "13131313-0000-4000-8000-000000000211"
       }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000221"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000004",
+        "approvalId": "13131313-0000-4000-8000-000000000222"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000223"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000224"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000225"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000221"
+      }
     }
   ],
   "cases": [
@@ -1692,6 +1905,64 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "limit": 2
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 24
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 24
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 21
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 21
           },
           "value": {
             "approvals": [
@@ -1951,15 +2222,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 19
+            "nextBefore": 25
           },
           "error": null
         },
@@ -1972,23 +2242,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 18
+            "nextBefore": 24
           },
           "error": null
         },
@@ -2000,6 +2268,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -2843,6 +3141,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -4344,7 +4780,7 @@
           },
           "events": [
             {
-              "sequence": 4,
+              "sequence": 5,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000209\",\"state\":\"complete\"}",
@@ -4406,7 +4842,7 @@
           },
           "events": [
             {
-              "sequence": 5,
+              "sequence": 6,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000210\",\"state\":\"failed\"}",
@@ -4573,7 +5009,7 @@
           },
           "events": [
             {
-              "sequence": 6,
+              "sequence": 7,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000002",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000213\",\"state\":\"unknown\"}",
@@ -4856,6 +5292,248 @@
             "state": "unknown"
           },
           "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 8,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\",\"origin\":\"hook\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 9,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 10,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": []
         }
       ]
     },
@@ -5023,6 +5701,64 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "limit": 2
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 42
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 42
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 39
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 39
           },
           "value": {
             "approvals": [
@@ -5282,15 +6018,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 37
+            "nextBefore": 43
           },
           "error": null
         },
@@ -5303,23 +6038,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 36
+            "nextBefore": 42
           },
           "error": null
         },
@@ -5331,6 +6064,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -6174,6 +6937,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -8258,6 +9159,255 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 45,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 46,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 47,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 48,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000224\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 49,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000225\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": []
         }
       ]
     },
@@ -9281,6 +10431,64 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 131
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 131
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 128
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 128
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -9536,15 +10744,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 126
+            "nextBefore": 132
           },
           "error": null
         },
@@ -9557,23 +10764,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 125
+            "nextBefore": 131
           },
           "error": null
         },
@@ -9585,6 +10790,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -10428,6 +11663,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -12512,6 +13885,255 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 210,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 211,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 212,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 213,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000224\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 214,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000225\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": []
         }
       ]
     },
@@ -13535,6 +15157,64 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 133
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 133
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 130
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 130
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -13790,15 +15470,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 128
+            "nextBefore": 134
           },
           "error": null
         },
@@ -13811,23 +15490,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 127
+            "nextBefore": 133
           },
           "error": null
         },
@@ -13839,6 +15516,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -14682,6 +16389,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -16766,6 +18611,255 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 226,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 227,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 228,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 229,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000224\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 230,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000225\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": []
         }
       ]
     },
@@ -17789,6 +19883,64 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 136
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 136
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 133
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 133
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -18044,15 +20196,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 131
+            "nextBefore": 137
           },
           "error": null
         },
@@ -18065,23 +20216,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 130
+            "nextBefore": 136
           },
           "error": null
         },
@@ -18093,6 +20242,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -18936,6 +21115,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -21020,6 +23337,255 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 236,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 237,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 238,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 239,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000224\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 240,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000225\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": []
         }
       ]
     },
@@ -22148,6 +24714,64 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 161
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 161
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 158
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 158
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -22403,15 +25027,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 156
+            "nextBefore": 162
           },
           "error": null
         },
@@ -22424,23 +25047,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 155
+            "nextBefore": 161
           },
           "error": null
         },
@@ -22452,6 +25073,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -23295,6 +25946,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -24796,7 +27585,7 @@
           },
           "events": [
             {
-              "sequence": 324,
+              "sequence": 325,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000209\",\"state\":\"complete\"}",
@@ -24858,7 +27647,7 @@
           },
           "events": [
             {
-              "sequence": 325,
+              "sequence": 326,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000210\",\"state\":\"failed\"}",
@@ -25025,7 +27814,7 @@
           },
           "events": [
             {
-              "sequence": 326,
+              "sequence": 327,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000002",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000213\",\"state\":\"unknown\"}",
@@ -25306,6 +28095,248 @@
             "kind": "tool.approval",
             "data": "{\"id\":\"13131313-0000-4000-8000-000000000211\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-11\",\"nonce\":\"nnnnnnnnnnnnnnnn11\",\"tool\":\"replace_text\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a11.txt\",\"path\":\"a11.txt\",\"before\":\"eleven before\\n\",\"after\":\"eleven after\\n\",\"expectedHash\":\"f2c0968590c8f150c606399d96b76440d12fec281f097dbe061fad51e87a4c0a\",\"resultingHash\":\"0515eb978c3e818ec2fbdeda214daf70e46193ad43a679f70d55096c40fb30c4\",\"fingerprint\":\"4fc82b26aecb47d2868c4efbe3581732a3e7cbcc6c2efb32062c08170a05eeb8\",\"result\":{\"content\":\"File content matches neither the original nor approved result. Outcome remains unknown; inspect the worktree.\",\"isError\":true}}",
             "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 328,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\",\"origin\":\"hook\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 329,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 330,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
           },
           "events": []
         }
@@ -26436,6 +29467,64 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 162
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 162
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              }
+            ],
+            "nextBefore": 159
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 159
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -26691,15 +29780,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 157
+            "nextBefore": 163
           },
           "error": null
         },
@@ -26712,23 +29800,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000217",
+                "id": "13131313-0000-4000-8000-000000000225",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
-                "state": "awaiting-approval",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "b.txt"
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000220",
+                "id": "13131313-0000-4000-8000-000000000224",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a20.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 156
+            "nextBefore": 162
           },
           "error": null
         },
@@ -26740,6 +29826,36 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000225",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000224",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000223",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a23.txt"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000221",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "replace_text",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z",
+                "path": "a21.txt"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000217",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -27583,6 +30699,144 @@
             },
             "truncatedFields": [],
             "fullBytes": 548,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000221",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-21",
+              "nonce": "nnnnnnnnnnnnnnnn21",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a21.txt",
+              "path": "a21.txt",
+              "before": "twenty-one before\n",
+              "after": "twenty-one after\n",
+              "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+              "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+              "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+              "origin": "hook"
+            },
+            "truncatedFields": [],
+            "fullBytes": 588,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": null,
+          "error": "Approval not found in this task."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000223",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-23",
+              "nonce": "nnnnnnnnnnnnnnnn23",
+              "tool": "replace_text",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Edit a23.txt",
+              "path": "a23.txt",
+              "before": "twenty-three before\n",
+              "after": "twenty-three after\n",
+              "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+              "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+              "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790"
+            },
+            "truncatedFields": [],
+            "fullBytes": 576,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000224",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-24",
+              "nonce": "nnnnnnnnnnnnnnnn24",
+              "tool": "run_command",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x'",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+              "extra": {
+                "2": 2,
+                "10": 1,
+                "b": 1.5e-7,
+                "c": 1e+21,
+                "d": 0,
+                "e": 12345678901234567000
+              },
+              "state": "unknown"
+            },
+            "truncatedFields": [],
+            "fullBytes": 624,
+            "redacted": false
+          },
+          "error": null
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "approval": {
+              "id": "13131313-0000-4000-8000-000000000225",
+              "taskId": "13131313-0000-4000-8000-000000000001",
+              "toolCallId": "call-25",
+              "nonce": "nnnnnnnnnnnnnnnn25",
+              "tool": "run_command",
+              "state": "unknown",
+              "createdAt": "2026-01-02T03:04:05.678Z",
+              "summary": "Run this exact PowerShell command with your Windows privileges.",
+              "command": "Write-Output 'x \ud800 y  '",
+              "cwd": "C:\\fixture-work",
+              "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+              "environment": {
+                "A": "1"
+              },
+              "timeoutMs": 10000,
+              "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569"
+            },
+            "truncatedFields": [],
+            "fullBytes": 562,
             "redacted": false
           },
           "error": null
@@ -29084,7 +32338,7 @@
           },
           "events": [
             {
-              "sequence": 330,
+              "sequence": 331,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000209\",\"state\":\"complete\"}",
@@ -29146,7 +32400,7 @@
           },
           "events": [
             {
-              "sequence": 331,
+              "sequence": 332,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000001",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000210\",\"state\":\"failed\"}",
@@ -29313,7 +32567,7 @@
           },
           "events": [
             {
-              "sequence": 332,
+              "sequence": 333,
               "type": "approval.changed",
               "task_id": "13131313-0000-4000-8000-000000000002",
               "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000213\",\"state\":\"unknown\"}",
@@ -29594,6 +32848,248 @@
             "kind": "tool.approval",
             "data": "{\"id\":\"13131313-0000-4000-8000-000000000211\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-11\",\"nonce\":\"nnnnnnnnnnnnnnnn11\",\"tool\":\"replace_text\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a11.txt\",\"path\":\"a11.txt\",\"before\":\"eleven before\\n\",\"after\":\"eleven after\\n\",\"expectedHash\":\"f2c0968590c8f150c606399d96b76440d12fec281f097dbe061fad51e87a4c0a\",\"resultingHash\":\"0515eb978c3e818ec2fbdeda214daf70e46193ad43a679f70d55096c40fb30c4\",\"fingerprint\":\"4fc82b26aecb47d2868c4efbe3581732a3e7cbcc6c2efb32062c08170a05eeb8\",\"result\":{\"content\":\"File content matches neither the original nor approved result. Outcome remains unknown; inspect the worktree.\",\"isError\":true}}",
             "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-21",
+            "nonce": "nnnnnnnnnnnnnnnn21",
+            "tool": "replace_text",
+            "state": "complete",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a21.txt",
+            "path": "a21.txt",
+            "before": "twenty-one before\n",
+            "after": "twenty-one after\n",
+            "expectedHash": "b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82",
+            "resultingHash": "58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d",
+            "fingerprint": "6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443",
+            "origin": "hook",
+            "result": {
+              "content": "Read-only reconciliation found the exact approved file content.",
+              "isError": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 334,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000221\",\"state\":\"complete\",\"origin\":\"hook\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "approvalId": "13131313-0000-4000-8000-000000000222"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "taskId": "13131313-0000-4000-8000-000000000004",
+            "toolCallId": "call-22",
+            "nonce": "nnnnnnnnnnnnnnnn22",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000222",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000222\",\"taskId\":\"13131313-0000-4000-8000-000000000004\",\"toolCallId\":\"call-22\",\"nonce\":\"nnnnnnnnnnnnnnnn22\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"785f3ec7eb32f30b90cd0fcf3657d388b5ff4297f2f9716ff66e9b69c05ddd09\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 335,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000004",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000222\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000223"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-23",
+            "nonce": "nnnnnnnnnnnnnnnn23",
+            "tool": "replace_text",
+            "state": "failed",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Edit a23.txt",
+            "path": "a23.txt",
+            "before": "twenty-three before\n",
+            "after": "twenty-three after\n",
+            "expectedHash": "c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692",
+            "resultingHash": "ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c",
+            "fingerprint": "535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790",
+            "result": {
+              "content": "Read-only reconciliation found the original content. No retry was performed.",
+              "isError": true
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000223",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000223\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-23\",\"nonce\":\"nnnnnnnnnnnnnnnn23\",\"tool\":\"replace_text\",\"state\":\"failed\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a23.txt\",\"path\":\"a23.txt\",\"before\":\"twenty-three before\\n\",\"after\":\"twenty-three after\\n\",\"expectedHash\":\"c6315e6fbe8b3e5f07698245dca9dec1f713b899fa4d28ef63b6ef67a0312692\",\"resultingHash\":\"ee2d10744bd9e39545d1ff8ebf7f55fb9afd47f06bed2ec0a6aa8ae127d1b00c\",\"fingerprint\":\"535fa30d7e25dd8a49f1536779734ec8286108d115da5045d77f3b4185d8f790\",\"result\":{\"content\":\"Read-only reconciliation found the original content. No retry was performed.\",\"isError\":true}}",
+            "state": "failed"
+          },
+          "events": [
+            {
+              "sequence": 336,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000223\",\"state\":\"failed\"}",
+              "created_at": "2026-01-02T03:04:05.678Z",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "13131313-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000224"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-24",
+            "nonce": "nnnnnnnnnnnnnnnn24",
+            "tool": "run_command",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x'",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+            "extra": {
+              "2": 2,
+              "10": 1,
+              "b": 1.5e-7,
+              "c": 1e+21,
+              "d": 0,
+              "e": 12345678901234567000
+            },
+            "state": "unknown",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000224",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000224\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-24\",\"nonce\":\"nnnnnnnnnnnnnnnn24\",\"tool\":\"run_command\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db\",\"extra\":{\"2\":2,\"10\":1,\"b\":1.5e-7,\"c\":1e+21,\"d\":0,\"e\":12345678901234567000},\"state\":\"unknown\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000225"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-25",
+            "nonce": "nnnnnnnnnnnnnnnn25",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Run this exact PowerShell command with your Windows privileges.",
+            "command": "Write-Output 'x \ud800 y  '",
+            "cwd": "C:\\fixture-work",
+            "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "environment": {
+              "A": "1"
+            },
+            "timeoutMs": 10000,
+            "fingerprint": "b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000225",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000225\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-25\",\"nonce\":\"nnnnnnnnnnnnnnnn25\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Run this exact PowerShell command with your Windows privileges.\",\"command\":\"Write-Output 'x \\ud800 y  '\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"b7a56873cd771f2c446d369b649430b65a756ba278ff97ec81bb6f55b2e73569\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000221"
+          },
+          "value": null,
+          "error": "Only an unknown outcome for this task can be checked.",
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000221",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000221\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-21\",\"nonce\":\"nnnnnnnnnnnnnnnn21\",\"tool\":\"replace_text\",\"state\":\"complete\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Edit a21.txt\",\"path\":\"a21.txt\",\"before\":\"twenty-one before\\n\",\"after\":\"twenty-one after\\n\",\"expectedHash\":\"b173174df8e4c7f175ac324ba01062ccfadf3078763a5e6d2e54b00002bf7e82\",\"resultingHash\":\"58f5a6ce93f8d44a01b5b3bd93033433045533f20b685c11338aaebc61ca3d7d\",\"fingerprint\":\"6f4b6612125fb3a0daecd2799dfd6c9c299424fd920f9b308110a2c1fbd8f443\",\"origin\":\"hook\",\"result\":{\"content\":\"Read-only reconciliation found the exact approved file content.\",\"isError\":false}}",
+            "state": "complete"
           },
           "events": []
         }

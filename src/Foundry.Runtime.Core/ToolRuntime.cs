@@ -45,14 +45,27 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             result["cleanupVerified"] = false;
             approval["result"] = result;
         }
+        Save(approval);
+        return approval;
+    }
+
+    /// <summary>
+    /// tool-runtime.ts save(): store.saveApproval, then service.ts publish('approval.changed'). Before schema v5 publish
+    /// records a new event; from v5 it re-reads the task's latest approval.changed event and records one only when there is
+    /// none, so a save that changed nothing still leaves the task one such event. Native commits all of it together.
+    /// Every approval write goes through here.
+    /// </summary>
+    internal void Save(Dictionary<string, object?> approval)
+    {
+        loop.AssertCurrent();
         store.Transaction(() =>
         {
             var recorded = store.SaveApproval(approval);
+            var taskId = approval.GetValueOrDefault("taskId") as string;
             if (store.SchemaVersion < 5 || !recorded && !store.HasTaskEvent("approval.changed", taskId))
-                store.Event("approval.changed", new Dictionary<string, object?> { ["approvalId"] = approvalId, ["state"] = approval["state"] }, taskId);
+                store.Event("approval.changed", new Dictionary<string, object?> { ["approvalId"] = approval["id"], ["state"] = approval["state"] }, taskId);
             return 0;
         });
-        return approval;
     }
 
     private static Dictionary<string, object?> Result(string content, bool isError) => new() { ["content"] = content, ["isError"] = isError };

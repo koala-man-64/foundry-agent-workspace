@@ -1167,10 +1167,10 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Re-sent notifications.** When a reconciliation leaves the state unchanged and the task already has an `approval.changed` event, TypeScript re-sends that earlier event (its canonical re-read), and native sends nothing. This is the approved publication-after-commit difference, and the durable rows are identical.
 - **One commit.** The saved approval and any event recorded after it commit together; TypeScript commits them separately.
 - **Aliases.** An edit is reconciled through native file access, so a worktree reached through an alias cannot be checked: the approved alias refusal, which leaves the outcome unknown.
-- **Malformed rows.** A stored approval that is not valid JSON faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with its parser's message. Both runtimes' pages skip such rows.
+- **Malformed rows.** A stored approval that is not a JSON object (not valid JSON, or valid JSON of another kind) faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with an error, or with a document spread from the value. Both runtimes' pages skip such rows. Neither runtime ever writes one.
 
 **Evidence.**
-- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds three tasks and 20 approval rows covering:
+- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 25 approval rows covering:
   - edits, commands, rejected and secret-bearing approvals;
   - a 140,000-byte approval with a multibyte summary and long path (preview);
   - external tool, browser, handoff and integration approvals;
@@ -1180,8 +1180,8 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   It pins, in `approval-vectors.json`:
   - every era's own approvals (each fixture era since v1 holds approved and rejected coding demos), with pages and reads;
   - a full keyset traversal at limit 2;
-  - 127 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
-  - 18 reconciliations, each with the approval row and every event row it adds.
+  - 132 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
+  - 24 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
 
   It is bound to the SHA-256 of `workspace-queries.ts`, `tool-runtime.ts`, `store.ts`, `service.ts`, `redaction.ts` and `repository.ts`. Regenerating the vectors requires `P2_WRITE_APPROVALS=1`.
 - **The replay.** `ApprovalTests` seeds the same rows into the same copies and replays every step through `DevelopmentChat`. Values, refusals, approval rows and event rows (sequences included) must match. A native-only test pins the malformed-row difference.
@@ -1194,7 +1194,39 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - ignoring the approval's task, in reads and in reconciliation;
   - failing an edit whose file cannot be read.
 
-  The first mutation's original edit did not build (unreachable code); its rerun was caught.
+  The first mutation's original edit did not build (unreachable code); its rerun was caught. After the review follow-ups, dropping the event's `origin` also fails the replay, in the three v5 eras.
+
+**Independent reviews of `48c5eb8..f9f40ae`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**. It verified the seal, built an export and ran the replay (9 passed), and compared the code line by line with TypeScript and the renderer's call site.
+  - **Confirmed.**
+    - All three read methods redact everything they return.
+    - Cross-task access is refused on all four methods.
+    - Reconciliation can read only inside the worktree, through the pinned, link-refusing file access, and decides an outcome only on a hash match.
+    - The contract bounds every parameter before dispatch.
+  - **L1 (low, shared with shipping TypeScript; Rudy's decision).** `approval.reconcile` returns the stored approval unredacted, where the three read methods redact. The renderer's only call discards the value and refreshes, so nothing is retained today. A fix would return the redacted read in both runtimes; native keeps parity until then.
+  - **I1 (condition for P5, not for this slice).** A corrupt stored approval ends the native runtime. Before a shipping selector, read projections must refuse malformed persisted documents per request.
+  - **I2–I5 (parity, no action).**
+    - Page items are not redacted (paths were screened at creation).
+    - The two not-found messages tell an existing approval from a missing one.
+    - Redaction that breaks the JSON fails closed.
+    - Reconciliation trusts the task's stored worktree path (worth confining when the tool runtime grows).
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO**. It verified the seal, built an export, ran the replay and the TypeScript oracle, and probed both runtimes directly: 40 reconciliations against fresh, v1, v4 and v5 stores, with 0 differences in stored text, state, events, errors or reads.
+  - **Confirmed.**
+    - Era event semantics, with root task ids at v5.
+    - Byte-identical document round-trips.
+    - Keyset stability.
+    - Recovery interplay.
+    - Atomicity: an aborted event insert leaves the row unchanged and the store usable.
+  - **Follow-ups applied in the next commit.**
+    - **L1.** The malformed-row note and test now cover every non-object document.
+    - **L2.** The oracle gaps it found are now cases: origin, child root id, a recovery-shaped row, a document with no state, unusual numbers and keys, and a lone surrogate on the write path.
+    - **L3.** One `ToolRuntime.Save` now mirrors `save()` plus `publish`, so later slices cannot skip the v5 fallback event.
+  - **Not changed.**
+    - **L4.** A row whose document names another id would overwrite that row. TypeScript is the same, and only corrupt data reaches it.
+  - **Carried forward.**
+    - The automation slice decides whether TypeScript's re-sent `approval.changed` matters to hooks.
+    - P2.3c and P2.3f add a compare-and-set to approval saves once execution is asynchronous.
+    - Corrupt-data divergences in clipping and type checks.
 
 ## Personal workspace expansion — local implementation
 
