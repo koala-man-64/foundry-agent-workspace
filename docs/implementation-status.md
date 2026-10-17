@@ -1283,6 +1283,69 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **`f519a93` (run2).** Native suite 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 570 passed.
   - **Common to both.** Clean Release builds with warnings as errors, from `git archive` exports. Evidence, seals and mutation logs are in `foundry-evidence\p2.3-b`.
 
+### Coding tools and decisions (P2.3c)
+
+**What it is.** The native `ToolRuntime` gains TypeScript's `execute`, `awaitDecision`, `decide` and `revokeWaiting` for the six repository tools of an ordinary coding task. It is unwired: no RPC, turn or decision reaches it, and the development runtime still serves **38** of the 89 methods.
+- **Definitions.** `ToolDefinitions.All` is `TOOL_DEFINITIONS` byte for byte (the six tools, as `z.toJSONSchema` writes them for draft-7).
+- **Arguments.** `ToolDefinitions.Parse` reproduces zod 4.6.5 for exactly these schemas: the parsed value with defaults, or the text the model receives, `JSON.stringify(issues, null, 2)` with zod's English messages. It covers:
+  - shape order, then unrecognized keys in JavaScript key order;
+  - string lengths counted in code points once over a limit;
+  - JavaScript-exact patterns;
+  - record keys checked before their values, and a `__proto__` key passed over;
+  - the safe-integer and range checks;
+  - the length checks zod runs even after a type issue, on any value with a `length`, compared with JavaScript coercion.
+- **Search.** `RepositoryService.Search` is `search()`: depth first over the read tools' own listing and reading; 2,000 visits; 100 matches; 500-unit excerpts; and the five skipped folders.
+- **Slots.** `ExecutionSlots` is the chat's three slots as their own class. Provider requests and approved tool executions share one instance, as in `service.ts`. Waiting for a decision never holds a slot.
+- **Execution.**
+  - **Order.** TypeScript's checks, in its order: cancellation, browser tools, Git task, chat mode, coordinated roles, the tool name, secret screening of the arguments, then the schema.
+  - **Read tools** answer at once.
+  - **Edits and commands** are prepared, screened for secrets again and saved as a proposal. The proposal waits for its one-shot decision.
+  - **Mutation.** Once approved, the executing state is saved before any write or launch, inside a slot.
+  - **Outcomes** are classified as TypeScript classifies them. After the executing state, an outcome is unknown unless the failure is known to precede any effect. A cancelled wait is revoked; a rejection or revocation answers the model with TypeScript's text.
+  - **Results** are redacted and bounded to 192 KiB of UTF-8.
+- **Decisions.** `Decide` requires the waiting call, its task and its nonce, and refuses a coordinated approval. `RevokeWaiting` revokes one task's waiting proposals.
+
+**Differences, all fail-closed or invisible on success:**
+- **Not yet served.** These answer "Tool is not available." until their slices:
+  - the project channel's tools (P2.3d);
+  - coordinated roles, which are refused before any reservation;
+  - external MCP tools (decision 2);
+  - hook-origin drafts.
+
+  Browser tools answer "Browser tools are unavailable.", as TypeScript does without a browser host.
+- **Unexpected failures.** A failure other than the runtime's own refusals is classified and saved like any other, then rethrown instead of being handed to the model as text.
+- **Node's raw filesystem errors** (seven cases in the vectors) are native's fixed messages.
+- **Search** admits the root once and holds it for a walk off the loop. TypeScript admits it again for every listing and read.
+- **Revocation timing.** TypeScript's abort listener revokes a waiting proposal synchronously. Native revokes when the wait resumes on the loop, and until then `Decide` refuses the cancelled wait as stale. The rows and answers are the same; the vectors pin a decision sent right after a cancellation.
+- **Not ported.** The per-profile slot key (coordinated tasks only) and the orchestration hooks.
+
+**Evidence.**
+- **The oracle.** `tests/p2/tool-runtime.test.ts` drives the shipping runtime: the definitions; 269 argument parses; 19 searches over three trees (skipped folders, binary, oversized and secret files, CRLF and lone CR, excerpts cut inside a surrogate pair, the match and visit limits); 57 tool calls of ordinary, chat, folder and legacy tasks through `RuntimeService`'s `ToolRuntime`, with real Windows PowerShell 5.1 commands in disposable Git repositories; and six decisions on stored approvals no call awaits. The tool calls cover:
+  - reads and refusals, invalid and secret-bearing arguments, and the result bound;
+  - edits: approve, reject, wrong nonce, other task, missing approval, stale hash, non-unique and overlapping text, `$` patterns, secret-like content in the arguments, in the file and in the result of the edit, a file changed while waiting, and cancellation before and after approval;
+  - a decision sent right after a cancellation, and `revokeWaiting` of this task and of another;
+  - commands: complete, failed, rejected, refused at preparation, a changed worktree, a timeout, cancellation, and a prepared command whose temporary folder is secret-like.
+
+  It records each result, proposal, decision, approval row and event row. Paths, the shell, fingerprints, UUIDs and timestamps become placeholders; the clock is real, because the command helper checks its parent's start time. The vectors are bound to the SHA-256 of `tool-definitions.ts`, `tool-runtime.ts`, `repository.ts`, `command-runner.ts`, `job-runner.ps1`, `redaction.ts`, `store.ts`, `service.ts` and `execution-slots.ts`. Regenerating them requires `P2_WRITE_TOOL_RUNTIME=1`.
+- **The replay.** `ToolRuntimeTests` replays every section natively. Every raw Node error has a native refusal, and the map is exhaustive.
+- **Native-only tests.** `ToolRuntimeNativeTests` covers:
+  - the refused channel tools and coordinated roles;
+  - an unexpected launch failure saved unknown and rethrown;
+  - an unexpected failure before any proposal, which leaves no row;
+  - an edit whose write began before the failure, left unknown;
+  - three slots, and a cancelled waiter that takes none.
+- **Mutations.** 34 native mutations.
+  - **First run: four survived, because no fixture reached them.** They were edit-content screening, prepared-command screening, `revokeWaiting`'s task filter and JavaScript key order. Four new cases now reach them, and each of these mutations fails the replay. The replay also bounds each call's wait at two minutes, so a call that proposes where it should refuse fails rather than hanging.
+  - **Two survive by design.** One makes a command with unverified cleanup complete; no fixture reaches it. The other drops the cancellation check after approval, which the slot repeats.
+  - **Evidence** is in `foundry-evidence\p2.3-c\mutations`.
+
+**Validation and independent review.** Recorded below once they complete.
+
+**Open, for later slices.**
+- **Unreached by any fixture:** a command whose cleanup is unverified is recorded unknown (its classification is TypeScript's, line for line). P2.3f's wired turns should reach it.
+- **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired.
+- **#35 and #39** also change sources these vectors are bound to (`command-runner.ts` and `job-runner.ps1`). Regenerate `tool-runtime-vectors.json` with the command-runner vectors when either merges.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
