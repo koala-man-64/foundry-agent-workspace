@@ -1,7 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
 # The launcher receives this JSON only on stdin. Command output never shares this channel.
-$spec = [Console]::In.ReadToEnd() | ConvertFrom-Json
+# Node writes it as UTF-8. [Console]::In would decode it in the console code page and alter every non-ASCII character
+# of the approved command, its environment, working directory and result/cancel paths. Invalid UTF-8 fails closed.
+$spec = [IO.StreamReader]::new([Console]::OpenStandardInput(), [Text.UTF8Encoding]::new($false, $true), $false).ReadToEnd() | ConvertFrom-Json
 if (-not $spec.nonce -or -not $spec.resultPath -or -not $spec.cancelPath) { throw 'Invalid command helper input.' }
 
 Add-Type -TypeDefinition @'
