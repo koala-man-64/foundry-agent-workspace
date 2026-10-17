@@ -150,6 +150,7 @@ export interface CoreDesktopApi {
   invoke(method: 'files.read', params: { taskId: string; path: string }): Promise<FileContent>;
   invoke(method: 'task.diff', params: { taskId: string }): Promise<DiffResult>;
   invoke(method: 'approval.decide', params: { taskId: string; approvalId: string; nonce: string; decision: 'approve' | 'reject' }): Promise<{ accepted: boolean }>;
+  /** The checked approval as approval.get shows it: redacted, and above 128 KiB a preview without its long fields. Read approval.get to learn which were omitted. */
   invoke(method: 'approval.reconcile', params: { taskId: string; approvalId: string }): Promise<Approval>;
   invoke(method: 'workspace.schema', params: Record<string, never>): Promise<SchemaStatus>;
   invoke(method: 'workspace.upgrade', params: { confirm: 'backup-and-upgrade' }): Promise<UpgradeResult>;
