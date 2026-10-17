@@ -533,6 +533,9 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 **Publication.** Rudy approved pushing the branch and opening a draft pull request for exactly `6f5530a..e7c8460`, with no merge. That draft is #36. To fix its failed checks, `main` at `11d7208` (#33 and #34) was merged into the branch.
 - #33 changed `repository.ts`. Seven P2.2 vector files bind that file's SHA-256, and both the Node oracles and the native `AssertOracleSources` failed on that hash alone.
 - The seven files were regenerated from the shipping runtime. Each one changed only that hash: #33 moved no recorded P2.2 outcome.
+- **Slice c's root-relative case depended on the machine.** The next run showed it: a root-relative path names the scratch folder only when the working directory and the temporary folder share a drive, and the CI runner keeps its workspace on D: and TEMP on C:. Both runtimes refused there, so neither matched the recorded result.
+  - The case is now marked `sameDrive`. Where the drives match, it is fully pinned and replayed as before.
+  - Where they differ, the Node oracle keeps the committed entry and the C# case is skipped with that reason. On CI the root-relative case is therefore not exercised.
 
 ### Local Git execution and inspection foundation (P2.2a)
 

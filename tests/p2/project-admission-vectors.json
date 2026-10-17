@@ -844,6 +844,7 @@
       "paths": [
         "{scratch-nodrive}\\repo"
       ],
+      "sameDrive": true,
       "expected": {
         "calls": [
           {

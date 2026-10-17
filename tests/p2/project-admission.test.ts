@@ -11,9 +11,11 @@ import { build, committed, file, git, normalize, sha256File, withIsolatedGit, ty
 // (ProjectAdmissionTests) rebuilds every tree, dispatches the same calls through DevelopmentChat and must reproduce each
 // returned project, refusal, saved project row and event, except where a call names an approved native difference.
 // Generated project identities and timestamps are normalized by order of appearance. Placeholders: {scratch}
-// {scratch/} {scratch-nodrive}.
+// {scratch/} {scratch-nodrive}. A case marked sameDrive resolves a root-relative path, which names the scratch folder only
+// when the working directory and the temporary folder share a drive; elsewhere (a CI runner whose workspace and TEMP are
+// on different drives) it cannot be reproduced, so the committed entry stands and the C# suite skips it.
 type Outcome = { result: unknown } | { error: string } | { systemError: string };
-type Case = { name: string; tree: Step[]; paths: string[]; concurrent?: true; native?: Record<number, { outcome: Outcome; difference: string }> };
+type Case = { name: string; tree: Step[]; paths: string[]; concurrent?: true; sameDrive?: true; native?: Record<number, { outcome: Outcome; difference: string }> };
 
 const ALIAS = 'Native refuses local aliases (approved difference until Rudy decides otherwise).';
 const linked: Step[] = [...committed(), git('-C', 'repo', 'worktree', 'add', '-q', '../wt')];
@@ -29,7 +31,7 @@ const cases: Case[] = [
   { name: 'a nested repository binds its own root', tree: [...committed(), { dir: 'repo/inner' }, git('-C', 'repo/inner', 'init', '-q'), file('repo/inner/x.txt', 'x\n'),
     git('-C', 'repo/inner', 'add', '-A'), git('-C', 'repo/inner', 'commit', '-qm', 'inner')], paths: ['{scratch}\\repo\\inner'] },
   { name: 'a repository that configures core.worktree is a folder project', tree: [...committed(), git('-C', 'repo', 'config', 'core.worktree', '..')], paths: ['{scratch}\\repo'] },
-  { name: 'a root-relative path resolves on the current drive', tree: committed(), paths: ['{scratch-nodrive}\\repo'] },
+  { name: 'a root-relative path resolves on the current drive', tree: committed(), paths: ['{scratch-nodrive}\\repo'], sameDrive: true },
   { name: 'relative and drive-relative paths are refused', tree: committed(), paths: ['repo', 'C:repo'] },
   { name: 'network and device paths are refused before any probe', tree: [], paths: ['\\\\server\\share\\repo', '//server/share/repo', '\\\\?\\C:\\repo', '\\\\.\\C:\\repo', '\\??\\C:\\repo'] },
   { name: 'a path containing NUL', tree: committed(), paths: ['{scratch}\\re\u0000po', '{scratch}\\repo\u0000', '{scratch}\\repo'] },
@@ -90,14 +92,19 @@ async function outcomes(item: Case): Promise<{ calls: Outcome[]; projects: unkno
 }
 
 it('pins project.add outcomes to the shipping Node authority without ordinary regeneration', async () => {
+  const target = 'tests/p2/project-admission-vectors.json';
+  const committedCases = (JSON.parse(fs.readFileSync(target, 'utf8')) as { cases: { name: string }[] }).cases;
+  const sameDrive = path.parse(process.cwd()).root.toLowerCase() === path.parse(fs.realpathSync.native(tmpdir())).root.toLowerCase();
   const expected: (Case & { expected: Awaited<ReturnType<typeof outcomes>> })[] = [];
-  for (const item of cases) expected.push({ ...item, expected: await outcomes(item) });
+  for (const item of cases) {
+    const kept = item.sameDrive && !sameDrive ? committedCases.find(entry => entry.name === item.name) : undefined;
+    expected.push(kept ? kept as Case & { expected: Awaited<ReturnType<typeof outcomes>> } : { ...item, expected: await outcomes(item) });
+  }
   const corpus = {
     schemaVersion: 1,
     oracle: { sources: ['packages/runtime/src/service.ts', 'packages/runtime/src/repository.ts', 'packages/runtime/src/store.ts', 'packages/runtime/src/network-path.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
     cases: expected,
   };
-  const target = 'tests/p2/project-admission-vectors.json';
   if (process.env.P2_WRITE_PROJECT_ADMISSION === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 300_000);
