@@ -842,11 +842,15 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
 - `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
 
-**Finding outside this slice (not changed): the native Store pins every ancestor of its data folder with read-only sharing.**
-- P1's Store admission pins the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
-- Renaming a file or folder needs its parent opened for writing. So while the native runtime runs, nothing can be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that includes the profile folder itself.
-- This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
-- The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
+**Finding outside this slice: the native Store pinned every ancestor of its data folder with read-only sharing. Fixed after P2.2, on Rudy's instruction (17 October 2026).**
+- P1's Store admission pinned the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
+- Renaming a file or folder needs its parent opened for writing. So while the native runtime ran, nothing could be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that included the profile folder itself.
+- This was found while a test tried to rename a project folder beside the data folder. The slice's tests keep projects in a separate subtree.
+- **Fix.** The Store's two long-lived leases (the requested chain and the admitted folder) now use `DirectoryLease.AcquireSharingWrites`, which shares writes and never deletes, as residual 3 did for project folders.
+  - Other applications can rename and create entries anywhere in the chain again.
+  - The pinned folders still cannot be renamed or deleted, and the database and isolation marker keep their own pins, so they cannot be renamed or replaced.
+  - The short leases taken during admission inspection and the backed-up upgrade still share reads only.
+- **Tests.** `AdmissionTests.AnOpenStoreLeavesItsFoldersOpenToRenamesButNotToReplacement` covers both sides. Restoring the read-only pin made it fail.
 
 ### Existing-file edit primitive (P2.2g)
 
@@ -902,7 +906,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - its exclusive window holds, `RandomAccess` is valid on the synchronous handle, and nothing in `DevelopmentChat`, `Program` or the protocol reaches it.
 - **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
 - **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
-- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
+- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector. It has since been fixed (see P2.2f).
 - **Re-review of the H1 alignment.** The ranges were `a8fa711..6310817` (comment and docs) and `6310817..26a8e4a`, the native guard aligned with the TypeScript fix. The reviewer returned **GO for both, with no finding at any severity**.
   - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
   - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
