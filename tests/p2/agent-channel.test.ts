@@ -51,7 +51,9 @@ type Op =
   | { op: 'enrich'; task: number; contextLimit: number }
   // Acknowledges the cursor the previous enrich returned, as a successful provider response does.
   | { op: 'acknowledge'; task: number }
-  | { op: 'fill'; task: number; count: number };
+  | { op: 'fill'; task: number; count: number }
+  // A message row written outside send, with a raw secret-like title and content: pages redact both.
+  | { op: 'plant'; task: number };
 const request = (n: number) => `16161616-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const send = (task: number, n: number, content: string, recipient?: number | null): Op => ({ op: 'send', task, request: n, content, ...(recipient !== undefined ? { recipient } : {}) });
 const tool = (task: number, name: string, args: unknown): Op => ({ op: 'tool', task, name, arguments: args });
@@ -65,6 +67,12 @@ const cases: { name: string; seeds: Seed[]; ops: Op[] }[] = [
     tool(3, 'send_agent_message', { content: 'Idle agent' }), tool(2, 'send_agent_message', { content: '' }), tool(2, 'send_agent_message', { content: 'x', extra: 1 }),
     tool(2, 'send_agent_message', { recipientTaskId: 'nope', content: 'x' }), tool(2, 'send_agent_message', { content: 'api_key=fixture-secret-value' }),
     tool(2, 'send_agent_message', { content: 'é'.repeat(1100) }), tool(2, 'read_agent_messages', { after: -1 }), tool(2, 'list_project_agents', { afterTaskId: 'x' }),
+    // zod's uuid: a version 1 to 8 with an RFC variant, in either case; the nil UUID; the max UUID in lower case only.
+    tool(2, 'send_agent_message', { recipientTaskId: '15151515-0000-0000-8000-000000000001', content: 'x' }), tool(2, 'send_agent_message', { recipientTaskId: '15151515-0000-4000-c000-000000000001', content: 'x' }),
+    tool(2, 'send_agent_message', { recipientTaskId: 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF', content: 'x' }), tool(2, 'send_agent_message', { recipientTaskId: '00000000-0000-0000-0000-000000000000', content: 'x' }),
+    tool(2, 'list_project_agents', { afterTaskId: '15151515-0000-4000-8000-00000000000A' }),
+    // An agent's own broadcast never comes back to it as model context.
+    tool(2, 'send_agent_message', { content: 'Beta broadcast as an agent' }), { op: 'plant', task: 1 },
     tool(1, 'read_agent_messages', {}), tool(1, 'read_agent_messages', { after: 2 }), tool(4, 'read_agent_messages', {}), tool(6, 'read_agent_messages', {}), tool(5, 'read_agent_messages', {}),
     tool(15, 'list_project_agents', { afterTaskId: id(4) }), tool(11, 'read_agent_messages', {}),
     { op: 'get', task: 2 }, { op: 'get', task: 4 }, { op: 'get', task: 6 }, { op: 'get', task: 5 }, { op: 'get', task: 9 }, { op: 'get', task: 10 }, { op: 'get', task: 11 },
@@ -141,7 +149,11 @@ it('pins the project channel: definitions, channel.get/send, channel tools and m
             lastCursor = enriched.channelCursor;
             result = { value: { channelCursor: enriched.channelCursor, messages: enriched.messages } };
           } else if (op.op === 'acknowledge') { channel.acknowledge(id(op.task), lastCursor); result = { value: lastCursor ?? null }; }
-          else { for (let index = 0; index < op.count; index++) store.event('channel.message', { recipientTaskId: null, content: `Filler ${index}`, project: 'f'.repeat(64), callId: `fill-${index}`, actor: 'user', senderTitle: 'Filler' }, id(op.task)); result = { value: null }; }
+          else if (op.op === 'plant') {
+            const project = createHash('sha256').update(path.join(scratch, 'a', '.git').toLowerCase()).digest('hex');
+            store.event('channel.message', { recipientTaskId: null, content: 'Planted password=fixture-secret-value', project, callId: 'planted', actor: 'user', senderTitle: 'Planted api_key=fixture-secret-value' }, id(op.task));
+            result = { value: null };
+          } else { for (let index = 0; index < op.count; index++) store.event('channel.message', { recipientTaskId: null, content: `Filler ${index}`, project: 'f'.repeat(64), callId: `fill-${index}`, actor: 'user', senderTitle: 'Filler' }, id(op.task)); result = { value: null }; }
         } catch (error) { result = outcome(error); }
         const events = op.op === 'fill' ? [] : store.db.prepare('SELECT * FROM events WHERE sequence > ? ORDER BY sequence').all(sequence);
         steps.push(clean({ ...op, ...result, events }));

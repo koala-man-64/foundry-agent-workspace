@@ -121,6 +121,15 @@ public sealed partial class AgentChannelTests
                             chat.Tools.Channel.Acknowledge(taskId, lastCursor);
                             value = lastCursor;
                             break;
+                        case "plant":
+                            var project = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(Path.Join(fixture.Scratch, "a", ".git")))));
+                            store.Event("channel.message", new Dictionary<string, object?>
+                            {
+                                ["recipientTaskId"] = null, ["content"] = "Planted password=fixture-secret-value", ["project"] = project, ["callId"] = "planted", ["actor"] = "user",
+                                ["senderTitle"] = "Planted api_key=fixture-secret-value",
+                            }, taskId);
+                            value = null;
+                            break;
                         default:
                             for (var count = 0; count < (int)(double)expected["count"]!; count++)
                                 store.Event("channel.message", new Dictionary<string, object?>
