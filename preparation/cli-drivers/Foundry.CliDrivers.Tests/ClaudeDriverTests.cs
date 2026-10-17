@@ -5,6 +5,39 @@ namespace Foundry.CliDrivers.Tests;
 public sealed class ClaudeDriverTests
 {
     [Fact]
+    public async Task ApiRetryProgressContinuesWithoutResendingInputOrDuplicatingUsage()
+    {
+        object noResponse = new { type = "system", subtype = "api_retry", session_id = "claude-1", uuid = "retry-2", attempt = 2, max_retries = 3, retry_delay_ms = 10, error_status = (int?)null, error = "unknown", no_response = new { waited_ms = 100, retry_wait_ms = 10 } };
+        await using var transcript = new Transcript([Frames.ClaudeInit(), Frames.ClaudeRetry(), noResponse, Frames.Assistant(), Frames.ClaudeDone(new { input_tokens = 10, output_tokens = 2 })]);
+        var events = new List<CliEvent>();
+        var result = await new ClaudeCodeCliDriver(transcript.Connection).RunAsync(new("model-1", "prompt"), Frames.Observe(events), TestContext.Current.CancellationToken);
+        Assert.Equal("hello", Assert.Single(events.OfType<CliText>()).Text);
+        Assert.Equal(new CliUsage(10, 2), result.Usage);
+        Assert.Single(events.OfType<CliUsageReported>());
+        Assert.Single(transcript.Requests);
+        Assert.True(transcript.Stopped);
+    }
+
+    [Fact]
+    public async Task InvalidAndCrossSessionRetryProgressFailsWithoutReplay()
+    {
+        object[] events =
+        [
+            Frames.ClaudeRetry(attempt: 0), Frames.ClaudeRetry(attempt: 4), Frames.ClaudeRetry(delay: -1),
+            Frames.ClaudeRetry(status: 600), Frames.ClaudeRetry(session: "other"),
+            new { type = "system", subtype = "api_retry", session_id = "claude-1" }
+        ];
+        foreach (var message in events)
+        {
+            await using var transcript = new Transcript([Frames.ClaudeInit(), message, Frames.ClaudeDone()]);
+            var error = await Assert.ThrowsAsync<CliDriverException>(() => new ClaudeCodeCliDriver(transcript.Connection).RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
+            Assert.Equal(CliFailure.InvalidProtocol, error.Failure);
+            Assert.True(error.OutcomeUnknown);
+            Assert.Single(transcript.Requests);
+        }
+    }
+
+    [Fact]
     public async Task PartialEventsSnapshotsAndFinalResultDoNotDuplicateTextOrUsage()
     {
         var frames = new object[]

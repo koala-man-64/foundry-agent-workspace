@@ -7,13 +7,15 @@ public sealed class CodexCliDriver
 {
     private readonly ICliConnection connection;
     private readonly DriverOperation operation;
+    private readonly string? workingDirectory;
     private readonly Queue<JsonElement> notifications = new();
     private int nextId;
 
-    public CodexCliDriver(ICliConnection connection, CliLimits? limits = null)
+    public CodexCliDriver(ICliConnection connection, CliLimits? limits = null, string? workingDirectory = null)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
         operation = new(connection, limits);
+        this.workingDirectory = workingDirectory;
     }
 
     public Task<CodexInspection> InspectAsync(CancellationToken cancellationToken = default) => operation.ExecuteAsync(async token =>
@@ -54,10 +56,21 @@ public sealed class CodexCliDriver
         DriverOperation.ValidateTurn(request, CliBackend.Codex);
         return operation.ExecuteAsync(async token =>
         {
+            if (workingDirectory is null || workingDirectory.Length > 32767 || workingDirectory.Contains('\0', StringComparison.Ordinal) || !Path.IsPathFullyQualified(workingDirectory) ||
+                request.Resume is { } resume && !string.Equals(resume.WorkingDirectory, workingDirectory, StringComparison.OrdinalIgnoreCase))
+                throw operation.Fail(CliFailure.Incompatible, "An explicit working directory matching the Codex checkpoint is required.");
             await InitializeAsync(token).ConfigureAwait(false);
+            var config = await PreparationConfigAsync(token).ConfigureAwait(false);
             var started = request.Resume is null
-                ? await RpcAsync("thread/start", new { model = request.Model }, token).ConfigureAwait(false)
-                : await RpcAsync("thread/resume", new { threadId = request.Resume.Id, model = request.Model, excludeTurns = true }, token).ConfigureAwait(false);
+                ? await RpcAsync("thread/start", new { model = request.Model, cwd = workingDirectory, approvalPolicy = "never", sandbox = "read-only", config }, token).ConfigureAwait(false)
+                : await RpcAsync("thread/resume", new { threadId = request.Resume.Id, model = request.Model, cwd = workingDirectory, excludeTurns = true, approvalPolicy = "never", sandbox = "read-only", config }, token).ConfigureAwait(false);
+            if (!started.TryGetProperty("approvalPolicy", out var approval) || approval.ValueKind != JsonValueKind.String || approval.GetString() != "never" ||
+                !started.TryGetProperty("sandbox", out var sandbox) || sandbox.ValueKind != JsonValueKind.Object ||
+                !sandbox.TryGetProperty("type", out var sandboxType) || sandboxType.ValueKind != JsonValueKind.String || sandboxType.GetString() != "readOnly" ||
+                !sandbox.TryGetProperty("networkAccess", out var network) || network.ValueKind != JsonValueKind.False)
+                throw operation.Fail(CliFailure.Incompatible, "Codex did not confirm the preparation execution policy.");
+            if (!started.TryGetProperty("cwd", out var cwd) || cwd.ValueKind != JsonValueKind.String || !string.Equals(cwd.GetString(), workingDirectory, StringComparison.OrdinalIgnoreCase))
+                throw operation.Fail(CliFailure.Incompatible, "Codex did not confirm the requested working directory.");
             var threadId = DriverOperation.String(started.GetProperty("thread"), "id");
             if (request.Resume is { } checkpoint && checkpoint.Id != threadId) throw new InvalidDataException("Resume returned another session.");
             string? reportedModel = null;
@@ -67,7 +80,14 @@ public sealed class CodexCliDriver
                 await operation.NotifyAsync(new CliModelReported(reportedModel), observer, token).ConfigureAwait(false);
             }
             operation.InferenceSent = true;
-            var turn = await RpcAsync("turn/start", new { threadId, input = new[] { new { type = "text", text = request.Prompt } } }, token).ConfigureAwait(false);
+            var turn = await RpcAsync("turn/start", new
+            {
+                threadId,
+                cwd = workingDirectory,
+                input = new[] { new { type = "text", text = request.Prompt } },
+                approvalPolicy = "never",
+                sandboxPolicy = new { type = "readOnly", networkAccess = false }
+            }, token).ConfigureAwait(false);
             var turnId = DriverOperation.String(turn.GetProperty("turn"), "id");
             var baseline = request.Resume is null ? new CliUsage(0, 0) : request.Resume.CumulativeUsage;
             // No update this turn means an accounting gap. Reusing the old baseline next turn would charge the gap again.
@@ -110,18 +130,18 @@ public sealed class CodexCliDriver
                             throw operation.Fail(CliFailure.Incompatible, "Native CLI tools are not admitted in preparation.");
                         break;
                     case "turn/completed":
-                        if (DriverOperation.String(parameters, "threadId") != threadId) throw new InvalidDataException("Wrong completion session.");
                         var completed = parameters.GetProperty("turn");
                         if (DriverOperation.String(completed, "id") != turnId) throw new InvalidDataException("Wrong completion turn.");
                         if (DriverOperation.String(completed, "status") != "completed" ||
                             completed.TryGetProperty("error", out var error) && error.ValueKind != JsonValueKind.Null)
                             throw operation.Fail(CliFailure.ProviderRejected, "Codex did not confirm successful completion.");
-                        return new CliTurnResult(new(CliBackend.Codex, threadId, request.Model, cumulative), reportedModel, usage);
+                        return new CliTurnResult(new(CliBackend.Codex, threadId, request.Model, cumulative, workingDirectory), reportedModel, usage);
                     case "thread/started":
                         if (DriverOperation.String(parameters.GetProperty("thread"), "id") != threadId) throw new InvalidDataException("Wrong started session.");
                         break;
                     case "turn/started":
-                        if (DriverOperation.String(parameters, "threadId") != threadId || DriverOperation.String(parameters.GetProperty("turn"), "id") != turnId)
+                        // Lifecycle notifications can omit threadId; the correlated turn id remains mandatory.
+                        if (DriverOperation.String(parameters.GetProperty("turn"), "id") != turnId)
                             throw new InvalidDataException("Wrong started turn.");
                         break;
                     case "thread/status/changed":
@@ -131,6 +151,58 @@ public sealed class CodexCliDriver
                 }
             }
         }, cancellationToken);
+    }
+
+    private async Task<Dictionary<string, object>> PreparationConfigAsync(CancellationToken token)
+    {
+        // Defense in depth, following upstream temporary_structured_request.rs at ce0323f2.
+        // A real launcher must still qualify effective managed policy and inherited session state.
+        var config = new Dictionary<string, object>
+        {
+            ["features.apps"] = false,
+            ["features.code_mode"] = false,
+            ["features.code_mode_only"] = false,
+            ["features.context_management"] = false,
+            ["features.current_time_reminder"] = false,
+            ["features.deferred_executor"] = false,
+            ["features.enable_fanout"] = false,
+            ["features.goals"] = false,
+            ["features.hooks"] = false,
+            ["features.image_generation"] = false,
+            ["features.memories"] = false,
+            ["features.multi_agent"] = false,
+            ["features.multi_agent_v2"] = false,
+            ["features.plugins"] = false,
+            ["features.request_permissions_tool"] = false,
+            ["features.shell_snapshot"] = false,
+            ["features.shell_tool"] = false,
+            ["features.standalone_web_search"] = false,
+            ["features.token_budget"] = false,
+            ["features.tool_suggest"] = false,
+            ["features.unified_exec"] = false,
+            ["features.view_image"] = false,
+            ["cloud.skills.enabled"] = false,
+            ["skills.include_instructions"] = false,
+            ["tools.experimental_request_user_input.enabled"] = false,
+            ["tools.update_plan.enabled"] = false,
+            ["web_search"] = "disabled"
+        };
+        var effective = (await RpcAsync("config/read", new { includeLayers = false, cwd = workingDirectory }, token).ConfigureAwait(false)).GetProperty("config");
+        if (effective.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid effective Codex configuration.");
+        var disabledServers = new Dictionary<string, object>(StringComparer.Ordinal);
+        if (effective.TryGetProperty("mcp_servers", out var servers))
+        {
+            if (servers.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Invalid effective MCP configuration.");
+            foreach (var server in servers.EnumerateObject())
+            {
+                if (disabledServers.Count >= 500 || string.IsNullOrWhiteSpace(server.Name) || server.Name.Length > 200 || server.Name.Contains('\0', StringComparison.Ordinal) || server.Value.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException("Invalid effective MCP server name.");
+                // Carry names and disabled flags only, never credential-bearing server configuration.
+                disabledServers.Add(server.Name, new { enabled = false });
+            }
+        }
+        config.Add("mcp_servers", disabledServers);
+        return config;
     }
 
     private async Task InitializeAsync(CancellationToken token)

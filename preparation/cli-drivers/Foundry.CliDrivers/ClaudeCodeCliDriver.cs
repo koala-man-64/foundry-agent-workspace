@@ -180,10 +180,32 @@ public sealed class ClaudeCodeCliDriver
                         return confirmed;
                     case "system" when DriverOperation.String(message, "subtype") == "status":
                         break;
+                    case "system" when DriverOperation.String(message, "subtype") == "api_retry":
+                        ValidateRetry(message);
+                        break; // Provider progress only: the client never resends input or replays a tool.
                     default:
                         throw operation.Fail(CliFailure.Incompatible, "Unsupported Claude message; no continuation was attempted.");
                 }
             }
         }, cancellationToken);
+    }
+
+    private static void ValidateRetry(JsonElement message)
+    {
+        var attempt = DriverOperation.Count(message, "attempt");
+        if (attempt == 0 || attempt > DriverOperation.Count(message, "max_retries"))
+            throw new InvalidDataException("Invalid Claude retry attempt.");
+        _ = DriverOperation.Count(message, "retry_delay_ms");
+        var status = message.GetProperty("error_status");
+        if (status.ValueKind != JsonValueKind.Null && (status.ValueKind != JsonValueKind.Number || !status.TryGetInt32(out var code) || code is < 100 or > 599))
+            throw new InvalidDataException("Invalid Claude retry status.");
+        _ = DriverOperation.String(message, "error");
+        _ = DriverOperation.String(message, "uuid");
+        if (message.TryGetProperty("no_response", out var noResponse))
+        {
+            if (status.ValueKind != JsonValueKind.Null) throw new InvalidDataException("Conflicting Claude retry status.");
+            _ = DriverOperation.Count(noResponse, "waited_ms");
+            _ = DriverOperation.Count(noResponse, "retry_wait_ms");
+        }
     }
 }

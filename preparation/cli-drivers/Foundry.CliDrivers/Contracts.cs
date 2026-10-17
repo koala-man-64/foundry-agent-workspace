@@ -22,7 +22,7 @@ public sealed class CliCancelledException(bool outcomeUnknown, OperationCanceled
 }
 
 public sealed record CliUsage(long InputTokens, long OutputTokens);
-public sealed record CliSession(CliBackend Backend, string Id, string RequestedModel, CliUsage? CumulativeUsage = null);
+public sealed record CliSession(CliBackend Backend, string Id, string RequestedModel, CliUsage? CumulativeUsage = null, string? WorkingDirectory = null);
 public sealed record CliTurn(string Model, string Prompt, CliSession? Resume = null);
 public sealed record CliTurnResult(CliSession Session, string? ReportedModel, CliUsage? Usage);
 public sealed record CliModel(string Id, string DisplayName, IReadOnlyList<string> ReasoningEfforts);

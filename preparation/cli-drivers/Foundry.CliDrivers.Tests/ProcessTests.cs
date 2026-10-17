@@ -16,7 +16,7 @@ public sealed class ProcessTests
         var events = new List<CliEvent>();
         var request = new CliTurn("fixture-model", "fixture-only prompt");
         var result = backend == "codex"
-            ? await new CodexCliDriver(connection).RunAsync(request, Frames.Observe(events), TestContext.Current.CancellationToken)
+            ? await new CodexCliDriver(connection, workingDirectory: Frames.WorkingDirectory).RunAsync(request, Frames.Observe(events), TestContext.Current.CancellationToken)
             : await new ClaudeCodeCliDriver(connection).RunAsync(request, Frames.Observe(events), TestContext.Current.CancellationToken);
         Assert.Equal("fixture response", Assert.Single(events.OfType<CliText>()).Text);
         Assert.Equal(new CliUsage(3, 2), result.Usage);
@@ -43,7 +43,7 @@ public sealed class ProcessTests
     {
         using var scratch = new Scratch();
         var connection = SupervisedConnection.Start(scratch.Spec("stderr"), stderrBytes: 1024);
-        var error = await Assert.ThrowsAsync<CliDriverException>(() => new CodexCliDriver(connection).RunAsync(new("fixture-model", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
+        var error = await Assert.ThrowsAsync<CliDriverException>(() => new CodexCliDriver(connection, workingDirectory: Frames.WorkingDirectory).RunAsync(new("fixture-model", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(CliFailure.CleanupFailed, error.Failure);
         Assert.DoesNotContain("xxxxxxxx", error.ToString());
         // A failed cleanup receipt remains failed on repeated disposal rather than becoming a false success.

@@ -42,10 +42,12 @@ internal sealed class WaitingConnection : ICliConnection
 
 internal static class Frames
 {
+    public const string WorkingDirectory = @"C:\fixtures\cli-project";
     public static object Rpc(int id, object result) => new { id, result };
     public static object Init() => Rpc(1, new { userAgent = "fixture" });
-    public static object Thread(string id = "session-1") => Rpc(2, new { thread = new { id }, model = "model-1" });
-    public static object Turn() => Rpc(3, new { turn = new { id = "turn-1" } });
+    public static object Config(object? servers = null) => Rpc(2, new { config = new { mcp_servers = servers ?? new { } } });
+    public static object Thread(string id = "session-1", string cwd = WorkingDirectory) => Rpc(3, new { thread = new { id }, cwd, model = "model-1", approvalPolicy = "never", sandbox = new { type = "readOnly", networkAccess = false } });
+    public static object Turn() => Rpc(4, new { turn = new { id = "turn-1" } });
     public static object Text(string text = "hello", string threadId = "session-1", string turnId = "turn-1") =>
         new { method = "item/agentMessage/delta", @params = new { threadId, turnId, delta = text } };
     public static object Usage(long input = 10, long output = 2) =>
@@ -55,6 +57,8 @@ internal static class Frames
     public static object ClaudeInit(string session = "claude-1", string[]? tools = null) =>
         new { type = "system", subtype = "init", session_id = session, model = "resolved-model", tools = tools ?? [], mcp_servers = Array.Empty<string>() };
     public static object ClaudeEvent(object value) => new { type = "stream_event", session_id = "claude-1", @event = value };
+    public static object ClaudeRetry(int attempt = 1, int maxRetries = 3, long delay = 0, int? status = 503, string session = "claude-1") =>
+        new { type = "system", subtype = "api_retry", session_id = session, uuid = "retry-1", attempt, max_retries = maxRetries, retry_delay_ms = delay, error_status = status, error = "server_error" };
     public static object Assistant(string text = "hello", string session = "claude-1", string id = "message-1") =>
         new { type = "assistant", session_id = session, message = new { id, content = new[] { new { type = "text", text } } } };
     public static object ClaudeDone(object? usage = null, string subtype = "success", bool isError = false) =>

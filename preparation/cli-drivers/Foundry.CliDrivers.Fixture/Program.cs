@@ -44,12 +44,14 @@ while (await Console.In.ReadLineAsync() is { } line)
     switch (method)
     {
         case "initialize": await EmitAsync(new { id, result = new { userAgent = "fixture" } }); break;
-        case "thread/start": await EmitAsync(new { id, result = new { thread = new { id = "fixture-codex" }, model = "fixture-model" } }); break;
+        case "config/read": await EmitAsync(new { id, result = new { config = new { } } }); break;
+        case "thread/start": await EmitAsync(new { id, result = new { thread = new { id = "fixture-codex" }, cwd = message.GetProperty("params").GetProperty("cwd").GetString(), model = "fixture-model", approvalPolicy = "never", sandbox = new { type = "readOnly", networkAccess = false } } }); break;
         case "turn/start":
+            await EmitAsync(new { method = "turn/started", @params = new { turn = new { id = "turn-1" } } });
             await EmitAsync(new { id, result = new { turn = new { id = "turn-1" } } });
             await EmitAsync(new { method = "item/agentMessage/delta", @params = new { threadId = "fixture-codex", turnId = "turn-1", delta = "fixture response" } });
             await EmitAsync(new { method = "thread/tokenUsage/updated", @params = new { threadId = "fixture-codex", tokenUsage = new { total = new { inputTokens = 3, outputTokens = 2 } } } });
-            await EmitAsync(new { method = "turn/completed", @params = new { threadId = "fixture-codex", turn = new { id = "turn-1", status = "completed" } } });
+            await EmitAsync(new { method = "turn/completed", @params = new { turn = new { id = "turn-1", status = "completed" } } });
             break;
         default: throw new InvalidDataException("Unexpected fixture method.");
     }

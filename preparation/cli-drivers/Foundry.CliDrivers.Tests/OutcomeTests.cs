@@ -9,7 +9,7 @@ public sealed class OutcomeTests
     {
         await using var connection = new WaitingConnection();
         using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
-        var error = await Assert.ThrowsAsync<CliCancelledException>(() => new CodexCliDriver(connection).RunAsync(new("model", "prompt"), cancellationToken: cancellation.Token));
+        var error = await Assert.ThrowsAsync<CliCancelledException>(() => new CodexCliDriver(connection, workingDirectory: Frames.WorkingDirectory).RunAsync(new("model", "prompt"), cancellationToken: cancellation.Token));
         Assert.False(error.OutcomeUnknown);
         Assert.True(connection.Stopped);
     }
@@ -37,9 +37,9 @@ public sealed class OutcomeTests
     [Fact]
     public async Task CleanupFailurePreservesConfirmedResultAndUsage()
     {
-        await using var transcript = new Transcript([Frames.Init(), Frames.Thread(), Frames.Turn(), Frames.Usage(), Frames.Done()]);
+        await using var transcript = new Transcript([Frames.Init(), Frames.Config(), Frames.Thread(), Frames.Turn(), Frames.Usage(), Frames.Done()]);
         var connection = new FailingCleanupConnection(transcript.Connection);
-        var error = await Assert.ThrowsAsync<CliDriverException>(() => new CodexCliDriver(connection).RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
+        var error = await Assert.ThrowsAsync<CliDriverException>(() => new CodexCliDriver(connection, workingDirectory: Frames.WorkingDirectory).RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(CliFailure.CleanupFailed, error.Failure);
         Assert.False(error.OutcomeUnknown);
         Assert.Equal("session-1", error.ConfirmedTurn!.Session.Id);
@@ -49,18 +49,18 @@ public sealed class OutcomeTests
     [Fact]
     public async Task ReusingDriverDoesNotReplayARequest()
     {
-        await using var transcript = new Transcript([Frames.Init(), Frames.Thread(), Frames.Turn(), Frames.Done()]);
-        var driver = new CodexCliDriver(transcript.Connection);
+        await using var transcript = new Transcript([Frames.Init(), Frames.Config(), Frames.Thread(), Frames.Turn(), Frames.Done()]);
+        var driver = new CodexCliDriver(transcript.Connection, workingDirectory: Frames.WorkingDirectory);
         await driver.RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<InvalidOperationException>(() => driver.RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Equal(4, transcript.Requests.Length);
+        Assert.Equal(5, transcript.Requests.Length);
     }
 
     [Fact]
     public async Task UnsupportedResumeAndOutputLimitsDoNotStartExtraWork()
     {
-        await using var transcript = new Transcript([Frames.Init(), Frames.Thread(), Frames.Turn(), Frames.Text("too large"), Frames.Done()]);
-        var driver = new CodexCliDriver(transcript.Connection, new() { TextBytes = 2 });
+        await using var transcript = new Transcript([Frames.Init(), Frames.Config(), Frames.Thread(), Frames.Turn(), Frames.Text("too large"), Frames.Done()]);
+        var driver = new CodexCliDriver(transcript.Connection, new() { TextBytes = 2 }, Frames.WorkingDirectory);
         await Assert.ThrowsAsync<ArgumentException>(() => driver.RunAsync(new("model-1", "prompt", new(CliBackend.ClaudeCode, "session", "model-1")), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Empty(transcript.Requests);
         var error = await Assert.ThrowsAsync<CliDriverException>(() => driver.RunAsync(new("model-1", "prompt"), cancellationToken: TestContext.Current.CancellationToken));
