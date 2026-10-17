@@ -38,11 +38,12 @@ function processExited(pid: number): boolean { try { process.kill(pid, 0); retur
 afterEach(async () => { await Promise.all(directories.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true }))); });
 
 describe.runIf(process.platform === 'win32')('CommandRunner', () => {
-  it('returns a verified cancellation without launching when the helper receives a preexisting cancel marker', async () => {
+  // The non-ASCII folder covers the result and cancel paths the helper reads from its stdin spec.
+  it.each([['an ASCII', 'foundry-prelaunch-cancel-'], ['a non-ASCII', 'foundry-prelaunch-cancel-café 東京 😀-']])('returns a verified cancellation without launching when the helper receives a preexisting cancel marker in %s folder', async (_label, prefix) => {
     const { root, runner } = await fixture();
     const marker = path.join(root, 'must-not-start.txt');
     const prepared = await prepare(runner, root, `[IO.File]::WriteAllText('${marker.replace(/'/g, "''")}', 'started')`, 8_000);
-    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-prelaunch-cancel-'));
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
     directories.push(control);
     const cancelPath = path.join(control, 'cancel');
     const resultPath = path.join(control, 'result.json');
@@ -71,14 +72,29 @@ describe.runIf(process.platform === 'win32')('CommandRunner', () => {
   it('does not run the command while preparing, then returns bounded separated output', async () => {
     const { root, runner } = await fixture();
     const marker = path.join(root, 'marker.txt').replace(/'/g, "''");
-    const command = `[IO.File]::WriteAllText('${marker}', $env:TEST_APPROVED); Write-Output 'stdout café 東京'; [Console]::Error.WriteLine('stderr')`;
+    // ASCII output only: PowerShell encodes its output in the console code page and both runtimes decode it as UTF-8.
+    const command = `[IO.File]::WriteAllText('${marker}', $env:TEST_APPROVED); Write-Output 'stdout'; [Console]::Error.WriteLine('stderr')`;
     const prepared = await prepare(runner, root, command);
     await expect(fs.access(path.join(root, 'marker.txt'))).rejects.toThrow();
     const result = await runner.execute(prepared, new AbortController().signal);
     expect(await fs.readFile(path.join(root, 'marker.txt'), 'utf8')).toBe('yes');
     expect(result).toMatchObject({ exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
-    expect(result.stdout).toContain('stdout café 東京');
+    expect(result.stdout).toBe('stdout\r\n');
     expect(result.stderr).toContain('stderr');
+  });
+
+  it('runs non-ASCII command text, environment values and working directory exactly as approved', async () => {
+    const { root, runner } = await fixture();
+    const directory = 'répertoire 東京 😀';
+    await fs.mkdir(path.join(root, directory));
+    const command = "[IO.File]::WriteAllText('approved.txt', 'café 東京 😀|' + $env:TEST_APPROVED + '|' + [Environment]::CurrentDirectory, [Text.UTF8Encoding]::new($false))";
+    const prepared = await runner.prepare(root, { command, cwd: directory, environment: { TEST_APPROVED: 'naïve Ω 東京 😀' }, timeoutMs: 5_000 });
+    expect(path.basename(prepared.cwd)).toBe(directory);
+    const result = await runner.execute(prepared, new AbortController().signal);
+    expect(result).toMatchObject({ exitCode: 0, cancelled: false, timedOut: false, cleanupVerified: true });
+    // UTF-8 of 'café 東京 😀|' and 'naïve Ω 東京 😀|', then the working directory the process started in.
+    const pinned = Buffer.from('636166c3a920e69db1e4baac20f09f98807c' + '6e61c3af766520cea920e69db1e4baac20f09f98807c', 'hex');
+    expect(await fs.readFile(path.join(prepared.cwd, 'approved.txt'))).toEqual(Buffer.concat([pinned, Buffer.from(prepared.cwd, 'utf8')]));
   });
 
   it('returns nonzero exits without claiming cancellation', async () => {

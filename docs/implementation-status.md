@@ -132,6 +132,18 @@ Dual-landed fixes:
   - **Mapped drives:** a project whose canonical path is a network drive is refused.
   - **Saved before the fix:** a project or task saved on a share is reported unavailable and never probed, and Git operations on it are refused. Hooks and MCP servers saved with network paths are refused at launch.
   - **Review:** the independent security review (Sonnet, high, from its definition) returned GO. Its follow-ups are applied: a spy proves no share is resolved before the check, and saved paths are no longer probed. Removing any one of the 13 checks makes a test fail.
+- **Running a non-ASCII approved command exactly as approved** (T1, 17 October 2026).
+  - **The defect.** `job-runner.ps1` read its JSON spec with `[Console]::In`, which Windows PowerShell 5.1 decodes in the console's OEM code page, but `command-runner.ts` writes it as UTF-8. Every non-ASCII character of the approved command, its environment values, its working directory and the result and cancel paths reached the helper altered.
+    - **Measured:** an approved `'café 東京 😀'` ran as `'caf├⌐ µ¥▒Σ║¼ ≡ƒÿÇ'` and the run was reported with exit code 0.
+    - **Launch failures:** a non-ASCII working directory failed `CreateProcess`, and a non-ASCII result folder failed the result write, so the command was recorded unknown. A non-ASCII cancel path was never seen, so a pre-launch cancellation did not stop the command.
+  - **How it was found.** The P2.3a oracle found it. Native passes the exact text, so the conformance vectors named this as a difference.
+  - **The fix.** The helper reads standard input through a strict UTF-8 reader. It does not detect byte-order marks, and invalid UTF-8 fails before launch.
+  - **Visible consequence.** Non-ASCII text that a command echoed from its own source used to look right, because the two mis-decodings cancelled out. It now shows the shared output limit: PowerShell encodes output in the console code page and both runtimes decode it as UTF-8, so such output becomes U+FFFD or `?` in both.
+  - **Tests.** `command-runner.test.ts` runs a command with non-ASCII text, a non-ASCII environment value and a non-ASCII working directory. It pins the bytes the command writes. A pre-launch cancellation in a non-ASCII result and cancel folder must be verified. Both fail without the fix.
+  - **Native side.** Native is not affected and is unchanged. Regenerating `tests/p2/command-runner-vectors.json` (P2.3a) after this merges removes the named difference at "runs exactly the approved command" #12/#14.
+  - **Open, same class, TypeScript only.** These are not changed here:
+    - **MCP and hook spec files.** `mcp-host.ps1` reads its spec file with `Get-Content -Raw`, which decodes in the ANSI code page. `mcp.ts` and `hook-runner.ts` write that file as UTF-8 without a byte-order mark. So the MCP server command, a trusted script's pinned arguments, the working directory and the environment can arrive altered. Measured with the same `Get-Content` call (`'café 東京 😀'` read as `'cafÃ© æ±äº¬ ðŸ˜€'`); not run end to end.
+    - **Add-Type and a non-ANSI `TEMP`.** Both helpers compile their types with `Add-Type`, which cannot write its assembly when `TEMP` holds characters outside the ANSI code page. Measured: `é` compiles under code page 1252, while `東京` and `😀` fail. On such a profile no approved command can launch, with or without this fix. The MCP and hook host compiles the same way. Measured in isolation, not on such a profile.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
