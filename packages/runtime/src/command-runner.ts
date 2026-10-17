@@ -189,9 +189,11 @@ export class CommandRunner {
     const env: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
     env.GIT_CONFIG_NOSYSTEM = '1'; env.GIT_TERMINAL_PROMPT = '0';
     const options = { cwd: root, env, windowsHide: true, timeout: 15_000, maxBuffer: 256 * 1024 };
+    // This runs before approval, and `git status` runs post-index-change. An empty core.hooksPath resolves hooks at the
+    // drive root; a path below the verified git.exe, a regular file, names a location where no hook can ever exist.
     const [head, status] = await Promise.all([
-      execFile(git, ['--no-pager', '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=', '-c', 'credential.helper=', 'rev-parse', '--verify', 'HEAD^{commit}'], options),
-      execFile(git, ['--literal-pathspecs', '--no-pager', '-c', 'core.hooksPath=', '-c', 'core.fsmonitor=', '-c', 'credential.helper=', 'status', '--porcelain=v1', '-z'], options),
+      execFile(git, ['--no-pager', '-c', `core.hooksPath=${git}`, '-c', 'core.fsmonitor=', '-c', 'credential.helper=', 'rev-parse', '--verify', 'HEAD^{commit}'], options),
+      execFile(git, ['--literal-pathspecs', '--no-pager', '-c', `core.hooksPath=${git}`, '-c', 'core.fsmonitor=', '-c', 'credential.helper=', 'status', '--porcelain=v1', '-z'], options),
     ]);
     return `${head.stdout.trim()}\0${status.stdout}\0${await this.contentState(root)}`;
   }
