@@ -73,8 +73,8 @@ describe('app-owned Git hooks folder', () => {
     await fs.writeFile(path.join(worktreePath, 'README.md'), 'changed\n');
     const head = await git(worktreePath, ['rev-parse', 'HEAD']);
     await plant(hooks, 'post-commit', marker);
-    const error = await service.commitAll(worktreePath, branch, 'planted hook must not run').catch((caught: unknown) => caught);
-    // Refused at commitAll's first preflight Git call, which surfaces plain errors before any mutation.
+    const error = await service.commitAll(worktreePath, root, undefined, branch, 'planted hook must not run').catch((caught: unknown) => caught);
+    // Refused at commitAll's first preflight Git call (repository admission), before any mutation.
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain(NOT_EMPTY);
     expect(error instanceof RepositoryError ? error.outcome : 'none').toBe('none');
