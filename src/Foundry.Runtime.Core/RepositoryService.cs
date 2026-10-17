@@ -265,18 +265,22 @@ internal sealed partial class RepositoryService
         return await UncommittedPaths(admission);
     }
 
-    internal async Task<List<string>> UncommittedPaths(RepositoryAdmission admission)
+    internal async Task<List<string>> UncommittedPaths(RepositoryAdmission admission) => [.. (await ChangedEntries(admission)).Select(entry => entry.Path)];
+
+    /// <summary>Each status entry's path and, for a rename or copy, its source, which porcelain v1 writes after it.</summary>
+    private async Task<List<(string Path, string? Source)>> ChangedEntries(RepositoryAdmission admission)
     {
         var fields = (await Run(admission, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])).Stdout.Split('\0');
-        var paths = new List<string>();
+        var entries = new List<(string Path, string? Source)>();
         for (var index = 0; index < fields.Length; index++)
         {
             var entry = fields[index];
             if (entry.Length == 0) continue;
-            paths.Add(entry.Length > 3 ? entry[3..] : "");
-            if (entry.StartsWith('R') || entry.StartsWith('C')) index++;
+            var path = entry.Length > 3 ? entry[3..] : "";
+            if (entry.StartsWith('R') || entry.StartsWith('C')) entries.Add((path, ++index < fields.Length ? fields[index] : null));
+            else entries.Add((path, null));
         }
-        return paths;
+        return entries;
     }
 
     internal async Task<Dictionary<string, object?>> Diff(string root)
@@ -522,16 +526,21 @@ internal sealed partial class RepositoryService
     /// commitAll: the user's explicit commit of every change in the task worktree. Refusals before staging are "none";
     /// from `git add` on, every failure is "unknown". Admission failures before that carry no outcome, so the caller treats
     /// them as unknown, as TypeScript does. Secret-named paths are never staged, hooks stay disabled, signing is off, and
-    /// the identity comes from the user's Git configuration.
+    /// the identity comes from the user's Git configuration. Not in TypeScript: the worktree must still belong to the task's
+    /// project repository (<see cref="RequireTaskWorktree"/>), the source of a staged rename or copy is screened as well
+    /// as its destination, and the staged screen lists paths without rename detection, so a secret-named path cannot be
+    /// committed under another name.
     /// </summary>
-    internal async Task<CommitResult> CommitAll(string root, string expectedBranch, string message)
+    internal async Task<CommitResult> CommitAll(string root, string projectPath, string? boundCommon, string expectedBranch, string message)
     {
         using var repository = await RequireRepository(root);
+        await RequireTaskWorktree(repository, projectPath, boundCommon);
         var branch = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
         if (branch != expectedBranch) throw new RepositoryException($"The worktree is on {branch}, not the task branch {expectedBranch}.");
-        var dirty = await UncommittedPaths(repository);
+        var entries = await ChangedEntries(repository);
+        var dirty = entries.Select(entry => entry.Path).ToList();
         if (dirty.Count == 0) throw new RepositoryException("There are no changes to commit.");
-        var denied = dirty.Where(RepositoryPaths.IsDeniedRelativePath).ToList();
+        var denied = entries.SelectMany(entry => entry.Source is null ? [entry.Path] : new[] { entry.Path, entry.Source }).Where(RepositoryPaths.IsDeniedRelativePath).ToList();
         if (denied.Count > 0) throw new RepositoryException($"Refusing to commit secret-named paths: {string.Join(", ", denied.Take(5))}. Remove or ignore them first.");
         // `git add` runs clean filters, and attributes may have changed since the worktree was created.
         try { await RejectTrackedFilters(repository); await RejectFilters(repository, dirty); }
@@ -541,7 +550,8 @@ internal sealed partial class RepositoryService
             await Run(repository, ["add", "--all", "--", "."]);
             var staged = (await Run(repository, ["diff", "--cached", "--name-only", "-z"])).Stdout.Split('\0').Where(path => path.Length > 0).ToList();
             if (staged.Count == 0) { await Run(repository, ["reset", "-q"]); throw new WorkspaceReadException("Nothing was staged."); }
-            if (staged.Any(RepositoryPaths.IsDeniedRelativePath)) { await Run(repository, ["reset", "-q"]); throw new WorkspaceReadException("A secret-named path was staged; the index was reset and nothing was committed."); }
+            var screened = (await Run(repository, ["diff", "--cached", "--name-only", "--no-renames", "-z"])).Stdout.Split('\0').Where(path => path.Length > 0);
+            if (staged.Concat(screened).Any(RepositoryPaths.IsDeniedRelativePath)) { await Run(repository, ["reset", "-q"]); throw new WorkspaceReadException("A secret-named path was staged; the index was reset and nothing was committed."); }
             await Run(repository, ["-c", "commit.gpgsign=false", "commit", "--quiet", "--no-verify", "-m", message]);
             return new(JsJson.Trim((await Run(repository, ["rev-parse", "--verify", "HEAD^{commit}"])).Stdout), staged);
         }
@@ -551,11 +561,14 @@ internal sealed partial class RepositoryService
     /// <summary>
     /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
     /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
+    /// Not in TypeScript: the worktree must still belong to the task's project repository, whose remotes are the ones
+    /// checked (<see cref="RequireTaskWorktree"/>).
     /// </summary>
-    internal async Task<string> Push(string root, string projectPath, string remote, string branch)
+    internal async Task<string> Push(string root, string projectPath, string? boundCommon, string remote, string branch)
     {
         using var repository = await RequireRepository(root);
         using var project = await RequireRepository(projectPath);
+        RequireTaskWorktree(repository, project, boundCommon);
         var url = await Run(project, ["remote", "get-url", "--", remote], allowNonZero: true);
         if (url.ExitCode != 0 || JsJson.Trim(url.Stdout).Length == 0) throw new RepositoryException($"Remote {remote} is not configured in the project repository.");
         var current = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
@@ -576,6 +589,11 @@ internal sealed partial class RepositoryService
         {
             using var project = await RequireRepository(projectPath);
             var commit = expectedCommit ?? await HeadCommit(worktreePath);
+            // Not in TypeScript: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
+            // verified here; it stays unknown rather than being judged against another server.
+            var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
+            var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
+            if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
             var result = await Run(project, ["ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
             var output = JsJson.Trim(result.Stdout);
@@ -629,7 +647,31 @@ internal sealed partial class RepositoryService
         }
     }
 
-    [GeneratedRegex(@"^([0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
+    internal const string ForeignWorktree = "The task worktree no longer belongs to the task's project repository.";
+
+    /// <summary>
+    /// Not in TypeScript (review of #36): before a publication mutation, the worktree must share the project repository's
+    /// common directory, and that must still be the one bound when the task was created (when a binding exists). A
+    /// replaced folder holding another repository, with its own configuration and remotes, is never committed to or pushed
+    /// from. The held worktree admission keeps that identity pinned for the rest of the operation. Refusals are "none".
+    /// </summary>
+    private async Task RequireTaskWorktree(RepositoryAdmission worktree, string projectPath, string? boundCommon)
+    {
+        RepositoryAdmission project;
+        try { project = await RequireRepository(projectPath); }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { throw new RepositoryException(error.Message, "none", error); }
+        using (project) RequireTaskWorktree(worktree, project, boundCommon);
+    }
+
+    private static void RequireTaskWorktree(RepositoryAdmission worktree, RepositoryAdmission project, string? boundCommon)
+    {
+        var common = worktree.Identity?.Common;
+        if (common is null || !string.Equals(common, project.Identity?.Common, StringComparison.Ordinal) || boundCommon is not null && !string.Equals(common, boundCommon, StringComparison.Ordinal))
+            throw new RepositoryException(ForeignWorktree);
+    }
+
+    // SHA-1 or SHA-256 object names (review of #36: TypeScript matches 40 characters only).
+    [GeneratedRegex(@"^([0-9a-fA-F]{64}|[0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
     private static partial Regex RemoteTip();
 
     /// <summary>requireTaskId: a UUID, lowercased, matched exactly as TypeScript's ASCII pattern does.</summary>

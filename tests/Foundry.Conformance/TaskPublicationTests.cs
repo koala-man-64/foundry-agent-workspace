@@ -310,6 +310,121 @@ public sealed partial class TaskPublicationTests
         }
     }
 
+    /// <summary>
+    /// Review of #36 (not in TypeScript): porcelain v1 writes a staged rename's source after its destination, and the
+    /// staged listing detects renames, so `git mv .env safe.txt` showed only the safe name. Both endpoints are screened now.
+    /// </summary>
+    [Fact]
+    public async Task AStagedRenameOfASecretNamedPathIsRefused()
+    {
+        var (fixture, data) = await Project("foundry-p2-rename-secret-");
+        using (fixture)
+        {
+            fixture.Write("repo/.env", "TOKEN=1\n");
+            await fixture.Git("-C", "repo", "add", "-f", ".env"); await fixture.Git("-C", "repo", "commit", "-qm", "tracked env");
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var worktree = (string)task["worktreePath"]!;
+                await fixture.Git("-C", worktree, "mv", ".env", "safe.txt");
+                var head = await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD");
+                Assert.Equal("Refusing to commit secret-named paths: .env. Remove or ignore them first.",
+                    (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Rename" }))).Message);
+                Assert.Equal(head, await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD"));
+                Assert.Equal("complete", store.Rows("SELECT state FROM intents WHERE kind='git.commit'").Single()["state"]);
+                await chat.Shutdown(); return 0;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Review of #36 (not in TypeScript): a worktree replaced by another repository on the saved branch, or a project
+    /// whose repository is no longer the one bound at creation, is refused before anything is staged or pushed.
+    /// </summary>
+    [Fact]
+    public async Task PublicationRefusesAWorktreeThatNoLongerBelongsToTheBoundProject()
+    {
+        var (fixture, data) = await Project("foundry-p2-foreign-worktree-");
+        using (fixture)
+        {
+            await fixture.Git("init", "-q", "--bare", "elsewhere.git");
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var worktree = (string)task["worktreePath"]!; var branch = (string)task["branch"]!;
+                var commit = new Dictionary<string, object?> { ["taskId"] = taskId, ["message"] = "Change" };
+                var push = new Dictionary<string, object?> { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" };
+                // A tampered binding: the worktree still belongs to the project, but not to the repository bound at creation.
+                var binding = store.Rows("SELECT id,data FROM intents WHERE kind='channel.identity'").Single();
+                var original = (string)binding["data"]!;
+                store.Execute("UPDATE intents SET data=$p0 WHERE id=$p1", original.Replace("\"common\":\"", "\"common\":\"X", StringComparison.Ordinal), binding["id"]);
+                File.WriteAllText(Path.Combine(worktree, "README.md"), "changed\n");
+                Assert.Equal(RepositoryService.ForeignWorktree, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", commit))).Message);
+                Assert.Equal(RepositoryService.ForeignWorktree, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                store.Execute("UPDATE intents SET data=$p0 WHERE id=$p1", original, binding["id"]);
+                // A replacement repository at the worktree's path, on the saved branch, with its own remote.
+                foreach (var file in new DirectoryInfo(worktree).EnumerateFiles("*", SearchOption.AllDirectories)) file.Attributes = FileAttributes.Normal;
+                Directory.Delete(worktree, true);
+                await fixture.Git("init", "-q", "-b", branch, worktree);
+                File.WriteAllText(Path.Combine(worktree, "README.md"), "replacement\n");
+                await fixture.Git("-C", worktree, "add", "-A"); await fixture.Git("-C", worktree, "commit", "-qm", "replacement");
+                await fixture.Git("-C", worktree, "remote", "add", "origin", fixture.Local("elsewhere.git"));
+                File.WriteAllText(Path.Combine(worktree, "README.md"), "changed again\n");
+                var head = await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD");
+                Assert.Equal(RepositoryService.ForeignWorktree, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", commit))).Message);
+                Assert.Equal(RepositoryService.ForeignWorktree, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                Assert.Equal(head, await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD"));
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind IN ('git.commit','git.push')"), row => Assert.Equal("complete", row["state"]));
+                await chat.Shutdown(); return 0;
+            });
+            Assert.Empty(await fixture.GitText("--git-dir", fixture.Local("elsewhere.git"), "for-each-ref"));
+        }
+    }
+
+    /// <summary>
+    /// Review of #36 (not in TypeScript): reconciliation reads the remote's fetch URL, so a remote whose push URL differs
+    /// stays unverified rather than being judged against another server; a SHA-256 remote tip is recognized.
+    /// </summary>
+    [Fact]
+    public async Task PushVerificationNeedsTheFetchedServerAndAcceptsSha256Tips()
+    {
+        var (fixture, _) = await Project("foundry-p2-push-verify-");
+        using (fixture)
+        {
+            fixture.Write("sha256/README.md", "hello\n");
+            await fixture.Git("init", "-q", "--object-format=sha256", "sha256"); await fixture.Git("-C", "sha256", "add", "-A"); await fixture.Git("-C", "sha256", "commit", "-qm", "fixture");
+            await fixture.Git("init", "-q", "--bare", "--object-format=sha256", "sha256-remote.git");
+            await fixture.Git("-C", "sha256", "remote", "add", "origin", fixture.Local("sha256-remote.git"));
+            await fixture.Git("-C", "sha256", "push", "-q", "origin", "main");
+            var sha256Head = await fixture.GitOutput("-C", "sha256", "rev-parse", "HEAD");
+            Assert.Equal(64, sha256Head.Length);
+            await fixture.Git("-C", "repo", "push", "-q", "origin", "main");
+            var head = await fixture.GitOutput("-C", "repo", "rev-parse", "HEAD");
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
+                Assert.True(await service.VerifyPushOutcome(fixture.Local("sha256"), fixture.Local("sha256"), "origin", "main", sha256Head));
+                Assert.True(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), "origin", "main", head));
+                return 0;
+            });
+            await fixture.Git("init", "-q", "--bare", "push-only.git");
+            await fixture.Git("-C", "repo", "remote", "set-url", "--push", "origin", fixture.Local("push-only.git"));
+            await loop.Invoke(async () =>
+            {
+                var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
+                Assert.Null(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), "origin", "main", head));
+                return 0;
+            });
+        }
+    }
+
     [Fact]
     public void OracleSourceBindingsAreCurrent()
     {

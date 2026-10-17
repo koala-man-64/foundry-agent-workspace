@@ -790,6 +790,23 @@ Its remaining notes:
 - **L3 (informational, parity), not changed.** Reconciliation counts a retired worktree that cannot be probed as gone, as TypeScript's `stat` catch does. Nothing is deleted on that basis; the worktree and branch stay on disk.
 - **L4 (informational).** The atomic success commit is now named in the differences above.
 
+**Codex review of #36.** The repository's Codex reviewer left five findings on the publication code. Every one also holds for the shipping TypeScript (`repository.ts` `uncommittedPaths`, `push`, `verifyPushOutcome`, and `workspace-operations.ts`), so each stays **open for TypeScript** under the dual-landing rule. Four are fixed natively as fail-closed differences:
+- **Staged rename of a secret-named path (P1).** Porcelain v1 writes a staged rename's source after its destination, and the source was skipped. The staged listing also detects renames, so `git mv .env safe.txt` showed only `safe.txt`, and the commit would publish the secret file's content under the safe name.
+  - **Fixed natively:** `CommitAll` screens both endpoints of every rename or copy before staging, and screens the staged paths again without rename detection.
+  - `UncommittedPaths`, and the diff and retirement checks that use it, keep TypeScript's output.
+- **Worktree no longer the task's repository (P1).** Commit and push never checked that the worktree still belongs to the task's project. A folder replaced by another repository on the saved branch would be committed to, and pushed with that repository's own remotes.
+  - **Fixed natively:** before staging or pushing, the worktree must share the project repository's common directory. When the task has a `channel.identity` binding, that common directory must also be the bound one.
+  - The held worktree admission keeps that identity pinned for the rest of the operation. A refusal is "none".
+- **Push URL during reconciliation (P2).** `ls-remote` reads the remote's fetch URLs, while push writes to its push URLs. **Fixed natively:** when the two lists differ, the push stays unknown instead of being judged against another server. Querying the push URL directly would pass a configured URL to Git where it could act as an option.
+- **SHA-256 remote tips (P2).** The remote-tip pattern accepted only 40-character object names. In a SHA-256 repository, every ambiguous push therefore stayed unknown for good. **Fixed natively:** 64-character names are accepted too.
+- **Repository-local credential helpers on push (P1), not changed; it needs a decision.** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
+  - Removing only the helper would be a partial fix. A push also honors other repository settings that run programs: `core.sshCommand`, remote transport programs, `ext::` URLs once allowed, and URL rewrites.
+  - Choosing which configuration a push may trust is a security design decision for both runtimes.
+- **Tests:**
+  - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
+  - Every publication vector still replays unchanged.
+  - Removing each guard failed its test.
+
 ### Folder-project chats (P2.2f)
 
 **What it is.** The development runtime's `task.start` now accepts a saved project folder that is not a Git repository. The method count is unchanged at 34, because `task.start` was already served for projectless chats. It follows `service.ts` `startTask` in order:

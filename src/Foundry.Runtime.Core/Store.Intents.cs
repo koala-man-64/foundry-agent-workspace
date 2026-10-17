@@ -43,6 +43,14 @@ public sealed partial class Store
     internal bool HasUnknownApproval(string taskId) =>
         UnknownIntents("SELECT id,kind,data FROM intents WHERE kind='tool.approval' AND state='unknown'", taskId).Count > 0;
 
+    /// <summary>The Git common directory bound to the task's project channel when the task was created (the latest
+    /// complete binding), or null for a task created without one.</summary>
+    internal string? BoundCommon(string taskId) =>
+        UnknownIntents("SELECT id,kind,data FROM intents WHERE kind='channel.identity' AND state='complete' ORDER BY rowid", taskId)
+            .Select(intent => intent.Data.GetValueOrDefault("identity") is Dictionary<string, object?> identity ? identity.GetValueOrDefault("common") as string : null)
+            .LastOrDefault(common => common is not null);
+
+    /// <summary>The intents of one task that the query selects, in its order; unreadable documents are skipped.</summary>
     private List<UnknownIntent> UnknownIntents(string sql, string taskId)
     {
         loop.AssertCurrent();

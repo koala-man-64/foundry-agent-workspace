@@ -287,7 +287,7 @@ public sealed class DevelopmentChat
             var intent = store.Intent("git.commit", new Dictionary<string, object?> { ["taskId"] = taskId, ["branch"] = branch, ["baseCommit"] = baseCommit, ["message"] = clean });
             try
             {
-                var result = await repositories.CommitAll(worktree, branch, clean);
+                var result = await repositories.CommitAll(worktree, (string)task["projectPath"]!, store.BoundCommon(taskId), branch, clean);
                 store.Transaction(() =>
                 {
                     store.FinishIntent(intent, "complete");
@@ -313,7 +313,7 @@ public sealed class DevelopmentChat
             var intent = store.Intent("git.push", new Dictionary<string, object?> { ["taskId"] = taskId, ["branch"] = branch, ["remote"] = remote, ["commit"] = commit });
             try
             {
-                var detail = await repositories.Push(worktree, (string)task["projectPath"]!, remote, branch);
+                var detail = await repositories.Push(worktree, (string)task["projectPath"]!, store.BoundCommon(taskId), remote, branch);
                 store.Transaction(() =>
                 {
                     store.FinishIntent(intent, "complete");
