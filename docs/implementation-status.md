@@ -1067,7 +1067,7 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
 - **Console host.** Windows starts a `conhost.exe` for the command inside its job; TypeScript's command shared its helper's console instead. Measured: 2 of 30 runs left the console host for a moment after the root exited, and 1 had exited between listing and opening. Without a filter, about 1 command in 15 reported a phantom descendant.
   - **What happens now.** After the root exits, anything left in the job is terminated. It is reported as a background descendant unless the only processes left are the system `conhost.exe`.
   - **Classification.** The new Platform `JobProcess.ProcessImages` leaves out a process that has exited: its id no longer opens, or its exit code is set. A live process whose image cannot be read counts as a descendant.
-- **Exact command text.** TypeScript's helper reads its stdin spec in the console code page, so non-ASCII command text reaches PowerShell altered (finding T1 below). Native runs the exact text. A vector pins both.
+- **Exact command text.** Until #39 (T1, below), TypeScript's helper read its stdin spec in the console code page, so non-ASCII command text reached PowerShell altered. Native runs the exact text. Since #39 both runtimes run it exactly, and the vectors show no difference.
 - **Runtime-loader names (decision 3).** `DOTNET_*`, `COMPLUS_*`, `COR_*` and `CORECLR_*`, plus `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `PYTHONPATH`, `PYTHONSTARTUP`, `PERL5OPT`, `RUBYOPT` and `__COMPAT_LAYER`, are refused before approval, ignoring case.
 - **Case-only duplicates.** A change whose name differs only in case from another change, or from `TEMP`, `TMP` or `USERPROFILE`, is refused before approval. TypeScript prepares it; its helper then fails before launch, and the outcome is recorded as unknown.
 - **Launch failures.** A launch that fails before the process resumes is "none". An example is a command line beyond `CreateProcess`'s 32,767 characters, about 12,200 command characters. TypeScript's helper cannot tell, and records unknown.
@@ -1177,14 +1177,14 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
 
 No renderer, IPC or user-path source changed, so no Electron E2E run was required.
 
-**Open dependencies.** #35 (H1) and #39 (the T1 fix) change `command-runner.ts` and `job-runner.ps1`, which the vectors bind. When they merge, the vectors are regenerated:
-- **#35** should change only the source hash.
-- **#39** also removes the named difference at "runs exactly the approved command#12" and "#14".
+**Dependencies, resolved.** #35 (H1) and #39 (the T1 fix) merged on 17 October 2026, and main was merged into this branch. The vectors bound to `command-runner.ts` and `job-runner.ps1` were regenerated:
+- **#35** changed only the source hash.
+- **#39** brought TypeScript to native's outcome at "runs exactly the approved command#12" and "#14", so those named differences were removed. `CommandRunnerTests` passes 37 of 37.
 
-**T1 (shipping TypeScript, open).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
+**T1 (shipping TypeScript, fixed by #39).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
 - **What breaks.** Every non-ASCII character in the command, its environment values, its working directory or the result and cancel paths reaches the helper altered. An approved `'café'` runs as `'caf├⌐'`, so the command that runs is not the one approved; a filter or path with non-ASCII text matches different files.
 - **Non-ASCII user folders.** Where the user's profile path is not ASCII, the working directory and temporary paths are altered too, so no command can launch. Each is then recorded as unknown and blocks its task.
-- **Status.** Under the dual-landing rule this needs a TypeScript fix. That fix is draft #39, which reads standard input through a strict UTF-8 reader; its security review is GO, and it is not merged. Native is not affected.
+- **Status.** Fixed under the dual-landing rule by #39, which reads standard input through a strict UTF-8 reader (security review GO; merged 17 October 2026). Native was not affected.
 - **Shared limit.** PowerShell encodes command output in the console code page and both runtimes decode it as UTF-8, so non-ASCII output becomes U+FFFD in both. That is a shared fidelity limit, not an approval defect.
 
 **Reviewer probe debris.** The first review's deep-tree probe wrote 14 small untracked files (`content 1` to `content 14`) into the worktree root, though it was told to work read-only in its own export. No tracked file changed. They were removed before P2.3b, and the evidence folder records them (`notes\reviewer-probe-debris.txt`).

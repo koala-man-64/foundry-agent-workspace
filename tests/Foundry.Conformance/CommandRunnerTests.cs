@@ -38,12 +38,6 @@ public sealed class CommandRunnerTests
         ["admits the root and the working directory#16"] = Refusal(RepositoryService.Missing),
         ["admits the root and the working directory#25"] = Refusal(RepositoryPaths.Forbidden),
         ["refuses a status larger than the Git output limit#1"] = Refusal("Git command failed: "),
-        // TypeScript's helper reads its spec in the console code page, so non-ASCII command text reaches PowerShell altered.
-        ["runs exactly the approved command#12"] = new Dictionary<string, object?> { ["text"] = "it's \"double\" caf\u00e9 \u6771\u4eac \ud83d\ude00 `n" },
-        ["runs exactly the approved command#14"] = new Dictionary<string, object?>
-        {
-            ["result"] = new Dictionary<string, object?> { ["stdout"] = "caf\ufffd ??\r\n", ["stderr"] = "", ["exitCode"] = 0, ["cancelled"] = false, ["timedOut"] = false, ["cleanupVerified"] = true },
-        },
         ["accepts environment names that native refuses#0"] = NotPermitted("DOTNET_ROOT"),
         ["accepts environment names that native refuses#1"] = NotPermitted("dotnet_gcHeapHardLimit"),
         ["accepts environment names that native refuses#2"] = NotPermitted("COMPlus_EnableDiagnostics"),
