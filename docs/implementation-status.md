@@ -815,13 +815,19 @@ Its remaining notes:
       - `branch.*.` `remote`, `pushRemote`, `merge`, `rebase`;
       - `pull.rebase`, `pull.ff`, `push.default`.
     - Include directives themselves are refused.
-    - The push and remote check also pass `-c protocol.allow=never` with `https`, `ssh` and `file` allowed.
+    - The push and remote check also pass `-c protocol.allow=never`, then deny `ext`, `git` and `http` by name, and allow `https`, `ssh` and `file`. The named denies exist because a protocol-specific key in the user's global configuration would otherwise beat the generic one.
+    - Remotes that name a network share are refused (decision 8): UNC, device and `file://host` forms, and drive letters that are mapped to a share or unavailable. The push refuses with "none"; a remote check stays unknown.
     - The user's global configuration is theirs and is not screened.
     - **Cost:** a repository-local credential helper, `sshCommand`, proxy or include must move to the global configuration before the app pushes. A remote check under such a configuration stays unknown.
+    - **Accepted limits (Rudy, 17 October 2026).**
+      - A remote that is a local folder path runs that destination repository's own `receive-pack` hooks and configuration. Git's local transport does not pass this process's settings on; the independent review confirmed it with a probe. Rudy chose to allow local remotes and document this, rather than refuse them or harden the destination.
+      - The configuration is screened just before the push, so a same-user process that rewrites it in between is not detected.
+    - **Independent review.** The Store fix was GO. The allowlist was NO-GO as first claimed, because of the local-remote hooks. Rudy's decision narrowed the claim, and the network-share refusal and the named protocol denies were added.
   - **Tests.**
     - `PushRefusesRepositoryConfigurationThatCouldRunPrograms` covers `credential.helper`, a URL-scoped helper, `core.sshCommand`, `remote.*.receivepack`, `protocol.*.allow`, `url.*.insteadOf` and an include. Each is refused with no program run and nothing pushed, and inert keys then push normally.
     - `PushTransportsAreLimitedToHttpsSshAndLocalPaths` checks the protocol restriction on the command line and that an `ext::` URL never runs.
-    - Trusting every key, or dropping the protocol restriction, failed the tests.
+    - `NetworkShareRemotesAreRecognized` classifies every share spelling Git accepts. `PushRefusesNetworkShareRemotes` refuses loopback UNC and `file://` share remotes, so even a broken guard sends nothing off the machine.
+    - Trusting every key, dropping the protocol restriction, or dropping the share check each failed its test.
   - The TypeScript runtime has the same exposure and is not changed.
 - **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown. Commit verification therefore also needs the project folder to be admissible. While it is unavailable, an unknown commit that TypeScript could resolve from the worktree alone stays unknown.
 - **Tests:**

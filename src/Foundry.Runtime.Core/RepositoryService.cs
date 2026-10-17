@@ -574,7 +574,12 @@ internal sealed partial class RepositoryService
         if (url.ExitCode != 0 || JsJson.Trim(url.Stdout).Length == 0) throw new RepositoryException($"Remote {remote} is not configured in the project repository.");
         var current = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
         if (current != branch) throw new RepositoryException($"The worktree is on {current}, not the task branch {branch}.");
-        try { await RequireTrustedPushConfiguration(repository); }
+        try
+        {
+            await RequireTrustedPushConfiguration(repository);
+            var pushUrls = (await Run(repository, ["remote", "get-url", "--push", "--all", "--", remote])).Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (pushUrls.Any(IsNetworkRemote)) throw new RepositoryException(NetworkRemote(remote));
+        }
         catch (Exception error) when (error is not RepositoryException && error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
         try
         {
@@ -597,6 +602,7 @@ internal sealed partial class RepositoryService
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
             if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
+            if (fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Any(IsNetworkRemote)) return null;
             await RequireTrustedPushConfiguration(project);
             var result = await Run(project, [.. TrustedProtocols, "ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
@@ -663,8 +669,47 @@ internal sealed partial class RepositoryService
         }
     }
 
-    /// <summary>Transports a push or remote check may use: https, ssh and local paths. Never plain git, http, or ext::.</summary>
-    private static readonly string[] TrustedProtocols = ["-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "protocol.file.allow=always"];
+    /// <summary>Transports a push or remote check may use: https, ssh and local paths. Plain git, http and ext:: are denied
+    /// by name too, because a protocol-specific key in the user's global configuration would beat the generic one.</summary>
+    private static readonly string[] TrustedProtocols =
+    [
+        "-c", "protocol.allow=never", "-c", "protocol.ext.allow=never", "-c", "protocol.git.allow=never", "-c", "protocol.http.allow=never",
+        "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "protocol.file.allow=always",
+    ];
+
+    internal static string NetworkRemote(string remote) => $"Remote {remote} points at a network share or an unavailable drive, which push does not use.";
+
+    /// <summary>
+    /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or file://
+    /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
+    /// authenticate to a server. https, ssh and scp-like URLs are transports, limited by <see cref="TrustedProtocols"/>.
+    /// </summary>
+    internal static bool IsNetworkRemote(string url)
+    {
+        var value = JsJson.Trim(url);
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme > 0)
+        {
+            if (!value[..scheme].Equals("file", StringComparison.OrdinalIgnoreCase)) return false;
+            var rest = value[(scheme + 3)..];
+            var slash = rest.IndexOf('/', StringComparison.Ordinal);
+            var host = slash < 0 ? rest : rest[..slash];
+            if (host.Length > 0 && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
+            value = slash < 0 ? "" : rest[slash..];
+            if (value.Length > 2 && value[0] == '/' && char.IsAsciiLetter(value[1]) && value[2] == ':') value = value[1..];
+        }
+        else
+        {
+            // scp-like [user@]host:path: a colon before any slash, and not a drive letter.
+            var colon = value.IndexOf(':', StringComparison.Ordinal);
+            var separator = value.IndexOfAny(['/', '\\']);
+            if (colon > 1 && (separator < 0 || colon < separator)) return false;
+        }
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(value)) return true;
+        if (value.Length >= 2 && char.IsAsciiLetter(value[0]) && value[1] == ':')
+            return new DriveInfo(value[..1]).DriveType is DriveType.Network or DriveType.NoRootDirectory;
+        return false;
+    }
 
     private static readonly HashSet<string> TrustedCoreKeys = new(StringComparer.Ordinal)
     {
@@ -679,6 +724,10 @@ internal sealed partial class RepositoryService
     /// configuration sets (its local and worktree scopes, with everything they include) must be one that neither runs a
     /// program nor changes the connection. Anything else, including include directives, refuses with "none". The user's
     /// global configuration is theirs and is not screened. A blocklist could never be complete; unknown keys refuse.
+    /// Limits, accepted by Rudy on 17 October 2026: a remote that is a local folder path runs that destination
+    /// repository's own receive-pack hooks and configuration, as Git's local transport does not pass this process's
+    /// settings on; and the configuration is screened just before the push, so a same-user process that rewrites it in
+    /// between is not detected. Network shares are refused separately (<see cref="IsNetworkRemote"/>).
     /// </summary>
     private async Task RequireTrustedPushConfiguration(RepositoryAdmission admission)
     {

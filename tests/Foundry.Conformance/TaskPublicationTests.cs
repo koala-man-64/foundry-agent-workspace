@@ -13,6 +13,7 @@ public sealed partial class TaskPublicationTests
 {
     private static readonly JsonElement Corpus = RepositoryFixture.ReadCorpus("tests/p2/task-publication-vectors.json");
     private static readonly string[] PlantedHooks = ["post-commit", "post-checkout", "reference-transaction"];
+    private static readonly string[] LoopbackShares = ["\\\\127.0.0.1\\foundry-missing-share\\repo.git", "file://127.0.0.1/foundry-missing-share/repo.git"];
 
     public static IEnumerable<object[]> Cases()
     {
@@ -504,10 +505,51 @@ public sealed partial class TaskPublicationTests
                 service.Git.Launching = spec => launches.Add(spec.CommandLine);
                 Assert.Null(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), null, "origin", "main", head));
                 var check = Assert.Single(launches, line => line.Contains(" ls-remote --heads origin ", StringComparison.Ordinal));
-                Assert.Contains(" -c protocol.allow=never -c protocol.https.allow=always -c protocol.ssh.allow=always -c protocol.file.allow=always ls-remote ", check, StringComparison.Ordinal);
+                Assert.Contains(" -c protocol.allow=never -c protocol.ext.allow=never -c protocol.git.allow=never -c protocol.http.allow=never -c protocol.https.allow=always -c protocol.ssh.allow=always -c protocol.file.allow=always ls-remote ", check, StringComparison.Ordinal);
                 return 0;
             });
             Assert.False(File.Exists(marker));
+        }
+    }
+
+    /// <summary>Decision 8 for remotes: network shares, in every spelling Git accepts, are told apart from transports and
+    /// local folders.</summary>
+    [Theory]
+    [InlineData("https://example.invalid/owner/repo.git", false), InlineData("ssh://git@example.invalid/owner/repo.git", false)]
+    [InlineData("git@example.invalid:owner/repo.git", false), InlineData("example.invalid:repo.git", false)]
+    [InlineData("C:/Users/someone/repo.git", false), InlineData("C:\\Users\\someone\\repo.git", false), InlineData("../dest.git", false)]
+    [InlineData("file:///C:/Users/someone/repo.git", false), InlineData("file://localhost/C:/repo.git", false)]
+    [InlineData("\\\\host\\share\\repo.git", true), InlineData("//host/share/repo.git", true), InlineData("\\\\?\\UNC\\host\\share\\repo.git", true)]
+    [InlineData("file://host/share/repo.git", true), InlineData("file:////host/share/repo.git", true), InlineData("\\\\.\\pipe\\repo", true)]
+    public void NetworkShareRemotesAreRecognized(string url, bool network) => Assert.Equal(network, RepositoryService.IsNetworkRemote(url));
+
+    /// <summary>A push or remote check never reaches a remote that names a network share. The share here is loopback, so
+    /// even a failing guard could not send credentials off the machine.</summary>
+    [Fact]
+    public async Task PushRefusesNetworkShareRemotes()
+    {
+        var (fixture, data) = await Project("foundry-p2-push-share-");
+        using (fixture)
+        {
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var branch = (string)task["branch"]!;
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                await chat.Dispatch("task.commit", new() { ["taskId"] = taskId, ["message"] = "Change" });
+                foreach (var url in LoopbackShares)
+                {
+                    await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
+                    Assert.Equal(RepositoryService.NetworkRemote("origin"),
+                        (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", new() { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" }))).Message);
+                    Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
+                }
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
+                await chat.Shutdown(); return 0;
+            });
         }
     }
 
