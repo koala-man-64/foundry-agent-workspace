@@ -805,6 +805,11 @@ Its remaining notes:
 - **Repository-local credential helpers on push (P1), not changed; it needs a decision.** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
   - Removing only the helper would be a partial fix. A push also honors other repository settings that run programs: `core.sshCommand`, remote transport programs, `ext::` URLs once allowed, and URL rewrites.
   - Choosing which configuration a push may trust is a security design decision for both runtimes.
+  - **Recommended option (from the independent review).** Before a push or `ls-remote`, list the repository configuration with its origins and includes (`git config --local --list --show-origin --includes -z`). Refuse with "none" unless every key is on a small allowlist: core format and filesystem keys, `extensions.*`, `remote.*.url|fetch|pushurl|tagopt|prune`, `branch.*.remote|merge|rebase`, `user.name|email`. Also pass `-c protocol.allow=never` with explicit `https` and `ssh` allowances, and `file` if local remotes are wanted.
+    - **Covers:** every repository-local route, because unknown keys are refused.
+    - **Costs:** legitimate per-repository helpers and `sshCommand`, which would need a global setting or an explicit opt-in.
+    - **Leaves:** the user's own global configuration, as theirs.
+- **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown.
 - **Tests:**
   - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
   - Every publication vector still replays unchanged.

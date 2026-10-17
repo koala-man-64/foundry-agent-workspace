@@ -583,12 +583,12 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>verifyPushOutcome: whether the remote branch contains the attempted commit; null when that cannot be established.</summary>
-    internal async Task<bool?> VerifyPushOutcome(string projectPath, string worktreePath, string remote, string branch, string? expectedCommit)
+    internal async Task<bool?> VerifyPushOutcome(string projectPath, string worktreePath, string? boundCommon, string remote, string branch, string? expectedCommit)
     {
         try
         {
             using var project = await RequireRepository(projectPath);
-            var commit = expectedCommit ?? await HeadCommit(worktreePath);
+            var commit = expectedCommit ?? await TaskWorktreeHead(worktreePath, project, boundCommon);
             // Not in TypeScript: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
             // verified here; it stays unknown rather than being judged against another server.
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
@@ -606,13 +606,25 @@ internal sealed partial class RepositoryService
         catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { return null; }
     }
 
-    /// <summary>verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message.</summary>
-    internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string? baseCommit, string? expectedMessage)
+    /// <summary>The task worktree's HEAD, read only once the worktree still belongs to the task's project repository.</summary>
+    private async Task<string> TaskWorktreeHead(string worktreePath, RepositoryAdmission project, string? boundCommon)
+    {
+        using var worktree = await RequireRepository(worktreePath);
+        RequireTaskWorktree(worktree, project, boundCommon);
+        return JsJson.Trim((await Run(worktree, ["rev-parse", "HEAD"])).Stdout);
+    }
+
+    /// <summary>
+    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Not in
+    /// TypeScript: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
+    /// </summary>
+    internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string projectPath, string? boundCommon, string? baseCommit, string? expectedMessage)
     {
         if (string.IsNullOrEmpty(baseCommit)) return null;
         try
         {
             using var repository = await RequireRepository(worktreePath);
+            using (var project = await RequireRepository(projectPath)) RequireTaskWorktree(repository, project, boundCommon);
             var head = JsJson.Trim((await Run(repository, ["rev-parse", "HEAD"])).Stdout);
             if (head == baseCommit) return false;
             var parent = await Run(repository, ["rev-parse", "HEAD^"], allowNonZero: true);

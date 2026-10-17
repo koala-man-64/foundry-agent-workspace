@@ -201,7 +201,7 @@ public sealed partial class TaskPublicationTests
                 File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
                 await chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Change" });
                 await chat.Dispatch("task.push", new() { ["taskId"] = task["id"], ["remote"] = "origin", ["confirm"] = "push" });
-                Assert.True(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, "origin", (string)task["branch"]!, null));
+                Assert.True(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", (string)task["branch"]!, null));
                 var helper = launches.Where(line => !line.Contains(" -c credential.helper= ", StringComparison.Ordinal)).ToList();
                 Assert.Equal(2, helper.Count);
                 Assert.Contains(" push --no-verify --porcelain -- origin ", helper[0], StringComparison.Ordinal);
@@ -381,6 +381,11 @@ public sealed partial class TaskPublicationTests
                 Assert.Equal(RepositoryService.ForeignWorktree, (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
                 Assert.Equal(head, await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD"));
                 Assert.All(store.Rows("SELECT state FROM intents WHERE kind IN ('git.commit','git.push')"), row => Assert.Equal("complete", row["state"]));
+                // Reconciliation proves nothing from the replacement either, even when its HEAD looks like the attempted commit.
+                await fixture.Git("-C", worktree, "commit", "-qam", "attempted");
+                var replacementBase = await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD^");
+                Assert.Null(await chat.Repositories.VerifyCommitOutcome(worktree, fixture.Local("repo"), store.BoundCommon(taskId), replacementBase, "attempted"));
+                Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), worktree, store.BoundCommon(taskId), "origin", branch, null));
                 await chat.Shutdown(); return 0;
             });
             Assert.Empty(await fixture.GitText("--git-dir", fixture.Local("elsewhere.git"), "for-each-ref"));
@@ -410,8 +415,8 @@ public sealed partial class TaskPublicationTests
             await loop.Invoke(async () =>
             {
                 var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
-                Assert.True(await service.VerifyPushOutcome(fixture.Local("sha256"), fixture.Local("sha256"), "origin", "main", sha256Head));
-                Assert.True(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), "origin", "main", head));
+                Assert.True(await service.VerifyPushOutcome(fixture.Local("sha256"), fixture.Local("sha256"), null, "origin", "main", sha256Head));
+                Assert.True(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), null, "origin", "main", head));
                 return 0;
             });
             await fixture.Git("init", "-q", "--bare", "push-only.git");
@@ -419,7 +424,7 @@ public sealed partial class TaskPublicationTests
             await loop.Invoke(async () =>
             {
                 var service = new RepositoryService(loop, fixture.Local("wt"), fixture.Environment);
-                Assert.Null(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), "origin", "main", head));
+                Assert.Null(await service.VerifyPushOutcome(fixture.Local("repo"), fixture.Local("repo"), null, "origin", "main", head));
                 return 0;
             });
         }

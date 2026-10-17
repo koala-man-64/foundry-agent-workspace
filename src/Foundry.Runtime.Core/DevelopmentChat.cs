@@ -345,11 +345,13 @@ public sealed class DevelopmentChat
             foreach (var item in unknowns)
             {
                 bool? succeeded;
+                var bound = store.BoundCommon(taskId);
                 if (item.Kind == "git.push")
-                    succeeded = await repositories.VerifyPushOutcome((string)task["projectPath"]!, (string)task["worktreePath"]!,
+                    succeeded = await repositories.VerifyPushOutcome((string)task["projectPath"]!, (string)task["worktreePath"]!, bound,
                         item.Data.GetValueOrDefault("remote") as string ?? "", item.Data.GetValueOrDefault("branch") as string ?? "", item.Data.GetValueOrDefault("commit") as string);
                 else
-                    succeeded = await repositories.VerifyCommitOutcome((string)task["worktreePath"]!, item.Data.GetValueOrDefault("baseCommit") as string, item.Data.GetValueOrDefault("message") as string);
+                    succeeded = await repositories.VerifyCommitOutcome((string)task["worktreePath"]!, (string)task["projectPath"]!, bound,
+                        item.Data.GetValueOrDefault("baseCommit") as string, item.Data.GetValueOrDefault("message") as string);
                 if (succeeded is not { } known) { unresolved++; continue; }
                 store.ClearPublicationIntent(item.Id, known ? "complete" : "failed");
                 resolved++;
