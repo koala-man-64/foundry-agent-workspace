@@ -184,6 +184,8 @@ Dual-landed fixes:
     - **L1-a (low), fixed in the next commit.** The fallback copied the identity fields and fingerprint unredacted, so a learned secret in a provider's `toolCallId` could leave the runtime. Every text field is now redacted, in both runtimes.
     - **I-1, closed by the same change.** A stored approval without a summary made the fallback throw after the save; it now reports the approval without one.
     - **I-2.** A caller cannot tell a preview from the whole approval. The protocol comment now says so.
+    - **Re-review of `b66735e`: GO.** L1-a, I-1 and I-2 are closed. Not blocking: any failure of the read after the save takes the fallback, which is now fully redacted.
+  - **Validation of `b66735e`** (run2, from a `git archive` export): native 7,164 passed, 0 failed, 2 expected skips; `pnpm check` 569 passed; `pnpm test:e2e` 21 passed; `pnpm package:dir` and `pnpm smoke:package` passed; `git diff --check` clean.
   - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
 
 | Seat | Model / effort | Selection source | Routing reason |
