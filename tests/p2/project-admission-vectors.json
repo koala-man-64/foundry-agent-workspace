@@ -1,0 +1,1264 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/service.ts",
+        "sha256": "6eaebec85b27f345559652f3adc64f4d1fa7347aacd89bb33a04e0000216bcef"
+      },
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "d7de29dcecce53e9943e3117ae673eac112f3162e8f1c0dd2ad37d2c268ad650"
+      },
+      {
+        "path": "packages/runtime/src/store.ts",
+        "sha256": "8dd150b5251d1f40603744d29ee6354033fe7b7aaa0abc05baba7666554ca4a5"
+      },
+      {
+        "path": "packages/runtime/src/network-path.ts",
+        "sha256": "6e6d1f17374bc04de9e7fc0d3abb3a2044bb684fbfaa5405d804901ea1e477ee"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "a repository root is a Git project, added once under every spelling",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\repo",
+        "{scratch}\\repo",
+        "{scratch}\\REPO",
+        "{scratch}\\repo\\",
+        "{scratch/}/repo",
+        "{scratch}\\repo\\src\\.."
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "concurrent additions of one folder save one project and notify for each",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\repo",
+        "{scratch}\\REPO"
+      ],
+      "concurrent": true,
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          },
+          {
+            "offset": 2,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a repository subfolder is a folder project",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\repo\\src"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo\\src",
+              "name": "src",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo\\src",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo\\src",
+              "name": "src",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plain folder is a folder project",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/file.txt",
+          "text": "not a folder\n"
+        }
+      ],
+      "paths": [
+        "{scratch}\\plain",
+        "{scratch}\\plain\\sub"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\plain",
+              "name": "plain",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-2}",
+              "path": "{scratch}\\plain\\sub",
+              "name": "sub",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\plain",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\plain",
+              "name": "plain",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "path_key": "{scratch-lower}\\plain\\sub",
+            "data": {
+              "id": "{project-2}",
+              "path": "{scratch}\\plain\\sub",
+              "name": "sub",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          },
+          {
+            "offset": 2,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-2}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a linked worktree is a Git project",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\wt",
+        "{scratch}\\repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\wt",
+              "name": "wt",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-2}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\wt",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\wt",
+              "name": "wt",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-2}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          },
+          {
+            "offset": 2,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-2}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a nested repository binds its own root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "dir": "repo/inner"
+        },
+        {
+          "git": [
+            "-C",
+            "repo/inner",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "file": "repo/inner/x.txt",
+          "text": "x\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo/inner",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo/inner",
+            "commit",
+            "-qm",
+            "inner"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\repo\\inner"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo\\inner",
+              "name": "inner",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo\\inner",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo\\inner",
+              "name": "inner",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a repository that configures core.worktree is a folder project",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "core.worktree",
+            ".."
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "folder",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a root-relative path resolves on the current drive",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch-nodrive}\\repo"
+      ],
+      "sameDrive": true,
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "relative and drive-relative paths are refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "repo",
+        "C:repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Select an absolute folder path."
+          },
+          {
+            "error": "Select an absolute folder path."
+          }
+        ],
+        "projects": [],
+        "events": []
+      }
+    },
+    {
+      "name": "network and device paths are refused before any probe",
+      "tree": [],
+      "paths": [
+        "\\\\server\\share\\repo",
+        "//server/share/repo",
+        "\\\\?\\C:\\repo",
+        "\\\\.\\C:\\repo",
+        "\\??\\C:\\repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Projects on network shares are not supported."
+          },
+          {
+            "error": "Projects on network shares are not supported."
+          },
+          {
+            "error": "Projects on network shares are not supported."
+          },
+          {
+            "error": "Projects on network shares are not supported."
+          },
+          {
+            "error": "Projects on network shares are not supported."
+          }
+        ],
+        "projects": [],
+        "events": []
+      }
+    },
+    {
+      "name": "a path containing NUL",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "paths": [
+        "{scratch}\\re\u0000po",
+        "{scratch}\\repo\u0000",
+        "{scratch}\\repo"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "systemError": "ERR_INVALID_ARG_VALUE"
+          },
+          {
+            "systemError": "ERR_INVALID_ARG_VALUE"
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "a file is not a folder",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/file.txt",
+          "text": "not a folder\n"
+        }
+      ],
+      "paths": [
+        "{scratch}\\plain\\file.txt"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "error": "Select a folder."
+          }
+        ],
+        "projects": [],
+        "events": []
+      }
+    },
+    {
+      "name": "a missing folder",
+      "tree": [
+        {
+          "dir": "present"
+        }
+      ],
+      "paths": [
+        "{scratch}\\absent",
+        "{scratch}\\absent\\child"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "systemError": "ENOENT"
+          },
+          {
+            "systemError": "ENOENT"
+          }
+        ],
+        "projects": [],
+        "events": []
+      }
+    },
+    {
+      "name": "a folder whose Git pointer is broken",
+      "tree": [
+        {
+          "dir": "broken"
+        },
+        {
+          "file": "broken/.git",
+          "text": "gitdir: ../missing"
+        }
+      ],
+      "paths": [
+        "{scratch}\\broken"
+      ],
+      "expected": {
+        "calls": [
+          {
+            "systemError": "ENOENT"
+          }
+        ],
+        "projects": [],
+        "events": []
+      }
+    },
+    {
+      "name": "a junction to a repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "paths": [
+        "{scratch}\\alias",
+        "{scratch}\\repo"
+      ],
+      "native": {
+        "0": {
+          "outcome": {
+            "error": "Projects through reparse directories are not supported."
+          },
+          "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+        }
+      },
+      "expected": {
+        "calls": [
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          },
+          {
+            "result": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "projects": [
+          {
+            "path_key": "{scratch-lower}\\repo",
+            "data": {
+              "id": "{project-1}",
+              "path": "{scratch}\\repo",
+              "name": "repo",
+              "hidden": false,
+              "kind": "git",
+              "createdAt": "{stamp}",
+              "updatedAt": "{stamp}"
+            }
+          }
+        ],
+        "events": [
+          {
+            "offset": 1,
+            "type": "projects.changed",
+            "task_id": null,
+            "data": {
+              "projectId": "{project-1}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

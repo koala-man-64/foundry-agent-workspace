@@ -125,7 +125,7 @@ Dual-landed fixes:
   - **The fix.** `resolveLocalPath` accepts an approved spelling that differs from the canonical path only when that spelling is link-free and is the same folder. Compared component by component with the canonical path, it must have the same drive root and the same depth, and every component must be a non-link with the same file identity (volume and file index from `lstat`). A candidate that reached the approved folder through an alias is still accepted, as before. A replaced approved folder (now a link) or a different folder is still refused.
   - **Fixtures fixed too.** Hosted runners exposed three more fixture problems under an 8.3 `TEMP`. `folder-admission` saved raw scratch paths as projects, and the `p1/summary` and `workspace-pages` corpus fixtures canonicalized with JavaScript `realpathSync`, which keeps 8.3 spellings. They now use native realpath, as production `project.add` does. The older `canonicalPath(x) === x` checks for saved projects are unchanged.
   - **Still refused:** subst drives, junctions and different folders. Node reports a volume mount point as a directory, so a spelling through the same mount folder is accepted; a different mount folder, or the mounted volume's own drive letter, is refused.
-  - **Native side.** C# has no approved-path comparison yet. When P2.2 ports one, it must avoid this defect and must not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one. It should compare 128-bit volume and file identities per component.
+  - **Native side.** When this was written, C# had no approved-path comparison. The requirement: avoid this defect, and do not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one; compare 128-bit volume and file identities per component. P2.2 meets it with `RepositoryPaths.SameFolder` (see P2.2c), which compares the FileIdInfo identity of every component of both chains and refuses any reparse point.
 - **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
   - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
   - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
@@ -511,6 +511,402 @@ Both failed logs are retained. The final-component guard changed only native sou
 - the read-only sharing of `RepositoryFolderLease`, which blocks renames into the project folder while it is held.
 
 Tests do not exercise mapped-drive or subst behavior, because no network share or session drive letter is touched. P2 remains incomplete, and every hold listed above is unchanged.
+
+### P2.2 Git/files handlers and project/task admission — authority and slices
+
+Recorded 16 October 2026. Rudy wrote: "Start P2.2 in a fresh session and I authorize wiring the completed Git/files handlers into the development-only DevelopmentChat surface (FOUNDRY_RUNTIME_P2_CHAT gate only, no shipping selector); keep native alias refusal for now." He then approved this slice order:
+- **a:** an unwired foundation: Git execution, read-only inspection, the per-repository queue and intents;
+- **b:** `files.list`, `files.read` and `task.diff`;
+- **c:** `project.add`;
+- **d:** `task.create`, with worktree creation;
+- **e:** `task.commit`, `task.push`, `task.reconcilePublication` and `task.retire`;
+- **f:** project-backed `task.start` for folders that are not Git repositories;
+- **g:** an unwired one-shot primitive for editing existing files.
+
+**Left out of P2.2:**
+- `workspace.upgrade`.
+- Git-project `task.start`, and `task.send` on Git tasks. Every Git task's first turn advertises project-channel tools, and coding adds tools that need approvals and the native tool loop.
+- Coordinated mode.
+
+Everything else stays held: shipping or runtime selectors, Electron-side .NET enablement, push, PR, CI, main integration, schema v6, adoption, real data, live providers and cutover.
+
+**Publication.** Rudy approved pushing the branch and opening a draft pull request for exactly `6f5530a..e7c8460`, with no merge. That draft is #36. To fix its failed checks, `main` at `11d7208` (#33 and #34) was merged into the branch.
+- #33 changed `repository.ts`. Seven P2.2 vector files bind that file's SHA-256, and both the Node oracles and the native `AssertOracleSources` failed on that hash alone.
+- The seven files were regenerated from the shipping runtime. Each one changed only that hash: #33 moved no recorded P2.2 outcome.
+- **Slice c's root-relative case depended on the machine.** The next run showed it: a root-relative path names the scratch folder only when the working directory and the temporary folder share a drive, and the CI runner keeps its workspace on D: and TEMP on C:. Both runtimes refused there, so neither matched the recorded result.
+  - The case is now marked `sameDrive`. Where the drives match, it is fully pinned and replayed as before.
+  - Where they differ, the Node oracle keeps the committed entry and the C# case is skipped with that reason. On CI the root-relative case is therefore not exercised.
+
+### Local Git execution and inspection foundation (P2.2a)
+
+**What it is.** These internal classes are unwired. Nothing in `DevelopmentChat`, `Program` or the protocol calls them, so the 25-method surface is unchanged.
+- `GitRunner` is the counterpart of `RepositoryService.git` and `gitEnvironment`.
+- `RepositoryService` is the counterpart of the read-only half of `repository.ts`: `requireRoot`, `requireRepository`, `isGitWorkingTree`, `listFiles`, `readFile`, `uncommittedPaths`, `diff`, and the three filter refusals.
+- `RepositoryAdmission`, the per-common-repository queue, and the Store intent primitives.
+
+**Git execution.**
+- **Launching.** Git runs only through `JobProcess`. The executable is the first `git.exe` in an absolute `PATH` entry that is a regular file outside the repository first asked about. The choice, or the failure, is remembered for the life of the service, as in TypeScript.
+- **Environment and configuration.** Every variable whose JavaScript upper-case name starts with `GIT_` is dropped; this includes the dotless `ı`, which .NET's invariant casing would keep. `GIT_CONFIG_NOSYSTEM` and `GIT_TERMINAL_PROMPT` are pinned. Hooks point at the empty hooks directory, which every launch now requires to be empty (review H1 under P2.2e), fsmonitor is off, and credential helpers are off unless allowed.
+- **Limits and errors.** The timeout is 15 seconds and the output cap 256 KiB. Error mapping, including which messages gain the `Git command failed:` prefix, follows `repository.ts`.
+
+**Revalidation, pins and queue (residuals 1–3 of P2.1).**
+- **Revalidation.** The admitted identity is checked again before launch, at the final boundary (`BeforeMutation`), and after exit. A folder with no repository must still have none.
+- **Pins.** A `RepositoryAdmission` holds the folder lease and the Git lease across every await of an operation. `RepositoryFolderLease` now shares writes but never deletes: renames into the folder work, and the folder chain itself cannot be renamed or deleted while held.
+- **Queue.** Callers key the queue on the identity's `common.toLowerCase()`. Operations with one key run in arrival order, a failure never blocks its successor, and the key is released when its last operation settles. As TypeScript's `.then` defers, an operation starts only after its key is registered.
+- **Outcomes.** Git failures (`GitCommandException`) and plain refusals never claim an outcome. Only a caller that knows where its final mutation boundary was classifies one (`RepositoryException`, TypeScript's `RepositoryError`), as `createTaskWorktree` does with the flag its final-boundary callback sets.
+
+**File access at the execution boundary.**
+- The parent chain is pinned and verified free of reparse points (`DirectoryLease`).
+- The final entry is opened by its exact namespaced name without following a reparse point (the new Platform `ExistingEntry`).
+- Containment and sensitive-name checks run on the handle's real path. Reads go through that handle, bounded at 64 KiB plus one byte, where TypeScript stats the file and then reads it unbounded.
+- Name rules reproduce JavaScript regular expressions: ASCII-only case folding (a Kelvin sign never matches `k`), `.` excluding U+2028/U+2029, and `$` meaning end of input.
+- Listings sort with the `en-US` collation, stably.
+
+**Differences from TypeScript, all of which fail closed or are invisible on success:**
+- Local aliases are refused (the approved difference).
+- Every reparse point is refused as "Symbolic links cannot be accessed.", including cloud placeholders, which Node follows.
+- Node's raw filesystem errors (`ENOENT`, `ENOTDIR`) become fixed native messages.
+- `PATH` entries that are network or device paths, or that are not on a fixed local drive, are skipped before any probe. As in TypeScript, a link inside a local entry is still followed.
+- A timeout or an output overflow terminates the whole job tree; Node signals only the root process.
+- Standard input is closed at launch.
+- Revalidation also runs after a non-zero exit.
+- A NUL argument gets a fixed message.
+- A root or folder segment ending in a dot or space is refused by name. `GetFullPath` would otherwise strip the ending and admit the sibling, while Node opens the literal name; a real folder with such a name is refused too, as P2.1 refuses those names in Git references.
+- Filters at a revision accept only a full object id; every TypeScript caller passes the id `rev-parse` returned.
+- Truncated output is the first 256 KiB of bytes, where Node's cut point can depend on pipe chunking for multi-byte text.
+
+**Evidence.**
+- `tests/p2/repository-inspection.test.ts` builds **87** disposable trees with an isolated `HOME`, no system Git configuration and the C locale. It pins the shipping outcomes in `repository-inspection-vectors.json`, bound to the SHA-256 of `repository.ts`, `git-environment.ts` and `network-path.ts`. The cases cover listings, reads, status, diffs, classification, `core.worktree`, bare and unborn repositories, linked worktrees, and filters at the working tree and at a revision. The file also pins `gitEnvironment()`'s handling of edge variable names. Regenerating the vectors requires `P2_WRITE_REPOSITORY_INSPECTION=1`.
+- `RepositoryInspectionTests` rebuilds every tree and must match each outcome or its named difference. Mutating two expected outcomes made both cases fail.
+- `GitRunnerTests` covers:
+  - injected `GIT_*` variables that try to redirect the repository;
+  - executable selection;
+  - a timeout that must kill a grandchild holding the pipes;
+  - overflow and non-zero exits, with and without permission;
+  - identity changes before launch, at the final boundary and after exit;
+  - queue ordering and failure isolation;
+  - intent bytes and states;
+  - quoting round-tripped through `CommandLineToArgvW`;
+  - loop affinity;
+  - `ExistingEntry`.
+- `RepositoryFolderTests` now proves renames into a held folder.
+
+**Independent review.** A read-only filesystem/security reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner, chosen for the security and data-integrity verdict) reviewed the sealed commit `c44b469`. Its verdict was **GO with conditions**. It verified the seal, built an archive export and probed each finding.
+- **M1 (medium).** The runner reported every failure after launch as "no mutation started". A probe ran an alias that updated a ref and then outlived its timeout; the ref landed. Fixed: the runner and plain refusals carry no outcome, and a test proves that a mutating command that times out is not reported as "none".
+- **M2 (medium).** `GetFullPath` stripped a trailing dot or space from a root segment, so native listed `repo` for `repo.`, `repo ` and `repo...`, which Node reports as missing. Fixed by the name screen above, with four new vectors.
+- **L1 (low).** Classifying a file root threw where TypeScript returns false. Fixed, with two vectors; the catch now covers every failure TypeScript's catch-all would.
+- **L2 (low).** An operation with no predecessor started before its queue key was registered. Fixed, with a test.
+- **L3 (low).** The documentation overstated how far the `PATH` lookup avoids the network. Fixed by the drive-type check and the corrected wording above.
+- **L4 (low).** The runner took a working directory separate from the admitted folder. It now always runs in the admitted folder.
+- **Informational.** Applied: unreadable untracked files are skipped as TypeScript skips them; Git's reported top-level path is opened only on a fixed local drive; revisions must be full object ids. Not changed: a running Git process is not cancelled by shutdown and ends within its timeout, as TypeScript's drain waits; `ExistingEntry.Links` stays unused, because hard-linked reads match TypeScript.
+
+### Read-only Git/files handlers (P2.2b)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `files.list`, `files.read` and `task.diff`. That brings it to **28** of the 89 methods. No other surface, selector or schema changed.
+- **Task roots.** They follow `service.ts`:
+  - a Git task (including a legacy task with no workspace kind) uses its worktree;
+  - a folder task uses its saved folder only while that folder still resolves to the same physical folder under the exact spelling it was saved with;
+  - any other task has no folder access.
+- **Redaction.** `files.read` content and the diff's patch and summary are redacted. Refusals reach the caller as TypeScript's entry reports them: the message, redacted.
+- **Worktree base.** It is the data directory's `wt` folder, as `entry.ts` places it.
+
+**Approved-path comparison.** For a folder task, the saved spelling is both the candidate and the approved path, and the folder lease refuses every reparse point. Native therefore keeps only the check that the real path still has the saved spelling, case-insensitively. Before #33, TypeScript refused a short (8.3) spelling one check earlier, with the shorter "different location" message. Since #33, its `resolveLocalPath` admits an 8.3 spelling of the same folder, so both runtimes refuse it at this same check with the same message. The native comparisons that slice c adds compare file identity, never lowercased keys.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages.
+
+**Evidence.**
+- `tests/p2/repository-handlers.test.ts` drives the shipping `RuntimeService` over seeded folder, Git, legacy, projectless and missing tasks, including:
+  - network and moved roots;
+  - spelling variants;
+  - junctions;
+  - redaction;
+  - refusals.
+
+  It pins the outcomes of 41 calls across 14 cases in `repository-handler-vectors.json`, bound to the SHA-256 of `service.ts`, `repository.ts`, `redaction.ts` and `store.ts`. It also asserts that no persisted row changes. Regenerating the vectors requires `P2_WRITE_REPOSITORY_HANDLERS=1`.
+- `RepositoryHandlerTests` seeds the same tasks into a fresh native Store and dispatches through `DevelopmentChat`. It must match each outcome or its named difference, and leave every row unchanged. Mutating a redacted result and an error made both cases fail.
+- `DevelopmentChatProcessTests` drives the three methods through the stdio entry point: listing, redacted content, refusals, a redacted diff, and no notifications.
+- The two oracles share `tests/p2/repository-fixture.ts`. Slice a's inspection vectors are unchanged.
+
+**Independent review.** The same reviewer re-reviewed the P2.2a fixes and slice b at `ddfa750`. It confirmed M1, M2 and L1–L4 fixed, then returned **NO-GO** on one new confirmed medium. Its stdio probe against the built runtime found the defect.
+- **N1 (medium).** A NUL in a renderer-supplied `files.read` or `files.list` path made `GetFullPath` throw an unmapped `ArgumentException`, which stopped the development runtime. TypeScript answers with a redacted error and keeps serving.
+- **N1b (low).** A NUL in the final segment read the truncated name, so `notes.txt\0zzz` returned `notes.txt`. Deny-listed names stayed refused, because the real-path check caught them.
+
+Fixed in the follow-up commit:
+- Relative paths with NUL are refused as forbidden segments.
+- The folder lease and `SameFolder` refuse NUL before any path call, and `MetadataFile.Namespaced` refuses it before any open.
+- Every argument, filesystem or access failure in a Git/files handler now becomes the redacted refusal.
+
+The reviewer's informational notes were also applied:
+- A folder task's lease stays held across the list or read it checked (N2).
+- The folder lease screens the real path for dot and space endings as well as the spelling (N3).
+- Like TypeScript, listings and reads stay synchronous with no entry limit, and a stuck Git process holds shutdown until its timeout (N4); the reply size limit still applies.
+
+New coverage:
+- vectors for NUL in middle and final segments, in `files.list`, `files.read` and `project.add`; Node refuses each with `ERR_INVALID_ARG_VALUE`;
+- an `ExistingEntry` NUL test;
+- a stdio test that the runtime answers every NUL request with a refusal and then serves a valid read.
+
+### Project admission (P2.2c)
+
+**What it is.** The development runtime now serves `project.add`, bringing it to **29** of the 89 methods. The handler follows `service.ts`:
+1. **Refusals before any probe.** Saved projects require schema v3 or newer. A relative path is refused, and so is a network or device path, before anything is opened.
+2. **Pin and classify.** The folder is pinned from its first resolution until the row is saved. A folder that is already saved returns its project without a notification. Classification runs `isGitWorkingTree` under the pin.
+3. **Final checks.** The requested spelling must still name the pinned folder, and the Git identity read before classification must be unchanged.
+4. **Save.** Only then is the project inserted, or found again if a concurrent request saved it first. The `projects.changed` event commits in the same transaction.
+
+**Approved-path comparison by identity.** TypeScript's recheck, `resolveLocalPath(raw, path)`, becomes `RepositoryPaths.SameFolder`. It follows the reviewed guidance from the TypeScript 8.3 fix:
+- Both chains are pinned without following a reparse point, and a reparse point in either refuses.
+- The drive type is checked before the approved spelling is probed.
+- The spellings match only when they have the same root, the same depth, and the same volume serial number and 128-bit file identifier (`FileIdInfo`) at every prefix. The new `DirectoryLease.Identities` provides these.
+- So a different case or a short (8.3) spelling of one folder matches. Two folders that differ only in case inside a case-sensitive directory never do; a lowercased key would have matched them.
+- A segment ending in a dot or space is refused, as the folder lease refuses it.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages.
+- **Atomic notification.** The project row and its notification commit together, and the notification is published after the commit. TypeScript inserts the project and then records the event separately, so a failed event insert leaves a project with no notification. That gap is pre-existing in TypeScript and is not changed here.
+
+**Evidence.**
+- `tests/p2/project-admission.test.ts` adds folders through the shipping `RuntimeService`:
+  - every spelling of one repository;
+  - subfolders, plain folders, linked worktrees and nested repositories;
+  - a repository that configures `core.worktree`;
+  - root-relative, relative, network and device paths;
+  - files, missing folders, broken Git pointers and a junction;
+  - two concurrent additions of one folder.
+
+  It pins the returned projects, refusals, saved rows (path keys included) and events in `project-admission-vectors.json`, with generated identities and stamps normalized in order of appearance. It is bound to the SHA-256 of `service.ts`, `repository.ts`, `store.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_PROJECT_ADMISSION=1`.
+- `ProjectAdmissionTests` replays every case through `DevelopmentChat`. It must match each outcome or its named difference, and every committed notification must be published after its commit, in order. The class also covers:
+  - folder identity: case, separators, `..`, aliases in either chain, missing folders, and network and device spellings;
+  - two tests that report a skip when the machine cannot exercise them: a short (8.3) spelling, where the volume generates short names, and case-sensitive directories, where `fsutil` can enable them. Both ran on the development machine;
+  - prefix identities from the drive root;
+  - a common directory redirected while classification runs Git, which must save nothing and notify nothing.
+
+**More differences, both fail-closed:**
+- A `subst` drive spelling of a folder is refused. Its chain has a different root and depth from the real path, while TypeScript's lowercased comparison admits it. This sits with the approved alias refusal and the open mapped and removable drive decision.
+- On a fixed volume that cannot report `FileIdInfo` (FAT or exFAT), the identity check fails and the project is refused.
+
+**Independent review.** The same reviewer reviewed the N1 fix and slice c at `586e929` and returned **GO for P2.2a, P2.2b and P2.2c together**. It ran the focused suites (149 passed) and the stdio NUL test on its own export. It probed `project.add` through `DevelopmentChat` with an 8.3 spelling, a case variant, and the short name of a real `dotted.` folder, with and without a child path.
+
+Its remaining notes:
+- **C1 and C3.** The two differences above, now documented.
+- **C2.** The optional identity branches now report a skip instead of passing silently.
+- **C4.** Every argument failure in a Git/files handler becomes a refusal, as TypeScript's entry handles every handler error. The cost is that a programming error there shows as a refusal, not a runtime failure.
+
+### Git-backed task creation (P2.2d)
+
+**What it is.** The development runtime now serves `task.create`, bringing it to **30** of the 89 methods. It creates a chat or coding task with its own app-owned worktree, following `service.ts`, `RepositoryService.createTaskWorktree` and `agent-channel.ts`:
+1. **Refusals before any intent.** These come first, in TypeScript's order:
+   - network and device paths, missing paths and aliases;
+   - profiles;
+   - coordination settings on a chat task;
+   - the coding-profile probe;
+   - an earlier unknown creation;
+   - a folder that is not a repository.
+2. **Durable intent.** The `worktree.create` intent is written next, before any Git mutation.
+3. **Serialized creation.** The worktree is created under the per-common-repository queue. The caller's admitted identity is revalidated across every await, at the final boundary before `git worktree add --no-checkout`, and before `checkout --no-recurse-submodules`. Filters are refused at the base revision, and the worktree base `<data>\wt` is pinned free of reparse points while the worktree is added.
+4. **One commit.** The project (upserted, and promoted from folder to Git), the task, the channel identity binding, the completed intent and the `tasks.changed` notification commit together.
+
+**Outcomes.** A failure before the final boundary leaves the intent complete. Any failure after it leaves the intent unknown, saves no task, and refuses every later creation until someone inspects the retained worktree. Restart recovery turns an interrupted (pending) intent into unknown. Nothing retries.
+
+**Differences:**
+- Local aliases are refused (the approved difference).
+- Coordinated tasks need the orchestrator, a later slice, so native refuses them before any intent with TypeScript's "not available in this build" message.
+- A project path that names a file is refused before any intent. TypeScript refuses it inside worktree creation and leaves a complete intent row.
+- Node's raw filesystem errors become fixed messages.
+- **Atomic project upsert.** The project upsert commits with the task. TypeScript saves it before the task's transaction.
+
+**Evidence.**
+- `tests/p2/task-creation.test.ts` drives the shipping `RuntimeService` through 19 cases:
+  - chat and coding tasks;
+  - repeated, concurrent, subfolder and linked-worktree creation;
+  - a folder project that later becomes a repository;
+  - redaction, external profiles with and without a probe, and coordination settings;
+  - unknown profiles;
+  - non-repositories, and missing, relative, network and NUL paths;
+  - unborn repositories, base-revision filters and `core.worktree`;
+  - an earlier unknown creation;
+  - a junction and a coordinated task.
+
+  It pins every outcome in `task-creation-vectors.json`, bound to the SHA-256 of `service.ts`, `repository.ts`, `agent-channel.ts`, `store.ts` and `git-environment.ts`. The pinned state covers every task, intent, project and event row, plus the repository's refs, worktrees, and each new checkout's status and files. Generated identities and stamps are normalized in order of appearance, and refs and worktrees are ordered by placeholder. Regenerating the vectors requires `P2_WRITE_TASK_CREATION=1`.
+- `TaskCreationTests` replays every case through `DevelopmentChat`. Where a difference is named, it requires the refusal and unchanged rows and repository. It also ports `folder-admission.test.ts`'s three workflows to native form:
+  - queued requests whose identity changes while the first waits (via a redirected common directory, since aliases are refused) both fail before mutation;
+  - an identity change at the final boundary is a known pre-mutation failure;
+  - a failure after `worktree add` keeps the branch and worktree, marks the intent unknown, blocks later creation and stays unknown across a restart.
+
+  A pending intent recovered on restart blocks creation too.
+- `DevelopmentChatProcessTests` drives `project.add`, `task.create` (with protocol defaults and trimming applied by the entry point), `files.list` and `task.diff` through stdio, with their notifications.
+
+### Git publication and retirement (P2.2e)
+
+**What it is.** The development runtime now serves `task.commit`, `task.push`, `task.reconcilePublication` and `task.retire`, bringing it to **34** of the 89 methods. These are the user's explicit Git actions from `workspace-operations.ts`; no model proposes or executes them.
+- **Commit.** Only a ready, non-coordinated chat or coding task with no unknown approval, publication or retirement outcome can commit, and one Git action runs per task at a time. The commit message must survive redaction unchanged. The `git.commit` intent records the base commit before anything is staged. Secret-named paths are refused, and filters are rechecked before `git add`. Hooks stay disabled, signing is off, and the identity comes from the user's Git configuration.
+- **Push.** It never forces or prompts, and only a remote configured in the project repository is accepted. The user's credential helper may run here and for the remote check of an unknown push, and nowhere else.
+- **Reconcile.** It checks unknown pushes against the remote and unknown commits against the worktree; an unresolvable one stays unknown. It completes an unknown retirement when no listed worktree remains, and marks it failed otherwise.
+- **Retire.** It removes only an app-owned worktree that Git proves clean (`git worktree remove`, no force), keeps the branch, and marks the task retired.
+- **Outcomes.** Refusals before staging, pushing or removal are "none". A failure after that point, or one whose effect cannot be established, is "unknown". It blocks the task's later Git actions until reconciled, and nothing retries.
+- **Commit together.** The completed intent, the task change and the notification commit together.
+- **Notifications.** `task.committed`, `task.pushed` and `task.retired` are sent. As in TypeScript, the status transition that retirement records stays silent.
+
+**Differences, all fail-closed or invisible on success:**
+- Coordinated tasks retire their children with them, which needs the orchestrator, so native refuses them.
+- A worktree saved on a network path is refused, and is never probed during retirement or reconciliation.
+- A successful commit, push or retirement commits its completed intent, task change and notification together; TypeScript saves them separately.
+- A commit, push or reconciliation in flight and a retirement of the same task exclude each other (review L1 below).
+
+**Evidence.**
+- `tests/p2/task-publication.test.ts` drives the shipping `RuntimeService` through seven cases, using a local bare remote only:
+  - a full commit, push, reconcile and retire;
+  - every refusal before staging;
+  - a commit that fails after staging (unknown, then reconciled as failed);
+  - a push to a missing remote (unknown, unresolvable until the remote exists, then reconciled);
+  - a dirty retirement;
+  - concurrent Git actions on one task;
+  - missing tasks.
+
+  It pins results, refusals, task, intent and event rows, refs, worktrees, remote refs, and the worktree's status and recent log in `task-publication-vectors.json`. Generated identities, commit object ids and stamps are normalized in order of appearance. It is bound to the SHA-256 of `workspace-operations.ts`, `repository.ts`, `service.ts`, `store.ts` and `git-environment.ts`. Regenerating the vectors requires `P2_WRITE_TASK_PUBLICATION=1`.
+- `TaskPublicationTests` replays every case through `DevelopmentChat`. It also proves:
+  - retirement failures are classified by whether the worktree remains, and an unknown retirement is reconciled;
+  - only push and remote verification run without `credential.helper=`;
+  - an unknown approval blocks publication and retirement.
+- `DevelopmentChatProcessTests` now drives commit, push and retire through stdio with their notifications.
+
+**Independent review of P2.2d and P2.2e.** The same reviewer reviewed the sealed ranges `586e929..9208cf9` and `9208cf9..f199fd1` (with `0e67144`) and returned **GO for both as a port**. It verified both seals, built an export, and matched every mutation boundary's outcome classification against TypeScript: intent before mutation, no blind retry, and creation serialized per common repository. It ran one probe through `DevelopmentChat`.
+- **H1 (medium, confirmed, also in shipping TypeScript).** "Hooks stay disabled" held only while `<data>\wt\.empty-git-hooks` was empty. `--no-verify` does not cover `post-commit`, `post-checkout` or `reference-transaction`. The reviewer planted a `post-commit` hook there and it ran during `task.commit`. Anything that writes the app data folder once would gain execution in every later app-initiated checkout and commit, in every repository.
+  - **Fixed natively** for every Git launch (`GitRunner.Run`), with the same semantics and messages as the TypeScript fix (`assertNoGitHooks` on `claude/fix-empty-git-hooks`):
+    - **Before launch.** After identity revalidation and before the final-boundary callback, the folder must be missing, or a directory with no entries. Native also pins its whole chain free of reparse points until exit. Otherwise the refusal is "Git command failed: The app-owned Git hooks folder is not empty; refusing to run Git. Inspect and empty <hooks folder> to continue."
+    - **After exit.** Once Git has started, the folder is checked again however the run ended: it must still be missing, or still a directory (not a link) with no entries. Otherwise the call fails with "The app-owned Git hooks folder changed while Git ran; a hook may have run. Inspect and empty <hooks folder>.", without the prefix and superseding whatever Git reported, as TypeScript's `finally` does.
+  - A directory handle cannot forbid new entries (probed: a read-only-shared directory handle blocks renames into the folder, not creation), and a pin that shares writes cannot forbid attribute changes. So a same-user process can still add an entry, or turn the folder into a link in place, during a run. The check after exit then fails that run, and the next launch refuses before starting. A hook that removes itself before Git exits is not detected, in either runtime.
+  - A refusal before launch is a Git failure with no outcome. Callers classify it as before: `task.create` leaves its intent complete, and a commit refused at `git add` stays unknown until reconciled. A failure after exit is a failure after launch, so a caller past its final boundary classifies it unknown.
+  - Native has one Git launch site, and it never passes an empty `core.hooksPath`. Git resolves an empty one to the drive root, which the TypeScript review found for the pre-approval command runner; that runner is not ported yet.
+  - Tests:
+    - `GitRunnerTests` covers a planted hook (with a control proving it live), a subfolder, a junction, a file in the folder's place, and hooks or a file appearing during a run, including one whose Git failure the change supersedes.
+    - `TaskPublicationTests` shows commit and creation refusing with no Git launch and no hook execution, then working once the folder is empty.
+    - Disabling the guard made both fail. Disabling the check after exit made the runner test fail.
+  - **Open for TypeScript.** AGENTS.md requires security and data-loss fixes to land in both runtimes, and the shipping runtime still has H1. `repository.ts` (`prepareWorktreeBase` and `git()`) and `git-operations.ts` (`hooksDirectory()` and its Git calls) create and use the same folder with no emptiness check, and have done so since the foundation commit.
+    - The parent session decided to keep this branch native-only, so the TypeScript fix is not delayed behind the P2.2 stack and does not churn every P2 vector's source hash. It has raised the TypeScript change with Rudy, recommending its own small change.
+    - That fix is `8ce702e` and `c1d8c04` on `claude/fix-empty-git-hooks`, unmerged at this writing. H1 stays open in the shipping runtime until it reaches main. Then re-pin the P2 vectors and confirm the messages above still match.
+- **L1 (low, parity).** Retirement could remove a worktree while that task's commit was at its final `rev-parse`, leaving an outcome nothing could verify. **Fixed natively**: retirement refuses while a commit, push or reconciliation of the task is in flight, and commit and push refuse while it retires, with TypeScript's existing messages. Tested in `TaskPublicationTests`.
+- **L2 (informational, parity), not changed.** `RemoveWorktree` resolves its target through links after the lease that refused a reparse worktree is released. Exploiting the gap needs same-user write access.
+- **L3 (informational, parity), not changed.** Reconciliation counts a retired worktree that cannot be probed as gone, as TypeScript's `stat` catch does. Nothing is deleted on that basis; the worktree and branch stay on disk.
+- **L4 (informational).** The atomic success commit is now named in the differences above.
+
+**Codex review of #36.** The repository's Codex reviewer left five findings on the publication code. Every one also holds for the shipping TypeScript (`repository.ts` `uncommittedPaths`, `push`, `verifyPushOutcome`, and `workspace-operations.ts`), so each stays **open for TypeScript** under the dual-landing rule. Four are fixed natively as fail-closed differences:
+- **Staged rename of a secret-named path (P1).** Porcelain v1 writes a staged rename's source after its destination, and the source was skipped. The staged listing also detects renames, so `git mv .env safe.txt` showed only `safe.txt`, and the commit would publish the secret file's content under the safe name.
+  - **Fixed natively:** `CommitAll` screens both endpoints of every rename or copy before staging, and screens the staged paths again without rename detection.
+  - `UncommittedPaths`, and the diff and retirement checks that use it, keep TypeScript's output.
+- **Worktree no longer the task's repository (P1).** Commit and push never checked that the worktree still belongs to the task's project. A folder replaced by another repository on the saved branch would be committed to, and pushed with that repository's own remotes.
+  - **Fixed natively:** before staging or pushing, the worktree must share the project repository's common directory. When the task has a `channel.identity` binding, that common directory must also be the bound one.
+  - The held worktree admission keeps that identity pinned for the rest of the operation. A refusal is "none".
+- **Push URL during reconciliation (P2).** `ls-remote` reads the remote's fetch URLs, while push writes to its push URLs. **Fixed natively:** when the two lists differ, the push stays unknown instead of being judged against another server. Querying the push URL directly would pass a configured URL to Git where it could act as an option.
+- **SHA-256 remote tips (P2).** The remote-tip pattern accepted only 40-character object names. In a SHA-256 repository, every ambiguous push therefore stayed unknown for good. **Fixed natively:** 64-character names are accepted too.
+- **Repository-local credential helpers on push (P1), not changed; it needs a decision.** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
+  - Removing only the helper would be a partial fix. A push also honors other repository settings that run programs: `core.sshCommand`, remote transport programs, `ext::` URLs once allowed, and URL rewrites.
+  - Choosing which configuration a push may trust is a security design decision for both runtimes.
+  - **Recommended option (from the independent review).** Before a push or `ls-remote`, list the repository configuration with its origins and includes (`git config --local --list --show-origin --includes -z`). Refuse with "none" unless every key is on a small allowlist: core format and filesystem keys, `extensions.*`, `remote.*.url|fetch|pushurl|tagopt|prune`, `branch.*.remote|merge|rebase`, `user.name|email`. Also pass `-c protocol.allow=never` with explicit `https` and `ssh` allowances, and `file` if local remotes are wanted.
+    - **Covers:** every repository-local route, because unknown keys are refused.
+    - **Costs:** legitimate per-repository helpers and `sshCommand`, which would need a global setting or an explicit opt-in.
+    - **Leaves:** the user's own global configuration, as theirs.
+- **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown. Commit verification therefore also needs the project folder to be admissible. While it is unavailable, an unknown commit that TypeScript could resolve from the worktree alone stays unknown.
+- **Tests:**
+  - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
+  - Every publication vector still replays unchanged.
+  - Removing each guard failed its test.
+
+### Folder-project chats (P2.2f)
+
+**What it is.** The development runtime's `task.start` now accepts a saved project folder that is not a Git repository. The method count is unchanged at 34, because `task.start` was already served for projectless chats. It follows `service.ts` `startTask` in order:
+1. An earlier request with the same ID is answered first.
+2. A missing project is refused ("Project not found."), and so is a hidden one.
+3. The saved folder must still resolve to the same physical folder under its saved spelling. It is classified while pinned, and its Git identity must be unchanged.
+4. The mode, coordination and profile are checked.
+5. The start is reserved, and the folder task and its first offline turn follow.
+
+A folder chat turns exactly as a projectless one: `prepareRequest` gives it no tool, channel or system prompt. `task.send` and `task.cancel` serve folder chats too. A failed start is retried only when the task's saved project is still the requested, visible one and its folder still resolves. The task's own spelling must name that folder by identity.
+
+**Messages now aligned with TypeScript.** A projectless chat in coding or coordinated mode is refused with TypeScript's "Coding and coordination require a Git project.", and coordination settings on a chat with its message; both were a native "not supported" before.
+
+**Differences:**
+- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan.
+- **External profiles.** These remain refused for any turn, as before.
+
+**Evidence.**
+- `tests/p2/folder-chat.test.ts` drives the shipping `RuntimeService` with the offline provider, deterministic identities and a fixed clock through 21 steps:
+  - adding the folder, starting, waiting, reading, listing files, a coalesced retry, and a second turn;
+  - refusals for coding mode, coordination settings, hidden, missing and moved projects;
+  - a restart in the restored folder;
+  - a Git-project chat.
+
+  After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
+- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
+
+**Finding outside this slice (not changed): the native Store pins every ancestor of its data folder with read-only sharing.**
+- P1's Store admission pins the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
+- Renaming a file or folder needs its parent opened for writing. So while the native runtime runs, nothing can be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that includes the profile folder itself.
+- This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
+- The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
+
+### Existing-file edit primitive (P2.2g)
+
+**What it is.** `RepositoryService.PrepareEdit` and `ApplyEdit` port `prepareEdit` and `applyEdit` from `repository.ts`. They are **unwired**: no handler, tool, approval or protocol method reaches them, and the development runtime stays at 34 of the 89 methods. The native tool loop and the approval records that will call them belong to a later slice.
+- **Prepare.** The checks run in TypeScript's order:
+  1. The new content must be UTF-8 text of at most 64 KiB, with no NUL.
+  2. Creating a file is refused: there must be a reviewed hash.
+  3. The root is admitted and the relative path rules apply.
+  4. The parent must already exist.
+  5. The file must be readable UTF-8 text whose hash is the reviewed one.
+  6. The file must not be hard-linked.
+
+  The fingerprint is the SHA-256 of the JSON array `[root, path, expectedHash, resultingHash]`. The path keeps the request's spelling beneath the real root, as in TypeScript; the applied result reports the real one.
+- **Apply.** It reruns the whole preflight and requires the same fingerprint. A tampered or replayed approval, or a file changed after review, is therefore refused before anything is written. Once written, the content no longer matches the reviewed hash, so one approval applies once. An unchanged edit can apply again, because it writes identical bytes.
+- **Write boundary.** The file is opened by its exact name, without following a reparse point, for one exclusive rewrite (the new Platform `ExistingEntry.TryOpenForRewrite`). Other handles may still read it if they share writing. No other writer, rename, delete or replacement of the file, and no rename of its folders, can start while it is held.
+  - Under that hold, native checks that the file is regular and has one link, that its bytes are the reviewed ones, and that its name still resolves to the same file identity (FileIdInfo).
+  - It then writes from the start, cuts the length, flushes to disk, and verifies the result by name, still under the hold.
+- **Outcomes.** A failure before the write is "none". From the write on, any failure is "unknown", including a verification that does not find the reviewed result.
+
+**Differences, all fail-closed or invisible on success:**
+- Local aliases are refused (the approved difference).
+- Node's raw filesystem errors become fixed messages. A missing file becomes "Requested path does not exist.", and a read-only file at execution becomes "Requested file cannot be opened for editing.", with the same "none" outcome.
+- **Exclusive write window.** A file that another handle can already write or delete is refused at execution, where Node's shared open proceeds. Native holds the file exclusively from the content check to verification. TypeScript instead re-checks the name's identity before writing and verifies after closing.
+- At execution, the content is read bounded (64 KiB plus one byte), and a larger file is refused as changed. TypeScript reads it whole and then refuses it on the hash.
+
+**Evidence.**
+- `tests/p2/existing-file-edit.test.ts` drives the shipping `RepositoryService` directly through **23** cases (76 steps: 51 prepares, 19 applies, and external writes, renames, removals, hard links and read-only flags between them). The cases cover:
+  - plain edits, empty content, byte order marks and carriage returns, and non-ASCII text;
+  - backslash and case-variant paths, and a case-variant root;
+  - the 64 KiB limit counted in UTF-8 bytes, and NUL;
+  - creation, stale hashes, forbidden, absolute and escaping paths, and roots that are not working directories;
+  - directories, missing files and parents, binary and oversized files;
+  - a linked parent and hard links, before and after review;
+  - tampered, stale, replayed and unchanged approvals;
+  - removal, read-only and a same-content swap after review;
+  - a Git working tree and its metadata.
+
+  It pins every outcome, each prepared edit (with its fingerprint's preimage checked against the hash), and the final bytes of every file in `existing-file-edit-vectors.json`. It is bound to the SHA-256 of `repository.ts` and `network-path.ts`. Regenerating the vectors requires `P2_WRITE_EXISTING_FILE_EDIT=1`.
+- `ExistingFileEditTests` replays every case through the native primitive. Where Node raised a raw error, it pins native's own message and requires the same outcome. Native-only tests prove four things:
+  - another writer is refused before anything is written;
+  - at the write boundary, writing, renaming, replacing or deleting the file, and renaming its folder, are all refused;
+  - failures are classified by whether the write started;
+  - the primitive requires the owning loop.
+- Mutations were caught. Opening the rewrite with full sharing failed the two exclusivity tests. Skipping the fingerprint comparison failed the tampered-approval case.
+
+**Independent review of P2.2f, the H1/L1 fixes and P2.2g.** The same reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner) reviewed four sealed ranges: `f199fd1..df2d46c`, `df2d46c..9116b45`, `9116b45..b0a27fd` and the documentation commit `b0a27fd..a8fa711`. It returned **GO for all four**, with no critical, high or medium finding.
+- **What it did.** It verified every seal, built an export of `a8fa711`, and ran the publication, runner, edit, folder-chat and creation suites (93 passed). It confirmed that Git 2.53 has no `hook.*` setting that bypasses `core.hooksPath`.
+- **What it confirmed:**
+  - folder `task.start` follows `startTask`'s order, and a Git-project chat is refused before any reservation;
+  - the H1 guard covers every native launch, and its refusals keep TypeScript's outcome classification;
+  - L1 cannot deadlock or strand a reservation;
+  - the edit primitive matches `repository.ts` in order and messages, and nothing is written before the fingerprint and content checks;
+  - its exclusive window holds, `RandomAccess` is valid on the synchronous handle, and nothing in `DevelopmentChat`, `Program` or the protocol reaches it.
+- **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
+- **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
+- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
+- **Re-review of the H1 alignment.** The ranges were `a8fa711..6310817` (comment and docs) and `6310817..26a8e4a`, the native guard aligned with the TypeScript fix. The reviewer returned **GO for both, with no finding at any severity**.
+  - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
+  - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
+  - It confirmed that the check after exit runs on every path once Git has started and never makes an earlier mutation look like "none", that every lease is disposed, and that no native launch can pass an empty `core.hooksPath`.
 
 ## Personal workspace expansion — local implementation
 

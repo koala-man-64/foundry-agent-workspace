@@ -94,13 +94,24 @@ public sealed class RepositoryFolderTests
             await using var loop = new RuntimeLoop();
             await loop.Invoke(() =>
             {
+                var outside = Path.Combine(scratch, "outside.txt"); File.WriteAllText(outside, "staged");
+                var nested = Directory.CreateDirectory(Path.Combine(root, "nested")).FullName;
                 using (var folder = RepositoryFolderLease.Open(loop, root))
                 {
                     Assert.Equal(FinalPath.Canonical(root), folder.Path);
                     Assert.Throws<IOException>(() => Directory.Move(root, moved));
+                    // Writes are shared: renames into the folder (Git's lock-file protocol, editors' atomic saves) still work.
+                    File.Move(outside, Path.Combine(root, "inside.txt"));
+                    File.WriteAllText(Path.Combine(root, "inside.txt.lock"), "replaced");
+                    File.Move(Path.Combine(root, "inside.txt.lock"), Path.Combine(root, "inside.txt"), overwrite: true);
+                    Assert.Equal("replaced", File.ReadAllText(Path.Combine(root, "inside.txt")));
+                    Directory.Move(nested, Path.Combine(root, "renamed"));
                 }
                 Directory.Move(root, moved);
-                Assert.Throws<IOException>(() => RepositoryFolderLease.Open(loop, Path.Combine(moved, "missing")));
+                var missing = Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(moved, "missing")));
+                Assert.Equal("Project folder is unavailable.", missing.Message);
+                var file = Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(moved, "inside.txt"), "Select a folder."));
+                Assert.Equal("Select a folder.", file.Message);
                 return Task.FromResult(0);
             });
             Assert.Throws<InvalidOperationException>(() => RepositoryFolderLease.Open(loop, @"\\server\never-probe"));

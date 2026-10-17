@@ -1,0 +1,8215 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "d7de29dcecce53e9943e3117ae673eac112f3162e8f1c0dd2ad37d2c268ad650"
+      },
+      {
+        "path": "packages/runtime/src/git-environment.ts",
+        "sha256": "545b68e2e0d7d2465f897eb479a8732648a7fe6e1964bdfec650a45fb30b91ca"
+      },
+      {
+        "path": "packages/runtime/src/network-path.ts",
+        "sha256": "6e6d1f17374bc04de9e7fc0d3abb3a2044bb684fbfaa5405d804901ea1e477ee"
+      }
+    ]
+  },
+  "environment": {
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "HOME": "{home}",
+    "XDG_CONFIG_HOME": "{home}",
+    "LC_ALL": "C",
+    "LANG": "C",
+    "LANGUAGE": "C"
+  },
+  "sanitization": {
+    "names": [
+      "FOUNDRY_P2_KEPT",
+      "GIT_DIR",
+      "git_work_tree",
+      "Git_Config_Parameters",
+      "gıt_index_file",
+      "GITX",
+      "MY_GIT_DIR",
+      "GIẗ_X",
+      "ǧit_x",
+      "gIt_"
+    ],
+    "kept": [
+      "FOUNDRY_P2_KEPT",
+      "GITX",
+      "MY_GIT_DIR",
+      "GIẗ_X",
+      "ǧit_x"
+    ]
+  },
+  "cases": [
+    {
+      "name": "list the repository root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": ""
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "_x",
+            "kind": "file"
+          },
+          {
+            "path": "-y",
+            "kind": "file"
+          },
+          {
+            "path": ".docKer",
+            "kind": "file"
+          },
+          {
+            "path": "~t",
+            "kind": "file"
+          },
+          {
+            "path": "10.txt",
+            "kind": "file"
+          },
+          {
+            "path": "9.txt",
+            "kind": "file"
+          },
+          {
+            "path": "docs",
+            "kind": "directory"
+          },
+          {
+            "path": "e.txt",
+            "kind": "file"
+          },
+          {
+            "path": "é.txt",
+            "kind": "file"
+          },
+          {
+            "path": "E2.txt",
+            "kind": "file"
+          },
+          {
+            "path": "README.md",
+            "kind": "file"
+          },
+          {
+            "path": "src",
+            "kind": "directory"
+          },
+          {
+            "path": "x .pem",
+            "kind": "file"
+          },
+          {
+            "path": "Z.txt",
+            "kind": "file"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list a subdirectory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "src"
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "src/a.ts",
+            "kind": "file"
+          },
+          {
+            "path": "src/nested",
+            "kind": "directory"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list with a backslash separator",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "src\\nested"
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "src/nested/x.txt",
+            "kind": "file"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list parent traversal",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": ".."
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "list a dot segment",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "./src"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "list an empty segment",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "src//nested"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "list an absolute path",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "C:\\"
+      },
+      "expected": {
+        "error": "Absolute paths are not allowed."
+      }
+    },
+    {
+      "name": "list a drive-relative path",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "C:src"
+      },
+      "expected": {
+        "error": "Absolute paths are not allowed."
+      }
+    },
+    {
+      "name": "list a root-relative path",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "/src"
+      },
+      "expected": {
+        "error": "Absolute paths are not allowed."
+      }
+    },
+    {
+      "name": "list a secret directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": ".ssh"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "list the Git directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": ".git"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "list a missing directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "missing"
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "README.md"
+      },
+      "expected": {
+        "systemError": "ENOTDIR"
+      }
+    },
+    {
+      "name": "list through a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "link"
+      },
+      "expected": {
+        "error": "Symbolic links cannot be accessed."
+      }
+    },
+    {
+      "name": "list beneath a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/src/nested/x.txt",
+          "text": "x\n"
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/id_rsa",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/cert.pem",
+          "text": "p\n"
+        },
+        {
+          "file": "repo/credentials.json",
+          "text": "{}\n"
+        },
+        {
+          "file": "repo/secrets",
+          "text": "s\n"
+        },
+        {
+          "file": "repo/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/a ",
+          "text": "space\n"
+        },
+        {
+          "file": "repo/b.",
+          "text": "dot\n"
+        },
+        {
+          "dir": "repo/.ssh"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "file": "repo/_x",
+          "text": ""
+        },
+        {
+          "file": "repo/-y",
+          "text": ""
+        },
+        {
+          "file": "repo/Z.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/é.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/e.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/E2.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/10.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/9.txt",
+          "text": ""
+        },
+        {
+          "file": "repo/~t",
+          "text": ""
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "file": "repo/KEY.PEM",
+          "text": "k\n"
+        },
+        {
+          "file": "repo/nul.txt",
+          "text": "n\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo",
+        "path": "link/nested"
+      },
+      "expected": {
+        "error": "Symbolic links cannot be accessed."
+      }
+    },
+    {
+      "name": "list a folder that is not a repository",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "plain",
+        "path": ""
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "a.txt",
+            "kind": "file"
+          },
+          {
+            "path": "sub",
+            "kind": "directory"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list a root that is a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "alias",
+        "path": ""
+      },
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "docs",
+            "kind": "directory"
+          },
+          {
+            "path": "README.md",
+            "kind": "file"
+          },
+          {
+            "path": "src",
+            "kind": "directory"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list a missing root",
+      "tree": [
+        {
+          "dir": "present"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "absent",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a Git directory root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo/.git",
+        "path": ""
+      },
+      "expected": {
+        "error": "Root must be a working directory."
+      }
+    },
+    {
+      "name": "list a file root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo/README.md",
+        "path": ""
+      },
+      "expected": {
+        "error": "Root must be a working directory."
+      }
+    },
+    {
+      "name": "list a root spelled with a trailing dot",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo.",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a root spelled with a trailing space",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo ",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a root spelled with trailing dots",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "repo...",
+        "path": ""
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "list a real folder whose name ends in a dot",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "dotted./inside.txt",
+          "text": "literal\n"
+        }
+      ],
+      "operation": {
+        "op": "list",
+        "root": "dotted.",
+        "path": ""
+      },
+      "native": {
+        "outcome": {
+          "error": "Project folder is unavailable."
+        },
+        "difference": "Native refuses a folder whose name ends in a dot or space, as P2.1 refuses such names in Git references; Node opens the literal name."
+      },
+      "expected": {
+        "result": [
+          {
+            "path": "inside.txt",
+            "kind": "file"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read a tracked file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "README.md"
+      },
+      "expected": {
+        "result": {
+          "path": "README.md",
+          "content": "hello\n",
+          "hash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        }
+      }
+    },
+    {
+      "name": "read with different case",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "readme.MD"
+      },
+      "expected": {
+        "result": {
+          "path": "README.md",
+          "content": "hello\n",
+          "hash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        }
+      }
+    },
+    {
+      "name": "read with a backslash separator",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "docs\\b.md"
+      },
+      "expected": {
+        "result": {
+          "path": "docs/b.md",
+          "content": "# b\n",
+          "hash": "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        }
+      }
+    },
+    {
+      "name": "read a byte order mark",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "bom.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "bom.txt",
+          "content": "with bom\n",
+          "hash": "26e604c0ea4355976f6b1d51fa54802878c461646107c458a02eeeca13a13534"
+        }
+      }
+    },
+    {
+      "name": "read CRLF line endings",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "crlf.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "crlf.txt",
+          "content": "one\r\ntwo\r\n",
+          "hash": "6f4792b265fe72790b344fd3ef5294701d9d087bed9fce815c0f4bbad6d2ed87"
+        }
+      }
+    },
+    {
+      "name": "read a NUL byte",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "zero.bin"
+      },
+      "expected": {
+        "error": "Binary files cannot be read."
+      }
+    },
+    {
+      "name": "read invalid UTF-8",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "invalid.txt"
+      },
+      "expected": {
+        "error": "Binary files cannot be read."
+      }
+    },
+    {
+      "name": "read exactly the size limit",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "limit.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "limit.txt",
+          "content": {
+            "length": 65536,
+            "sha256": "bf718b6f653bebc184e1479f1935b8da974d701b893afcf49e701f3e2f9f9c5a"
+          },
+          "hash": "bf718b6f653bebc184e1479f1935b8da974d701b893afcf49e701f3e2f9f9c5a"
+        }
+      }
+    },
+    {
+      "name": "read one byte over the size limit",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "over.txt"
+      },
+      "expected": {
+        "error": "File exceeds the 65536 byte read limit."
+      }
+    },
+    {
+      "name": "read a directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "src"
+      },
+      "expected": {
+        "error": "Requested path is not a regular file."
+      }
+    },
+    {
+      "name": "read a missing file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "missing.txt"
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "read an empty path",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": ""
+      },
+      "expected": {
+        "error": "A relative path is required."
+      }
+    },
+    {
+      "name": "read an environment file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": ".env"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read a nested package credential",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "config/.npmrc"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read an uppercase key name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "ID_RSA"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read an uppercase key extension",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "server.KEY"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read a reserved device name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "nul.txt"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read a reserved port name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "COM1"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read a stream name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "README.md:stream"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read inside an uppercase Git directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": ".GIT/config"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read parent traversal",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "src/../README.md"
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read a trailing-dot name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "README.md."
+      },
+      "expected": {
+        "error": "Path contains a forbidden segment."
+      }
+    },
+    {
+      "name": "read through a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "link/a.ts"
+      },
+      "expected": {
+        "error": "Symbolic links cannot be accessed."
+      }
+    },
+    {
+      "name": "read a line-separator name that JavaScript does not treat as secret",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "x .pem"
+      },
+      "expected": {
+        "result": {
+          "path": "x .pem",
+          "content": "separator\n",
+          "hash": "097eb2095a4284320a68a61aa6569533cab814316b340b41f6be53427d7cc480"
+        }
+      }
+    },
+    {
+      "name": "read a Kelvin-sign name that JavaScript case folding does not match",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": ".docKer"
+      },
+      "expected": {
+        "result": {
+          "path": ".docKer",
+          "content": "kelvin\n",
+          "hash": "ffac9e715953ad2c049e373894edbb0bc83544bd517b2ff51556602f83e35186"
+        }
+      }
+    },
+    {
+      "name": "read a hard-linked file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "linked.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "linked.txt",
+          "content": "hello\n",
+          "hash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        }
+      }
+    },
+    {
+      "name": "read a non-ASCII path",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/bom.txt",
+          "text": "﻿with bom\n"
+        },
+        {
+          "file": "repo/crlf.txt",
+          "text": "one\r\ntwo\r\n"
+        },
+        {
+          "file": "repo/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "repo/invalid.txt",
+          "base64": "gICA"
+        },
+        {
+          "file": "repo/limit.txt",
+          "repeat": [
+            "a",
+            65536
+          ]
+        },
+        {
+          "file": "repo/over.txt",
+          "repeat": [
+            "a",
+            65537
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/config/.npmrc",
+          "text": "r\n"
+        },
+        {
+          "file": "repo/x .pem",
+          "text": "separator\n"
+        },
+        {
+          "file": "repo/.docKer",
+          "text": "kelvin\n"
+        },
+        {
+          "junction": "repo/link",
+          "target": "repo/src"
+        },
+        {
+          "hardlink": "repo/linked.txt",
+          "target": "repo/README.md"
+        },
+        {
+          "file": "repo/é/ü.txt",
+          "text": "unicode\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "repo",
+        "path": "é/ü.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "é/ü.txt",
+          "content": "unicode\n",
+          "hash": "ebc45fabefbabdd06424b3c476b11e93fec784069ff10844e7383d59f491f8cb"
+        }
+      }
+    },
+    {
+      "name": "read from a folder that is not a repository",
+      "tree": [
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "read",
+        "root": "plain",
+        "path": "a.txt"
+      },
+      "expected": {
+        "result": {
+          "path": "a.txt",
+          "content": "a\n",
+          "hash": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+        }
+      }
+    },
+    {
+      "name": "status of a clean repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "status",
+        "root": "repo"
+      },
+      "expected": {
+        "result": []
+      }
+    },
+    {
+      "name": "status with every change kind",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/old.txt",
+          "text": "old\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\nchanged\n"
+        },
+        {
+          "remove": "repo/docs/b.md"
+        },
+        {
+          "file": "repo/new.txt",
+          "text": "new file\nsecond line\n"
+        },
+        {
+          "file": "repo/dir/new2.txt",
+          "text": "nested\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "mv",
+            "old.txt",
+            "renamed.txt"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "status",
+        "root": "repo"
+      },
+      "expected": {
+        "result": [
+          "README.md",
+          "docs/b.md",
+          "renamed.txt",
+          "dir/new2.txt",
+          "new.txt"
+        ]
+      }
+    },
+    {
+      "name": "diff of a clean repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "",
+          "patch": "",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff with every change kind",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/old.txt",
+          "text": "old\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\nchanged\n"
+        },
+        {
+          "remove": "repo/docs/b.md"
+        },
+        {
+          "file": "repo/new.txt",
+          "text": "new file\nsecond line\n"
+        },
+        {
+          "file": "repo/dir/new2.txt",
+          "text": "nested\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "mv",
+            "old.txt",
+            "renamed.txt"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": " README.md   | 1 +\n docs/b.md   | 1 -\n old.txt     | 1 -\n renamed.txt | 1 +\n 4 files changed, 2 insertions(+), 2 deletions(-)\ndir/new2.txt | new file\nnew.txt | new file\n",
+          "patch": "diff --git a/README.md b/README.md\nindex ce01362..9a7a4b5 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+changed\ndiff --git a/docs/b.md b/docs/b.md\ndeleted file mode 100644\nindex 14f30c4..0000000\n--- a/docs/b.md\n+++ /dev/null\n@@ -1 +0,0 @@\n-# b\ndiff --git a/old.txt b/old.txt\ndeleted file mode 100644\nindex 3367afd..0000000\n--- a/old.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\ndiff --git a/renamed.txt b/renamed.txt\nnew file mode 100644\nindex 0000000..3367afd\n--- /dev/null\n+++ b/renamed.txt\n@@ -0,0 +1 @@\n+old\ndiff --git a/dir/new2.txt b/dir/new2.txt\nnew file\n--- /dev/null\n+++ b/dir/new2.txt\n+nested\n+\ndiff --git a/new.txt b/new.txt\nnew file\n--- /dev/null\n+++ b/new.txt\n+new file\n+second line\n+\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff skips secret-named untracked files",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "repo/visible.txt",
+          "text": "shown\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "visible.txt | new file\n",
+          "patch": "diff --git a/visible.txt b/visible.txt\nnew file\n--- /dev/null\n+++ b/visible.txt\n+shown\n+\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff omits untracked content after a secret tracked deletion",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/secrets.txt",
+          "text": "value\n"
+        },
+        {
+          "file": "repo/credentials.txt",
+          "text": "value\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "remove": "repo/secrets.txt"
+        },
+        {
+          "file": "repo/visible.txt",
+          "text": "hidden\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "Untracked content omitted because a sensitive tracked deletion is present.\n",
+          "patch": "",
+          "truncated": true
+        }
+      }
+    },
+    {
+      "name": "diff excludes a rename from a secret name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/secrets.txt",
+          "text": "value\n"
+        },
+        {
+          "file": "repo/credentials.txt",
+          "text": "value\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "mv",
+            "credentials.txt",
+            "notes.txt"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "Untracked content omitted because a sensitive tracked deletion is present.\n",
+          "patch": "",
+          "truncated": true
+        }
+      }
+    },
+    {
+      "name": "diff of a binary modification",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/image.bin",
+          "base64": "AAECAwQF"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/image.bin",
+          "base64": "BQQDAgEA"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": " image.bin | Bin 6 -> 6 bytes\n 1 file changed, 0 insertions(+), 0 deletions(-)\n",
+          "patch": "diff --git a/image.bin b/image.bin\nindex d43e6e83345438787f245d7976e872ebf6f9eb46..97955ba864f61d6004eea47427c3aa3d0f945cc6 100644\nGIT binary patch\nliteral 6\nNcmZQ&VP;}v0000?01yBG\n\nliteral 6\nNcmZQzWMXDv1pojk01yBG\n\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff skips an untracked binary file",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/blob.bin",
+          "base64": "AAEC"
+        },
+        {
+          "file": "repo/text.txt",
+          "text": "text\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "text.txt | new file\n",
+          "patch": "diff --git a/text.txt b/text.txt\nnew file\n--- /dev/null\n+++ b/text.txt\n+text\n+\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff truncates after one hundred untracked files",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/many/f000.txt",
+          "text": "0\n"
+        },
+        {
+          "file": "repo/many/f001.txt",
+          "text": "1\n"
+        },
+        {
+          "file": "repo/many/f002.txt",
+          "text": "2\n"
+        },
+        {
+          "file": "repo/many/f003.txt",
+          "text": "3\n"
+        },
+        {
+          "file": "repo/many/f004.txt",
+          "text": "4\n"
+        },
+        {
+          "file": "repo/many/f005.txt",
+          "text": "5\n"
+        },
+        {
+          "file": "repo/many/f006.txt",
+          "text": "6\n"
+        },
+        {
+          "file": "repo/many/f007.txt",
+          "text": "7\n"
+        },
+        {
+          "file": "repo/many/f008.txt",
+          "text": "8\n"
+        },
+        {
+          "file": "repo/many/f009.txt",
+          "text": "9\n"
+        },
+        {
+          "file": "repo/many/f010.txt",
+          "text": "10\n"
+        },
+        {
+          "file": "repo/many/f011.txt",
+          "text": "11\n"
+        },
+        {
+          "file": "repo/many/f012.txt",
+          "text": "12\n"
+        },
+        {
+          "file": "repo/many/f013.txt",
+          "text": "13\n"
+        },
+        {
+          "file": "repo/many/f014.txt",
+          "text": "14\n"
+        },
+        {
+          "file": "repo/many/f015.txt",
+          "text": "15\n"
+        },
+        {
+          "file": "repo/many/f016.txt",
+          "text": "16\n"
+        },
+        {
+          "file": "repo/many/f017.txt",
+          "text": "17\n"
+        },
+        {
+          "file": "repo/many/f018.txt",
+          "text": "18\n"
+        },
+        {
+          "file": "repo/many/f019.txt",
+          "text": "19\n"
+        },
+        {
+          "file": "repo/many/f020.txt",
+          "text": "20\n"
+        },
+        {
+          "file": "repo/many/f021.txt",
+          "text": "21\n"
+        },
+        {
+          "file": "repo/many/f022.txt",
+          "text": "22\n"
+        },
+        {
+          "file": "repo/many/f023.txt",
+          "text": "23\n"
+        },
+        {
+          "file": "repo/many/f024.txt",
+          "text": "24\n"
+        },
+        {
+          "file": "repo/many/f025.txt",
+          "text": "25\n"
+        },
+        {
+          "file": "repo/many/f026.txt",
+          "text": "26\n"
+        },
+        {
+          "file": "repo/many/f027.txt",
+          "text": "27\n"
+        },
+        {
+          "file": "repo/many/f028.txt",
+          "text": "28\n"
+        },
+        {
+          "file": "repo/many/f029.txt",
+          "text": "29\n"
+        },
+        {
+          "file": "repo/many/f030.txt",
+          "text": "30\n"
+        },
+        {
+          "file": "repo/many/f031.txt",
+          "text": "31\n"
+        },
+        {
+          "file": "repo/many/f032.txt",
+          "text": "32\n"
+        },
+        {
+          "file": "repo/many/f033.txt",
+          "text": "33\n"
+        },
+        {
+          "file": "repo/many/f034.txt",
+          "text": "34\n"
+        },
+        {
+          "file": "repo/many/f035.txt",
+          "text": "35\n"
+        },
+        {
+          "file": "repo/many/f036.txt",
+          "text": "36\n"
+        },
+        {
+          "file": "repo/many/f037.txt",
+          "text": "37\n"
+        },
+        {
+          "file": "repo/many/f038.txt",
+          "text": "38\n"
+        },
+        {
+          "file": "repo/many/f039.txt",
+          "text": "39\n"
+        },
+        {
+          "file": "repo/many/f040.txt",
+          "text": "40\n"
+        },
+        {
+          "file": "repo/many/f041.txt",
+          "text": "41\n"
+        },
+        {
+          "file": "repo/many/f042.txt",
+          "text": "42\n"
+        },
+        {
+          "file": "repo/many/f043.txt",
+          "text": "43\n"
+        },
+        {
+          "file": "repo/many/f044.txt",
+          "text": "44\n"
+        },
+        {
+          "file": "repo/many/f045.txt",
+          "text": "45\n"
+        },
+        {
+          "file": "repo/many/f046.txt",
+          "text": "46\n"
+        },
+        {
+          "file": "repo/many/f047.txt",
+          "text": "47\n"
+        },
+        {
+          "file": "repo/many/f048.txt",
+          "text": "48\n"
+        },
+        {
+          "file": "repo/many/f049.txt",
+          "text": "49\n"
+        },
+        {
+          "file": "repo/many/f050.txt",
+          "text": "50\n"
+        },
+        {
+          "file": "repo/many/f051.txt",
+          "text": "51\n"
+        },
+        {
+          "file": "repo/many/f052.txt",
+          "text": "52\n"
+        },
+        {
+          "file": "repo/many/f053.txt",
+          "text": "53\n"
+        },
+        {
+          "file": "repo/many/f054.txt",
+          "text": "54\n"
+        },
+        {
+          "file": "repo/many/f055.txt",
+          "text": "55\n"
+        },
+        {
+          "file": "repo/many/f056.txt",
+          "text": "56\n"
+        },
+        {
+          "file": "repo/many/f057.txt",
+          "text": "57\n"
+        },
+        {
+          "file": "repo/many/f058.txt",
+          "text": "58\n"
+        },
+        {
+          "file": "repo/many/f059.txt",
+          "text": "59\n"
+        },
+        {
+          "file": "repo/many/f060.txt",
+          "text": "60\n"
+        },
+        {
+          "file": "repo/many/f061.txt",
+          "text": "61\n"
+        },
+        {
+          "file": "repo/many/f062.txt",
+          "text": "62\n"
+        },
+        {
+          "file": "repo/many/f063.txt",
+          "text": "63\n"
+        },
+        {
+          "file": "repo/many/f064.txt",
+          "text": "64\n"
+        },
+        {
+          "file": "repo/many/f065.txt",
+          "text": "65\n"
+        },
+        {
+          "file": "repo/many/f066.txt",
+          "text": "66\n"
+        },
+        {
+          "file": "repo/many/f067.txt",
+          "text": "67\n"
+        },
+        {
+          "file": "repo/many/f068.txt",
+          "text": "68\n"
+        },
+        {
+          "file": "repo/many/f069.txt",
+          "text": "69\n"
+        },
+        {
+          "file": "repo/many/f070.txt",
+          "text": "70\n"
+        },
+        {
+          "file": "repo/many/f071.txt",
+          "text": "71\n"
+        },
+        {
+          "file": "repo/many/f072.txt",
+          "text": "72\n"
+        },
+        {
+          "file": "repo/many/f073.txt",
+          "text": "73\n"
+        },
+        {
+          "file": "repo/many/f074.txt",
+          "text": "74\n"
+        },
+        {
+          "file": "repo/many/f075.txt",
+          "text": "75\n"
+        },
+        {
+          "file": "repo/many/f076.txt",
+          "text": "76\n"
+        },
+        {
+          "file": "repo/many/f077.txt",
+          "text": "77\n"
+        },
+        {
+          "file": "repo/many/f078.txt",
+          "text": "78\n"
+        },
+        {
+          "file": "repo/many/f079.txt",
+          "text": "79\n"
+        },
+        {
+          "file": "repo/many/f080.txt",
+          "text": "80\n"
+        },
+        {
+          "file": "repo/many/f081.txt",
+          "text": "81\n"
+        },
+        {
+          "file": "repo/many/f082.txt",
+          "text": "82\n"
+        },
+        {
+          "file": "repo/many/f083.txt",
+          "text": "83\n"
+        },
+        {
+          "file": "repo/many/f084.txt",
+          "text": "84\n"
+        },
+        {
+          "file": "repo/many/f085.txt",
+          "text": "85\n"
+        },
+        {
+          "file": "repo/many/f086.txt",
+          "text": "86\n"
+        },
+        {
+          "file": "repo/many/f087.txt",
+          "text": "87\n"
+        },
+        {
+          "file": "repo/many/f088.txt",
+          "text": "88\n"
+        },
+        {
+          "file": "repo/many/f089.txt",
+          "text": "89\n"
+        },
+        {
+          "file": "repo/many/f090.txt",
+          "text": "90\n"
+        },
+        {
+          "file": "repo/many/f091.txt",
+          "text": "91\n"
+        },
+        {
+          "file": "repo/many/f092.txt",
+          "text": "92\n"
+        },
+        {
+          "file": "repo/many/f093.txt",
+          "text": "93\n"
+        },
+        {
+          "file": "repo/many/f094.txt",
+          "text": "94\n"
+        },
+        {
+          "file": "repo/many/f095.txt",
+          "text": "95\n"
+        },
+        {
+          "file": "repo/many/f096.txt",
+          "text": "96\n"
+        },
+        {
+          "file": "repo/many/f097.txt",
+          "text": "97\n"
+        },
+        {
+          "file": "repo/many/f098.txt",
+          "text": "98\n"
+        },
+        {
+          "file": "repo/many/f099.txt",
+          "text": "99\n"
+        },
+        {
+          "file": "repo/many/f100.txt",
+          "text": "100\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": "many/f000.txt | new file\nmany/f001.txt | new file\nmany/f002.txt | new file\nmany/f003.txt | new file\nmany/f004.txt | new file\nmany/f005.txt | new file\nmany/f006.txt | new file\nmany/f007.txt | new file\nmany/f008.txt | new file\nmany/f009.txt | new file\nmany/f010.txt | new file\nmany/f011.txt | new file\nmany/f012.txt | new file\nmany/f013.txt | new file\nmany/f014.txt | new file\nmany/f015.txt | new file\nmany/f016.txt | new file\nmany/f017.txt | new file\nmany/f018.txt | new file\nmany/f019.txt | new file\nmany/f020.txt | new file\nmany/f021.txt | new file\nmany/f022.txt | new file\nmany/f023.txt | new file\nmany/f024.txt | new file\nmany/f025.txt | new file\nmany/f026.txt | new file\nmany/f027.txt | new file\nmany/f028.txt | new file\nmany/f029.txt | new file\nmany/f030.txt | new file\nmany/f031.txt | new file\nmany/f032.txt | new file\nmany/f033.txt | new file\nmany/f034.txt | new file\nmany/f035.txt | new file\nmany/f036.txt | new file\nmany/f037.txt | new file\nmany/f038.txt | new file\nmany/f039.txt | new file\nmany/f040.txt | new file\nmany/f041.txt | new file\nmany/f042.txt | new file\nmany/f043.txt | new file\nmany/f044.txt | new file\nmany/f045.txt | new file\nmany/f046.txt | new file\nmany/f047.txt | new file\nmany/f048.txt | new file\nmany/f049.txt | new file\nmany/f050.txt | new file\nmany/f051.txt | new file\nmany/f052.txt | new file\nmany/f053.txt | new file\nmany/f054.txt | new file\nmany/f055.txt | new file\nmany/f056.txt | new file\nmany/f057.txt | new file\nmany/f058.txt | new file\nmany/f059.txt | new file\nmany/f060.txt | new file\nmany/f061.txt | new file\nmany/f062.txt | new file\nmany/f063.txt | new file\nmany/f064.txt | new file\nmany/f065.txt | new file\nmany/f066.txt | new file\nmany/f067.txt | new file\nmany/f068.txt | new file\nmany/f069.txt | new file\nmany/f070.txt | new file\nmany/f071.txt | new file\nmany/f072.txt | new file\nmany/f073.txt | new file\nmany/f074.txt | new file\nmany/f075.txt | new file\nmany/f076.txt | new file\nmany/f077.txt | new file\nmany/f078.txt | new file\nmany/f079.txt | new file\nmany/f080.txt | new file\nmany/f081.txt | new file\nmany/f082.txt | new file\nmany/f083.txt | new file\nmany/f084.txt | new file\nmany/f085.txt | new file\nmany/f086.txt | new file\nmany/f087.txt | new file\nmany/f088.txt | new file\nmany/f089.txt | new file\nmany/f090.txt | new file\nmany/f091.txt | new file\nmany/f092.txt | new file\nmany/f093.txt | new file\nmany/f094.txt | new file\nmany/f095.txt | new file\nmany/f096.txt | new file\nmany/f097.txt | new file\nmany/f098.txt | new file\nmany/f099.txt | new file\n",
+          "patch": {
+            "length": 9190,
+            "sha256": "877fbf379be74d0a4eb942747e84c7c2e63efd9cd29f9ecf97e6eac0cd58d4f3"
+          },
+          "truncated": true
+        }
+      }
+    },
+    {
+      "name": "diff truncates a large patch",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/large.txt",
+          "text": "seed\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/large.txt",
+          "repeat": [
+            "0123456789abcdef\n",
+            18000
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": " large.txt | 18001 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-\n 1 file changed, 18000 insertions(+), 1 deletion(-)\n",
+          "patch": {
+            "length": 262144,
+            "sha256": "2cccb8c5eb203d6db37e5bb5eea70547e32d0c6a078331e811c217fe63493c29"
+          },
+          "truncated": true
+        }
+      }
+    },
+    {
+      "name": "diff of a non-ASCII name",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/café.txt",
+          "text": "one\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/café.txt",
+          "text": "two\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "result": {
+          "summary": " \"caf\\303\\251.txt\" | 2 +-\n 1 file changed, 1 insertion(+), 1 deletion(-)\n",
+          "patch": "diff --git \"a/caf\\303\\251.txt\" \"b/caf\\303\\251.txt\"\nindex 5626abf..f719efd 100644\n--- \"a/caf\\303\\251.txt\"\n+++ \"b/caf\\303\\251.txt\"\n@@ -1 +1 @@\n-one\n+two\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff of a linked worktree",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        },
+        {
+          "file": "wt/README.md",
+          "text": "worktree change\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "wt"
+      },
+      "expected": {
+        "result": {
+          "summary": " README.md | 2 +-\n 1 file changed, 1 insertion(+), 1 deletion(-)\n",
+          "patch": "diff --git a/README.md b/README.md\nindex ce01362..6cab6d7 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-hello\n+worktree change\n",
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "diff of a folder that is not a repository",
+      "tree": [
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "plain"
+      },
+      "expected": {
+        "error": "Project channel requires an available local Git project."
+      }
+    },
+    {
+      "name": "diff refuses core.worktree",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "core.worktree",
+            ".."
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "error": "Repository configures core.worktree; refusing to materialize files outside the app-owned worktree."
+      }
+    },
+    {
+      "name": "diff refuses an unusable core.worktree",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "core.worktree",
+            "../missing"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "error": "Unable to inspect Git core.worktree configuration."
+      }
+    },
+    {
+      "name": "diff of an unborn branch",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "file": "repo/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "repo"
+      },
+      "expected": {
+        "error": "Git command failed: fatal: bad revision 'HEAD'"
+      }
+    },
+    {
+      "name": "diff of a bare repository",
+      "tree": [
+        {
+          "dir": "bare.git"
+        },
+        {
+          "git": [
+            "-C",
+            "bare.git",
+            "init",
+            "-q",
+            "--bare"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "diff",
+        "root": "bare.git"
+      },
+      "expected": {
+        "error": "Project channel requires an available local Git project."
+      }
+    },
+    {
+      "name": "repository of a subfolder",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "repository",
+        "root": "repo/src"
+      },
+      "expected": {
+        "result": "{scratch}\\repo\\src"
+      }
+    },
+    {
+      "name": "repository of a Git directory",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "repository",
+        "root": "repo/.git"
+      },
+      "expected": {
+        "error": "Root must be a working directory."
+      }
+    },
+    {
+      "name": "repository through a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "operation": {
+        "op": "repository",
+        "root": "alias"
+      },
+      "native": {
+        "outcome": {
+          "error": "Projects through reparse directories are not supported."
+        },
+        "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+      },
+      "expected": {
+        "result": "{scratch}\\repo"
+      }
+    },
+    {
+      "name": "classify a repository root",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "repo"
+      },
+      "expected": {
+        "result": true
+      }
+    },
+    {
+      "name": "classify a repository subfolder",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "repo/src"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "classify a folder that is not a repository",
+      "tree": [
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "plain"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "classify a linked worktree",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "worktree",
+            "add",
+            "-q",
+            "../wt"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "wt"
+      },
+      "expected": {
+        "result": true
+      }
+    },
+    {
+      "name": "classify a pointer to a missing Git directory",
+      "tree": [
+        {
+          "dir": "broken"
+        },
+        {
+          "file": "broken/.git",
+          "text": "gitdir: ../missing"
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "broken"
+      },
+      "expected": {
+        "systemError": "ENOENT"
+      }
+    },
+    {
+      "name": "classify a file inside a repository",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "repo/README.md"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "classify a file outside any repository",
+      "tree": [
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "plain/a.txt"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "classify a repository that configures core.worktree",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "config",
+            "core.worktree",
+            "../elsewhere"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "isGit",
+        "root": "repo"
+      },
+      "expected": {
+        "result": false
+      }
+    },
+    {
+      "name": "tracked filters are refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.txt filter=lfs\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "trackedFilters",
+        "root": "repo"
+      },
+      "expected": {
+        "error": "Repository uses Git filters; refusing because filters may execute code."
+      }
+    },
+    {
+      "name": "tracked paths without filters pass",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.txt text\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "trackedFilters",
+        "root": "repo"
+      },
+      "expected": {
+        "result": null
+      }
+    },
+    {
+      "name": "a filter on a candidate path is refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.bin filter=custom\n"
+        }
+      ],
+      "operation": {
+        "op": "filters",
+        "root": "repo",
+        "paths": [
+          "a.bin"
+        ]
+      },
+      "expected": {
+        "error": "Repository uses Git filters; refusing because filters may execute code."
+      }
+    },
+    {
+      "name": "unfiltered candidate paths pass",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.bin filter=custom\n"
+        }
+      ],
+      "operation": {
+        "op": "filters",
+        "root": "repo",
+        "paths": [
+          "data.txt",
+          "missing.txt"
+        ]
+      },
+      "expected": {
+        "result": null
+      }
+    },
+    {
+      "name": "filters at the selected revision are refused",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.txt filter=lfs\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "operation": {
+        "op": "revisionFilters",
+        "root": "repo",
+        "revision": "{HEAD}"
+      },
+      "expected": {
+        "error": "Selected revision uses Git filters; refusing because checkout may execute code."
+      }
+    },
+    {
+      "name": "working-tree attributes do not affect the selected revision",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "repo/data.txt",
+          "text": "data\n"
+        },
+        {
+          "file": "repo/a.bin",
+          "text": "bin\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/.gitattributes",
+          "text": "*.txt filter=lfs\n"
+        }
+      ],
+      "operation": {
+        "op": "revisionFilters",
+        "root": "repo",
+        "revision": "{HEAD}"
+      },
+      "expected": {
+        "result": null
+      }
+    }
+  ]
+}

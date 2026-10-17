@@ -253,7 +253,8 @@ public sealed class GitRepositoryLeaseTests
             await using var loop = new RuntimeLoop();
             await loop.Invoke(() =>
             {
-                Assert.Equal(Reparse, Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(link, "inner"))).Message);
+                // The folder lease now refuses the ambiguous segment by name, before either the decoy or the junction is opened.
+                Assert.Equal(RepositoryFolderLease.Unavailable, Assert.Throws<WorkspaceReadException>(() => RepositoryFolderLease.Open(loop, Path.Combine(link, "inner"))).Message);
                 using var folder = RepositoryFolderLease.Open(loop, worktree);
                 File.WriteAllText(Path.Combine(worktree, ".git"), $"gitdir: ../{alias}/inner/.git");
                 Assert.Equal(Invalid, Assert.Throws<WorkspaceReadException>(() => GitRepositoryLease.Open(loop, folder)).Message);
