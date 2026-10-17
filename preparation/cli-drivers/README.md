@@ -36,7 +36,7 @@ The local Release build has zero warnings/errors; **88 preparation tests** pass 
 
 Independent security and QA reviews used **gpt-6-luna/max**, selected by repository `AGENTS.md` / `workflow-router` for bounded Critical-lane review under the verified Sol/max owner route. Review fixes preserve cancellation/confirmation metadata, classify missing fields and local observer failures, validate Claude content-block types/indexes, and address lifecycle schemas, retry progress and explicit Codex policy overrides. Review is preparation-only; it does not admit installed CLI executables or authorize integration.
 
-Source was initially prepared from `7df623a9167d82d8a73e4430fd153ea3945162e2`; the private publication branch `codex/cli-drivers-prep-01a14a3d` is rebased onto `677dc16d29bdf7a6c17aa063626f59abc49e291d`. Rebase onto the accepted post-P5 baseline before integration. Agent coordination was unavailable (`session_token_unavailable`); no shared claim is asserted. Publication of this preparation does not authorize runtime/model-picker integration, migration, cutover or feature activation.
+Source was initially prepared from `7df623a9167d82d8a73e4430fd153ea3945162e2`; the private publication branch `codex/cli-drivers-prep-01a14a3d` is rebased onto `1b88ff878f270922fe746946f22b87b4d9491608`. Rebase onto the accepted post-P5 baseline before integration. Agent coordination was initially unavailable (`session_token_unavailable`); native registration after restart returned `mcp_host_root_scope_mismatch`. Hooks remain off and no shared claim is asserted. Publication of this preparation does not authorize runtime/model-picker integration, migration, cutover or feature activation.
 
 ## Required after P5, before product integration
 
