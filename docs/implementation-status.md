@@ -186,8 +186,8 @@ Dual-landed fixes:
     - **I-2.** A caller cannot tell a preview from the whole approval. The protocol comment now says so.
   - **Native half (P2.3 branch).** `ToolRuntime.Reconcile` returns `Store.ApprovalRead`'s projection, using the chat's `Redactor`, with the same fallback.
     - **One difference, fail-closed.** Native takes the fallback only when the redacted document does not parse (`WorkspaceReadException`). TypeScript's catch-all also covers a store read that fails just after the save; native reports that as a runtime failure.
-    - **Oracle.** The approval oracle gains four reconciliations: labelled secrets in a command and its environment, a command above the preview bound, and unterminated private keys on a command and on a completed edit without a `toolCallId`. Its vectors are regenerated from this source.
-    - **Mutations.** Six of seven native mutations fail the replay. Leaving the fallback's result content unredacted survives, because reconciliation writes only runtime-authored result text.
+    - **Oracle.** The approval oracle gains six reconciliations: labelled secrets in a command and its environment, a command above the preview bound, unterminated private keys on a command and on a completed edit without a `toolCallId`, labelled secrets in the fallback's `toolCallId`, nonce and fingerprint (L1-a), and a fallback without a summary (I-1). Its vectors are regenerated from this source.
+    - **Mutations.** Seven of eight native mutations fail the replay, among them copying the fallback's fields unredacted and writing absent fields as null. Leaving the fallback's result content unredacted survives, because reconciliation writes only runtime-authored result text.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
@@ -1186,7 +1186,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Malformed rows.** A stored approval that is not a JSON object (not valid JSON, or valid JSON of another kind) faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with an error, or with a document spread from the value. Both runtimes' pages skip such rows. Neither runtime ever writes one.
 
 **Evidence.**
-- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 29 approval rows covering:
+- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 31 approval rows covering:
   - edits, commands, rejected and secret-bearing approvals;
   - a 140,000-byte approval with a multibyte summary and long path (preview);
   - external tool, browser, handoff and integration approvals;
@@ -1197,8 +1197,8 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   It pins, in `approval-vectors.json`:
   - every era's own approvals (each fixture era since v1 holds approved and rejected coding demos), with pages and reads;
   - a full keyset traversal at limit 2;
-  - 136 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
-  - 28 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
+  - 138 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
+  - 30 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
 
   It is bound to the SHA-256 of `workspace-queries.ts`, `tool-runtime.ts`, `store.ts`, `service.ts`, `redaction.ts` and `repository.ts`. Regenerating the vectors requires `P2_WRITE_APPROVALS=1`.
 - **The replay.** `ApprovalTests` seeds the same rows into the same copies and replays every step through `DevelopmentChat`. Values, refusals, approval rows and event rows (sequences included) must match. A native-only test pins the malformed-row difference.
