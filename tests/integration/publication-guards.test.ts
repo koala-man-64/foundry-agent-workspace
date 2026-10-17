@@ -160,6 +160,38 @@ describe('publication guards dual-landed from the native runtime', () => {
     });
   }, 180_000);
 
+  it('refuses a relative local remote, the only way project content can name a destination it ships', async () => {
+    const fixture = project(); const { git, scratch } = fixture;
+    await isolated(fixture, async () => {
+      // The project ships a destination whose own receive-pack hook Git runs when it pushes there.
+      const marker = path.join(scratch, 'hook-ran');
+      const vendor = path.join(fixture.repo, 'vendor'); const hook = path.join(vendor, 'hooks', 'post-receive');
+      git('init', '-q', '--bare', 'repo/vendor');
+      fs.writeFileSync(hook, `#!/bin/sh\necho ran > "${marker.replaceAll('\\', '/')}"\n`);
+      // Control: Git itself runs the hook on a push through the relative path.
+      git('-C', 'repo', 'push', '-q', './vendor', 'HEAD:refs/heads/probe');
+      expect(fs.existsSync(marker)).toBe(true);
+      fs.rmSync(marker);
+      const task = await createTask(fixture);
+      fs.writeFileSync(path.join(task.worktreePath, 'README.md'), 'changed\n');
+      await commit(fixture, task);
+      const relative = ['./vendor', 'vendor', '../repo/vendor', '.\\vendor', '/vendor', 'file:///vendor'];
+      for (const url of relative) {
+        git('-C', 'repo', 'remote', 'set-url', 'origin', url);
+        await expect([url, await push(fixture, task).then(() => 'pushed', (error: Error) => error.message)]).toEqual([url, unsupportedRemoteMessage('origin')]);
+        await expect(fixture.repositories.verifyPushOutcome(fixture.repo, task.worktreePath, undefined, 'origin', task.branch)).resolves.toBeUndefined();
+      }
+      expect(fs.existsSync(marker)).toBe(false);
+      expect(states(fixture, 'git.push')).toEqual(Array(relative.length).fill('complete'));
+      expect(git('--git-dir', vendor, 'for-each-ref', '--format=%(refname)')).toBe('refs/heads/probe');
+      // A fully qualified destination is the user's own and stays usable.
+      fs.rmSync(hook);
+      git('-C', 'repo', 'remote', 'set-url', 'origin', vendor);
+      await push(fixture, task);
+      expect(git('--git-dir', vendor, 'for-each-ref', '--format=%(refname)')).toContain(`refs/heads/${task.branch}`);
+    });
+  }, 180_000);
+
   it('refuses a local remote reached through a link, then pushes through its real path', async () => {
     const fixture = project(); const { git, scratch } = fixture;
     await isolated(fixture, async () => {
@@ -217,7 +249,7 @@ describe('publication guards dual-landed from the native runtime', () => {
     for (const [url, permitted] of cases) expect([url, isPermittedRemoteForm(url)]).toEqual([url, permitted]);
   });
 
-  it('accepts only a link-free local folder on a fixed drive as a local remote', async () => {
+  it('accepts only a fully qualified, link-free local folder on a fixed drive as a local remote', async () => {
     const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-supported-remotes-')));
     try {
       fs.mkdirSync(path.join(scratch, 'remotes', 'dest.git'), { recursive: true });
@@ -225,11 +257,12 @@ describe('publication guards dual-landed from the native runtime', () => {
       fs.symlinkSync(path.join(scratch, 'remotes'), path.join(scratch, 'linked'), 'junction');
       const types: Record<string, number> = { [scratch[0]!.toUpperCase()]: 3, R: 2, Z: 4, Q: 1 };
       const driveType = async (letter: string) => types[letter.toUpperCase()] ?? 0;
-      const check = (url: string, cwd = path.join(scratch, 'repo')) => requireSupportedRemotes(cwd, 'origin', [url], driveType);
+      const check = (url: string) => requireSupportedRemotes('origin', [url], driveType);
       const unsupported = unsupportedRemoteMessage('origin');
       for (const url of ['https://example.invalid/owner/repo.git', 'git@example.invalid:owner/repo.git', 'ssh://git@example.invalid/owner/repo.git',
         'git+ssh://git@example.invalid/owner/repo.git', 'ssh+git://git@example.invalid/owner/repo.git', path.join(scratch, 'remotes', 'dest.git'),
-        path.join(scratch, 'remotes', 'missing', 'deeper.git'), '../remotes/dest.git', `file:///${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`]) {
+        path.join(scratch, 'remotes', 'missing', 'deeper.git'), `file:///${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`,
+        path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')]) {
         await expect(check(url)).resolves.toBeUndefined();
       }
       for (const url of [path.join(scratch, 'linked', 'dest.git'), '../linked/dest.git', path.join(scratch, 'remotes', 'bundle'), path.join(scratch, 'remotes', 'bundle', 'inside.git'),
@@ -238,13 +271,15 @@ describe('publication guards dual-landed from the native runtime', () => {
         // Forms Git would refuse only once running, and spellings it resolves elsewhere than the check would.
         'http://example.invalid/r.git', 'git://example.invalid/r.git', 'ext::git --version', 'foo::bar', 'https::https://example.invalid/r.git',
         'HTTPS://example.invalid/r.git', 'SSH://example.invalid/r.git', `FILE:///${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`,
-        `file://localhost/${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`, '~/dest.git', '~user/dest.git', 'foo bar://x', '://x']) {
+        `file://localhost/${path.join(scratch, 'remotes', 'dest.git').replaceAll('\\', '/')}`, '~/dest.git', '~user/dest.git', 'foo bar://x', '://x',
+        // A relative local path, which project content could point at a destination it ships.
+        '../remotes/dest.git', './remotes/dest.git', 'remotes/dest.git', '.\\remotes\\dest.git', '\\remotes\\dest.git', '/remotes/dest.git', 'file:///remotes/dest.git']) {
         await expect([url, await check(url).then(() => 'accepted', (error: Error) => error.message)]).toEqual([url, unsupported]);
       }
       // Every URL is checked: one unsupported push URL refuses the remote.
-      await expect(requireSupportedRemotes(scratch, 'origin', ['https://example.invalid/r.git', path.join(scratch, 'linked', 'dest.git')], driveType)).rejects.toThrow(unsupported);
+      await expect(requireSupportedRemotes('origin', ['https://example.invalid/r.git', path.join(scratch, 'linked', 'dest.git')], driveType)).rejects.toThrow(unsupported);
       // A drive type that cannot be established refuses; push turns any such failure into "none".
-      await expect(requireSupportedRemotes(scratch, 'origin', ['Z:/repo.git'], () => Promise.reject(new Error('unavailable')))).rejects.toThrow('unavailable');
+      await expect(requireSupportedRemotes('origin', ['Z:/repo.git'], () => Promise.reject(new Error('unavailable')))).rejects.toThrow('unavailable');
     } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
   }, 60_000);
 

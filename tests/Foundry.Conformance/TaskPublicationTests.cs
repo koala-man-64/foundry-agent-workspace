@@ -622,6 +622,53 @@ public sealed partial class TaskPublicationTests
     }
 
     /// <summary>
+    /// Rudy's decision on the destination's own layout (17 October 2026): a relative local-path remote is refused before any
+    /// transport. It is the only way content that arrives with a project can name a destination the project ships, whose
+    /// receive-pack hooks Git runs (the control proves this one live) and whose layout can lead to a share. A fully qualified
+    /// destination is the user's own and still pushes.
+    /// </summary>
+    [Fact]
+    public async Task PushRefusesARelativeLocalRemote()
+    {
+        var (fixture, data) = await Project("foundry-p2-push-relative-");
+        using (fixture)
+        {
+            var marker = fixture.Local("hook-ran");
+            await fixture.Git("init", "-q", "--bare", "repo/vendor");
+            fixture.Write("repo/vendor/hooks/post-receive", $"#!/bin/sh\necho ran > \"{marker.Replace('\\', '/')}\"\n");
+            await fixture.Git("-C", "repo", "push", "-q", "./vendor", "HEAD:refs/heads/probe");
+            Assert.True(File.Exists(marker));
+            File.Delete(marker);
+            string[] relative = ["./vendor", "vendor", "../repo/vendor", ".\\vendor", "/vendor", "file:///vendor"];
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var branch = (string)task["branch"]!;
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                await chat.Dispatch("task.commit", new() { ["taskId"] = taskId, ["message"] = "Change" });
+                var push = new Dictionary<string, object?> { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" };
+                foreach (var url in relative)
+                {
+                    await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
+                    Assert.Equal(RepositoryService.UnsupportedRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                    Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
+                }
+                Assert.Equal(relative.Length, store.Rows("SELECT state FROM intents WHERE kind='git.push'").Count);
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
+                Assert.False(File.Exists(marker));
+                File.Delete(fixture.Local("repo/vendor/hooks/post-receive"));
+                await fixture.Git("-C", "repo", "remote", "set-url", "origin", fixture.Local("repo/vendor"));
+                await chat.Dispatch("task.push", push);
+                await chat.Shutdown(); return 0;
+            });
+            Assert.Contains("refs/heads/codex/task/", await fixture.GitText("--git-dir", fixture.Local("repo/vendor"), "for-each-ref"), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
     /// A local-path remote reached through a link is refused before any transport: a directory symbolic link could lead
     /// to a share, and the chain is checked without following one. A junction stands in for the link (it needs no
     /// elevation). The same remote through its real path pushes.

@@ -172,7 +172,7 @@ Dual-landed fixes:
     - First round: GO, conditional. Its findings were the run-time-refused transports (medium), the destination's own layout (medium), `file://localhost` and `~` (low), the intent-to-add rename (low), the `lstat` wording, and missing pin and drive-failure tests. All but the destination layout are fixed above, in both runtimes; that one is open for Rudy, below.
     - Re-review: GO. Its one low finding, Git's early refusals (leading whitespace, a leading `-`, `rsync:`, an option-like ssh host), is fixed above.
   - **Not in this change:** H1, the TypeScript hooks-folder fix, is #35 (`claude/fix-empty-git-hooks`, unmerged). Whichever of the two lands second re-pins the vectors.
-  - **Open in both runtimes, for Rudy's decision: the destination's own layout (medium, confirmed by the independent review).**
+  - **The destination's own layout (medium, confirmed by the independent review): decided by Rudy, 17 October 2026, and fixed in both runtimes.**
     - The remote check covers only the named path, but Git's local transport also opens the destination's own layout:
       - `<path>/.git`, `<path>.git/.git` and `<path>.git`; a push to a missing `dest` wrote into `dest.git`;
       - a gitfile, which needs no privilege. A folder whose `.git` file reads `gitdir: //host/...` sent both a push and a remote check through the share, probed on loopback;
@@ -180,7 +180,25 @@ Dual-landed fixes:
     - For example, a project whose own configuration sets `remote.origin.url=./vendor` (an allowed key) and that ships `vendor/.git` as such a gitfile reaches the share when the user pushes or reconciles.
     - This extends Rudy's accepted limit that a local-path destination runs its own `receive-pack` hooks. Those hooks can already run any program on push, while the remote check of an unknown push runs no hooks but follows the layout.
     - The code and these notes now claim only that the named path is neither a share nor reached through a link.
-    - Choices: accept it as part of the limit; screen the destination as Git's `enter_repo` walks it, refusing a gitfile, a linked `.git`, `alternates` and `commondir`; or refuse local-path remotes.
+    - **Choices considered:**
+      - accept it as part of the limit;
+      - screen the destination as Git's `enter_repo` walks it, refusing a gitfile, a linked `.git`, `alternates` and `commondir`;
+      - refuse local-path remotes;
+      - refuse only relative ones.
+    - **Decision: refuse relative local-path remotes.**
+      - A local-path remote must now be fully qualified: `C:\...`, `C:/...` or `file:///C:/...`. `./vendor`, `vendor`, `../x`, `.\x`, `\x`, `/x` and `file:///x` are refused before any transport, with the same "none" message; a remote check stays unknown.
+      - This subsumes the earlier `~`, drive-relative and empty-path refusals, and relative paths no longer resolve against the folder the command runs in.
+    - **Why this cut.**
+      - Content that arrives with a project cannot know where it will be unpacked, so a relative path is the only way it can name a destination it ships. That covers the reviewer's example, and a shipped destination with its own `post-receive` hook, which Git runs on push.
+      - Screening the destination was rejected. It would reimplement Git's repository lookup, race the push, and still leave the destination's hooks.
+      - Refusing every local-path remote was rejected for its cost. In-app pushes to local bare repositories would stop working, and every publication test and vector would need a test-only bypass in both runtimes.
+    - **What it leaves.**
+      - A fully qualified destination is the user's own and stays trusted, layout and hooks included, under the accepted limit. Changing a destination already on the machine needs prior write access to it.
+      - A relative remote set up by hand must be changed to an absolute path before the app pushes.
+    - **Tests.**
+      - `tests/integration/publication-guards.test.ts` "refuses a relative local remote, the only way project content can name a destination it ships" ships a bare `vendor` with a live `post-receive` hook inside the project. A control first shows plain Git running that hook through `./vendor`. Then every relative spelling is refused for push and left unknown for the remote check, the hook never runs, and the absolute path still pushes. The supported-remotes unit cases move `../remotes/dest.git` to the refused list and add the other relative forms.
+      - Native `PushRefusesARelativeLocalRemote` covers the same scenario.
+      - Accepting relative paths again failed each test, in both runtimes.
 - **Running a non-ASCII approved command exactly as approved** (T1, 17 October 2026).
   - **The defect.** `job-runner.ps1` read its JSON spec with `[Console]::In`, which Windows PowerShell 5.1 decodes in the console's OEM code page, but `command-runner.ts` writes it as UTF-8. Every non-ASCII character of the approved command, its environment values, its working directory and the result and cancel paths reached the helper altered.
     - **Measured:** an approved `'café 東京 😀'` ran as `'caf├⌐ µ¥▒Σ║¼ ≡ƒÿÇ'` and the run was reported with exit code 0.
@@ -886,7 +904,9 @@ Its remaining notes:
     - **Accepted limits (Rudy, 17 October 2026).**
       - A remote that is a local folder path runs that destination repository's own `receive-pack` hooks and configuration. Git's local transport does not pass this process's settings on; the independent review confirmed it with a probe. Rudy chose to allow local remotes and document this, rather than refuse them or harden the destination.
       - The configuration is screened just before the push, so a same-user process that rewrites it in between is not detected.
-      - The independent review of the TypeScript port found that the destination's own layout (`<path>.git`, a gitfile, `alternates`) can also lead to a share. It is open for Rudy's decision; see "Publication hardening" in the dual-landed fixes.
+      - The independent review of the TypeScript port found that the destination's own layout (`<path>.git`, a gitfile, `alternates`) can also lead to a share.
+        - Rudy decided on 17 October 2026 to refuse relative local-path remotes in both runtimes, because a relative path is how a project would name a destination it ships.
+        - The two limits above now apply only to a fully qualified destination, which is the user's own. See "Publication hardening" in the dual-landed fixes.
     - **Independent review.**
       - The Store fix was GO.
       - The allowlist was NO-GO as first claimed, because of the local-remote hooks. Rudy's decision narrowed the claim, and the network-share refusal and the named protocol denies were added.
