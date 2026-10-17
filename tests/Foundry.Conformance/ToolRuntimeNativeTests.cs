@@ -75,6 +75,40 @@ public sealed class ToolRuntimeNativeTests
         Assert.Equal("after\n", File.ReadAllText(fixture.Local("repo/README.md")));
     });
 
+    /// <summary>
+    /// A command that exits 0 but whose cleanup cannot be verified (it hands its output handle to this process, outside its
+    /// job) is recorded unknown with cleanup unverified, never complete (review L-1 of P2.3c). The Node oracle cannot reach
+    /// it: its helper runs the command under a watchdog of its own.
+    /// </summary>
+    [Fact]
+    public Task ACommandWhoseCleanupIsUnverifiedIsRecordedUnknown() => Run(async (fixture, store, _, tools) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        var command = "$sig = '[DllImport(\"kernel32.dll\")] public static extern IntPtr GetStdHandle(int n); [DllImport(\"kernel32.dll\")] public static extern IntPtr GetCurrentProcess(); "
+            + "[DllImport(\"kernel32.dll\")] public static extern IntPtr OpenProcess(uint a, bool i, int p); "
+            + "[DllImport(\"kernel32.dll\")] public static extern bool DuplicateHandle(IntPtr sp, IntPtr h, IntPtr tp, out IntPtr d, uint a, bool i, uint o);'; "
+            + "$k = Add-Type -MemberDefinition $sig -Name K -Namespace P -PassThru; "
+            + $"$t = $k::OpenProcess(0x40, $false, {Environment.ProcessId}); $d = [IntPtr]::Zero; "
+            + "[void]$k::DuplicateHandle($k::GetCurrentProcess(), $k::GetStdHandle(-11), $t, [ref]$d, 0, $false, 2); "
+            + "[IO.File]::WriteAllText('handle.txt', [string]$d.ToInt64()); [Console]::Out.Write('hello')";
+        var pending = tools.Execute(task, new ToolCall("call", "run_command", new Dictionary<string, object?> { ["command"] = command, ["timeoutMs"] = 60000d }), CancellationToken.None);
+        var approval = await Proposal(store, pending);
+        tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve");
+        var result = await pending.WaitAsync(TimeSpan.FromMinutes(2));
+        var handle = nint.Parse(File.ReadAllText(fixture.Local("repo/handle.txt")), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(handle != 0, "The command did not hand its output to this process, so the test proves nothing.");
+        CloseHandle(handle);
+        Assert.True(result.IsError, result.Content);
+        var saved = store.Approval((string)approval["id"]!);
+        Assert.Equal("unknown", saved["state"]);
+        var outcome = (Dictionary<string, object?>)saved["result"]!;
+        Assert.Equal((false, 0d), ((bool)outcome["cleanupVerified"]!, (double)outcome["exitCode"]!));
+    });
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static extern bool CloseHandle(nint handle);
+
     /// <summary>Three holders at once; a waiter is admitted when one leaves, and a cancelled waiter leaves without a slot.</summary>
     [Fact]
     public async Task ExecutionSlotsAdmitThreeAndACancelledWaiterTakesNone()
