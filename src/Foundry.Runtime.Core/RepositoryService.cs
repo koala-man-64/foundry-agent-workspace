@@ -562,7 +562,8 @@ internal sealed partial class RepositoryService
     /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
     /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
     /// Not in TypeScript: the worktree must still belong to the task's project repository, whose remotes are the ones
-    /// checked (<see cref="RequireTaskWorktree"/>).
+    /// checked (<see cref="RequireTaskWorktree"/>), and the repository's own configuration must pass
+    /// <see cref="RequireTrustedPushConfiguration"/>.
     /// </summary>
     internal async Task<string> Push(string root, string projectPath, string? boundCommon, string remote, string branch)
     {
@@ -573,9 +574,11 @@ internal sealed partial class RepositoryService
         if (url.ExitCode != 0 || JsJson.Trim(url.Stdout).Length == 0) throw new RepositoryException($"Remote {remote} is not configured in the project repository.");
         var current = JsJson.Trim((await Run(repository, ["rev-parse", "--abbrev-ref", "HEAD"])).Stdout);
         if (current != branch) throw new RepositoryException($"The worktree is on {current}, not the task branch {branch}.");
+        try { await RequireTrustedPushConfiguration(repository); }
+        catch (Exception error) when (error is not RepositoryException && error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
         try
         {
-            var result = await Run(repository, ["push", "--no-verify", "--porcelain", "--", remote, $"refs/heads/{branch}:refs/heads/{branch}"],
+            var result = await Run(repository, [.. TrustedProtocols, "push", "--no-verify", "--porcelain", "--", remote, $"refs/heads/{branch}:refs/heads/{branch}"],
                 options: new(TimeSpan.FromMilliseconds(120_000), AllowCredentialHelper: true));
             return JsJson.Trim(result.Stdout);
         }
@@ -594,7 +597,8 @@ internal sealed partial class RepositoryService
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
             if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
-            var result = await Run(project, ["ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
+            await RequireTrustedPushConfiguration(project);
+            var result = await Run(project, [.. TrustedProtocols, "ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
             var output = JsJson.Trim(result.Stdout);
             var match = RemoteTip().Match(output);
@@ -657,6 +661,59 @@ internal sealed partial class RepositoryService
             try { stillThere = MetadataFile.Probe(target) is not MetadataEntryKind.Missing; } catch (IOException) { stillThere = false; }
             throw new RepositoryException(error.Message, stillThere ? "none" : "unknown", error);
         }
+    }
+
+    /// <summary>Transports a push or remote check may use: https, ssh and local paths. Never plain git, http, or ext::.</summary>
+    private static readonly string[] TrustedProtocols = ["-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "protocol.file.allow=always"];
+
+    private static readonly HashSet<string> TrustedCoreKeys = new(StringComparer.Ordinal)
+    {
+        "repositoryformatversion", "filemode", "bare", "logallrefupdates", "symlinks", "ignorecase",
+        "autocrlf", "eol", "safecrlf", "longpaths", "precomposeunicode", "quotepath", "fscache",
+    };
+
+    /// <summary>
+    /// Not in TypeScript (review of #36; Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
+    /// the repository's own configuration, which can run programs (credential helpers, core.sshCommand, transport
+    /// programs, ext:: URLs) or redirect where and how Git connects. Before either runs, every key that the repository's
+    /// configuration sets (its local and worktree scopes, with everything they include) must be one that neither runs a
+    /// program nor changes the connection. Anything else, including include directives, refuses with "none". The user's
+    /// global configuration is theirs and is not screened. A blocklist could never be complete; unknown keys refuse.
+    /// </summary>
+    private async Task RequireTrustedPushConfiguration(RepositoryAdmission admission)
+    {
+        var fields = (await Run(admission, ["config", "--list", "--show-scope", "-z"])).Stdout.Split('\0');
+        for (var index = 0; index + 1 < fields.Length; index += 2)
+        {
+            if (fields[index] is "global" or "system" or "command") continue;
+            var entry = fields[index + 1];
+            var newline = entry.IndexOf('\n', StringComparison.Ordinal);
+            var key = newline < 0 ? entry : entry[..newline];
+            if (!TrustedPushKey(key, out var shown))
+                throw new RepositoryException($"Push refused: the repository's own Git configuration sets {shown}, which push does not trust. Move it to your global Git configuration or remove it.");
+        }
+    }
+
+    /// <summary>Whether a configuration key is inert for a push; <paramref name="shown"/> names it without its subsection,
+    /// which can hold a URL with credentials.</summary>
+    private static bool TrustedPushKey(string key, out string shown)
+    {
+        var first = key.IndexOf('.', StringComparison.Ordinal); var last = key.LastIndexOf('.');
+        var section = first > 0 ? key[..first] : key; var variable = last >= 0 && last < key.Length - 1 ? key[(last + 1)..] : "";
+        var subsection = first > 0 && last > first;
+        shown = subsection ? $"{section}.*.{variable}" : key;
+        if (first <= 0 || variable.Length == 0) return false;
+        return (section, subsection) switch
+        {
+            ("core", false) => TrustedCoreKeys.Contains(variable),
+            ("extensions", false) => true,
+            ("user", false) => variable is "name" or "email" or "useconfigonly",
+            ("remote", true) => variable is "url" or "pushurl" or "fetch" or "push" or "tagopt" or "prune",
+            ("branch", true) => variable is "remote" or "pushremote" or "merge" or "rebase",
+            ("pull", false) => variable is "rebase" or "ff",
+            ("push", false) => variable is "default",
+            _ => false,
+        };
     }
 
     internal const string ForeignWorktree = "The task worktree no longer belongs to the task's project repository.";
