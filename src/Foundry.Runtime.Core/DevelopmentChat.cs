@@ -451,8 +451,8 @@ public sealed class DevelopmentChat
     /// service.ts fileRoot: a Git task's worktree, or a saved folder that still resolves to the same physical folder under
     /// the exact spelling it was saved with. The saved spelling is both the candidate and the approved path, and the folder
     /// lease refuses every reparse point on the way, so the only remaining check is that the real path keeps that spelling.
-    /// TypeScript currently refuses a short (8.3) or otherwise non-canonical spelling one step earlier, with the shorter
-    /// "different location" message; both refuse.
+    /// Since #33, TypeScript's resolveLocalPath admits a short (8.3) spelling of the same folder, and this same check then
+    /// refuses it in both runtimes, with the same message.
     /// </summary>
     /// <returns>For a folder task, the lease that keeps the checked folder pinned while the caller reads it.</returns>
     private RepositoryFolderLease? FileRoot(Dictionary<string, object?> task, out string root)

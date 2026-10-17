@@ -125,7 +125,7 @@ Dual-landed fixes:
   - **The fix.** `resolveLocalPath` accepts an approved spelling that differs from the canonical path only when that spelling is link-free and is the same folder. Compared component by component with the canonical path, it must have the same drive root and the same depth, and every component must be a non-link with the same file identity (volume and file index from `lstat`). A candidate that reached the approved folder through an alias is still accepted, as before. A replaced approved folder (now a link) or a different folder is still refused.
   - **Fixtures fixed too.** Hosted runners exposed three more fixture problems under an 8.3 `TEMP`. `folder-admission` saved raw scratch paths as projects, and the `p1/summary` and `workspace-pages` corpus fixtures canonicalized with JavaScript `realpathSync`, which keeps 8.3 spellings. They now use native realpath, as production `project.add` does. The older `canonicalPath(x) === x` checks for saved projects are unchanged.
   - **Still refused:** subst drives, junctions and different folders. Node reports a volume mount point as a directory, so a spelling through the same mount folder is accepted; a different mount folder, or the mounted volume's own drive letter, is refused.
-  - **Native side.** C# has no approved-path comparison yet. When P2.2 ports one, it must avoid this defect and must not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one. It should compare 128-bit volume and file identities per component.
+  - **Native side.** When this was written, C# had no approved-path comparison. The requirement: avoid this defect, and do not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one; compare 128-bit volume and file identities per component. P2.2 meets it with `RepositoryPaths.SameFolder` (see P2.2c), which compares the FileIdInfo identity of every component of both chains and refuses any reparse point.
 - **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
   - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
   - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
@@ -530,6 +530,10 @@ Recorded 16 October 2026. Rudy wrote: "Start P2.2 in a fresh session and I autho
 
 Everything else stays held: shipping or runtime selectors, Electron-side .NET enablement, push, PR, CI, main integration, schema v6, adoption, real data, live providers and cutover.
 
+**Publication.** Rudy approved pushing the branch and opening a draft pull request for exactly `6f5530a..e7c8460`, with no merge. That draft is #36. To fix its failed checks, `main` at `11d7208` (#33 and #34) was merged into the branch.
+- #33 changed `repository.ts`. Seven P2.2 vector files bind that file's SHA-256, and both the Node oracles and the native `AssertOracleSources` failed on that hash alone.
+- The seven files were regenerated from the shipping runtime. Each one changed only that hash: #33 moved no recorded P2.2 outcome.
+
 ### Local Git execution and inspection foundation (P2.2a)
 
 **What it is.** These internal classes are unwired. Nothing in `DevelopmentChat`, `Program` or the protocol calls them, so the 25-method surface is unchanged.
@@ -603,7 +607,7 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 - **Redaction.** `files.read` content and the diff's patch and summary are redacted. Refusals reach the caller as TypeScript's entry reports them: the message, redacted.
 - **Worktree base.** It is the data directory's `wt` folder, as `entry.ts` places it.
 
-**Approved-path comparison.** For a folder task, the saved spelling is both the candidate and the approved path, and the folder lease refuses every reparse point. Native therefore keeps only the check that the real path still has the saved spelling, case-insensitively. Today TypeScript refuses a short (8.3) or otherwise non-canonical spelling one check earlier, with the shorter "different location" message; both runtimes refuse. A TypeScript fix for 8.3 approved paths is under separate review. The native comparisons that slice c adds will compare file identity, never lowercased keys.
+**Approved-path comparison.** For a folder task, the saved spelling is both the candidate and the approved path, and the folder lease refuses every reparse point. Native therefore keeps only the check that the real path still has the saved spelling, case-insensitively. Before #33, TypeScript refused a short (8.3) spelling one check earlier, with the shorter "different location" message. Since #33, its `resolveLocalPath` admits an 8.3 spelling of the same folder, so both runtimes refuse it at this same check with the same message. The native comparisons that slice c adds compare file identity, never lowercased keys.
 
 **Differences:**
 - Local aliases are refused (the approved difference).
