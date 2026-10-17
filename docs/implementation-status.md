@@ -180,7 +180,10 @@ Dual-landed fixes:
     - The stored row is unchanged. The `Approval` return type is unchanged, so the protocol is unchanged.
   - **Where.** `workspace-queries.ts` exports its existing projection (`readApproval`); `tool-runtime.ts` `reconcile` returns it.
   - **Tests.** `tests/integration/coding.test.ts` covers a labelled secret, a 140,000-character approval and an unparseable redaction; returning the raw approval fails it.
-  - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
+  - **Native half (P2.3 branch).** `ToolRuntime.Reconcile` returns `Store.ApprovalRead`'s projection, using the chat's `Redactor`, with the same fallback.
+    - **One difference, fail-closed.** Native takes the fallback only when the redacted document does not parse (`WorkspaceReadException`). TypeScript's catch-all also covers a store read that fails just after the save; native reports that as a runtime failure.
+    - **Oracle.** The approval oracle gains four reconciliations: labelled secrets in a command and its environment, a command above the preview bound, and unterminated private keys on a command and on a completed edit without a `toolCallId`. Its vectors are regenerated from this source.
+    - **Mutations.** Six of seven native mutations fail the replay. Leaving the fallback's result content unredacted survives, because reconciliation writes only runtime-authored result text.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
@@ -1179,18 +1182,19 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Malformed rows.** A stored approval that is not a JSON object (not valid JSON, or valid JSON of another kind) faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with an error, or with a document spread from the value. Both runtimes' pages skip such rows. Neither runtime ever writes one.
 
 **Evidence.**
-- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 25 approval rows covering:
+- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 29 approval rows covering:
   - edits, commands, rejected and secret-bearing approvals;
   - a 140,000-byte approval with a multibyte summary and long path (preview);
   - external tool, browser, handoff and integration approvals;
   - unknown edits whose file holds the approved content, the original, neither, or nothing;
-  - lone surrogates, a document without a stored state, and a row that is not JSON.
+  - lone surrogates, a document without a stored state, and a row that is not JSON;
+  - since the L1 fix, secret-bearing, large and unparseable-when-redacted unknown approvals.
 
   It pins, in `approval-vectors.json`:
   - every era's own approvals (each fixture era since v1 holds approved and rejected coding demos), with pages and reads;
   - a full keyset traversal at limit 2;
-  - 132 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
-  - 24 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
+  - 136 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
+  - 28 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
 
   It is bound to the SHA-256 of `workspace-queries.ts`, `tool-runtime.ts`, `store.ts`, `service.ts`, `redaction.ts` and `repository.ts`. Regenerating the vectors requires `P2_WRITE_APPROVALS=1`.
 - **The replay.** `ApprovalTests` seeds the same rows into the same copies and replays every step through `DevelopmentChat`. Values, refusals, approval rows and event rows (sequences included) must match. A native-only test pins the malformed-row difference.
@@ -1213,6 +1217,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - Reconciliation can read only inside the worktree, through the pinned, link-refusing file access, and decides an outcome only on a hash match.
     - The contract bounds every parameter before dispatch.
   - **L1 (low, shared with shipping TypeScript; Rudy's decision).** `approval.reconcile` returns the stored approval unredacted, where the three read methods redact. The renderer's only call discards the value and refreshes, so nothing is retained today. A fix would return the redacted read in both runtimes; native keeps parity until then.
+    - **Fixed in both runtimes, 17 October 2026**, on Rudy's decision: see "Redacting the approval `approval.reconcile` returns" under Dual-landed fixes.
   - **I1 (condition for P5, not for this slice).** A corrupt stored approval ends the native runtime. Before a shipping selector, read projections must refuse malformed persisted documents per request.
   - **I2–I5 (parity, no action).**
     - Page items are not redacted (paths were screened at creation).
