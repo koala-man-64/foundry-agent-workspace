@@ -50,15 +50,18 @@ public sealed class ServiceAdmissionTests
                 var service = new DevelopmentChat(loop, store);
                 string Snapshot() => JsJson.Stringify(new { tasks = store.Rows("SELECT * FROM tasks"), starts = store.Rows("SELECT * FROM task_starts"), intents = store.Rows("SELECT * FROM intents"), projects = store.Rows("SELECT * FROM projects"), events = store.Rows("SELECT * FROM events") })!;
                 var before = Snapshot();
-                await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("project.add", new() { ["path"] = "C:\\never-probe" }));
-                await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("task.create", new() { ["projectPath"] = "C:\\never-probe" }));
+                // project.add is served now; a missing folder is refused before any path-key probe or write.
+                Assert.Equal("Project folder is unavailable.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("project.add", new() { ["path"] = Path.Combine(scratch, "missing-project") }))).Message);
+                // task.create is served now; a missing folder is refused before any intent, path-key probe or write.
+                await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("task.create", new() { ["projectPath"] = Path.Combine(scratch, "missing-project") }));
                 await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("workspace.upgrade", new()));
+                // Project-backed task.start is served now (folders); a missing project is refused, as in TypeScript, before any write.
                 foreach (var mode in DeferredModes)
-                    await Assert.ThrowsAsync<NotSupportedException>(() => service.Dispatch("task.start", new()
+                    Assert.Equal("Project not found.", (await Assert.ThrowsAsync<WorkspaceReadException>(() => service.Dispatch("task.start", new()
                     {
                         ["requestId"] = Guid.NewGuid().ToString(), ["projectId"] = Guid.NewGuid().ToString(),
                         ["content"] = "test", ["profileId"] = Store.FakeProfileId, ["mode"] = mode, ["tokenBudget"] = 100000
-                    }));
+                    }))).Message);
                 Assert.Equal(before, Snapshot());
                 await service.Shutdown(); return 0;
             });

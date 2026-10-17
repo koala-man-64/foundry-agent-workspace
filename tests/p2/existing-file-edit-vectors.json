@@ -1,0 +1,1920 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "d2ac37ad89b960a40a7c1705357ce9b92c0377ac8beb0f8b7148c76800202b69"
+      },
+      {
+        "path": "packages/runtime/src/network-path.ts",
+        "sha256": "6e6d1f17374bc04de9e7fc0d3abb3a2044bb684fbfaa5405d804901ea1e477ee"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "edits an existing file and verifies it",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "replaces the content with nothing",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "keeps carriage returns and drops a leading byte order mark from before",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "plain/bom.txt",
+          "base64": "77u/eA0KeQ0K"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "bom.txt",
+          "reviewed": {
+            "hashOf": "plain/bom.txt"
+          },
+          "after": "﻿x\r\nz\r\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "bom.txt",
+              "before": "x\r\ny\r\n",
+              "after": "﻿x\r\nz\r\n",
+              "expectedHash": "354a51af412ecb6a2057a8534568b1aab4810a0ade0415f11a033259f63cfda4",
+              "resultingHash": "10c760febb4a75ff56c686dd360293b5af3b13544bf37affca73a71cf77ee556",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"bom.txt\",\"354a51af412ecb6a2057a8534568b1aab4810a0ade0415f11a033259f63cfda4\",\"10c760febb4a75ff56c686dd360293b5af3b13544bf37affca73a71cf77ee556\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "bom.txt",
+              "hash": "10c760febb4a75ff56c686dd360293b5af3b13544bf37affca73a71cf77ee556"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/bom.txt",
+          "10c760febb4a75ff56c686dd360293b5af3b13544bf37affca73a71cf77ee556"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "writes non-ASCII text as UTF-8",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "docs/b.md",
+          "reviewed": {
+            "hashOf": "plain/docs/b.md"
+          },
+          "after": "# é ✓ 𝄞\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "docs/b.md",
+              "before": "# b\n",
+              "after": "# é ✓ 𝄞\n",
+              "expectedHash": "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f",
+              "resultingHash": "71072115b37a06d849d786cfac4cc481cb5715e28efcc31b5b454a6ca7e6de01",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"docs/b.md\",\"d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f\",\"71072115b37a06d849d786cfac4cc481cb5715e28efcc31b5b454a6ca7e6de01\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "docs/b.md",
+              "hash": "71072115b37a06d849d786cfac4cc481cb5715e28efcc31b5b454a6ca7e6de01"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "71072115b37a06d849d786cfac4cc481cb5715e28efcc31b5b454a6ca7e6de01"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "keeps a backslash and case-variant path as requested and reports the real one",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "SRC\\A.TS",
+          "reviewed": {
+            "hashOf": "plain/src/a.ts"
+          },
+          "after": "export const a = 2;\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "SRC/A.TS",
+              "before": "export const a = 1;\n",
+              "after": "export const a = 2;\n",
+              "expectedHash": "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350",
+              "resultingHash": "e7941bea8a31800905dafb6c805ee05f090c641163880f0ef3cfd732f1bc86d2",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"SRC/A.TS\",\"037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350\",\"e7941bea8a31800905dafb6c805ee05f090c641163880f0ef3cfd732f1bc86d2\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "src/a.ts",
+              "hash": "e7941bea8a31800905dafb6c805ee05f090c641163880f0ef3cfd732f1bc86d2"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "e7941bea8a31800905dafb6c805ee05f090c641163880f0ef3cfd732f1bc86d2"
+        ]
+      ]
+    },
+    {
+      "name": "admits a case-variant root as its real path",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "PLAIN",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "root\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "root\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "53175bcc0524f37b47062fafdda28e3f8eb91d519ca0a184ca71bbebe72f969a",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"53175bcc0524f37b47062fafdda28e3f8eb91d519ca0a184ca71bbebe72f969a\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "53175bcc0524f37b47062fafdda28e3f8eb91d519ca0a184ca71bbebe72f969a"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "53175bcc0524f37b47062fafdda28e3f8eb91d519ca0a184ca71bbebe72f969a"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "accepts exactly 64 KiB and refuses more, counted in UTF-8 bytes",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": {
+            "repeat": [
+              "a",
+              65537
+            ]
+          },
+          "as": "edit",
+          "expected": {
+            "error": "Edits must be UTF-8 text of at most 64 KB.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": {
+            "repeat": [
+              "é",
+              32769
+            ]
+          },
+          "as": "edit",
+          "expected": {
+            "error": "Edits must be UTF-8 text of at most 64 KB.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "a\u0000b",
+          "as": "edit",
+          "expected": {
+            "error": "Edits must be UTF-8 text of at most 64 KB.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": {
+            "repeat": [
+              "é",
+              32768
+            ]
+          },
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": {
+                "length": 32768,
+                "sha256": "80ad92d4f363d1af78eed07669eecdbb4410e28d38875188de8feeb30b98d6d9"
+              },
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "80ad92d4f363d1af78eed07669eecdbb4410e28d38875188de8feeb30b98d6d9",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"80ad92d4f363d1af78eed07669eecdbb4410e28d38875188de8feeb30b98d6d9\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "80ad92d4f363d1af78eed07669eecdbb4410e28d38875188de8feeb30b98d6d9"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "80ad92d4f363d1af78eed07669eecdbb4410e28d38875188de8feeb30b98d6d9"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses creating a file before anything else",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "new.txt",
+          "reviewed": null,
+          "after": "x",
+          "expected": {
+            "error": "Creating new files is unavailable until a race-safe Windows directory creation primitive is available.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "missing",
+          "path": "../escape.txt",
+          "reviewed": null,
+          "after": "x",
+          "expected": {
+            "error": "Creating new files is unavailable until a race-safe Windows directory creation primitive is available.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a stale expected hash",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Stale edit: file content changed since it was read.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses forbidden, absolute and escaping paths",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "SECRET=1\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "A relative path is required.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": ".env",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "docs/../README.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "C:\\x.txt",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Absolute paths are not allowed.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "/x.txt",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Absolute paths are not allowed.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md.",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "docs//b.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "nul",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "docs/b.md ",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "a:b.txt",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Absolute paths are not allowed.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "id_rsa",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "cert.pem",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/.env",
+          "664049a85e2251d253ff78a9a7808b41ef4a9f14c8a1b998b6bffd40b2494808"
+        ],
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses roots that are not working directories",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "",
+          "path": "README.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Repository root must be an absolute path.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "relative",
+          "path": "README.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Repository root must be an absolute path.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "repo/README.md",
+          "path": "x",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Root must be a working directory.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "repo/.git",
+          "path": "config",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Root must be a working directory.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "absent",
+          "path": "README.md",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "systemError": "ENOENT",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "repo/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "repo/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "repo/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses directories, missing files and missing parents",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "src",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Requested path is not a regular file.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "missing.txt",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "systemError": "ENOENT",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "nope/x.txt",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "systemError": "ENOENT",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md/x",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "systemError": "ENOENT",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses binary and oversized files",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "plain/zero.bin",
+          "base64": "YQBi"
+        },
+        {
+          "file": "plain/bad.txt",
+          "base64": "Yf9i"
+        },
+        {
+          "file": "plain/big.txt",
+          "repeat": [
+            "b",
+            65537
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "zero.bin",
+          "reviewed": {
+            "hashOf": "plain/zero.bin"
+          },
+          "after": "x",
+          "as": "edit",
+          "expected": {
+            "error": "Binary files cannot be read.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "bad.txt",
+          "reviewed": {
+            "hashOf": "plain/bad.txt"
+          },
+          "after": "x",
+          "as": "edit",
+          "expected": {
+            "error": "Binary files cannot be read.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "big.txt",
+          "reviewed": {
+            "hashOf": "plain/big.txt"
+          },
+          "after": "x",
+          "as": "edit",
+          "expected": {
+            "error": "File exceeds the 65536 byte read limit.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/bad.txt",
+          "01ce0241d2a0e71a4fecd5a8d71157fe2787197732fc15d889cbcf36c38e3c68"
+        ],
+        [
+          "plain/big.txt",
+          "00056d4dbd0981b55e459d5b86bd544d5871ca666787e16992d56df358d1ea07"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ],
+        [
+          "plain/zero.bin",
+          "59b271ae1bbcb1d31d41929817f4b16fb439eb4f31520b5ad1d5ce98920a7138"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a linked parent and a hard-linked file",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "junction": "plain/link",
+          "target": "plain/src"
+        },
+        {
+          "hardlink": "plain/twin.md",
+          "target": "plain/docs/b.md"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "link/a.ts",
+          "reviewed": {
+            "hashOf": "plain/src/a.ts"
+          },
+          "after": "x",
+          "expected": {
+            "error": "Symbolic links cannot be accessed.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "docs/b.md",
+          "reviewed": {
+            "hashOf": "plain/docs/b.md"
+          },
+          "after": "x",
+          "as": "edit",
+          "expected": {
+            "error": "Hard-linked files cannot be edited.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "twin.md",
+          "reviewed": {
+            "hashOf": "plain/twin.md"
+          },
+          "after": "x",
+          "as": "edit",
+          "expected": {
+            "error": "Hard-linked files cannot be edited.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ],
+        [
+          "plain/twin.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a tampered approval before writing",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "tamper": {
+            "after": "other\n"
+          },
+          "expected": {
+            "error": "Edit approval is stale.",
+            "outcome": "none"
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "tamper": {
+            "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "expected": {
+            "error": "Edit approval is stale.",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses an approval whose file changed after review",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "write",
+          "file": "plain/README.md",
+          "text": "edited elsewhere\n",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "error": "Stale edit: file content changed since it was read.",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "ee9a589a50581102c0fb46b0771b9d5951532333c195b1d5deab89389d4efd42"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a second application of one approval",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "error": "Stale edit: file content changed since it was read.",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "applies an unchanged edit again",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "hello\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "hello\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a file hard-linked after review",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "hardlink",
+          "link": "plain/twin.md",
+          "target": "plain/README.md",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "error": "Hard-linked files cannot be edited.",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ],
+        [
+          "plain/twin.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a file removed after review",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "remove",
+          "file": "plain/README.md",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "systemError": "ENOENT",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "refuses a read-only file at execution",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "readonly",
+          "file": "plain/README.md",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "systemError": "EPERM",
+            "outcome": "none"
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "follows the name to a swapped file with identical content",
+      "tree": [
+        {
+          "file": "plain/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "plain/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "plain/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "file": "plain/copy.md",
+          "text": "hello\n"
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "plain",
+          "path": "README.md",
+          "reviewed": {
+            "hashOf": "plain/README.md"
+          },
+          "after": "changed\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "README.md",
+              "before": "hello\n",
+              "after": "changed\n",
+              "expectedHash": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+              "resultingHash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"README.md\",\"5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\"7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "rename",
+          "from": "plain/README.md",
+          "to": "plain/original.md",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "rename",
+          "from": "plain/copy.md",
+          "to": "plain/README.md",
+          "expected": {
+            "result": null
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "README.md",
+              "hash": "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+            }
+          }
+        }
+      ],
+      "files": [
+        [
+          "plain/README.md",
+          "7f8b1dfc466b6249f06cbe55c9174df2578e7754da793fded244ef5cba2a38f1"
+        ],
+        [
+          "plain/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/original.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "plain/src/a.ts",
+          "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350"
+        ]
+      ]
+    },
+    {
+      "name": "edits inside a Git working tree and never its metadata",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "op": "prepare",
+          "root": "repo",
+          "path": "src/a.ts",
+          "reviewed": {
+            "hashOf": "repo/src/a.ts"
+          },
+          "after": "export const a = 3;\n",
+          "as": "edit",
+          "expected": {
+            "result": {
+              "root": "{scratch}\\repo",
+              "path": "src/a.ts",
+              "before": "export const a = 1;\n",
+              "after": "export const a = 3;\n",
+              "expectedHash": "037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350",
+              "resultingHash": "6d40edadbbba5257648b4fee3459baaf3a1320f004d4e67c3522f11e72c85b26",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\repo\",\"src/a.ts\",\"037ecd1db38c230c248787e60fd7bfc0cb0101b187b59535b6e7483be762d350\",\"6d40edadbbba5257648b4fee3459baaf3a1320f004d4e67c3522f11e72c85b26\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "src/a.ts",
+              "hash": "6d40edadbbba5257648b4fee3459baaf3a1320f004d4e67c3522f11e72c85b26"
+            }
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "repo",
+          "path": ".git/config",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        },
+        {
+          "op": "prepare",
+          "root": "repo",
+          "path": ".GIT/HEAD",
+          "reviewed": "0000000000000000000000000000000000000000000000000000000000000000",
+          "after": "x",
+          "expected": {
+            "error": "Path contains a forbidden segment.",
+            "outcome": null
+          }
+        }
+      ],
+      "files": [
+        [
+          "repo/README.md",
+          "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+        ],
+        [
+          "repo/docs/b.md",
+          "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "repo/src/a.ts",
+          "6d40edadbbba5257648b4fee3459baaf3a1320f004d4e67c3522f11e72c85b26"
+        ]
+      ]
+    }
+  ]
+}

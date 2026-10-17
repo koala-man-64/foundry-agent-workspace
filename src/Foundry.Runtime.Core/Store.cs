@@ -36,6 +36,8 @@ public sealed partial class Store : IDisposable
     private bool poisoned;
     internal Action? BeforeRollback { get; set; }
     public int SchemaVersion { get; private set; }
+    /// <summary>The admitted data directory; app-owned task worktrees live in its "wt" folder, as entry.ts places them.</summary>
+    internal string DataDirectory { get; }
 
     public Store(RuntimeLoop loop, string directory, string applicationRoot, Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Action<WorkspaceEvent>? publish = null)
     {
@@ -53,6 +55,7 @@ public sealed partial class Store : IDisposable
         try
         {
             Directory.CreateDirectory(admission.Directory);
+            DataDirectory = admission.Directory;
             admittedLease = pinned = DirectoryLease.Acquire(admission.Directory);
             var markerPath = Path.Combine(admission.Directory, IsolationMarker);
             if (File.Exists(markerPath))

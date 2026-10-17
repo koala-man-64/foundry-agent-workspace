@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Foundry.Platform;
 using Foundry.Protocol;
 using Foundry.Runtime;
 using Xunit;
@@ -260,5 +261,166 @@ public sealed class DevelopmentChatProcessTests
             finally { await KillIfNeeded(process); }
         }
         finally { Directory.Delete(scratch, true); }
+    }
+
+    [Fact]
+    public async Task ProjectAndTaskCreationAnswerOverStdioWithTheirNotifications()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-stdio-create-");
+        fixture.Write("repo/README.md", "hello\n");
+        await fixture.Git("-C", "repo", "init", "-q"); await fixture.Git("-C", "repo", "add", "-A"); await fixture.Git("-C", "repo", "commit", "-qm", "fixture");
+        await fixture.Git("-C", "repo", "config", "user.name", "Runtime"); await fixture.Git("-C", "repo", "config", "user.email", "runtime@example.invalid");
+        await fixture.Git("init", "-q", "--bare", "remote.git"); await fixture.Git("-C", "repo", "remote", "add", "origin", fixture.Local("remote.git"));
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = data; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        foreach (var (name, value) in fixture.Isolation) info.Environment[name] = value;
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var events = new List<Dictionary<string, object?>>();
+            await Send(process, Frame("project", "project.add", new { path = fixture.Local("repo") }));
+            var project = (Dictionary<string, object?>)(await Reply(process, "project", events))["result"]!;
+            Assert.Equal("git", project["kind"]);
+            // tokenBudget and mode are omitted: the entry point applies the protocol defaults.
+            await Send(process, Frame("task", "task.create", new { title = "  Created over stdio  ", projectPath = fixture.Local("repo"), profileId = Store.FakeProfileId }));
+            var task = (Dictionary<string, object?>)(await Reply(process, "task", events))["result"]!;
+            Assert.Equal("Created over stdio", task["title"]); Assert.Equal("chat", task["mode"]); Assert.Equal(100000L, Convert.ToInt64(task["tokenBudget"], System.Globalization.CultureInfo.InvariantCulture));
+            Assert.Equal(project["id"], task["projectId"]); Assert.Equal($"codex/task/{task["id"]}", task["branch"]);
+            Assert.Equal(Path.Join(FinalPath.Canonical(data), "wt", (string)task["id"]!), task["worktreePath"]);
+            await Send(process, Frame("list", "files.list", new { taskId = task["id"] }) + Frame("diff", "task.diff", new { taskId = task["id"] }));
+            var replies = await Replies(process, ["list", "diff"], events);
+            Assert.Equal("[{\"path\":\"README.md\",\"kind\":\"file\"}]", JsJson.Stringify(replies["list"]["result"]));
+            Assert.Equal("{\"summary\":\"\",\"patch\":\"\",\"truncated\":false}", JsJson.Stringify(replies["diff"]["result"]));
+            // Commit, push and retire answer over stdio too, each with its notification.
+            File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+            await Send(process, Frame("commit", "task.commit", new { taskId = task["id"], message = "  Change over stdio  " }));
+            var committed = (Dictionary<string, object?>)(await Reply(process, "commit", events))["result"]!;
+            Assert.Equal("[\"README.md\"]", JsJson.Stringify(committed["changedPaths"])); Assert.Equal(task["branch"], committed["branch"]);
+            await Send(process, Frame("push", "task.push", new { taskId = task["id"], confirm = "push" }));
+            var pushed = (Dictionary<string, object?>)(await Reply(process, "push", events))["result"]!;
+            Assert.Equal("origin", pushed["remote"]); Assert.Contains("[new branch]", (string)pushed["detail"]!, StringComparison.Ordinal);
+            await Send(process, Frame("retire", "task.retire", new { taskId = task["id"], confirm = "retire" }));
+            var retired = (Dictionary<string, object?>)(await Reply(process, "retire", events))["result"]!;
+            Assert.Equal($"[{JsJson.Stringify(task["worktreePath"])}]", JsJson.Stringify(retired["removedWorktrees"]));
+            Assert.Equal(["projects.changed", "tasks.changed", "task.committed", "task.pushed", "task.retired"], events.Select(item => (string)item["type"]!));
+            Assert.Equal(task["id"], events[1]["taskId"]);
+            await Exit(process, error);
+        }
+        finally { await KillIfNeeded(process); }
+        Assert.Contains($"refs/heads/codex/task/", await fixture.GitOutput("-C", fixture.Local("repo"), "for-each-ref", "--format=%(refname)"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NulInRendererPathsIsRefusedWhileTheRuntimeKeepsServing()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-stdio-nul-");
+        fixture.Write("plain/notes.txt", "notes\n"); fixture.Write("plain/sub/b.txt", "b\n");
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        const string Folder = "21212121-0000-4000-8000-000000000011";
+        await using (var loop = new RuntimeLoop())
+        {
+            await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                store.SaveTask(new()
+                {
+                    ["id"] = Folder, ["title"] = "Seeded", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = "2026-01-02T03:04:05.678Z",
+                    ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000, ["usedTokens"] = 0, ["mode"] = "chat", ["workspaceKind"] = "folder", ["projectPath"] = fixture.Local("plain"),
+                });
+                return Task.FromResult(0);
+            });
+        }
+        var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = data; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        foreach (var (name, value) in fixture.Isolation) info.Environment[name] = value;
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var events = new List<Dictionary<string, object?>>();
+            // Each request is answered (so a crash would surface here), then the runtime must still serve a valid request.
+            string[] ids = ["middle", "final", "list", "project"];
+            await Send(process, Frame("middle", "files.read", new { taskId = Folder, path = "sub\0x/b.txt" })
+                + Frame("final", "files.read", new { taskId = Folder, path = "notes.txt\0zzz" })
+                + Frame("list", "files.list", new { taskId = Folder, path = "sub\0x" })
+                + Frame("project", "project.add", new { path = fixture.Local("pla\0in") }));
+            var replies = await Replies(process, ids, events);
+            foreach (var id in ids) Assert.True(replies[id].ContainsKey("error"), $"{id} was not refused.");
+            await Send(process, Frame("after", "files.read", new { taskId = Folder, path = "notes.txt" }));
+            Assert.Equal("notes\n", ((Dictionary<string, object?>)(await Reply(process, "after", events))["result"]!)["content"]);
+            Assert.Empty(events);
+            await Exit(process, error);
+        }
+        finally { await KillIfNeeded(process); }
+    }
+
+    [Fact]
+    public async Task GitAndFileHandlersAnswerOverStdioWithRedactedContentAndRefusals()
+    {
+        const string Secret = "sk-abcdefghijklmnopqrstuvwx";
+        using var fixture = RepositoryFixture.Create("foundry-p2-stdio-files-");
+        fixture.Write("plain/notes.txt", $"token {Secret}\n"); fixture.Write("plain/sub/b.txt", "b\n");
+        fixture.Write("repo/README.md", "hello\n");
+        await fixture.Git("-C", "repo", "init", "-q"); await fixture.Git("-C", "repo", "add", "-A"); await fixture.Git("-C", "repo", "commit", "-qm", "fixture");
+        fixture.Write("repo/README.md", $"hello\nchanged {Secret}\n");
+        var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        const string Folder = "21212121-0000-4000-8000-000000000001", Git = "21212121-0000-4000-8000-000000000002", Missing = "21212121-0000-4000-8000-000000000003";
+        await using (var loop = new RuntimeLoop())
+        {
+            await loop.Invoke(() =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var stamp = "2026-01-02T03:04:05.678Z";
+                Dictionary<string, object?> Seed(string id) => new()
+                {
+                    ["id"] = id, ["title"] = "Seeded", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = stamp, ["updatedAt"] = stamp,
+                    ["tokenBudget"] = 100000, ["usedTokens"] = 0, ["mode"] = "chat",
+                };
+                store.SaveTask(new(Seed(Folder)) { ["workspaceKind"] = "folder", ["projectPath"] = fixture.Local("plain") });
+                store.SaveTask(new(Seed(Git)) { ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("repo"), ["worktreePath"] = fixture.Local("repo"), ["branch"] = "main", ["baseCommit"] = new string('0', 40) });
+                return Task.FromResult(0);
+            });
+        }
+        var info = new ProcessStartInfo(Path.Combine(Root, "src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe"))
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        info.Environment["FOUNDRY_WORKSPACE_DATA"] = data; info.Environment["FOUNDRY_RUNTIME_P2_CHAT"] = "1";
+        foreach (var (name, value) in fixture.Isolation) info.Environment[name] = value;
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var events = new List<Dictionary<string, object?>>();
+            await Send(process, Frame("list", "files.list", new { taskId = Folder })
+                + Frame("read", "files.read", new { taskId = Folder, path = "notes.txt" })
+                + Frame("escape", "files.read", new { taskId = Folder, path = "../repo/README.md" })
+                + Frame("folder-diff", "task.diff", new { taskId = Folder })
+                + Frame("diff", "task.diff", new { taskId = Git })
+                + Frame("missing", "files.list", new { taskId = Missing, path = "" }));
+            var replies = await Replies(process, ["list", "read", "escape", "folder-diff", "diff", "missing"], events);
+            Assert.Equal("[{\"path\":\"notes.txt\",\"kind\":\"file\"},{\"path\":\"sub\",\"kind\":\"directory\"}]", JsJson.Stringify(replies["list"]["result"]));
+            var read = (Dictionary<string, object?>)replies["read"]["result"]!;
+            Assert.Equal("token [REDACTED]\n", read["content"]); Assert.Equal("notes.txt", read["path"]);
+            string Error(string id) => (string)((Dictionary<string, object?>)replies[id]["error"]!)["message"]!;
+            Assert.Equal("Path contains a forbidden segment.", Error("escape"));
+            Assert.Equal("This action requires a Git worktree.", Error("folder-diff"));
+            Assert.Equal("Task not found.", Error("missing"));
+            var diff = (Dictionary<string, object?>)replies["diff"]["result"]!;
+            Assert.Contains("+changed [REDACTED]", (string)diff["patch"]!, StringComparison.Ordinal);
+            Assert.DoesNotContain(Secret, JsJson.Stringify(replies)!, StringComparison.Ordinal);
+            Assert.Equal(" README.md | 1 +\n 1 file changed, 1 insertion(+)\n", diff["summary"]); Assert.Equal(false, diff["truncated"]);
+            Assert.Empty(events);
+            await Exit(process, error);
+        }
+        finally { await KillIfNeeded(process); }
     }
 }

@@ -32,6 +32,13 @@ public static class FinalPath
         return RealPath(absolute) ?? absolute;
     }
 
+    /// <summary>path.win32.resolve against the current directory: lexical only, so it never opens anything.</summary>
+    public static string Resolve(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        return NodeWin32Path.Resolve(path, Environment.CurrentDirectory);
+    }
+
     /// <summary>projects.path_key: <see cref="Canonical"/> lowered with toLocaleLowerCase('en-US').</summary>
     public static string Key(string path) => EcmaScriptCase.ToLower(Canonical(path));
 

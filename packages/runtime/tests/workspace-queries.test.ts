@@ -11,6 +11,9 @@ import { PHASE4_SCHEMA, V1_SCHEMA, V2_MIGRATION, V3_MIGRATION } from '../src/sch
 import { FAKE_PROFILE_ID, Store } from '../src/store';
 import { WorkspaceQueries } from '../src/workspace-queries';
 
+// Each verified backup restricts its folder through Windows PowerShell, which can take several seconds per launch on hosted runners.
+const BACKUP_TEST_TIMEOUT_MS = 60_000;
+
 let directory: string;
 const stores: Store[] = [];
 const open = (name: string): Store => { const store = new Store(join(directory, name)); stores.push(store); return store; };
@@ -257,7 +260,7 @@ describe('workspace read projections', () => {
     expect(records.records.map(record => record.requestId).sort()).toEqual([legacyId, nextId].sort());
     const trend = queries.dispatch('workspace.usageTrend', { groupBy: 'task' }) as { buckets: { key: string; requests: number; knownRequests: number; unknownRequests: number }[] };
     expect(trend.buckets).toEqual([expect.objectContaining({ key: root.id, requests: 2, knownRequests: 1, unknownRequests: 1 })]);
-  });
+  }, BACKUP_TEST_TIMEOUT_MS);
 
   it('pages usage and compaction markers while preserving full summaries by chunk', () => {
     const store = open('usage.db'), queries = new WorkspaceQueries(store, new Redactor());

@@ -1,0 +1,1289 @@
+{
+  "schemaVersion": 1,
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/runtime/src/service.ts",
+        "sha256": "6eaebec85b27f345559652f3adc64f4d1fa7347aacd89bb33a04e0000216bcef"
+      },
+      {
+        "path": "packages/runtime/src/repository.ts",
+        "sha256": "d2ac37ad89b960a40a7c1705357ce9b92c0377ac8beb0f8b7148c76800202b69"
+      },
+      {
+        "path": "packages/runtime/src/redaction.ts",
+        "sha256": "0f6c77c753d4e75c90b4c21e5c2dba16a96d63393beb05eadd77c45c240f2a0c"
+      },
+      {
+        "path": "packages/runtime/src/store.ts",
+        "sha256": "8dd150b5251d1f40603744d29ee6354033fe7b7aaa0abc05baba7666554ca4a5"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "folder task listing, reading, redaction and Git refusal",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000001",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\plain"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "sub"
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": ".."
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "missing"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "a.txt"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "notes.txt"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "secret.txt"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": ".env"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001",
+            "path": "missing.txt"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000001"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "a.txt",
+              "kind": "file"
+            },
+            {
+              "path": "notes.txt",
+              "kind": "file"
+            },
+            {
+              "path": "sub",
+              "kind": "directory"
+            }
+          ]
+        },
+        {
+          "result": [
+            {
+              "path": "sub/b.txt",
+              "kind": "file"
+            }
+          ]
+        },
+        {
+          "error": "Path contains a forbidden segment."
+        },
+        {
+          "systemError": "ENOENT"
+        },
+        {
+          "result": {
+            "path": "a.txt",
+            "content": "a\n",
+            "hash": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+          }
+        },
+        {
+          "result": {
+            "path": "notes.txt",
+            "content": "token [REDACTED]\n",
+            "hash": "b9462fd9cfb3afd41e992f752822d24360a7d2354d688ac7ac06942d08c1219f"
+          }
+        },
+        {
+          "error": "Path contains a forbidden segment."
+        },
+        {
+          "error": "Path contains a forbidden segment."
+        },
+        {
+          "systemError": "ENOENT"
+        },
+        {
+          "error": "This action requires a Git worktree."
+        }
+      ]
+    },
+    {
+      "name": "NUL in a requested path",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000015",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\plain"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub\u0000x"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub\u0000x/b.txt"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "notes.txt\u0000zzz"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "id_rsa\u0000"
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000015",
+            "path": "sub"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "systemError": "ERR_INVALID_ARG_VALUE"
+        },
+        {
+          "result": [
+            {
+              "path": "sub/b.txt",
+              "kind": "file"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "folder task saved with different case",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000002",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\PLAIN"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000002",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000002",
+            "path": "A.TXT"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "a.txt",
+              "kind": "file"
+            },
+            {
+              "path": "notes.txt",
+              "kind": "file"
+            },
+            {
+              "path": "sub",
+              "kind": "directory"
+            }
+          ]
+        },
+        {
+          "result": {
+            "path": "a.txt",
+            "content": "a\n",
+            "hash": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+          }
+        }
+      ]
+    },
+    {
+      "name": "folder task saved with a trailing separator",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000003",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\plain\\"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000003",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000003",
+            "path": "a.txt"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "error": "The saved folder now resolves to a different location. Restore the original folder before browsing files."
+        },
+        {
+          "error": "The saved folder now resolves to a different location. Restore the original folder before browsing files."
+        }
+      ]
+    },
+    {
+      "name": "folder task whose folder disappeared",
+      "tree": [
+        {
+          "dir": "present"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000004",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\plain"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000004",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000004",
+            "path": "a.txt"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "systemError": "ENOENT"
+        },
+        {
+          "systemError": "ENOENT"
+        }
+      ]
+    },
+    {
+      "name": "folder task saved on a network share",
+      "tree": [],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000005",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "\\\\server\\share\\plain"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000005",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000005",
+            "path": "a.txt"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "error": "Projects on network shares are not supported."
+        },
+        {
+          "error": "Projects on network shares are not supported."
+        }
+      ]
+    },
+    {
+      "name": "folder task saved through a junction",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        },
+        {
+          "junction": "alias",
+          "target": "plain"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000006",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "folder",
+          "projectPath": "{scratch}\\alias"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000006",
+            "path": ""
+          }
+        }
+      ],
+      "native": {
+        "0": {
+          "outcome": {
+            "error": "Projects through reparse directories are not supported."
+          },
+          "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+        }
+      },
+      "expected": [
+        {
+          "error": "The saved folder now resolves to a different location."
+        }
+      ]
+    },
+    {
+      "name": "projectless task has no folder access",
+      "tree": [],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000007",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "none"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000007",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000007",
+            "path": "a.txt"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000007"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "error": "This chat has no folder access."
+        },
+        {
+          "error": "This chat has no folder access."
+        },
+        {
+          "error": "This action requires a Git worktree."
+        }
+      ]
+    },
+    {
+      "name": "missing task",
+      "tree": [],
+      "tasks": [],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000008",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000008",
+            "path": "a.txt"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000008"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "error": "Task not found."
+        },
+        {
+          "error": "Task not found."
+        },
+        {
+          "error": "Task not found."
+        }
+      ]
+    },
+    {
+      "name": "Git task listing, reading and redacted diff",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\nchanged sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "repo/untracked.txt",
+          "text": "untracked sk-abcdefghijklmnopqrstuvwx\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000009",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "git",
+          "projectPath": "{scratch}\\repo",
+          "worktreePath": "{scratch}\\repo",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000009",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000009",
+            "path": "src"
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000009",
+            "path": "README.md"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000009"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "docs",
+              "kind": "directory"
+            },
+            {
+              "path": "README.md",
+              "kind": "file"
+            },
+            {
+              "path": "src",
+              "kind": "directory"
+            },
+            {
+              "path": "untracked.txt",
+              "kind": "file"
+            }
+          ]
+        },
+        {
+          "result": [
+            {
+              "path": "src/a.ts",
+              "kind": "file"
+            }
+          ]
+        },
+        {
+          "result": {
+            "path": "README.md",
+            "content": "hello\nchanged [REDACTED]\n",
+            "hash": "d00b80eccb258aa301302688c6f47d3917c9a2b29abb5e8fe973726a05fdfb4d"
+          }
+        },
+        {
+          "result": {
+            "summary": " README.md | 1 +\n 1 file changed, 1 insertion(+)\nuntracked.txt | new file\n",
+            "patch": "diff --git a/README.md b/README.md\nindex ce01362..74c0fe2 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+changed [REDACTED]\ndiff --git a/untracked.txt b/untracked.txt\nnew file\n--- /dev/null\n+++ b/untracked.txt\n+untracked [REDACTED]\n+\n",
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "legacy task without a workspace kind is a Git task",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\nchanged sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "repo/untracked.txt",
+          "text": "untracked sk-abcdefghijklmnopqrstuvwx\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000010",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "projectPath": "{scratch}\\repo",
+          "worktreePath": "{scratch}\\repo",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000010",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000010",
+            "path": "untracked.txt"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000010"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "docs",
+              "kind": "directory"
+            },
+            {
+              "path": "README.md",
+              "kind": "file"
+            },
+            {
+              "path": "src",
+              "kind": "directory"
+            },
+            {
+              "path": "untracked.txt",
+              "kind": "file"
+            }
+          ]
+        },
+        {
+          "result": {
+            "path": "untracked.txt",
+            "content": "untracked [REDACTED]\n",
+            "hash": "5e4cfc7a179a83de0804bae300147aa75f52690330f275833f8a159a1afd4a92"
+          }
+        },
+        {
+          "result": {
+            "summary": " README.md | 1 +\n 1 file changed, 1 insertion(+)\nuntracked.txt | new file\n",
+            "patch": "diff --git a/README.md b/README.md\nindex ce01362..74c0fe2 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+changed [REDACTED]\ndiff --git a/untracked.txt b/untracked.txt\nnew file\n--- /dev/null\n+++ b/untracked.txt\n+untracked [REDACTED]\n+\n",
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Git task whose worktree is on a network share",
+      "tree": [],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000011",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "git",
+          "projectPath": "\\\\server\\share\\repo",
+          "worktreePath": "\\\\server\\share\\repo",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000011",
+            "path": ""
+          }
+        },
+        {
+          "method": "files.read",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000011",
+            "path": "README.md"
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000011"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "error": "Projects on network shares are not supported."
+        },
+        {
+          "error": "Projects on network shares are not supported."
+        },
+        {
+          "error": "Projects on network shares are not supported."
+        }
+      ]
+    },
+    {
+      "name": "Git task whose worktree disappeared",
+      "tree": [
+        {
+          "dir": "present"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000012",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "git",
+          "projectPath": "{scratch}\\repo",
+          "worktreePath": "{scratch}\\repo",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000012",
+            "path": ""
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000012"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "systemError": "ENOENT"
+        },
+        {
+          "systemError": "ENOENT"
+        }
+      ]
+    },
+    {
+      "name": "Git task whose worktree is not a repository",
+      "tree": [
+        {
+          "dir": "plain/sub"
+        },
+        {
+          "file": "plain/a.txt",
+          "text": "a\n"
+        },
+        {
+          "file": "plain/notes.txt",
+          "text": "token sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "plain/secret.txt",
+          "text": "never shown\n"
+        },
+        {
+          "file": "plain/.env",
+          "text": "TOKEN=1\n"
+        },
+        {
+          "file": "plain/sub/b.txt",
+          "text": "b\n"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000013",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "git",
+          "projectPath": "{scratch}\\plain",
+          "worktreePath": "{scratch}\\plain",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000013",
+            "path": ""
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000013"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "a.txt",
+              "kind": "file"
+            },
+            {
+              "path": "notes.txt",
+              "kind": "file"
+            },
+            {
+              "path": "sub",
+              "kind": "directory"
+            }
+          ]
+        },
+        {
+          "error": "Project channel requires an available local Git project."
+        }
+      ]
+    },
+    {
+      "name": "Git task through a junction",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\nchanged sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "file": "repo/untracked.txt",
+          "text": "untracked sk-abcdefghijklmnopqrstuvwx\n"
+        },
+        {
+          "junction": "alias",
+          "target": "repo"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "20202020-0000-4000-8000-000000000014",
+          "title": "Seeded",
+          "profileId": "00000000-0000-4000-8000-000000000001",
+          "status": "idle",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z",
+          "tokenBudget": 100000,
+          "usedTokens": 0,
+          "mode": "chat",
+          "workspaceKind": "git",
+          "projectPath": "{scratch}\\alias",
+          "worktreePath": "{scratch}\\alias",
+          "branch": "main",
+          "baseCommit": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "calls": [
+        {
+          "method": "files.list",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000014",
+            "path": ""
+          }
+        },
+        {
+          "method": "task.diff",
+          "params": {
+            "taskId": "20202020-0000-4000-8000-000000000014"
+          }
+        }
+      ],
+      "native": {
+        "0": {
+          "outcome": {
+            "error": "Projects through reparse directories are not supported."
+          },
+          "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+        },
+        "1": {
+          "outcome": {
+            "error": "Projects through reparse directories are not supported."
+          },
+          "difference": "Native refuses local aliases (approved difference until Rudy decides otherwise)."
+        }
+      },
+      "expected": [
+        {
+          "result": [
+            {
+              "path": "docs",
+              "kind": "directory"
+            },
+            {
+              "path": "README.md",
+              "kind": "file"
+            },
+            {
+              "path": "src",
+              "kind": "directory"
+            },
+            {
+              "path": "untracked.txt",
+              "kind": "file"
+            }
+          ]
+        },
+        {
+          "result": {
+            "summary": " README.md | 1 +\n 1 file changed, 1 insertion(+)\nuntracked.txt | new file\n",
+            "patch": "diff --git a/README.md b/README.md\nindex ce01362..74c0fe2 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+changed [REDACTED]\ndiff --git a/untracked.txt b/untracked.txt\nnew file\n--- /dev/null\n+++ b/untracked.txt\n+untracked [REDACTED]\n+\n",
+            "truncated": false
+          }
+        }
+      ]
+    }
+  ]
+}

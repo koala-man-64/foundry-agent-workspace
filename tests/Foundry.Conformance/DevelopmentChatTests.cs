@@ -373,7 +373,7 @@ public sealed class DevelopmentChatTests
     }
 
     [Theory]
-    [InlineData("external-profile"), InlineData("folder"), InlineData("coding"), InlineData("child"), InlineData("unknown-approval")]
+    [InlineData("external-profile"), InlineData("git"), InlineData("coding"), InlineData("child"), InlineData("unknown-approval")]
     [InlineData("unknown-publication"), InlineData("unknown-retirement"), InlineData("pending-publication"), InlineData("native-tools-stage"), InlineData("native-fingerprint")]
     public async Task UnsupportedOrUnresolvedTaskCannotAdmitAProviderRequest(string scenario)
     {
@@ -388,7 +388,8 @@ public sealed class DevelopmentChatTests
                     store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
                     var taskId = "77777777-0000-4000-8000-000000000999"; var stamp = "2026-01-02T03:04:05.678Z";
                     var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = "guard", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = stamp, ["updatedAt"] = stamp, ["tokenBudget"] = 100000, ["usedTokens"] = 0, ["mode"] = "chat", ["workspaceKind"] = "none" };
-                    if (scenario == "folder") task["workspaceKind"] = "folder";
+                    // A Git task's turn advertises channel tools, which need the native tool loop; folder chats run (P2.2f).
+                    if (scenario == "git") task["workspaceKind"] = "git";
                     if (scenario == "coding") task["mode"] = "coding";
                     if (scenario == "child") task["parentTaskId"] = "77777777-0000-4000-8000-000000000998";
                     store.SaveTask(task);
