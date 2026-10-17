@@ -768,6 +768,7 @@ internal sealed partial class RepositoryService
         {
             if (!IsPermittedRemoteForm(url) || IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
             if (LocalRemotePath(url) is not { } local) continue;
+            if (local.Length < 3 || !char.IsAsciiLetter(local[0]) || local[1] != ':' || local[2] is not ('/' or '\\')) throw new RepositoryException(RelativeRemote(remote));
             if (local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
             var resolved = Path.GetFullPath(local);
             if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
