@@ -312,8 +312,9 @@ public sealed partial class TaskPublicationTests
     }
 
     /// <summary>
-    /// Review of #36 (not in TypeScript): porcelain v1 writes a staged rename's source after its destination, and the
-    /// staged listing detects renames, so `git mv .env safe.txt` showed only the safe name. Both endpoints are screened now.
+    /// Review of #36: porcelain v1 writes a staged rename's source after its destination, and the staged listing detects
+    /// renames, so `git mv .env safe.txt` showed only the safe name. Both endpoints are screened now, also for a worktree
+    /// rename of an intent-to-add path, which status reports in its second column (review of the TypeScript port).
     /// </summary>
     [Fact]
     public async Task AStagedRenameOfASecretNamedPathIsRefused()
@@ -335,7 +336,14 @@ public sealed partial class TaskPublicationTests
                 Assert.Equal("Refusing to commit secret-named paths: .env. Remove or ignore them first.",
                     (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Rename" }))).Message);
                 Assert.Equal(head, await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD"));
-                Assert.Equal("complete", store.Rows("SELECT state FROM intents WHERE kind='git.commit'").Single()["state"]);
+                await fixture.Git("-C", worktree, "mv", "safe.txt", ".env");
+                File.Move(Path.Combine(worktree, ".env"), Path.Combine(worktree, "safe.txt"));
+                await fixture.Git("-C", worktree, "add", "-N", "safe.txt");
+                Assert.Equal("Refusing to commit secret-named paths: .env. Remove or ignore them first.",
+                    (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.commit", new() { ["taskId"] = task["id"], ["message"] = "Rename" }))).Message);
+                Assert.Equal(head, await fixture.GitOutput("-C", worktree, "rev-parse", "HEAD"));
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.commit'"), row => Assert.Equal("complete", row["state"]));
+                Assert.Equal(2, store.Rows("SELECT state FROM intents WHERE kind='git.commit'").Count);
                 await chat.Shutdown(); return 0;
             });
         }
@@ -485,8 +493,9 @@ public sealed partial class TaskPublicationTests
     }
 
     /// <summary>
-    /// A push or remote check limits transports to https, ssh and local paths, so the remote URL, an inert key, cannot
-    /// reach another transport: the remote check's command line carries the restriction, and an ext:: URL never runs.
+    /// A push or remote check limits transports to https, ssh and local paths even where the user's global configuration
+    /// allows more: a global remote.*.vcs sends a URL that passes the remote check through the ext helper. The remote check's
+    /// command line carries the restriction and the helper's command never runs; without it, Git runs it (the control).
     /// </summary>
     [Fact]
     public async Task PushTransportsAreLimitedToHttpsSshAndLocalPaths()
@@ -494,8 +503,13 @@ public sealed partial class TaskPublicationTests
         var (fixture, _) = await Project("foundry-p2-push-ext-");
         using (fixture)
         {
-            var marker = fixture.Local("ext-ran");
-            await fixture.Git("-C", "repo", "remote", "set-url", "origin", $"ext::sh -c touch% {marker.Replace('\\', '/')}");
+            var marker = fixture.Local("ext-ran.git");
+            await fixture.Git("config", "--global", "protocol.allow", "always");
+            await fixture.Git("config", "--global", "remote.origin.vcs", "ext");
+            await fixture.Git("-C", "repo", "remote", "set-url", "origin", $"git init -q --bare {marker.Replace('\\', '/').Replace(" ", "% ")}");
+            await Assert.ThrowsAnyAsync<Exception>(() => fixture.Git("-C", "repo", "ls-remote", "origin"));
+            Assert.True(Directory.Exists(marker));
+            Directory.Delete(marker, true);
             var head = await fixture.GitOutput("-C", "repo", "rev-parse", "HEAD");
             await using var loop = new RuntimeLoop();
             await loop.Invoke(async () =>
@@ -508,7 +522,7 @@ public sealed partial class TaskPublicationTests
                 Assert.Contains(" -c protocol.allow=never -c protocol.ext.allow=never -c protocol.git.allow=never -c protocol.http.allow=never -c protocol.https.allow=always -c protocol.ssh.allow=always -c protocol.file.allow=always ls-remote ", check, StringComparison.Ordinal);
                 return 0;
             });
-            Assert.False(File.Exists(marker));
+            Assert.False(Directory.Exists(marker));
         }
     }
 
@@ -518,11 +532,23 @@ public sealed partial class TaskPublicationTests
     [InlineData("https://example.invalid/owner/repo.git", false), InlineData("ssh://git@example.invalid/owner/repo.git", false)]
     [InlineData("git@example.invalid:owner/repo.git", false), InlineData("example.invalid:repo.git", false)]
     [InlineData("C:/Users/someone/repo.git", false), InlineData("C:\\Users\\someone\\repo.git", false), InlineData("../dest.git", false)]
-    [InlineData("file:///C:/Users/someone/repo.git", false), InlineData("file://localhost/C:/repo.git", false)]
+    [InlineData("file:///C:/Users/someone/repo.git", false), InlineData("file://localhost/C:/repo.git", true)]
     [InlineData("\\\\host\\share\\repo.git", true), InlineData("//host/share/repo.git", true), InlineData("\\\\?\\UNC\\host\\share\\repo.git", true)]
     [InlineData("file://host/share/repo.git", true), InlineData("file:////host/share/repo.git", true), InlineData("\\\\.\\pipe\\repo", true)]
     [InlineData("file:///%2F%2Fhost/share/repo.git", true), InlineData("FILE:///%2f%2fhost/share/repo.git", true), InlineData("file://localhost/%2F%2Fhost/share", true), InlineData("file:///C:/re%70o.git", true)]
     public void NetworkShareRemotesAreRecognized(string url, bool network) => Assert.Equal(network, RepositoryService.IsNetworkRemote(url));
+
+    /// <summary>Review of the TypeScript port: only the URL forms Git uses under the protocol restriction reach a transport;
+    /// Git would refuse the others only once the command runs (TypeScript's isPermittedRemoteForm takes the same cases).</summary>
+    [Theory]
+    [InlineData("https://example.invalid/r.git", true), InlineData("ssh://git@example.invalid/r.git", true), InlineData("git+ssh://example.invalid/r.git", true)]
+    [InlineData("ssh+git://example.invalid/r.git", true), InlineData("file:///C:/r.git", true), InlineData("git@example.invalid:r.git", true), InlineData("C:/r.git", true)]
+    [InlineData("../r.git", true), InlineData("ssh://user@-host/r.git", true), InlineData("ssh://example.invalid:-p/r.git", true)]
+    [InlineData("http://example.invalid/r.git", false), InlineData("git://example.invalid/r.git", false), InlineData("ext::git --version", false), InlineData("foo::bar", false)]
+    [InlineData("https::https://example.invalid/r.git", false), InlineData("HTTPS://example.invalid/r.git", false), InlineData("FILE:///C:/r.git", false), InlineData("foo bar://x", false)]
+    [InlineData("://x", false), InlineData(" ssh://example.invalid/r.git", false), InlineData("\thttps://example.invalid/r.git", false), InlineData("-oProxyCommand=x:y", false)]
+    [InlineData("rsync:example.invalid/r", false), InlineData("ssh://-oProxyCommand=x/y", false), InlineData("git+ssh://-oProxyCommand=x/y", false)]
+    public void PermittedRemoteFormsAreThoseGitUses(string url, bool permitted) => Assert.Equal(permitted, RepositoryService.IsPermittedRemoteForm(url));
 
     /// <summary>A push or remote check never reaches a remote that names a network share. The share here is loopback, so
     /// even a failing guard could not send credentials off the machine.</summary>
@@ -551,6 +577,47 @@ public sealed partial class TaskPublicationTests
                 Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
                 await chat.Shutdown(); return 0;
             });
+        }
+    }
+
+    /// <summary>
+    /// Review of the TypeScript port: a remote whose transport the protocol restriction denies (another scheme, another
+    /// spelling of an allowed one, a helper form) used to fail only inside `git push`, as an unknown outcome that no remote
+    /// check could resolve. It is refused with "none" before any transport now, as are spellings Git resolves elsewhere than
+    /// the check would (file://localhost, a leading ~, a drive-relative path). The real remote then pushes.
+    /// </summary>
+    [Fact]
+    public async Task PushRefusesRemotesGitWouldRefuseOnlyOnceRunning()
+    {
+        var (fixture, data) = await Project("foundry-p2-push-forms-");
+        using (fixture)
+        {
+            var real = fixture.Local("remote.git").Replace('\\', '/');
+            string[] urls = ["http://127.0.0.1:9/x.git", "git://127.0.0.1:9/x.git", "ext::git --version", "foo::bar", "https::https://127.0.0.1:9/x.git",
+                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}", "~/remote.git", $"{real[..2]}remote.git",
+                " ssh://127.0.0.1/x.git", "rsync:127.0.0.1/x", "ssh://-oProxyCommand=x/y"];
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var branch = (string)task["branch"]!;
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                await chat.Dispatch("task.commit", new() { ["taskId"] = taskId, ["message"] = "Change" });
+                var push = new Dictionary<string, object?> { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" };
+                foreach (var url in urls)
+                {
+                    await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
+                    Assert.Equal(RepositoryService.UnsupportedRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                    Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
+                }
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
+                await fixture.Git("-C", "repo", "remote", "set-url", "origin", fixture.Local("remote.git"));
+                await chat.Dispatch("task.push", push);
+                await chat.Shutdown(); return 0;
+            });
+            Assert.Contains("refs/heads/codex/task/", await fixture.GitText("--git-dir", fixture.Local("remote.git"), "for-each-ref"), StringComparison.Ordinal);
         }
     }
 

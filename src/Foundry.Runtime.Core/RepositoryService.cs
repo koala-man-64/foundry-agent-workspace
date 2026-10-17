@@ -267,7 +267,8 @@ internal sealed partial class RepositoryService
 
     internal async Task<List<string>> UncommittedPaths(RepositoryAdmission admission) => [.. (await ChangedEntries(admission)).Select(entry => entry.Path)];
 
-    /// <summary>Each status entry's path and, for a rename or copy, its source, which porcelain v1 writes after it.</summary>
+    /// <summary>Each status entry's path and, for a rename or copy in either status column, its source, which porcelain v1
+    /// writes after it. An intent-to-add path renamed in the worktree is reported in the second column.</summary>
     private async Task<List<(string Path, string? Source)>> ChangedEntries(RepositoryAdmission admission)
     {
         var fields = (await Run(admission, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])).Stdout.Split('\0');
@@ -277,7 +278,7 @@ internal sealed partial class RepositoryService
             var entry = fields[index];
             if (entry.Length == 0) continue;
             var path = entry.Length > 3 ? entry[3..] : "";
-            if (entry.StartsWith('R') || entry.StartsWith('C')) entries.Add((path, ++index < fields.Length ? fields[index] : null));
+            if (entry[0] is 'R' or 'C' || entry.Length > 1 && entry[1] is 'R' or 'C') entries.Add((path, ++index < fields.Length ? fields[index] : null));
             else entries.Add((path, null));
         }
         return entries;
@@ -526,7 +527,7 @@ internal sealed partial class RepositoryService
     /// commitAll: the user's explicit commit of every change in the task worktree. Refusals before staging are "none";
     /// from `git add` on, every failure is "unknown". Admission failures before that carry no outcome, so the caller treats
     /// them as unknown, as TypeScript does. Secret-named paths are never staged, hooks stay disabled, signing is off, and
-    /// the identity comes from the user's Git configuration. Not in TypeScript: the worktree must still belong to the task's
+    /// the identity comes from the user's Git configuration. Since the review of #36, in both runtimes: the worktree must still belong to the task's
     /// project repository (<see cref="RequireTaskWorktree"/>), the source of a staged rename or copy is screened as well
     /// as its destination, and the staged screen lists paths without rename detection, so a secret-named path cannot be
     /// committed under another name.
@@ -561,7 +562,7 @@ internal sealed partial class RepositoryService
     /// <summary>
     /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
     /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
-    /// Not in TypeScript: the worktree must still belong to the task's project repository, whose remotes are the ones
+    /// Since the review of #36, in both runtimes: the worktree must still belong to the task's project repository, whose remotes are the ones
     /// checked (<see cref="RequireTaskWorktree"/>), and the repository's own configuration must pass
     /// <see cref="RequireTrustedPushConfiguration"/>.
     /// </summary>
@@ -597,7 +598,7 @@ internal sealed partial class RepositoryService
         {
             using var project = await RequireRepository(projectPath);
             var commit = expectedCommit ?? await TaskWorktreeHead(worktreePath, project, boundCommon);
-            // Not in TypeScript: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
+            // Since the review of #36, in both runtimes: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
             // verified here; it stays unknown rather than being judged against another server.
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
@@ -625,8 +626,8 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>
-    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Not in
-    /// TypeScript: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
+    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Since the
+    /// review of #36, in both runtimes: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
     /// </summary>
     internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string projectPath, string? boundCommon, string? baseCommit, string? expectedMessage)
     {
@@ -680,7 +681,7 @@ internal sealed partial class RepositoryService
     internal static string UnsupportedRemote(string remote) => $"Remote {remote} points at a network share, through a link, or at a location push does not use.";
 
     /// <summary>
-    /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or file://
+    /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or any file://
     /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
     /// authenticate to a server. Git percent-decodes file:// URLs before using them, so any file:// URL holding a percent
     /// sign is refused outright rather than decoded here. https, ssh and scp-like URLs are transports, limited by
@@ -695,6 +696,28 @@ internal sealed partial class RepositoryService
         return false;
     }
 
+    /// <summary>
+    /// Whether Git, under <see cref="TrustedProtocols"/>, would use a remote URL's transport at all: https, ssh and file
+    /// URLs with the lowercase schemes Git matches, scp-like ssh, and local paths. Git refuses any other scheme, any other
+    /// spelling of these, and every `&lt;helper&gt;::` form only once the command runs, which would leave a push's outcome
+    /// unknown and its remote check unable to resolve it. Git also refuses, before it connects, a URL with leading
+    /// whitespace (it does not trim), one starting with `-`, `rsync:`, and an ssh URL whose host starts with `-`.
+    /// </summary>
+    internal static bool IsPermittedRemoteForm(string url)
+    {
+        if (url.Length > 0 && (url[0] == '-' || JsJson.Trim(url[..1]).Length == 0) || url.StartsWith("rsync:", StringComparison.Ordinal)) return false;
+        var value = JsJson.Trim(url);
+        if (HelperTransport().IsMatch(value)) return false;
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme < 0) return true;
+        var name = value[..scheme];
+        if (name is not ("https" or "ssh" or "git+ssh" or "ssh+git" or "file")) return false;
+        return name is "https" or "file" || !value[(scheme + 3)..].StartsWith('-');
+    }
+
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9+.-]*::", RegexOptions.CultureInvariant)]
+    private static partial Regex HelperTransport();
+
     /// <summary>An https, ssh, scp-like or other scheme URL that is not file://.</summary>
     private static bool IsTransportRemote(string url)
     {
@@ -707,8 +730,9 @@ internal sealed partial class RepositoryService
         return colon > 1 && (separator < 0 || colon < separator);
     }
 
-    /// <summary>The local path a remote URL names (a plain path, or a file:// URL without a host other than localhost and
-    /// without percent signs); null for a transport URL and for any file:// URL that is refused.</summary>
+    /// <summary>The local path a remote URL names (a plain path, or a file:// URL with no host and no percent sign); null for
+    /// a transport URL and for any file:// URL that is refused. Git opens `file://localhost/...` as the UNC path
+    /// `//localhost/...`, so a host, localhost included, is a share.</summary>
     private static string? LocalRemotePath(string url)
     {
         if (IsTransportRemote(url)) return null;
@@ -719,23 +743,29 @@ internal sealed partial class RepositoryService
         if (rest.Contains('%', StringComparison.Ordinal)) return null;
         var slash = rest.IndexOf('/', StringComparison.Ordinal);
         var host = slash < 0 ? rest : rest[..slash];
-        if (host.Length > 0 && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return null;
+        if (host.Length > 0) return null;
         var path = slash < 0 ? "" : rest[slash..];
         return path.Length > 2 && path[0] == '/' && char.IsAsciiLetter(path[1]) && path[2] == ':' ? path[1..] : path;
     }
 
     /// <summary>
-    /// Every URL a push or remote check would use must be a transport, or a local folder on a fixed local drive whose
-    /// existing chain holds no link of any kind (checked without following one), so neither a share nor a link to one is
-    /// reached. Relative paths resolve against the folder the command runs in. The check is not held across the push.
+    /// Every URL a push or remote check would use must be in a form Git uses under <see cref="TrustedProtocols"/>
+    /// (<see cref="IsPermittedRemoteForm"/>), and must be a transport or a local folder on a fixed local drive whose
+    /// existing chain holds no link of any kind (checked without following one), so the named path is neither a share nor
+    /// reached through a link to one. Relative paths resolve against the folder the command runs in; Git's own `~`
+    /// expansion and drive-relative paths (`C:repo`) are refused rather than resolved. The check is not held across the push.
+    /// Not screened, in either runtime: Git also opens the destination's own layout (`&lt;path&gt;/.git`, `&lt;path&gt;.git`, a
+    /// gitfile, objects/info/alternates), which can lead elsewhere, a share included. The destination is trusted as its own
+    /// receive-pack hooks are (Rudy, 17 October 2026).
     /// </summary>
     private static void RequireSupportedRemotes(RepositoryAdmission admission, string remote, IEnumerable<string> urls)
     {
         foreach (var url in urls)
         {
-            if (IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
+            if (!IsPermittedRemoteForm(url) || IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
             if (LocalRemotePath(url) is not { } local) continue;
-            if (local.Length == 0 || local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
+            if (local.Length == 0 || local.Contains('\0', StringComparison.Ordinal) || local.StartsWith('~') || RepositoryPaths.HasAmbiguousSegment(local)
+                || local.Length >= 2 && char.IsAsciiLetter(local[0]) && local[1] == ':' && (local.Length == 2 || local[2] is not ('/' or '\\'))) throw new RepositoryException(UnsupportedRemote(remote));
             var resolved = Path.GetFullPath(local, admission.Path);
             if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
             try { using (DirectoryLease.AcquireSharingWrites(resolved)) { } }
@@ -750,7 +780,7 @@ internal sealed partial class RepositoryService
     };
 
     /// <summary>
-    /// Not in TypeScript (review of #36; Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
+    /// Since the review of #36, in both runtimes (Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
     /// the repository's own configuration, which can run programs (credential helpers, core.sshCommand, transport
     /// programs, ext:: URLs) or redirect where and how Git connects. Before either runs, every key that the repository's
     /// configuration sets (its local and worktree scopes, with everything they include) must be one that neither runs a
@@ -800,7 +830,7 @@ internal sealed partial class RepositoryService
     internal const string ForeignWorktree = "The task worktree no longer belongs to the task's project repository.";
 
     /// <summary>
-    /// Not in TypeScript (review of #36): before a publication mutation, the worktree must share the project repository's
+    /// Since the review of #36, in both runtimes: before a publication mutation, the worktree must share the project repository's
     /// common directory, and that must still be the one bound when the task was created (when a binding exists). A
     /// replaced folder holding another repository, with its own configuration and remotes, is never committed to or pushed
     /// from. The held worktree admission keeps that identity pinned for the rest of the operation. Refusals are "none".
@@ -820,7 +850,7 @@ internal sealed partial class RepositoryService
             throw new RepositoryException(ForeignWorktree);
     }
 
-    // SHA-1 or SHA-256 object names (review of #36: TypeScript matches 40 characters only).
+    // SHA-1 or SHA-256 object names (review of #36, in both runtimes).
     [GeneratedRegex(@"^([0-9a-fA-F]{64}|[0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
     private static partial Regex RemoteTip();
 
