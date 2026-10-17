@@ -8,7 +8,7 @@
       },
       {
         "path": "packages/runtime/src/tool-runtime.ts",
-        "sha256": "5344567ce572497e0e47193a11106bf37bc460d17294139a96e466d091bc0a71"
+        "sha256": "7ec7a2538b7a64cc6b65dd5c852a20d4471e87c1544c0ef4b5a21aa5d0c11a94"
       },
       {
         "path": "packages/runtime/src/store.ts",
@@ -734,6 +734,49 @@
         "resultingHash": "edede54cf5bbda326a6b242e24c434552778b950571da612c31a6715705db8a4",
         "fingerprint": "35135aaa6cc23891b40cb3f378c53a17a1127210ce60e125ccf03efcfdaec458"
       }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000230",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000230",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-30 api_key=fixture-secret-value",
+        "nonce": "nonce password=fixture-secret-value",
+        "tool": "run_command",
+        "state": "unknown",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "summary": "Key -----BEGIN PRIVATE KEY-----230",
+        "command": "Write-Output 'x'",
+        "cwd": "C:\\fixture-work",
+        "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "environment": {
+          "A": "1"
+        },
+        "timeoutMs": 10000,
+        "fingerprint": "access_token=fixture-secret-value"
+      }
+    },
+    {
+      "id": "13131313-0000-4000-8000-000000000231",
+      "state": "unknown",
+      "data": {
+        "id": "13131313-0000-4000-8000-000000000231",
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "toolCallId": "call-31",
+        "nonce": "nnnnnnnnnnnnnnnn31",
+        "tool": "run_command",
+        "state": "unknown",
+        "createdAt": "2026-01-02T03:04:05.678Z",
+        "command": "Write-Output '-----BEGIN PRIVATE KEY-----231'",
+        "cwd": "C:\\fixture-work",
+        "shell": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "environment": {
+          "A": "1"
+        },
+        "timeoutMs": 10000,
+        "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f"
+      }
     }
   ],
   "reads": [
@@ -1015,6 +1058,20 @@
       "params": {
         "taskId": "13131313-0000-4000-8000-000000000001",
         "approvalId": "13131313-0000-4000-8000-000000000229"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000230"
+      }
+    },
+    {
+      "method": "approval.get",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000231"
       }
     },
     {
@@ -2035,6 +2092,20 @@
         "taskId": "13131313-0000-4000-8000-000000000001",
         "approvalId": "13131313-0000-4000-8000-000000000229"
       }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000230"
+      }
+    },
+    {
+      "method": "approval.reconcile",
+      "params": {
+        "taskId": "13131313-0000-4000-8000-000000000001",
+        "approvalId": "13131313-0000-4000-8000-000000000231"
+      }
     }
   ],
   "cases": [
@@ -2047,6 +2118,34 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "limit": 2
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 30
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 30
           },
           "value": {
             "approvals": [
@@ -2421,15 +2520,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 29
+            "nextBefore": 31
           },
           "error": null
         },
@@ -2442,22 +2540,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 28
+            "nextBefore": 30
           },
           "error": null
         },
@@ -2469,6 +2566,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -3586,6 +3697,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -5979,6 +6108,67 @@
               "root_task_id": "13131313-0000-4000-8000-000000000001"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
         }
       ]
     },
@@ -6146,6 +6336,34 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "limit": 2
+          },
+          "value": {
+            "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 48
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 48
           },
           "value": {
             "approvals": [
@@ -6520,15 +6738,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 47
+            "nextBefore": 49
           },
           "error": null
         },
@@ -6541,22 +6758,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 46
+            "nextBefore": 48
           },
           "error": null
         },
@@ -6568,6 +6784,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -7685,6 +7915,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -10177,6 +10425,83 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 54,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000230\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 55,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000231\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
         }
       ]
     },
@@ -11200,6 +11525,34 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 137
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 137
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -11570,15 +11923,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 136
+            "nextBefore": 138
           },
           "error": null
         },
@@ -11591,22 +11943,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 135
+            "nextBefore": 137
           },
           "error": null
         },
@@ -11618,6 +11969,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -12735,6 +13100,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -15227,6 +15610,83 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 219,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000230\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 220,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000231\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
         }
       ]
     },
@@ -16250,6 +16710,34 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 139
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 139
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -16620,15 +17108,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 138
+            "nextBefore": 140
           },
           "error": null
         },
@@ -16641,22 +17128,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 137
+            "nextBefore": 139
           },
           "error": null
         },
@@ -16668,6 +17154,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -17785,6 +18285,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -20277,6 +20795,83 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 235,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000230\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 236,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000231\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
         }
       ]
     },
@@ -21300,6 +21895,34 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 142
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 142
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -21670,15 +22293,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 141
+            "nextBefore": 143
           },
           "error": null
         },
@@ -21691,22 +22313,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 140
+            "nextBefore": 142
           },
           "error": null
         },
@@ -21718,6 +22339,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -22835,6 +23470,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -25327,6 +25980,83 @@
               "created_at": "2026-01-02T03:04:05.678Z"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 245,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000230\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": [
+            {
+              "sequence": 246,
+              "type": "approval.changed",
+              "task_id": "13131313-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"13131313-0000-4000-8000-000000000231\",\"state\":\"unknown\"}",
+              "created_at": "2026-01-02T03:04:05.678Z"
+            }
+          ]
         }
       ]
     },
@@ -26455,6 +27185,34 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 167
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 167
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -26825,15 +27583,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 166
+            "nextBefore": 168
           },
           "error": null
         },
@@ -26846,22 +27603,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 165
+            "nextBefore": 167
           },
           "error": null
         },
@@ -26873,6 +27629,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -27990,6 +28760,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -30383,6 +31171,67 @@
               "root_task_id": "13131313-0000-4000-8000-000000000001"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
         }
       ]
     },
@@ -31511,6 +32360,34 @@
           "value": {
             "approvals": [
               {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              }
+            ],
+            "nextBefore": 168
+          },
+          "error": null
+        },
+        {
+          "method": "task.approvals",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "limit": 2,
+            "before": 168
+          },
+          "value": {
+            "approvals": [
+              {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "replace_text",
@@ -31881,15 +32758,14 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 167
+            "nextBefore": 169
           },
           "error": null
         },
@@ -31902,22 +32778,21 @@
           "value": {
             "approvals": [
               {
-                "id": "13131313-0000-4000-8000-000000000229",
+                "id": "13131313-0000-4000-8000-000000000231",
                 "taskId": "13131313-0000-4000-8000-000000000001",
-                "tool": "replace_text",
+                "tool": "run_command",
                 "state": "unknown",
-                "createdAt": "2026-01-02T03:04:05.678Z",
-                "path": "a29.txt"
+                "createdAt": "2026-01-02T03:04:05.678Z"
               },
               {
-                "id": "13131313-0000-4000-8000-000000000228",
+                "id": "13131313-0000-4000-8000-000000000230",
                 "taskId": "13131313-0000-4000-8000-000000000001",
                 "tool": "run_command",
                 "state": "unknown",
                 "createdAt": "2026-01-02T03:04:05.678Z"
               }
             ],
-            "nextBefore": 166
+            "nextBefore": 168
           },
           "error": null
         },
@@ -31929,6 +32804,20 @@
           },
           "value": {
             "approvals": [
+              {
+                "id": "13131313-0000-4000-8000-000000000231",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
+              {
+                "id": "13131313-0000-4000-8000-000000000230",
+                "taskId": "13131313-0000-4000-8000-000000000001",
+                "tool": "run_command",
+                "state": "unknown",
+                "createdAt": "2026-01-02T03:04:05.678Z"
+              },
               {
                 "id": "13131313-0000-4000-8000-000000000229",
                 "taskId": "13131313-0000-4000-8000-000000000001",
@@ -33046,6 +33935,24 @@
           "params": {
             "taskId": "13131313-0000-4000-8000-000000000001",
             "approvalId": "13131313-0000-4000-8000-000000000229"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": null,
+          "error": "Approval evidence could not be safely rendered."
+        },
+        {
+          "method": "approval.get",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
           },
           "value": null,
           "error": "Approval evidence could not be safely rendered."
@@ -35439,6 +36346,67 @@
               "root_task_id": "13131313-0000-4000-8000-000000000001"
             }
           ]
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000230"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-30 api_key=[REDACTED]",
+            "nonce": "nonce password=[REDACTED]",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "summary": "Key [REDACTED PRIVATE KEY]",
+            "fingerprint": "access_token=[REDACTED]",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000230",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000230\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-30 api_key=fixture-secret-value\",\"nonce\":\"nonce password=fixture-secret-value\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"summary\":\"Key -----BEGIN PRIVATE KEY-----230\",\"command\":\"Write-Output 'x'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"access_token=fixture-secret-value\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
+        },
+        {
+          "method": "approval.reconcile",
+          "params": {
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "approvalId": "13131313-0000-4000-8000-000000000231"
+          },
+          "value": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "taskId": "13131313-0000-4000-8000-000000000001",
+            "toolCallId": "call-31",
+            "nonce": "nnnnnnnnnnnnnnnn31",
+            "tool": "run_command",
+            "state": "unknown",
+            "createdAt": "2026-01-02T03:04:05.678Z",
+            "fingerprint": "eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f",
+            "result": {
+              "content": "Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.",
+              "isError": true,
+              "cleanupVerified": false
+            }
+          },
+          "error": null,
+          "row": {
+            "id": "13131313-0000-4000-8000-000000000231",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"13131313-0000-4000-8000-000000000231\",\"taskId\":\"13131313-0000-4000-8000-000000000001\",\"toolCallId\":\"call-31\",\"nonce\":\"nnnnnnnnnnnnnnnn31\",\"tool\":\"run_command\",\"state\":\"unknown\",\"createdAt\":\"2026-01-02T03:04:05.678Z\",\"command\":\"Write-Output '-----BEGIN PRIVATE KEY-----231'\",\"cwd\":\"C:\\\\fixture-work\",\"shell\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"environment\":{\"A\":\"1\"},\"timeoutMs\":10000,\"fingerprint\":\"eb1e33e8a81b697b75855af6bfcdbcbf7cbbde9f94962ceaec1ed8af21f5a50f\",\"result\":{\"content\":\"Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.\",\"isError\":true,\"cleanupVerified\":false}}",
+            "state": "unknown"
+          },
+          "events": []
         }
       ]
     }

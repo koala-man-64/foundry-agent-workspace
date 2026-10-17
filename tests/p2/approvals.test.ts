@@ -72,6 +72,11 @@ approvals.push({ id: id(226), state: 'unknown', data: command(26, 'unknown', { c
 approvals.push({ id: id(227), state: 'unknown', data: command(27, 'unknown', { command: `Write-Output '${'y'.repeat(131072)}'` }) });
 approvals.push({ id: id(228), state: 'unknown', data: command(28, 'unknown', { summary: 'Key -----BEGIN PRIVATE KEY-----abc', command: "Write-Output 'api_key=fixture-secret-value'" }) });
 approvals.push({ id: id(229), state: 'unknown', data: (() => { const { toolCallId: _, ...rest } = edit(29, id(1), 'unknown', 'a29.txt', 'twenty-nine before\n', 'twenty-nine after\n', { summary: 'Edit -----BEGIN RSA PRIVATE KEY-----a29' }); return rest; })() });
+// The fallback redacts every text field (review L1-a): labelled secrets in the identity fields and fingerprint; and a
+// document with no summary, which the fallback reports without one.
+approvals.push({ id: id(230), state: 'unknown', data: command(30, 'unknown', { toolCallId: 'call-30 api_key=fixture-secret-value', nonce: 'nonce password=fixture-secret-value',
+  fingerprint: 'access_token=fixture-secret-value', summary: 'Key -----BEGIN PRIVATE KEY-----230' }) });
+approvals.push({ id: id(231), state: 'unknown', data: (() => { const { summary: _, ...rest } = command(31, 'unknown', { command: "Write-Output '-----BEGIN PRIVATE KEY-----231'" }); return rest; })() });
 
 type Step = { method: RpcMethod; params: Record<string, unknown> };
 const reads: Step[] = [
@@ -86,7 +91,7 @@ const reads: Step[] = [
 ];
 const reconciles: Step[] = [215, 219, 299, 209, 209, 210, 211, 211, 212, 213, 214, 205, 206, 207, 208, 220, 211].map(n => ({ method: 'approval.reconcile' as const, params: { taskId: id(1), approvalId: id(n) } }));
 reconciles.splice(10, 0, { method: 'approval.reconcile', params: { taskId: id(2), approvalId: id(213) } });
-reconciles.push(...[[1, 221], [4, 222], [1, 223], [1, 224], [1, 225], [1, 221], [1, 226], [1, 227], [1, 228], [1, 229]].map(([task, n]) => ({ method: 'approval.reconcile' as const, params: { taskId: id(task!), approvalId: id(n!) } })));
+reconciles.push(...[[1, 221], [4, 222], [1, 223], [1, 224], [1, 225], [1, 221], [1, 226], [1, 227], [1, 228], [1, 229], [1, 230], [1, 231]].map(([task, n]) => ({ method: 'approval.reconcile' as const, params: { taskId: id(task!), approvalId: id(n!) } })));
 
 it('pins approval records, projections and read-only reconciliation through the shipping Node authority', async () => {
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(stamp));

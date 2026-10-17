@@ -55,17 +55,21 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
         catch (WorkspaceReadException) { return Outcome(approval); }
     }
 
-    /// <summary>tool-runtime.ts reconcile's fallback: identity, state, a redacted summary, the fingerprint and the outcome.</summary>
+    /// <summary>
+    /// tool-runtime.ts reconcile's fallback: identity, state, summary, fingerprint and outcome, every text field redacted on
+    /// its own (the state is the runtime's own value). A field the document lacks stays absent.
+    /// </summary>
     private Dictionary<string, object?> Outcome(Dictionary<string, object?> approval)
     {
         var value = new Dictionary<string, object?>();
-        foreach (var key in new[] { "id", "taskId", "toolCallId", "nonce", "tool", "state", "createdAt" }) if (approval.TryGetValue(key, out var field)) value[key] = field;
-        value["summary"] = redactor.Text((string)approval["summary"]!);
-        if (approval.TryGetValue("fingerprint", out var fingerprint)) value["fingerprint"] = fingerprint;
+        foreach (var key in new[] { "id", "taskId", "toolCallId", "nonce", "tool", "state", "createdAt", "summary", "fingerprint" })
+            if (approval.TryGetValue(key, out var field)) value[key] = key == "state" ? field : Text(field);
         if (approval.GetValueOrDefault("result") is Dictionary<string, object?> result)
-            value["result"] = new Dictionary<string, object?>(result) { ["content"] = redactor.Text((string)result["content"]!) };
+            value["result"] = new Dictionary<string, object?>(result) { ["content"] = Text(result["content"]) };
         return value;
     }
+
+    private object? Text(object? field) => field is string text ? redactor.Text(text) : field;
 
     /// <summary>
     /// tool-runtime.ts save(): store.saveApproval, then service.ts publish('approval.changed'). Before schema v5 publish
