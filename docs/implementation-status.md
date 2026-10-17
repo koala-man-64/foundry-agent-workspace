@@ -126,7 +126,15 @@ Dual-landed fixes:
   - **Fixtures fixed too.** Hosted runners exposed three more fixture problems under an 8.3 `TEMP`. `folder-admission` saved raw scratch paths as projects, and the `p1/summary` and `workspace-pages` corpus fixtures canonicalized with JavaScript `realpathSync`, which keeps 8.3 spellings. They now use native realpath, as production `project.add` does. The older `canonicalPath(x) === x` checks for saved projects are unchanged.
   - **Still refused:** subst drives, junctions and different folders. Node reports a volume mount point as a directory, so a spelling through the same mount folder is accepted; a different mount folder, or the mounted volume's own drive letter, is refused.
   - **Native side.** When this was written, C# had no approved-path comparison. The requirement: avoid this defect, and do not copy the lowercased key equality, which in a case-sensitive directory can treat two folders as one; compare 128-bit volume and file identities per component. P2.2 meets it with `RepositoryPaths.SameFolder` (see P2.2c), which compares the FileIdInfo identity of every component of both chains and refuses any reparse point.
-- **Refusing network-share paths from the renderer** (plan decision 8). Landed in the TypeScript runtime on 8 October 2026; the C# runtime takes the same test cases when it is ported.
+- **Redacting the approval `approval.reconcile` returns** (17 October 2026, review finding L1 of P2.3b).
+  - **The exposure.** `approval.reconcile` returned the whole stored approval unredacted: command, file contents, environment values, the result and patches. The three approval read methods redact all of these. A renderer call (including a compromised renderer's) received any secret in that text in clear. The only renderer caller discards the value, so nothing was kept in state.
+  - **The fix.**
+    - Reconciliation now returns exactly what `approval.get` shows: the document redacted, and a bounded preview above 128 KiB (which also keeps a large approval within the response limit).
+    - If redaction leaves the document unparseable, it returns the identity, state and outcome, each field redacted on its own. The state is already saved, so a refusal would misreport a check that happened.
+    - The stored row is unchanged. The `Approval` return type is unchanged, so the protocol is unchanged.
+  - **Where.** `workspace-queries.ts` exports its existing projection (`readApproval`); `tool-runtime.ts` `reconcile` returns it.
+  - **Tests.** `tests/integration/coding.test.ts` covers a labelled secret, a 140,000-character approval and an unparseable redaction; returning the raw approval fails it.
+  - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
   - **The exposure:** a compromised renderer could make Windows send the user's NTLM credentials to any server it named.
   - **Inputs now refused:** UNC, device and NT-namespace paths given to `project.add`, `task.create`, a hook's working directory, or an MCP server's command, working directory or absolute arguments. The check runs before any filesystem call.
   - **Mapped drives:** a project whose canonical path is a network drive is refused.
