@@ -50,7 +50,7 @@ const steps: Step[] = [
 it('pins project-backed folder chats through the shipping Node authority without ordinary regeneration', async () => {
   const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-folder-chat-')));
   const home = path.join(scratch, 'home'); fs.mkdirSync(home);
-  // Projects live beside, not inside, the data folder's chain: the native Store pins that chain against renames.
+  // Projects live in their own subtree beside the data folder, which the rename steps move within.
   build(scratch, home, [{ dir: 'work/plain/sub' }, file('work/plain/a.txt', 'a\n'), ...committed([], 'work/repo')]);
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(timestamp)); ids.next = 1;
   const data = path.join(scratch, 'data'); fs.mkdirSync(data);

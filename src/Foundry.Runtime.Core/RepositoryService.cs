@@ -267,7 +267,8 @@ internal sealed partial class RepositoryService
 
     internal async Task<List<string>> UncommittedPaths(RepositoryAdmission admission) => [.. (await ChangedEntries(admission)).Select(entry => entry.Path)];
 
-    /// <summary>Each status entry's path and, for a rename or copy, its source, which porcelain v1 writes after it.</summary>
+    /// <summary>Each status entry's path and, for a rename or copy in either status column, its source, which porcelain v1
+    /// writes after it. An intent-to-add path renamed in the worktree is reported in the second column.</summary>
     private async Task<List<(string Path, string? Source)>> ChangedEntries(RepositoryAdmission admission)
     {
         var fields = (await Run(admission, ["status", "--porcelain=v1", "-z", "--untracked-files=all"])).Stdout.Split('\0');
@@ -277,7 +278,7 @@ internal sealed partial class RepositoryService
             var entry = fields[index];
             if (entry.Length == 0) continue;
             var path = entry.Length > 3 ? entry[3..] : "";
-            if (entry.StartsWith('R') || entry.StartsWith('C')) entries.Add((path, ++index < fields.Length ? fields[index] : null));
+            if (entry[0] is 'R' or 'C' || entry.Length > 1 && entry[1] is 'R' or 'C') entries.Add((path, ++index < fields.Length ? fields[index] : null));
             else entries.Add((path, null));
         }
         return entries;
@@ -526,7 +527,7 @@ internal sealed partial class RepositoryService
     /// commitAll: the user's explicit commit of every change in the task worktree. Refusals before staging are "none";
     /// from `git add` on, every failure is "unknown". Admission failures before that carry no outcome, so the caller treats
     /// them as unknown, as TypeScript does. Secret-named paths are never staged, hooks stay disabled, signing is off, and
-    /// the identity comes from the user's Git configuration. Not in TypeScript: the worktree must still belong to the task's
+    /// the identity comes from the user's Git configuration. Since the review of #36, in both runtimes: the worktree must still belong to the task's
     /// project repository (<see cref="RequireTaskWorktree"/>), the source of a staged rename or copy is screened as well
     /// as its destination, and the staged screen lists paths without rename detection, so a secret-named path cannot be
     /// committed under another name.
@@ -561,8 +562,9 @@ internal sealed partial class RepositoryService
     /// <summary>
     /// push: the user's explicit push of the task branch to a remote configured in the project repository. It never
     /// forces or prompts; only here may the user's credential helper run. Any failure of the push itself is "unknown".
-    /// Not in TypeScript: the worktree must still belong to the task's project repository, whose remotes are the ones
-    /// checked (<see cref="RequireTaskWorktree"/>).
+    /// Since the review of #36, in both runtimes: the worktree must still belong to the task's project repository, whose remotes are the ones
+    /// checked (<see cref="RequireTaskWorktree"/>), and the repository's own configuration must pass
+    /// <see cref="RequireTrustedPushConfiguration"/>.
     /// </summary>
     internal async Task<string> Push(string root, string projectPath, string? boundCommon, string remote, string branch)
     {
@@ -575,7 +577,14 @@ internal sealed partial class RepositoryService
         if (current != branch) throw new RepositoryException($"The worktree is on {current}, not the task branch {branch}.");
         try
         {
-            var result = await Run(repository, ["push", "--no-verify", "--porcelain", "--", remote, $"refs/heads/{branch}:refs/heads/{branch}"],
+            await RequireTrustedPushConfiguration(repository);
+            var pushUrls = (await Run(repository, ["remote", "get-url", "--push", "--all", "--", remote])).Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            RequireSupportedRemotes(repository, remote, pushUrls);
+        }
+        catch (Exception error) when (error is not RepositoryException && error is InvalidOperationException or IOException) { throw new RepositoryException(error.Message, "none", error); }
+        try
+        {
+            var result = await Run(repository, [.. TrustedProtocols, "push", "--no-verify", "--porcelain", "--", remote, $"refs/heads/{branch}:refs/heads/{branch}"],
                 options: new(TimeSpan.FromMilliseconds(120_000), AllowCredentialHelper: true));
             return JsJson.Trim(result.Stdout);
         }
@@ -589,12 +598,14 @@ internal sealed partial class RepositoryService
         {
             using var project = await RequireRepository(projectPath);
             var commit = expectedCommit ?? await TaskWorktreeHead(worktreePath, project, boundCommon);
-            // Not in TypeScript: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
+            // Since the review of #36, in both runtimes: ls-remote reads the remote's fetch URLs, so a remote whose push URLs differ cannot be
             // verified here; it stays unknown rather than being judged against another server.
             var fetchUrls = await Run(project, ["remote", "get-url", "--all", "--", remote], allowNonZero: true);
             var pushUrls = await Run(project, ["remote", "get-url", "--push", "--all", "--", remote], allowNonZero: true);
             if (fetchUrls.ExitCode != 0 || pushUrls.ExitCode != 0 || !string.Equals(fetchUrls.Stdout, pushUrls.Stdout, StringComparison.Ordinal)) return null;
-            var result = await Run(project, ["ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
+            RequireSupportedRemotes(project, remote, fetchUrls.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+            await RequireTrustedPushConfiguration(project);
+            var result = await Run(project, [.. TrustedProtocols, "ls-remote", "--heads", remote, $"refs/heads/{branch}"], allowNonZero: true, options: new(AllowCredentialHelper: true));
             if (result.ExitCode != 0) return null;
             var output = JsJson.Trim(result.Stdout);
             var match = RemoteTip().Match(output);
@@ -615,8 +626,8 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>
-    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Not in
-    /// TypeScript: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
+    /// verifyCommitOutcome: whether the ambiguous commit is the clean HEAD on its base with the expected message. Since the
+    /// review of #36, in both runtimes: a worktree that no longer belongs to the task's project repository proves nothing, so it stays unknown.
     /// </summary>
     internal async Task<bool?> VerifyCommitOutcome(string worktreePath, string projectPath, string? boundCommon, string? baseCommit, string? expectedMessage)
     {
@@ -659,10 +670,167 @@ internal sealed partial class RepositoryService
         }
     }
 
+    /// <summary>Transports a push or remote check may use: https, ssh and local paths. Plain git, http and ext:: are denied
+    /// by name too, because a protocol-specific key in the user's global configuration would beat the generic one.</summary>
+    private static readonly string[] TrustedProtocols =
+    [
+        "-c", "protocol.allow=never", "-c", "protocol.ext.allow=never", "-c", "protocol.git.allow=never", "-c", "protocol.http.allow=never",
+        "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "protocol.file.allow=always",
+    ];
+
+    internal static string UnsupportedRemote(string remote) => $"Remote {remote} points at a network share, through a link, or at a location push does not use.";
+
+    /// <summary>
+    /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or any file://
+    /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
+    /// authenticate to a server. Git percent-decodes file:// URLs before using them, so any file:// URL holding a percent
+    /// sign is refused outright rather than decoded here. https, ssh and scp-like URLs are transports, limited by
+    /// <see cref="TrustedProtocols"/>.
+    /// </summary>
+    internal static bool IsNetworkRemote(string url)
+    {
+        if (LocalRemotePath(url) is not { } value) return !IsTransportRemote(url);
+        if (NetworkPathPolicy.IsNetworkOrDevicePath(value)) return true;
+        if (value.Length >= 2 && char.IsAsciiLetter(value[0]) && value[1] == ':')
+            return new DriveInfo(value[..1]).DriveType is DriveType.Network or DriveType.NoRootDirectory;
+        return false;
+    }
+
+    /// <summary>
+    /// Whether Git, under <see cref="TrustedProtocols"/>, would use a remote URL's transport at all: https, ssh and file
+    /// URLs with the lowercase schemes Git matches, scp-like ssh, and local paths. Git refuses any other scheme, any other
+    /// spelling of these, and every `&lt;helper&gt;::` form only once the command runs, which would leave a push's outcome
+    /// unknown and its remote check unable to resolve it. Git also refuses, before it connects, a URL with leading
+    /// whitespace (it does not trim), one starting with `-`, `rsync:`, and an ssh URL whose host starts with `-`.
+    /// </summary>
+    internal static bool IsPermittedRemoteForm(string url)
+    {
+        if (url.Length > 0 && (url[0] == '-' || JsJson.Trim(url[..1]).Length == 0) || url.StartsWith("rsync:", StringComparison.Ordinal)) return false;
+        var value = JsJson.Trim(url);
+        if (HelperTransport().IsMatch(value)) return false;
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme < 0) return true;
+        var name = value[..scheme];
+        if (name is not ("https" or "ssh" or "git+ssh" or "ssh+git" or "file")) return false;
+        return name is "https" or "file" || !value[(scheme + 3)..].StartsWith('-');
+    }
+
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9+.-]*::", RegexOptions.CultureInvariant)]
+    private static partial Regex HelperTransport();
+
+    /// <summary>An https, ssh, scp-like or other scheme URL that is not file://.</summary>
+    private static bool IsTransportRemote(string url)
+    {
+        var value = JsJson.Trim(url);
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme > 0) return !value[..scheme].Equals("file", StringComparison.OrdinalIgnoreCase);
+        // scp-like [user@]host:path: a colon before any slash, and not a drive letter.
+        var colon = value.IndexOf(':', StringComparison.Ordinal);
+        var separator = value.IndexOfAny(['/', '\\']);
+        return colon > 1 && (separator < 0 || colon < separator);
+    }
+
+    /// <summary>The local path a remote URL names (a plain path, or a file:// URL with no host and no percent sign); null for
+    /// a transport URL and for any file:// URL that is refused. Git opens `file://localhost/...` as the UNC path
+    /// `//localhost/...`, so a host, localhost included, is a share.</summary>
+    private static string? LocalRemotePath(string url)
+    {
+        if (IsTransportRemote(url)) return null;
+        var value = JsJson.Trim(url);
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme < 0) return value;
+        var rest = value[(scheme + 3)..];
+        if (rest.Contains('%', StringComparison.Ordinal)) return null;
+        var slash = rest.IndexOf('/', StringComparison.Ordinal);
+        var host = slash < 0 ? rest : rest[..slash];
+        if (host.Length > 0) return null;
+        var path = slash < 0 ? "" : rest[slash..];
+        return path.Length > 2 && path[0] == '/' && char.IsAsciiLetter(path[1]) && path[2] == ':' ? path[1..] : path;
+    }
+
+    /// <summary>
+    /// Every URL a push or remote check would use must be in a form Git uses under <see cref="TrustedProtocols"/>
+    /// (<see cref="IsPermittedRemoteForm"/>), and must be a transport or a local folder on a fixed local drive whose
+    /// existing chain holds no link of any kind (checked without following one), so the named path is neither a share nor
+    /// reached through a link to one. Relative paths resolve against the folder the command runs in; Git's own `~`
+    /// expansion and drive-relative paths (`C:repo`) are refused rather than resolved. The check is not held across the push.
+    /// Not screened, in either runtime: Git also opens the destination's own layout (`&lt;path&gt;/.git`, `&lt;path&gt;.git`, a
+    /// gitfile, objects/info/alternates), which can lead elsewhere, a share included. The destination is trusted as its own
+    /// receive-pack hooks are (Rudy, 17 October 2026).
+    /// </summary>
+    private static void RequireSupportedRemotes(RepositoryAdmission admission, string remote, IEnumerable<string> urls)
+    {
+        foreach (var url in urls)
+        {
+            if (!IsPermittedRemoteForm(url) || IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
+            if (LocalRemotePath(url) is not { } local) continue;
+            if (local.Length == 0 || local.Contains('\0', StringComparison.Ordinal) || local.StartsWith('~') || RepositoryPaths.HasAmbiguousSegment(local)
+                || local.Length >= 2 && char.IsAsciiLetter(local[0]) && local[1] == ':' && (local.Length == 2 || local[2] is not ('/' or '\\'))) throw new RepositoryException(UnsupportedRemote(remote));
+            var resolved = Path.GetFullPath(local, admission.Path);
+            if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
+            try { using (DirectoryLease.AcquireSharingWrites(resolved)) { } }
+            catch (IOException error) { throw new RepositoryException(UnsupportedRemote(remote), "none", error); }
+        }
+    }
+
+    private static readonly HashSet<string> TrustedCoreKeys = new(StringComparer.Ordinal)
+    {
+        "repositoryformatversion", "filemode", "bare", "logallrefupdates", "symlinks", "ignorecase",
+        "autocrlf", "eol", "safecrlf", "longpaths", "precomposeunicode", "quotepath", "fscache",
+    };
+
+    /// <summary>
+    /// Since the review of #36, in both runtimes (Rudy chose the allowlist on 17 October 2026). Push and remote verification honor
+    /// the repository's own configuration, which can run programs (credential helpers, core.sshCommand, transport
+    /// programs, ext:: URLs) or redirect where and how Git connects. Before either runs, every key that the repository's
+    /// configuration sets (its local and worktree scopes, with everything they include) must be one that neither runs a
+    /// program nor changes the connection. Anything else, including include directives, refuses with "none". The user's
+    /// global configuration is theirs and is not screened. A blocklist could never be complete; unknown keys refuse.
+    /// Limits, accepted by Rudy on 17 October 2026: a remote that is a local folder path runs that destination
+    /// repository's own receive-pack hooks and configuration, as Git's local transport does not pass this process's
+    /// settings on; and the configuration is screened just before the push, so a same-user process that rewrites it in
+    /// between is not detected. Network shares are refused separately (<see cref="IsNetworkRemote"/>).
+    /// </summary>
+    private async Task RequireTrustedPushConfiguration(RepositoryAdmission admission)
+    {
+        var fields = (await Run(admission, ["config", "--list", "--show-scope", "-z"])).Stdout.Split('\0');
+        for (var index = 0; index + 1 < fields.Length; index += 2)
+        {
+            if (fields[index] is "global" or "system" or "command") continue;
+            var entry = fields[index + 1];
+            var newline = entry.IndexOf('\n', StringComparison.Ordinal);
+            var key = newline < 0 ? entry : entry[..newline];
+            if (!TrustedPushKey(key, out var shown))
+                throw new RepositoryException($"Push refused: the repository's own Git configuration sets {shown}, which push does not trust. Move it to your global Git configuration or remove it.");
+        }
+    }
+
+    /// <summary>Whether a configuration key is inert for a push; <paramref name="shown"/> names it without its subsection,
+    /// which can hold a URL with credentials.</summary>
+    private static bool TrustedPushKey(string key, out string shown)
+    {
+        var first = key.IndexOf('.', StringComparison.Ordinal); var last = key.LastIndexOf('.');
+        var section = first > 0 ? key[..first] : key; var variable = last >= 0 && last < key.Length - 1 ? key[(last + 1)..] : "";
+        var subsection = first > 0 && last > first;
+        shown = subsection ? $"{section}.*.{variable}" : key;
+        if (first <= 0 || variable.Length == 0) return false;
+        return (section, subsection) switch
+        {
+            ("core", false) => TrustedCoreKeys.Contains(variable),
+            ("extensions", false) => true,
+            ("user", false) => variable is "name" or "email" or "useconfigonly",
+            ("remote", true) => variable is "url" or "pushurl" or "fetch" or "push" or "tagopt" or "prune",
+            ("branch", true) => variable is "remote" or "pushremote" or "merge" or "rebase",
+            ("pull", false) => variable is "rebase" or "ff",
+            ("push", false) => variable is "default",
+            _ => false,
+        };
+    }
+
     internal const string ForeignWorktree = "The task worktree no longer belongs to the task's project repository.";
 
     /// <summary>
-    /// Not in TypeScript (review of #36): before a publication mutation, the worktree must share the project repository's
+    /// Since the review of #36, in both runtimes: before a publication mutation, the worktree must share the project repository's
     /// common directory, and that must still be the one bound when the task was created (when a binding exists). A
     /// replaced folder holding another repository, with its own configuration and remotes, is never committed to or pushed
     /// from. The held worktree admission keeps that identity pinned for the rest of the operation. Refusals are "none".
@@ -682,7 +850,7 @@ internal sealed partial class RepositoryService
             throw new RepositoryException(ForeignWorktree);
     }
 
-    // SHA-1 or SHA-256 object names (review of #36: TypeScript matches 40 characters only).
+    // SHA-1 or SHA-256 object names (review of #36, in both runtimes).
     [GeneratedRegex(@"^([0-9a-fA-F]{64}|[0-9a-fA-F]{40})\s+", RegexOptions.CultureInvariant)]
     private static partial Regex RemoteTip();
 

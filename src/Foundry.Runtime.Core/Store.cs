@@ -44,7 +44,9 @@ public sealed partial class Store : IDisposable
         ArgumentNullException.ThrowIfNull(loop);
         loop.AssertCurrent();
         this.loop = loop; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid; this.publish = publish ?? (_ => { });
-        directoryLease = DirectoryLease.Acquire(directory);
+        // Held while the runtime runs, so the chain shares writes: nothing up to the drive root is closed to other
+        // applications' renames, while the pinned folders themselves, the database and the marker cannot be replaced.
+        directoryLease = DirectoryLease.AcquireSharingWrites(directory);
         DataAdmission admission;
         try { admission = DataClassifier.Inspect(directory, applicationRoot); }
         catch { directoryLease.Dispose(); throw; }
@@ -56,7 +58,7 @@ public sealed partial class Store : IDisposable
         {
             Directory.CreateDirectory(admission.Directory);
             DataDirectory = admission.Directory;
-            admittedLease = pinned = DirectoryLease.Acquire(admission.Directory);
+            admittedLease = pinned = DirectoryLease.AcquireSharingWrites(admission.Directory);
             var markerPath = Path.Combine(admission.Directory, IsolationMarker);
             if (File.Exists(markerPath))
             {

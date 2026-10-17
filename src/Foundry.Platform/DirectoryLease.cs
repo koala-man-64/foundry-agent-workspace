@@ -20,6 +20,13 @@ public sealed class DirectoryLease : IDisposable
     /// </summary>
     public static DirectoryLease AcquireExistingSharingWrites(string directory) => Acquire(directory, true, ShareReadWrite);
 
+    /// <summary>
+    /// As <see cref="Acquire"/> (missing trailing components are allowed and stay unpinned), but sharing writes: other
+    /// processes may still rename or create entries inside every pinned directory, which a long-lived lease on a chain up
+    /// to the drive root must allow. The pinned components themselves still cannot be renamed or deleted.
+    /// </summary>
+    public static DirectoryLease AcquireSharingWrites(string directory) => Acquire(directory, false, ShareReadWrite);
+
     private static unsafe DirectoryLease Acquire(string directory, bool requireExisting, uint share)
     {
         // GetFullPath strips a trailing dot or space from the last component, so it would pin a different entry than the

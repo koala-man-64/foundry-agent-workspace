@@ -141,6 +141,46 @@ Dual-landed fixes:
   - **Mapped drives:** a project whose canonical path is a network drive is refused.
   - **Saved before the fix:** a project or task saved on a share is reported unavailable and never probed, and Git operations on it are refused. Hooks and MCP servers saved with network paths are refused at launch.
   - **Review:** the independent security review (Sonnet, high, from its definition) returned GO. Its follow-ups are applied: a spy proves no share is resolved before the check, and saved paths are no longer probed. Removing any one of the 13 checks makes a test fail.
+- **Publication hardening from the review of #36 and the push allowlist** (17 October 2026). Native fixed these first: the P2.2e "Codex review of #36" fixes are on main, and the push-configuration and remote checks came with #37 (merged as `7df623a`, whose tree is `fb2a15e`, the native head this port was made from). The shipping TypeScript runtime now matches them, with native's messages (`repository.ts`, `workspace-operations.ts`, `store.ts`):
+  - **Commit.** Both endpoints of a rename or copy in the status listing are screened for secret-named paths before staging, and the staged paths again without rename detection.
+  - **Task worktree.** Commit and push require the worktree to share the project repository's common directory and, when the task has one, the common directory of its latest complete `channel.identity` binding (`Store.boundCommon`). A refusal is "none". Every later Git call of the operation revalidates that identity. Verifying an unknown commit, and an unknown push whose commit was not recorded, apply the same check and stay unknown on a mismatch, so commit verification also needs the project folder to be admissible.
+  - **Reconciliation.** A push whose push and fetch URLs differ stays unknown, and SHA-256 remote tips are accepted.
+  - **Push configuration.** The same allowlist over the repository's own scopes (`git config --list --show-scope -z`), the same refusal, and the same protocol flags (`protocol.allow=never`; `ext`, `git`, `http` denied by name; `https`, `ssh`, `file` allowed) on push and `ls-remote`.
+  - **Remotes.** As native `RequireSupportedRemotes`: network-share URLs (UNC, device, `file://host`, any `file://` URL holding `%`, mapped or unavailable drive letters) are refused, and a local-path remote must sit on a fixed local drive with no link in its existing chain. A push refuses with "none"; a remote check stays unknown.
+  - **Fixed in both runtimes by this change, from the independent review of the port.**
+    - **Transports the protocol restriction denies (medium).** `http://`, `git://`, `ext::`, other `<helper>::` forms, other schemes, and any other spelling of the allowed ones (`HTTPS://`, `FILE:///`) passed the remote check, so Git refused them only inside `git push`. That recorded an unknown outcome which the remote check, refused the same way, could never resolve, so the task stayed blocked. Before a push or remote check, `IsPermittedRemoteForm` now admits only what Git uses under the restriction: lowercase `https://`, `ssh://`, `git+ssh://`, `ssh+git://` and `file://`, scp-like ssh, and local paths. It also refuses what Git itself refuses before connecting: leading whitespace (Git does not trim), a leading `-`, `rsync:`, and an ssh URL whose host starts with `-`. Anything else is refused with the same "none" message. A push that failed against such a remote before this change stays unknown.
+    - **Spellings Git resolves elsewhere than the check (low).** Git opens `file://localhost/...` as the UNC path `//localhost/...`, so any `file://` host is now a share. It expands a leading `~` to HOME, so such a path is now refused. A drive-relative path (`C:repo`) is refused in both runtimes; TypeScript already refused it.
+    - **Intent-to-add renames (low).** Status reports a worktree rename of an intent-to-add path in its second column, which the parser did not read as a rename, so a secret-named source was caught only by the staged screen after `git add`, with an unknown outcome. Both columns are now read, so it is refused before staging with "none".
+  - **Differences, all fail-closed or invisible on success.**
+    - Node has no `GetDriveType`, so the drive type comes from `System.IO.DriveInfo` in the fixed System32 Windows PowerShell, with no profile and only `SystemRoot`, `WINDIR` and the drive letter in its environment, as `backup-protection.ts` launches it. A failed query refuses the push and leaves a remote check unknown. A push or remote check to a local-path remote costs one or two such launches; https and ssh remotes cost none. Under PowerShell's constrained language mode the query would fail, so every local-path remote would be refused.
+    - The chain is checked with `lstat`, which recognizes symbolic links and junctions. Native's pin refuses every reparse point. TypeScript also admits volume mount points, which lead only to another local volume, and other reparse points such as cloud-file placeholders.
+  - **Tests.**
+    - `tests/integration/publication-guards.test.ts` (13 cases) mirrors `TaskPublicationTests`:
+      - each configuration key native refuses, plus a worktree-scope key;
+      - the protocol restriction under a global configuration that allows every protocol and sends the remote through the ext helper (`remote.origin.vcs`), with a control proving the helper's command live;
+      - remotes Git would refuse only once running, then the real remote, and the permitted-form table native shares;
+      - share, percent, `localhost` and drive-type spellings, loopback shares and an unused drive letter;
+      - a junction-linked remote, then its real path;
+      - a staged `git mv .env safe.txt`, an intent-to-add worktree rename, and a secret renamed between the status screen and `git add`;
+      - a tampered binding, a binding-less task, a replaced worktree with its own remote and a crafted commit, and a worktree replaced during a push;
+      - a differing push URL and a SHA-256 remote.
+    - Native: `PushRefusesRemotesGitWouldRefuseOnlyOnceRunning` and `PermittedRemoteFormsAreThoseGitUses` are new. `PushTransportsAreLimitedToHttpsSshAndLocalPaths` now uses the global `remote.origin.vcs` route, with its control. `AStagedRenameOfASecretNamedPathIsRefused` adds the intent-to-add rename, and `NetworkShareRemotesAreRecognized` classifies `file://localhost`.
+    - In TypeScript, each of 22 mutations, one per guard, failed its test. Natively, each of the 7 new guards (permitted form, Git's early refusals, an option-like ssh host, `localhost`, `~`, drive-relative path, second status column) failed its test when removed.
+  - **P2 vectors.** Re-pinned with their `P2_WRITE_*` flags. Only the `repository.ts`, `workspace-operations.ts` and `store.ts` source hashes changed, and `Foundry.Conformance` replays every corpus.
+  - **Validation.** `pnpm check`, `pnpm test:e2e` and `Foundry.Conformance` (Release) on the final head; results are in the pull request. One e2e test, `personal-workspace.spec.ts` "pinned script remains untrusted until explicit reviewed grant", fails intermittently. It also failed 1 of 6 runs on a clean `main` build, so it predates this change.
+  - **Independent review.** The security seat (`cloud-security-vulnerability-expert`; Sonnet, high effort, from its agent definition) reviewed the port as required for credential, filesystem and process changes.
+    - First round: GO, conditional. Its findings were the run-time-refused transports (medium), the destination's own layout (medium), `file://localhost` and `~` (low), the intent-to-add rename (low), the `lstat` wording, and missing pin and drive-failure tests. All but the destination layout are fixed above, in both runtimes; that one is open for Rudy, below.
+    - Re-review: GO. Its one low finding, Git's early refusals (leading whitespace, a leading `-`, `rsync:`, an option-like ssh host), is fixed above.
+  - **Not in this change:** H1, the TypeScript hooks-folder fix, is #35 (`claude/fix-empty-git-hooks`, unmerged). Whichever of the two lands second re-pins the vectors.
+  - **Open in both runtimes, for Rudy's decision: the destination's own layout (medium, confirmed by the independent review).**
+    - The remote check covers only the named path, but Git's local transport also opens the destination's own layout:
+      - `<path>/.git`, `<path>.git/.git` and `<path>.git`; a push to a missing `dest` wrote into `dest.git`;
+      - a gitfile, which needs no privilege. A folder whose `.git` file reads `gitdir: //host/...` sent both a push and a remote check through the share, probed on loopback;
+      - `objects/info/alternates`, which can name a share.
+    - For example, a project whose own configuration sets `remote.origin.url=./vendor` (an allowed key) and that ships `vendor/.git` as such a gitfile reaches the share when the user pushes or reconciles.
+    - This extends Rudy's accepted limit that a local-path destination runs its own `receive-pack` hooks. Those hooks can already run any program on push, while the remote check of an unknown push runs no hooks but follows the layout.
+    - The code and these notes now claim only that the named path is neither a share nor reached through a link.
+    - Choices: accept it as part of the limit; screen the destination as Git's `enter_repo` walks it, refusing a gitfile, a linked `.git`, `alternates` and `commondir`; or refuse local-path remotes.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
@@ -803,7 +843,7 @@ Its remaining notes:
 - **L3 (informational, parity), not changed.** Reconciliation counts a retired worktree that cannot be probed as gone, as TypeScript's `stat` catch does. Nothing is deleted on that basis; the worktree and branch stay on disk.
 - **L4 (informational).** The atomic success commit is now named in the differences above.
 
-**Codex review of #36.** The repository's Codex reviewer left five findings on the publication code. Every one also holds for the shipping TypeScript (`repository.ts` `uncommittedPaths`, `push`, `verifyPushOutcome`, and `workspace-operations.ts`), so each stays **open for TypeScript** under the dual-landing rule. Four are fixed natively as fail-closed differences:
+**Codex review of #36.** The repository's Codex reviewer left five findings on the publication code. Every one also held for the shipping TypeScript (`repository.ts` `uncommittedPaths`, `push`, `verifyPushOutcome`, and `workspace-operations.ts`). TypeScript now has the four native fixes below. It also has the push allowlist and remote checks that #37 added natively. Both are recorded under "Publication hardening" in the dual-landed fixes. Four are fixed natively as fail-closed differences:
 - **Staged rename of a secret-named path (P1).** Porcelain v1 writes a staged rename's source after its destination, and the source was skipped. The staged listing also detects renames, so `git mv .env safe.txt` showed only `safe.txt`, and the commit would publish the secret file's content under the safe name.
   - **Fixed natively:** `CommitAll` screens both endpoints of every rename or copy before staging, and screens the staged paths again without rename detection.
   - `UncommittedPaths`, and the diff and retirement checks that use it, keep TypeScript's output.
@@ -812,13 +852,40 @@ Its remaining notes:
   - The held worktree admission keeps that identity pinned for the rest of the operation. A refusal is "none".
 - **Push URL during reconciliation (P2).** `ls-remote` reads the remote's fetch URLs, while push writes to its push URLs. **Fixed natively:** when the two lists differ, the push stays unknown instead of being judged against another server. Querying the push URL directly would pass a configured URL to Git where it could act as an option.
 - **SHA-256 remote tips (P2).** The remote-tip pattern accepted only 40-character object names. In a SHA-256 repository, every ambiguous push therefore stayed unknown for good. **Fixed natively:** 64-character names are accepted too.
-- **Repository-local credential helpers on push (P1), not changed; it needs a decision.** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
+- **Repository-local configuration on push (P1).** Push and remote verification enable credential helpers, and a helper set in the repository's own configuration (for example `credential.helper = !command`) runs as a shell command.
   - Removing only the helper would be a partial fix. A push also honors other repository settings that run programs: `core.sshCommand`, remote transport programs, `ext::` URLs once allowed, and URL rewrites.
-  - Choosing which configuration a push may trust is a security design decision for both runtimes.
-  - **Recommended option (from the independent review).** Before a push or `ls-remote`, list the repository configuration with its origins and includes (`git config --local --list --show-origin --includes -z`). Refuse with "none" unless every key is on a small allowlist: core format and filesystem keys, `extensions.*`, `remote.*.url|fetch|pushurl|tagopt|prune`, `branch.*.remote|merge|rebase`, `user.name|email`. Also pass `-c protocol.allow=never` with explicit `https` and `ssh` allowances, and `file` if local remotes are wanted.
-    - **Covers:** every repository-local route, because unknown keys are refused.
-    - **Costs:** legitimate per-repository helpers and `sshCommand`, which would need a global setting or an explicit opt-in.
-    - **Leaves:** the user's own global configuration, as theirs.
+  - **Fixed natively after P2.2, with the allowlist the independent review recommended.** Rudy chose it on 17 October 2026.
+    - Before a push or a remote check, `RequireTrustedPushConfiguration` lists the effective configuration with its scopes (`git config --list --show-scope -z`).
+    - Every key from the repository's own scopes must be on the allowlist; included files appear under their including scope. Anything else refuses with "none": "Push refused: the repository's own Git configuration sets `<key>`, which push does not trust. Move it to your global Git configuration or remove it." The key is shown without its subsection, which can hold a URL with credentials.
+    - The allowlist:
+      - `core.` `repositoryformatversion`, `filemode`, `bare`, `logallrefupdates`, `symlinks`, `ignorecase`, `autocrlf`, `eol`, `safecrlf`, `longpaths`, `precomposeunicode`, `quotepath`, `fscache`;
+      - `extensions.*`;
+      - `user.name`, `user.email`, `user.useConfigOnly`;
+      - `remote.*.` `url`, `pushurl`, `fetch`, `push`, `tagopt`, `prune`;
+      - `branch.*.` `remote`, `pushRemote`, `merge`, `rebase`;
+      - `pull.rebase`, `pull.ff`, `push.default`.
+    - Include directives themselves are refused.
+    - The push and remote check also pass `-c protocol.allow=never`, then deny `ext`, `git` and `http` by name, and allow `https`, `ssh` and `file`. The named denies exist because a protocol-specific key in the user's global configuration would otherwise beat the generic one.
+    - Remotes that name a network share are refused (decision 8): UNC, device and `file://host` forms, and drive letters that are mapped to a share or unavailable. The push refuses with "none"; a remote check stays unknown.
+      - Git percent-decodes `file://` URLs, so any `file://` URL containing `%` is refused outright rather than decoded.
+      - A local-path remote must sit on a fixed local drive with no link anywhere in its existing chain, checked without following one. A directory symbolic link could otherwise lead to a share.
+    - The user's global configuration is theirs and is not screened.
+    - **Cost:** a repository-local credential helper, `sshCommand`, proxy or include must move to the global configuration before the app pushes. A remote check under such a configuration stays unknown.
+    - **Accepted limits (Rudy, 17 October 2026).**
+      - A remote that is a local folder path runs that destination repository's own `receive-pack` hooks and configuration. Git's local transport does not pass this process's settings on; the independent review confirmed it with a probe. Rudy chose to allow local remotes and document this, rather than refuse them or harden the destination.
+      - The configuration is screened just before the push, so a same-user process that rewrites it in between is not detected.
+      - The independent review of the TypeScript port found that the destination's own layout (`<path>.git`, a gitfile, `alternates`) can also lead to a share. It is open for Rudy's decision; see "Publication hardening" in the dual-landed fixes.
+    - **Independent review.**
+      - The Store fix was GO.
+      - The allowlist was NO-GO as first claimed, because of the local-remote hooks. Rudy's decision narrowed the claim, and the network-share refusal and the named protocol denies were added.
+      - The re-review found that a percent-encoded `file:///%2F%2Fhost/share` URL still reached a share (medium, confirmed), and that a local path could lead through a symbolic link (low). Both are now refused, as above.
+  - **Tests.**
+    - `PushRefusesRepositoryConfigurationThatCouldRunPrograms` covers `credential.helper`, a URL-scoped helper, `core.sshCommand`, `remote.*.receivepack`, `protocol.*.allow`, `url.*.insteadOf` and an include. Each is refused with no program run and nothing pushed, and inert keys then push normally.
+    - `PushTransportsAreLimitedToHttpsSshAndLocalPaths` checks the protocol restriction on the command line and that an `ext::` URL never runs.
+    - `NetworkShareRemotesAreRecognized` classifies share spellings, including percent-encoded `file://` forms. `PushRefusesNetworkShareRemotes` refuses loopback UNC, `file://` and percent-encoded share remotes, so even a broken guard sends nothing off the machine.
+    - `PushRefusesALocalRemoteReachedThroughALink` refuses a local remote behind a junction, then pushes through the real path.
+    - Each of these failed its test: trusting every key, dropping the protocol restriction, dropping the share check, accepting `%`, or dropping the link check.
+  - The TypeScript runtime had the same exposure. It now has the same checks; see "Publication hardening" in the dual-landed fixes.
 - **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown. Commit verification therefore also needs the project folder to be admissible. While it is unavailable, an unknown commit that TypeScript could resolve from the worktree alone stays unknown.
 - **Tests:**
   - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
@@ -852,11 +919,15 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
 - `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
 
-**Finding outside this slice (not changed): the native Store pins every ancestor of its data folder with read-only sharing.**
-- P1's Store admission pins the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
-- Renaming a file or folder needs its parent opened for writing. So while the native runtime runs, nothing can be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that includes the profile folder itself.
-- This was found while a test tried to rename a project folder beside the data folder; the slice's tests now keep projects in a separate subtree.
-- The same fix as residual 3 (share writes, never deletes) would apply. It changes reviewed P1 Store admission, so it needs its own decision and review.
+**Finding outside this slice: the native Store pinned every ancestor of its data folder with read-only sharing. Fixed after P2.2, on Rudy's instruction (17 October 2026).**
+- P1's Store admission pinned the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
+- Renaming a file or folder needs its parent opened for writing. So while the native runtime ran, nothing could be renamed directly inside the data folder or any folder above it, up to the drive root. For data kept under the user profile, that included the profile folder itself.
+- This was found while a test tried to rename a project folder beside the data folder. The slice's tests keep projects in a separate subtree.
+- **Fix.** The Store's two long-lived leases (the requested chain and the admitted folder) now use `DirectoryLease.AcquireSharingWrites`, which shares writes and never deletes, as residual 3 did for project folders.
+  - Other applications can rename and create entries anywhere in the chain again.
+  - The pinned folders still cannot be renamed or deleted, and the database and isolation marker keep their own pins, so they cannot be renamed or replaced.
+  - The short leases taken during admission inspection and the backed-up upgrade still share reads only.
+- **Tests.** `AdmissionTests.AnOpenStoreLeavesItsFoldersOpenToRenamesButNotToReplacement` covers both sides. Restoring the read-only pin made it fail.
 
 ### Existing-file edit primitive (P2.2g)
 
@@ -912,7 +983,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - its exclusive window holds, `RandomAccess` is valid on the synchronous handle, and nothing in `DevelopmentChat`, `Program` or the protocol reaches it.
 - **H1-i (informational).** The runner's comment claimed the pinned hooks folder could not be swapped for a link while held. A pin that shares writes cannot forbid attribute changes, so a same-user process could turn the folder into a link in place during a run. The check after exit and the next launch's probe both still refuse it. Corrected: the comment and the H1 entry above now state the limit.
 - **G-i (informational, parity), not changed.** A shrinking write that is followed by a failed length cut leaves the new start plus the old tail. It is classified unknown, as in TypeScript, so it is never reported as success.
-- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector.
+- **Also noted.** The P1 Store chain pin recorded under P2.2f should be fixed before any shipping selector. It has since been fixed (see P2.2f).
 - **Re-review of the H1 alignment.** The ranges were `a8fa711..6310817` (comment and docs) and `6310817..26a8e4a`, the native guard aligned with the TypeScript fix. The reviewer returned **GO for both, with no finding at any severity**.
   - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
   - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.

@@ -15,7 +15,7 @@ public sealed class FolderChatTests
         RepositoryFixture.AssertOracleSources(RepositoryFixture.ReadCorpus("tests/p2/folder-chat-vectors.json"));
         var timestamp = DateTimeOffset.Parse((string)corpus["timestamp"]!, System.Globalization.CultureInfo.InvariantCulture);
         using var fixture = RepositoryFixture.Create("foundry-p2-folder-chat-");
-        // Projects live beside, not inside, the data folder's chain: the native Store pins that chain against renames.
+        // Projects live in their own subtree beside the data folder, which the rename steps move within.
         fixture.Write("work/plain/a.txt", "a\n"); Directory.CreateDirectory(fixture.Local("work/plain/sub"));
         fixture.Write("work/repo/README.md", "hello\n"); fixture.Write("work/repo/src/a.ts", "export const a = 1;\n"); fixture.Write("work/repo/docs/b.md", "# b\n");
         await fixture.Git("-C", "work/repo", "init", "-q"); await fixture.Git("-C", "work/repo", "add", "-A"); await fixture.Git("-C", "work/repo", "commit", "-qm", "fixture");

@@ -389,6 +389,19 @@ export class Store {
   clearRetireIntent(intentId: string, state: 'complete' | 'failed' = 'failed'): void {
     this.db.prepare("UPDATE intents SET state = ? WHERE id = ? AND kind = 'worktree.retire'").run(state, intentId);
   }
+  /** The Git common directory bound to the task's project channel when it was created (the latest complete binding), or
+   * undefined for a task created without one. Unreadable documents are skipped, as native's BoundCommon does. */
+  boundCommon(taskId: string): string | undefined {
+    const rows = this.db.prepare("SELECT data FROM intents WHERE kind = 'channel.identity' AND state = 'complete' ORDER BY rowid").all() as { data: string }[];
+    let common: string | undefined;
+    for (const row of rows) {
+      try {
+        const data = JSON.parse(row.data) as { taskId?: unknown; identity?: { common?: unknown } };
+        if (data.taskId === taskId && typeof data.identity?.common === 'string') common = data.identity.common;
+      } catch { /* An unreadable binding binds nothing. */ }
+    }
+    return common;
+  }
   private recoverOrchestration(): void {
     const now = new Date().toISOString();
     // Interrupted requests keep their full conservative reservation; nothing is refunded.
