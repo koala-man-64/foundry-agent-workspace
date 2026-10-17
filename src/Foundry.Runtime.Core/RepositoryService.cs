@@ -680,6 +680,8 @@ internal sealed partial class RepositoryService
 
     internal static string UnsupportedRemote(string remote) => $"Remote {remote} points at a network share, through a link, or at a location push does not use.";
 
+    internal static string RelativeRemote(string remote) => $"Remote {remote} is not a full local path, such as C:\\repos\\name.git, which push requires for a local remote.";
+
     /// <summary>
     /// Decision 8 for remotes: whether a remote URL, as Git resolves it, names a network share (UNC, device or any file://
     /// host form) or a drive letter that is mapped to one or unavailable, where any access would make Windows
@@ -753,8 +755,9 @@ internal sealed partial class RepositoryService
     /// (<see cref="IsPermittedRemoteForm"/>), and must be a transport or a fully qualified local folder (`C:\...`, `C:/...`
     /// or `file:///C:/...`) on a fixed local drive whose existing chain holds no link of any kind (checked without following
     /// one), so the named path is neither a share nor reached through a link to one. The check is not held across the push.
-    /// A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it (Rudy, 17 October
-    /// 2026). It is the only way content that arrives with a project can name a destination the project ships, and Git opens
+    /// A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it, with its own message
+    /// (Rudy, 17 October 2026). Content that arrives with a project cannot know where it is unpacked, so this is how it would
+    /// name a destination the project ships, and Git opens
     /// a destination's own layout (`&lt;path&gt;/.git`, `&lt;path&gt;.git`, a gitfile, objects/info/alternates), which can
     /// lead elsewhere, a share included, and runs its receive-pack hooks. Neither is screened, in either runtime: a fully
     /// qualified destination is the user's own and is trusted.
@@ -765,8 +768,7 @@ internal sealed partial class RepositoryService
         {
             if (!IsPermittedRemoteForm(url) || IsNetworkRemote(url)) throw new RepositoryException(UnsupportedRemote(remote));
             if (LocalRemotePath(url) is not { } local) continue;
-            if (local.Length < 3 || !char.IsAsciiLetter(local[0]) || local[1] != ':' || local[2] is not ('/' or '\\')
-                || local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
+            if (local.Contains('\0', StringComparison.Ordinal) || RepositoryPaths.HasAmbiguousSegment(local)) throw new RepositoryException(UnsupportedRemote(remote));
             var resolved = Path.GetFullPath(local);
             if (!DataClassifier.IsLocal(resolved)) throw new RepositoryException(UnsupportedRemote(remote));
             try { using (DirectoryLease.AcquireSharingWrites(resolved)) { } }

@@ -186,17 +186,17 @@ Dual-landed fixes:
       - refuse local-path remotes;
       - refuse only relative ones.
     - **Decision: refuse relative local-path remotes.**
-      - A local-path remote must now be fully qualified: `C:\...`, `C:/...` or `file:///C:/...`. `./vendor`, `vendor`, `../x`, `.\x`, `\x`, `/x` and `file:///x` are refused before any transport, with the same "none" message; a remote check stays unknown.
+      - A local-path remote must now be fully qualified: `C:\...`, `C:/...` or `file:///C:/...`. `./vendor`, `vendor`, `../x`, `.\x`, `\x`, `/x` and `file:///x` are refused with "none" before any transport, with their own message: "Remote <name> is not a full local path, such as C:\repos\name.git, which push requires for a local remote." A remote check stays unknown.
       - This subsumes the earlier `~`, drive-relative and empty-path refusals, and relative paths no longer resolve against the folder the command runs in.
     - **Why this cut.**
-      - Content that arrives with a project cannot know where it will be unpacked, so a relative path is the only way it can name a destination it ships. That covers the reviewer's example, and a shipped destination with its own `post-receive` hook, which Git runs on push.
+      - Content that arrives with a project cannot know where it will be unpacked, so a relative path is how it would name a destination it ships. That covers the reviewer's example, and a shipped destination with its own `post-receive` hook, which Git runs on push.
       - Screening the destination was rejected. It would reimplement Git's repository lookup, race the push, and still leave the destination's hooks.
       - Refusing every local-path remote was rejected for its cost. In-app pushes to local bare repositories would stop working, and every publication test and vector would need a test-only bypass in both runtimes.
     - **What it leaves.**
       - A fully qualified destination is the user's own and stays trusted, layout and hooks included, under the accepted limit. Changing a destination already on the machine needs prior write access to it.
       - A relative remote set up by hand must be changed to an absolute path before the app pushes.
     - **Tests.**
-      - `tests/integration/publication-guards.test.ts` "refuses a relative local remote, the only way project content can name a destination it ships" ships a bare `vendor` with a live `post-receive` hook inside the project. A control first shows plain Git running that hook through `./vendor`. Then every relative spelling is refused for push and left unknown for the remote check, the hook never runs, and the absolute path still pushes. The supported-remotes unit cases move `../remotes/dest.git` to the refused list and add the other relative forms.
+      - `tests/integration/publication-guards.test.ts` "refuses a relative local remote, the way project content would name a destination it ships" ships a bare `vendor` with a live `post-receive` hook inside the project. A control first shows plain Git running that hook through `./vendor`. Then every relative spelling is refused for push and left unknown for the remote check, the hook never runs, and the absolute path still pushes. The supported-remotes unit cases check the new message for every path that is not fully qualified (relative, rooted, `~`, drive-relative, empty).
       - Native `PushRefusesARelativeLocalRemote` covers the same scenario.
       - Accepting relative paths again failed each test, in both runtimes.
 - **Running a non-ASCII approved command exactly as approved** (T1, 17 October 2026).

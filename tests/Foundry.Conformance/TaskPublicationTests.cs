@@ -594,7 +594,7 @@ public sealed partial class TaskPublicationTests
         {
             var real = fixture.Local("remote.git").Replace('\\', '/');
             string[] urls = ["http://127.0.0.1:9/x.git", "git://127.0.0.1:9/x.git", "ext::git --version", "foo::bar", "https::https://127.0.0.1:9/x.git",
-                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}", "~/remote.git", $"{real[..2]}remote.git",
+                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}",
                 " ssh://127.0.0.1/x.git", "rsync:127.0.0.1/x", "ssh://-oProxyCommand=x/y"];
             await using var loop = new RuntimeLoop();
             await loop.Invoke(async () =>
@@ -622,10 +622,11 @@ public sealed partial class TaskPublicationTests
     }
 
     /// <summary>
-    /// Rudy's decision on the destination's own layout (17 October 2026): a relative local-path remote is refused before any
-    /// transport. It is the only way content that arrives with a project can name a destination the project ships, whose
-    /// receive-pack hooks Git runs (the control proves this one live) and whose layout can lead to a share. A fully qualified
-    /// destination is the user's own and still pushes.
+    /// Rudy's decision on the destination's own layout (17 October 2026): a local-path remote that is not fully qualified is
+    /// refused before any transport, with its own message. Content that arrives with a project cannot know where it is
+    /// unpacked, so this is how it would name a destination the project ships, whose receive-pack hooks Git runs (the
+    /// control proves this one live) and whose layout can lead to a share. A fully qualified destination is the user's own
+    /// and still pushes.
     /// </summary>
     [Fact]
     public async Task PushRefusesARelativeLocalRemote()
@@ -639,7 +640,7 @@ public sealed partial class TaskPublicationTests
             await fixture.Git("-C", "repo", "push", "-q", "./vendor", "HEAD:refs/heads/probe");
             Assert.True(File.Exists(marker));
             File.Delete(marker);
-            string[] relative = ["./vendor", "vendor", "../repo/vendor", ".\\vendor", "/vendor", "file:///vendor"];
+            string[] relative = ["./vendor", "vendor", "../repo/vendor", ".\\vendor", "/vendor", "file:///vendor", "~/vendor", $"{fixture.Scratch[..2]}vendor"];
             await using var loop = new RuntimeLoop();
             await loop.Invoke(async () =>
             {
@@ -653,7 +654,7 @@ public sealed partial class TaskPublicationTests
                 foreach (var url in relative)
                 {
                     await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
-                    Assert.Equal(RepositoryService.UnsupportedRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                    Assert.Equal(RepositoryService.RelativeRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
                     Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
                 }
                 Assert.Equal(relative.Length, store.Rows("SELECT state FROM intents WHERE kind='git.push'").Count);

@@ -35,6 +35,7 @@ const DRIVE_NETWORK = 4;
 const DRIVE_TYPE_QUERY = "$ErrorActionPreference = 'Stop'\n[int][System.IO.DriveInfo]::new($env:FOUNDRY_DRIVE).DriveType";
 
 export const unsupportedRemoteMessage = (remote: string): string => `Remote ${remote} points at a network share, through a link, or at a location push does not use.`;
+export const relativeRemoteMessage = (remote: string): string => `Remote ${remote} is not a full local path, such as C:\\repos\\name.git, which push requires for a local remote.`;
 
 /** The Windows drive type of a drive letter, as native's DriveInfo reports it. Node has no GetDriveType, so the fixed
  * system Windows PowerShell answers with no profile and no inherited environment; the letter is its only input. */
@@ -114,8 +115,9 @@ export async function isNetworkRemote(url: string, driveType: (letter: string) =
  * holds no link (checked from the drive root without following one), so the named path is neither a share nor reached
  * through a link to one. The check is not held across the push. Native RequireSupportedRemotes, with its message; its chain
  * pin refuses every reparse point, while Node's lstat recognizes symbolic links and junctions.
- * A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it (Rudy, 17 October
- * 2026). It is the only way content that arrives with a project can name a destination the project ships, and Git opens a
+ * A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it, with its own message
+ * (Rudy, 17 October 2026). Content that arrives with a project cannot know where it is unpacked, so this is how it would
+ * name a destination the project ships, and Git opens a
  * destination's own layout (`<path>/.git`, `<path>.git`, a gitfile, objects/info/alternates), which can lead elsewhere, a
  * share included, and runs its receive-pack hooks. Neither is screened, in either runtime: a fully qualified destination is
  * the user's own and is trusted.
@@ -126,8 +128,8 @@ export async function requireSupportedRemotes(remote: string, urls: string[], dr
     if (!isPermittedRemoteForm(url) || await isNetworkRemote(url, driveType)) throw unsupported();
     const local = localRemotePath(url);
     if (local === undefined) continue;
-    if (!/^[A-Za-z]:[\\/]/.test(local) || local.includes('\0')
-      || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
+    if (!/^[A-Za-z]:[\\/]/.test(local)) throw new RepositoryError(relativeRemoteMessage(remote), 'none');
+    if (local.includes('\0') || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
     const resolved = path.win32.resolve(local);
     if (!/^[A-Za-z]:\\/.test(resolved) || resolved.slice(2).includes(':') || await driveType(resolved[0]!) !== DRIVE_FIXED) throw unsupported();
     let current = resolved.slice(0, 3);
