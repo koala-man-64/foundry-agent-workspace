@@ -1095,13 +1095,53 @@ Every other hold is unchanged: no shipping or runtime selector, no Electron-side
   - counting an unreadable image as exited.
 
   The always-terminate rule (F3) and stream construction before resume (F5) have no deterministic trigger: an unreadable live descendant, or a stream that fails to construct. They rest on review.
+- **Re-review.** The same reviewer reviewed two sealed ranges and returned **GO, with no new finding**:
+  - `7df623a..18c4881`, 36ad511 rebased onto #37 (every code, test and vector blob identical);
+  - `18c4881..38ce289`, the fixes.
+
+  What it did:
+  - It verified both seals, built an export, and ran the job suite (29 passed) and the runner suite (37 passed).
+  - It hashed the same trees with both builds: the iterative walk gives the reviewed recursive walk's digest on a mixed tree and on a 1,000-deep chain.
+  - It found that the walk now handles depths of 3,000 and 9,000.
+
+  Its informational residuals:
+  - After the drains are cancelled there is no second bound. It relies on .NET cancelling a synchronous pipe read, which the Platform test shows it does.
+  - A folder's names are read whole before a limit applies, as in TypeScript.
+  - The outside-writer test's 60-second bound was loose; `81823ca` tightens it to the settle and cleanup windows plus 15 seconds.
+
+  Carried forward:
+  - P2.3c must record a settle-window result (exit code 0, cleanup unverified) as unknown.
+  - Handle inheritance by other launchers is re-checked at P3.
 - **T1 amplification (untested).** Under a double-byte OEM code page such as 932, a UTF-8 trail byte could combine with the next ASCII byte and change a command's structure, not just its literals.
 - **Evidence manifest.** It was stale during the run and has since been regenerated.
+
+**Validation (local, from `git archive` exports).** Evidence, seals and mutation logs are in `foundry-evidence\p2.3-a`.
+- **`36ad511` (run1).**
+  - Release build with warnings as errors: clean.
+  - Native suite: 7,151 tests, 7,149 passed, 0 failed, 2 expected skips.
+  - `pnpm check`: 556 passed.
+  - `git diff --check`: clean.
+- **`38ce289` (run2, retained).** Two failures, both in code this slice does not touch, while the reviewer's build and tests ran on the same machine:
+  - the native WebView2 test `BasicAuthenticationIsCancelledWithoutAPrompt` (two requests where one was expected);
+  - the TypeScript `git-operations` handoff-commit case (a 30-second timeout, then `EBUSY`; P2.1 recorded the same flake under load).
+
+  Run alone, both passed (1/1 and 27/27).
+- **`81823ca` (run3, idle machine).**
+  - Build: zero warnings or errors.
+  - Native suite: 7,179 tests, 7,177 passed, 0 failed. The 2 skips are the expected local registry-policy test and the file-symbolic-link test.
+  - `pnpm check`: 556 passed across 85 files.
+  - `git diff --check`: clean.
+
+No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+
+**Open dependencies.** #35 (H1) and #39 (the T1 fix) change `command-runner.ts` and `job-runner.ps1`, which the vectors bind. When they merge, the vectors are regenerated:
+- **#35** should change only the source hash.
+- **#39** also removes the named difference at "runs exactly the approved command#12" and "#14".
 
 **T1 (shipping TypeScript, open).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
 - **What breaks.** Every non-ASCII character in the command, its environment values, its working directory or the result and cancel paths reaches the helper altered. An approved `'café'` runs as `'caf├⌐'`, so the command that runs is not the one approved; a filter or path with non-ASCII text matches different files.
 - **Non-ASCII user folders.** Where the user's profile path is not ASCII, the working directory and temporary paths are altered too, so no command can launch. Each is then recorded as unknown and blocks its task.
-- **Status.** Under the dual-landing rule this needs a TypeScript fix, for example reading standard input through a UTF-8 `StreamReader`; it is raised with Rudy. Native is not affected.
+- **Status.** Under the dual-landing rule this needs a TypeScript fix. That fix is draft #39, which reads standard input through a strict UTF-8 reader; its security review is GO, and it is not merged. Native is not affected.
 - **Shared limit.** PowerShell encodes command output in the console code page and both runtimes decode it as UTF-8, so non-ASCII output becomes U+FFFD in both. That is a shared fidelity limit, not an approval defect.
 
 ## Personal workspace expansion — local implementation
