@@ -12,6 +12,7 @@ import { McpError, McpManager } from './mcp';
 import { AgentChannel } from './agent-channel';
 import { isChannelTool } from './channel-tools';
 import { BrowserTools, isBrowserTool } from './browser-tools';
+import { readApproval } from './workspace-queries';
 import type { BrowserHost } from '../../protocol/src/index';
 
 export interface ApprovalBinding { rootTaskId: string; assignmentId: string | null; generation: number; targetLabel: string }
@@ -101,7 +102,17 @@ export class ToolRuntime {
     } else if (approval.browser) {
       approval.result = { content: 'Browser action outcome is unknown. Inspect the tab manually, then acknowledge it to permit newly reviewed actions. This action will not be replayed.', isError: true };
     } else approval.result = { content: 'Command outcome cannot be reconstructed safely. Inspect the worktree and any external effects. This command will not be replayed.', isError: true, cleanupVerified: false };
-    this.save(approval); return approval;
+    this.save(approval);
+    // The outcome leaves the runtime as approval.get shows it: redacted, and as a bounded preview when large. If redaction
+    // leaves the document unparseable, the identity and outcome are still reported, every text redacted on its own (the
+    // state is the runtime's own value): the state is already saved, so a refusal here would misreport a check that happened.
+    try { return readApproval(this.store, this.redactor, { taskId, approvalId: id }).approval; }
+    catch {
+      const text = <T>(value: T): T => (typeof value === 'string' ? this.redactor.text(value) as T : value);
+      return { id: text(approval.id), taskId: text(approval.taskId), toolCallId: text(approval.toolCallId), nonce: text(approval.nonce), tool: text(approval.tool), state: approval.state,
+        createdAt: text(approval.createdAt), summary: text(approval.summary), fingerprint: text(approval.fingerprint),
+        ...(approval.result ? { result: { ...approval.result, content: text(approval.result.content) } } : {}) };
+    }
   }
 
   async execute(task: Task, call: ToolCall, signal: AbortSignal, options?: { origin: 'hook'; onApproval: (approval: Approval) => void }): Promise<ProviderToolResult> {

@@ -49,6 +49,33 @@ function boundedChunk<T>(source: Buffer, offset: number, maxBytes: number, build
 }
 
 /** Read projections and visibility operations. Source messages, provider state and approvals are never rewritten. */
+/** An approval as a caller may see it: its whole stored document redacted, then parsed back from the redacted text. */
+export function approvalText(store: Store, redactor: Redactor, p: { taskId: string; approvalId: string }): { value: Approval; full: string; redacted: boolean } {
+  const value = store.approval(p.approvalId);
+  if (value.taskId !== p.taskId) throw new Error('Approval not found in this task.');
+  const raw = JSON.stringify(value), full = redactor.text(raw);
+  try { return { value: JSON.parse(full) as Approval, full, redacted: full !== raw }; }
+  catch { throw new Error('Approval evidence could not be safely rendered.'); }
+}
+
+/** approval.get, and every other approval that leaves the runtime: redacted, and a bounded preview above 128 KiB. */
+export function readApproval(store: Store, redactor: Redactor, p: { taskId: string; approvalId: string }): ApprovalRead {
+  const { value, full, redacted } = approvalText(store, redactor, p);
+  const fullBytes = Buffer.byteLength(full, 'utf8');
+  if (fullBytes <= 128 * 1024) return { approval: value, truncatedFields: [], fullBytes, redacted };
+  const summary = clipped(value.summary, 1000);
+  const preview: Approval = { id: value.id, taskId: value.taskId, toolCallId: value.toolCallId, nonce: value.nonce,
+    tool: value.tool, state: value.state, createdAt: value.createdAt, summary: summary.content, fingerprint: value.fingerprint,
+    ...(value.origin ? { origin: value.origin } : {}), ...(value.path ? { path: clipped(value.path, 1000).content } : {}),
+    ...(value.expectedHash !== undefined ? { expectedHash: value.expectedHash } : {}),
+    ...(value.resultingHash !== undefined ? { resultingHash: value.resultingHash } : {}),
+    ...(value.rootTaskId ? { rootTaskId: value.rootTaskId } : {}), ...(value.assignmentId !== undefined ? { assignmentId: value.assignmentId } : {}),
+    ...(value.generation !== undefined ? { generation: value.generation } : {}), ...(value.evidenceId ? { evidenceId: value.evidenceId } : {}) };
+  const truncatedFields = ['full', ...(['summary','before','after','command','result','handoff','integration','mcp','environment'] as const)
+    .filter(field => field === 'summary' ? summary.truncated : value[field] !== undefined)];
+  return { approval: preview, truncatedFields, fullBytes, redacted };
+}
+
 export class WorkspaceQueries {
   constructor(private readonly store: Store, private readonly redactor: Redactor) {}
 
@@ -338,33 +365,8 @@ export class WorkspaceQueries {
     const selected = filtered.slice(0, p.limit).map(row => { const value = JSON.parse(row.data) as Approval; return { id: value.id, taskId: value.taskId, tool: value.tool, state: row.state, createdAt: value.createdAt, path: value.path }; });
     return { approvals: selected, nextBefore: filtered.length > selected.length ? filtered[selected.length - 1]!.rowid : null };
   }
-  private approvalValue(p: { taskId: string; approvalId: string }): Approval {
-    const value = this.store.approval(p.approvalId);
-    if (value.taskId !== p.taskId) throw new Error('Approval not found in this task.');
-    return value;
-  }
-  private approvalText(p: { taskId: string; approvalId: string }): { value: Approval; full: string; redacted: boolean } {
-    const value = this.approvalValue(p);
-    const raw = JSON.stringify(value), full = this.redactor.text(raw);
-    try { return { value: JSON.parse(full) as Approval, full, redacted: full !== raw }; }
-    catch { throw new Error('Approval evidence could not be safely rendered.'); }
-  }
-  private approval(p: { taskId: string; approvalId: string }): ApprovalRead {
-    const { value, full, redacted } = this.approvalText(p);
-    const fullBytes = Buffer.byteLength(full, 'utf8');
-    if (fullBytes <= 128 * 1024) return { approval: value, truncatedFields: [], fullBytes, redacted };
-    const summary = clipped(value.summary, 1000);
-    const preview: Approval = { id: value.id, taskId: value.taskId, toolCallId: value.toolCallId, nonce: value.nonce,
-      tool: value.tool, state: value.state, createdAt: value.createdAt, summary: summary.content, fingerprint: value.fingerprint,
-      ...(value.origin ? { origin: value.origin } : {}), ...(value.path ? { path: clipped(value.path, 1000).content } : {}),
-      ...(value.expectedHash !== undefined ? { expectedHash: value.expectedHash } : {}),
-      ...(value.resultingHash !== undefined ? { resultingHash: value.resultingHash } : {}),
-      ...(value.rootTaskId ? { rootTaskId: value.rootTaskId } : {}), ...(value.assignmentId !== undefined ? { assignmentId: value.assignmentId } : {}),
-      ...(value.generation !== undefined ? { generation: value.generation } : {}), ...(value.evidenceId ? { evidenceId: value.evidenceId } : {}) };
-    const truncatedFields = ['full', ...(['summary','before','after','command','result','handoff','integration','mcp','environment'] as const)
-      .filter(field => field === 'summary' ? summary.truncated : value[field] !== undefined)];
-    return { approval: preview, truncatedFields, fullBytes, redacted };
-  }
+  private approvalText(p: { taskId: string; approvalId: string }): { value: Approval; full: string; redacted: boolean } { return approvalText(this.store, this.redactor, p); }
+  private approval(p: { taskId: string; approvalId: string }): ApprovalRead { return readApproval(this.store, this.redactor, p); }
   private approvalContent(p: { taskId: string; approvalId: string; field: string; offset: number; maxBytes: number }): ApprovalContentChunk {
     const { value, full } = this.approvalText(p);
     const fields: Record<string, string | undefined> = { full, summary: value.summary, before: value.before, after: value.after,
