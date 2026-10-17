@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { GitTask as Task } from '../../packages/protocol/src/index';
-import { isNetworkRemote, RepositoryService, requireSupportedRemotes, unsupportedRemoteMessage, windowsDriveType } from '../../packages/runtime/src/repository';
+import { isNetworkRemote, isPermittedRemoteForm, RepositoryService, requireSupportedRemotes, unsupportedRemoteMessage, windowsDriveType } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { runGit, withIsolatedGit } from '../p2/repository-fixture';
@@ -186,7 +186,8 @@ describe('publication guards dual-landed from the native runtime', () => {
       const real = path.join(scratch, 'remote.git').replaceAll('\\', '/');
       // Transports the protocol restriction denies, and spellings Git resolves elsewhere than the check would.
       const urls = ['http://127.0.0.1:9/x.git', 'git://127.0.0.1:9/x.git', 'ext::git --version', 'foo::bar', 'https::https://127.0.0.1:9/x.git',
-        'HTTPS://127.0.0.1:9/x.git', 'SSH://127.0.0.1:9/x.git', `FILE:///${real}`, `file://localhost/${real}`, '~/remote.git', `${real.slice(0, 2)}remote.git`];
+        'HTTPS://127.0.0.1:9/x.git', 'SSH://127.0.0.1:9/x.git', `FILE:///${real}`, `file://localhost/${real}`, '~/remote.git', `${real.slice(0, 2)}remote.git`,
+        ' ssh://127.0.0.1/x.git', 'rsync:127.0.0.1/x', 'ssh://-oProxyCommand=x/y'];
       const task = await createTask(fixture);
       fs.writeFileSync(path.join(task.worktreePath, 'README.md'), 'changed\n');
       await commit(fixture, task);
@@ -201,6 +202,20 @@ describe('publication guards dual-landed from the native runtime', () => {
       expect(git('--git-dir', path.join(scratch, 'remote.git'), 'for-each-ref')).toContain(`refs/heads/${task.branch}`);
     });
   }, 180_000);
+
+  it('admits only the URL forms Git uses under the protocol restriction', () => {
+    // The same cases as native PermittedRemoteFormsAreThoseGitUses.
+    const cases: [string, boolean][] = [
+      ['https://example.invalid/r.git', true], ['ssh://git@example.invalid/r.git', true], ['git+ssh://example.invalid/r.git', true],
+      ['ssh+git://example.invalid/r.git', true], ['file:///C:/r.git', true], ['git@example.invalid:r.git', true], ['C:/r.git', true],
+      ['../r.git', true], ['ssh://user@-host/r.git', true], ['ssh://example.invalid:-p/r.git', true],
+      ['http://example.invalid/r.git', false], ['git://example.invalid/r.git', false], ['ext::git --version', false], ['foo::bar', false],
+      ['https::https://example.invalid/r.git', false], ['HTTPS://example.invalid/r.git', false], ['FILE:///C:/r.git', false], ['foo bar://x', false],
+      ['://x', false], [' ssh://example.invalid/r.git', false], ['\thttps://example.invalid/r.git', false], ['-oProxyCommand=x:y', false],
+      ['rsync:example.invalid/r', false], ['ssh://-oProxyCommand=x/y', false], ['git+ssh://-oProxyCommand=x/y', false],
+    ];
+    for (const [url, permitted] of cases) expect([url, isPermittedRemoteForm(url)]).toEqual([url, permitted]);
+  });
 
   it('accepts only a link-free local folder on a fixed drive as a local remote', async () => {
     const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-supported-remotes-')));

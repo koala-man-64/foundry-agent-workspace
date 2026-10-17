@@ -538,6 +538,18 @@ public sealed partial class TaskPublicationTests
     [InlineData("file:///%2F%2Fhost/share/repo.git", true), InlineData("FILE:///%2f%2fhost/share/repo.git", true), InlineData("file://localhost/%2F%2Fhost/share", true), InlineData("file:///C:/re%70o.git", true)]
     public void NetworkShareRemotesAreRecognized(string url, bool network) => Assert.Equal(network, RepositoryService.IsNetworkRemote(url));
 
+    /// <summary>Review of the TypeScript port: only the URL forms Git uses under the protocol restriction reach a transport;
+    /// Git would refuse the others only once the command runs (TypeScript's isPermittedRemoteForm takes the same cases).</summary>
+    [Theory]
+    [InlineData("https://example.invalid/r.git", true), InlineData("ssh://git@example.invalid/r.git", true), InlineData("git+ssh://example.invalid/r.git", true)]
+    [InlineData("ssh+git://example.invalid/r.git", true), InlineData("file:///C:/r.git", true), InlineData("git@example.invalid:r.git", true), InlineData("C:/r.git", true)]
+    [InlineData("../r.git", true), InlineData("ssh://user@-host/r.git", true), InlineData("ssh://example.invalid:-p/r.git", true)]
+    [InlineData("http://example.invalid/r.git", false), InlineData("git://example.invalid/r.git", false), InlineData("ext::git --version", false), InlineData("foo::bar", false)]
+    [InlineData("https::https://example.invalid/r.git", false), InlineData("HTTPS://example.invalid/r.git", false), InlineData("FILE:///C:/r.git", false), InlineData("foo bar://x", false)]
+    [InlineData("://x", false), InlineData(" ssh://example.invalid/r.git", false), InlineData("\thttps://example.invalid/r.git", false), InlineData("-oProxyCommand=x:y", false)]
+    [InlineData("rsync:example.invalid/r", false), InlineData("ssh://-oProxyCommand=x/y", false), InlineData("git+ssh://-oProxyCommand=x/y", false)]
+    public void PermittedRemoteFormsAreThoseGitUses(string url, bool permitted) => Assert.Equal(permitted, RepositoryService.IsPermittedRemoteForm(url));
+
     /// <summary>A push or remote check never reaches a remote that names a network share. The share here is loopback, so
     /// even a failing guard could not send credentials off the machine.</summary>
     [Fact]
@@ -582,7 +594,8 @@ public sealed partial class TaskPublicationTests
         {
             var real = fixture.Local("remote.git").Replace('\\', '/');
             string[] urls = ["http://127.0.0.1:9/x.git", "git://127.0.0.1:9/x.git", "ext::git --version", "foo::bar", "https::https://127.0.0.1:9/x.git",
-                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}", "~/remote.git", $"{real[..2]}remote.git"];
+                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}", "~/remote.git", $"{real[..2]}remote.git",
+                " ssh://127.0.0.1/x.git", "rsync:127.0.0.1/x", "ssh://-oProxyCommand=x/y"];
             await using var loop = new RuntimeLoop();
             await loop.Invoke(async () =>
             {

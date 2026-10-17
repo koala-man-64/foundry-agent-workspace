@@ -53,13 +53,18 @@ export async function windowsDriveType(letter: string): Promise<number> {
  * Whether Git, under TRUSTED_PROTOCOLS, would use a remote URL's transport at all: https, ssh and file URLs with the
  * lowercase schemes Git matches, scp-like ssh, and local paths (native IsPermittedRemoteForm). Git refuses any other
  * scheme, any other spelling of these, and every `<helper>::` form only once the command runs, which would leave a push's
- * outcome unknown and its remote check unable to resolve it.
+ * outcome unknown and its remote check unable to resolve it. Git also refuses, before it connects, a URL with leading
+ * whitespace (it does not trim), one starting with `-`, `rsync:`, and an ssh URL whose host starts with `-`.
  */
-function isPermittedRemoteForm(url: string): boolean {
+export function isPermittedRemoteForm(url: string): boolean {
+  if (/^\s|^-|^rsync:/.test(url)) return false;
   const value = url.trim();
   if (/^[A-Za-z][A-Za-z0-9+.-]*::/.test(value)) return false;
   const scheme = value.indexOf('://');
-  return scheme < 0 || ['https', 'ssh', 'git+ssh', 'ssh+git', 'file'].includes(value.slice(0, scheme));
+  if (scheme < 0) return true;
+  const name = value.slice(0, scheme);
+  if (!['https', 'ssh', 'git+ssh', 'ssh+git', 'file'].includes(name)) return false;
+  return name === 'https' || name === 'file' || !value.slice(scheme + 3).startsWith('-');
 }
 
 /** An https, ssh, scp-like or other scheme URL that is not file:// (native IsTransportRemote). */

@@ -700,14 +700,19 @@ internal sealed partial class RepositoryService
     /// Whether Git, under <see cref="TrustedProtocols"/>, would use a remote URL's transport at all: https, ssh and file
     /// URLs with the lowercase schemes Git matches, scp-like ssh, and local paths. Git refuses any other scheme, any other
     /// spelling of these, and every `&lt;helper&gt;::` form only once the command runs, which would leave a push's outcome
-    /// unknown and its remote check unable to resolve it.
+    /// unknown and its remote check unable to resolve it. Git also refuses, before it connects, a URL with leading
+    /// whitespace (it does not trim), one starting with `-`, `rsync:`, and an ssh URL whose host starts with `-`.
     /// </summary>
-    private static bool IsPermittedRemoteForm(string url)
+    internal static bool IsPermittedRemoteForm(string url)
     {
+        if (url.Length > 0 && (url[0] == '-' || JsJson.Trim(url[..1]).Length == 0) || url.StartsWith("rsync:", StringComparison.Ordinal)) return false;
         var value = JsJson.Trim(url);
         if (HelperTransport().IsMatch(value)) return false;
         var scheme = value.IndexOf("://", StringComparison.Ordinal);
-        return scheme < 0 || value[..scheme] is "https" or "ssh" or "git+ssh" or "ssh+git" or "file";
+        if (scheme < 0) return true;
+        var name = value[..scheme];
+        if (name is not ("https" or "ssh" or "git+ssh" or "ssh+git" or "file")) return false;
+        return name is "https" or "file" || !value[(scheme + 3)..].StartsWith('-');
     }
 
     [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9+.-]*::", RegexOptions.CultureInvariant)]
