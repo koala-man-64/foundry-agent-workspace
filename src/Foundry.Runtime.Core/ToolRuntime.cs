@@ -1,3 +1,5 @@
+using Foundry.Protocol;
+
 namespace Foundry.Runtime;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace Foundry.Runtime;
 /// repository text or a saved intent grants approval. This slice holds read-only reconciliation of unknown outcomes; the
 /// tool execution and decision paths arrive with the native tool loop.
 /// </summary>
-internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryService repositories)
+internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryService repositories, Redactor redactor)
 {
     /// <summary>
     /// reconcile: an unknown outcome of this task is checked without replaying anything. An edit is compared, by hash, with
@@ -13,7 +15,8 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     /// (or a file that cannot be read safely) leaves it unknown. Command, external tool, browser and orchestration outcomes
     /// cannot be reconstructed here, so they stay unknown with guidance. The approval is saved with its approval.changed
     /// event as service.ts records it: before schema v5 always; from v5 when the state changed, or when the task has no
-    /// such event yet (its publish falls back to recording one).
+    /// such event yet (its publish falls back to recording one). The outcome is returned as approval.get shows it: redacted,
+    /// and a bounded preview above 128 KiB.
     /// </summary>
     internal Dictionary<string, object?> Reconcile(string taskId, string approvalId)
     {
@@ -46,7 +49,22 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             approval["result"] = result;
         }
         Save(approval);
-        return approval;
+        // The state is already saved, so a refusal here would misreport a check that happened: when redaction leaves the
+        // document unparseable, the identity and outcome are still reported, each text redacted on its own.
+        try { return (Dictionary<string, object?>)store.ApprovalRead(taskId, approvalId, redactor)["approval"]!; }
+        catch (WorkspaceReadException) { return Outcome(approval); }
+    }
+
+    /// <summary>tool-runtime.ts reconcile's fallback: identity, state, a redacted summary, the fingerprint and the outcome.</summary>
+    private Dictionary<string, object?> Outcome(Dictionary<string, object?> approval)
+    {
+        var value = new Dictionary<string, object?>();
+        foreach (var key in new[] { "id", "taskId", "toolCallId", "nonce", "tool", "state", "createdAt" }) if (approval.TryGetValue(key, out var field)) value[key] = field;
+        value["summary"] = redactor.Text((string)approval["summary"]!);
+        if (approval.TryGetValue("fingerprint", out var fingerprint)) value["fingerprint"] = fingerprint;
+        if (approval.GetValueOrDefault("result") is Dictionary<string, object?> result)
+            value["result"] = new Dictionary<string, object?>(result) { ["content"] = redactor.Text((string)result["content"]!) };
+        return value;
     }
 
     /// <summary>

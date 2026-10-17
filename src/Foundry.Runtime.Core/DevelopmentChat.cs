@@ -51,7 +51,7 @@ public sealed class DevelopmentChat
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.stream = stream; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
-        tools = new ToolRuntime(loop, store, repositories);
+        tools = new ToolRuntime(loop, store, repositories, redactor);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.

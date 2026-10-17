@@ -27,7 +27,7 @@ const tasks = [
   { id: id(4), title: 'Child', profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: stamp, updatedAt: stamp, tokenBudget: 100000, usedTokens: 0, mode: 'coding', ...git, rootTaskId: id(1), parentTaskId: id(1), role: 'child', assignmentId: id(990) },
 ];
 // The worktree files the edit reconciliations read.
-const files: Record<string, string> = { 'a9.txt': 'nine after\n', 'a10.txt': 'ten before\n', 'a11.txt': 'eleven elsewhere\n', 'a21.txt': 'twenty-one after\n', 'a23.txt': 'twenty-three before\n' };
+const files: Record<string, string> = { 'a9.txt': 'nine after\n', 'a10.txt': 'ten before\n', 'a11.txt': 'eleven elsewhere\n', 'a21.txt': 'twenty-one after\n', 'a23.txt': 'twenty-three before\n', 'a29.txt': 'twenty-nine after\n' };
 const base = (n: number, taskId: string, tool: string, state: string) => ({ id: id(200 + n), taskId, toolCallId: `call-${n}`, nonce: 'n'.repeat(16) + n, tool, state, createdAt: stamp });
 const edit = (n: number, taskId: string, state: string, path: string, before: string, after: string, extra: Record<string, unknown> = {}) => ({
   ...base(n, taskId, 'replace_text', state), summary: `Edit ${path}`, path, before, after, expectedHash: sha(before), resultingHash: sha(after), fingerprint: sha(`${n}`), ...extra });
@@ -65,6 +65,13 @@ approvals.push({ id: id(222), state: 'unknown', data: { ...command(22, 'unknown'
 approvals.push({ id: id(223), state: 'unknown', data: edit(23, id(1), 'executing', 'a23.txt', 'twenty-three before\n', 'twenty-three after\n') });
 approvals.push({ id: id(224), state: 'unknown', data: (() => { const { state: _, ...rest } = command(24, 'unknown', { extra: { 10: 1, 2: 2, b: 1.5e-7, c: 1e21, d: -0, e: 1.2345678901234567e19 } }); return rest; })() });
 approvals.push({ id: id(225), state: 'unknown', data: command(25, 'unknown', { command: "Write-Output 'x \ud800 y  '" }) });
+// Reconciliations whose return is redacted (review L1): labelled secrets in an unknown command, an unknown command above
+// the 128 KiB preview bound, and unterminated private keys that leave the redacted document unparseable, so the outcome
+// is reported field by field: on a command, and on an edit that completes and has no toolCallId.
+approvals.push({ id: id(226), state: 'unknown', data: command(26, 'unknown', { command: "Write-Output 'api_key=fixture-secret-value'", environment: { T: 'access_token=fixture-secret-value' } }) });
+approvals.push({ id: id(227), state: 'unknown', data: command(27, 'unknown', { command: `Write-Output '${'y'.repeat(131072)}'` }) });
+approvals.push({ id: id(228), state: 'unknown', data: command(28, 'unknown', { summary: 'Key -----BEGIN PRIVATE KEY-----abc', command: "Write-Output 'api_key=fixture-secret-value'" }) });
+approvals.push({ id: id(229), state: 'unknown', data: (() => { const { toolCallId: _, ...rest } = edit(29, id(1), 'unknown', 'a29.txt', 'twenty-nine before\n', 'twenty-nine after\n', { summary: 'Edit -----BEGIN RSA PRIVATE KEY-----a29' }); return rest; })() });
 
 type Step = { method: RpcMethod; params: Record<string, unknown> };
 const reads: Step[] = [
@@ -79,7 +86,7 @@ const reads: Step[] = [
 ];
 const reconciles: Step[] = [215, 219, 299, 209, 209, 210, 211, 211, 212, 213, 214, 205, 206, 207, 208, 220, 211].map(n => ({ method: 'approval.reconcile' as const, params: { taskId: id(1), approvalId: id(n) } }));
 reconciles.splice(10, 0, { method: 'approval.reconcile', params: { taskId: id(2), approvalId: id(213) } });
-reconciles.push(...[[1, 221], [4, 222], [1, 223], [1, 224], [1, 225], [1, 221]].map(([task, n]) => ({ method: 'approval.reconcile' as const, params: { taskId: id(task!), approvalId: id(n!) } })));
+reconciles.push(...[[1, 221], [4, 222], [1, 223], [1, 224], [1, 225], [1, 221], [1, 226], [1, 227], [1, 228], [1, 229]].map(([task, n]) => ({ method: 'approval.reconcile' as const, params: { taskId: id(task!), approvalId: id(n!) } })));
 
 it('pins approval records, projections and read-only reconciliation through the shipping Node authority', async () => {
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(stamp));
