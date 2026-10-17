@@ -809,7 +809,7 @@ Its remaining notes:
     - **Covers:** every repository-local route, because unknown keys are refused.
     - **Costs:** legitimate per-repository helpers and `sshCommand`, which would need a global setting or an explicit opt-in.
     - **Leaves:** the user's own global configuration, as theirs.
-- **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown.
+- **Reconciliation, from the independent review (low).** Verification still trusted the worktree, so a replaced worktree with a crafted parent, message and clean tree could make an unknown commit reconcile as complete. **Fixed natively:** verifying a commit, and verifying a push whose commit was not recorded, apply the same worktree and binding check, and a mismatch stays unknown. Commit verification therefore also needs the project folder to be admissible. While it is unavailable, an unknown commit that TypeScript could resolve from the worktree alone stays unknown.
 - **Tests:**
   - `TaskPublicationTests` covers a staged `git mv .env safe.txt`, a tampered binding, a replaced worktree with its own remote (nothing pushed there), a differing push URL, and a SHA-256 remote.
   - Every publication vector still replays unchanged.

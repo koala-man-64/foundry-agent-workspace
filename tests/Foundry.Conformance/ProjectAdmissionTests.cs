@@ -26,7 +26,7 @@ public sealed partial class ProjectAdmissionTests
         Assert.Equal(name, item.GetProperty("name").GetString());
         // A root-relative path names the scratch folder only when the working directory and the temporary folder share a
         // drive, as they did where the oracle recorded it; a CI runner may keep its workspace and TEMP on different drives.
-        if (item.TryGetProperty("sameDrive", out _) && !string.Equals(Path.GetPathRoot(Environment.CurrentDirectory), Path.GetPathRoot(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase))
+        if (item.TryGetProperty("sameDrive", out _) && !string.Equals(Path.GetPathRoot(Environment.CurrentDirectory), Path.GetPathRoot(Foundry.Platform.FinalPath.Canonical(Path.GetTempPath())), StringComparison.OrdinalIgnoreCase))
             Assert.Skip("The working directory and the temporary folder are on different drives, so a root-relative path cannot name the scratch folder.");
         using var fixture = RepositoryFixture.Create("foundry-p2-project-add-");
         await fixture.Build(item.GetProperty("tree"));

@@ -98,6 +98,7 @@ it('pins project.add outcomes to the shipping Node authority without ordinary re
   const expected: (Case & { expected: Awaited<ReturnType<typeof outcomes>> })[] = [];
   for (const item of cases) {
     const kept = item.sameDrive && !sameDrive ? committedCases.find(entry => entry.name === item.name) : undefined;
+    if (kept) console.warn(`Not recomputed (working directory and temporary folder on different drives): ${item.name}`);
     expected.push(kept ? kept as Case & { expected: Awaited<ReturnType<typeof outcomes>> } : { ...item, expected: await outcomes(item) });
   }
   const corpus = {
