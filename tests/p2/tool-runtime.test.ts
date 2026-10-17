@@ -31,6 +31,9 @@ const expand = (value: unknown): unknown => {
   if (value && typeof value === 'object') {
     const repeat = (value as { $repeat?: [string, number] }).$repeat;
     if (repeat) return repeat[0].repeat(repeat[1]);
+    // Raw JSON text keeps the provider's key order, which JavaScript then reorders (array indices first).
+    const json = (value as { $json?: string }).$json;
+    if (json !== undefined) return JSON.parse(json);
     // JSON.parse keeps a "__proto__" key as an own property, as a provider's parsed arguments do.
     return JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, expand(item)]))));
   }
@@ -64,6 +67,8 @@ const argumentCases: { tool: ToolName; input: unknown }[] = [
   ...[[], { length: 2001 }, Array.from({ length: 2001 }, () => 'q')].map(query => ({ tool: 'search_text' as const, input: { query } })),
   ...[[], { length: 0 }].map(expectedHash => ({ tool: 'write_file' as const, input: { path: 'a', expectedHash, content: 'x' } })),
   { tool: 'run_command' as const, input: { command: 'c', environment: { A: [], B: { length: 4097 } } } },
+  { tool: 'read_file' as const, input: { $json: '{"b":1,"10":2,"path":"a","2":3}' } },
+  { tool: 'run_command' as const, input: { $json: '{"command":"c","environment":{"b":"1","10":"x","A":"v","2":"y"}}' } },
   ...[{ path: 'a', b: 1 }, { path: 'a', b: 1, a: 2 }, { b: 1, 10: 2, 2: 3, path: 'a' }, JSON.parse('{"__proto__": 1, "path": "a"}'), { constructor: 1, path: 'a' }, { 'q"u\\o\nte': 1, path: 'a' }, { 'é': 1, path: 7 }, { path: 'src/a.ts' }]
     .map(input => ({ tool: 'read_file' as const, input })),
   ...strings('query', { path: '' }, 1, 2000).map(input => ({ tool: 'search_text' as const, input })),
@@ -108,7 +113,7 @@ const tasks: Task[] = [git(1), git(2, { mode: 'chat' }), { ...git(3), workspaceK
 const fileHash = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 const call = (name: string, args: unknown, extra: Partial<Call> = {}): Call => ({ task: 1, name, arguments: args, ...extra });
 const say = (text: string) => `[Console]::Out.WriteLine('${text}')`;
-const executions: { name: string; tree: Step[]; calls: Call[] }[] = [
+const executions: { name: string; tree: Step[]; temp?: string; calls: Call[] }[] = [
   { name: 'reads and refusals', tree: [...committed(), file('repo/.env', 'X=1\n'), file('repo/notes.txt', 'token api_key=fixture-secret-value here\n'), file('repo/control.txt', '\u0001'.repeat(40000)), { dir: 'outside' }],
     calls: [
       call('list_directory', {}), call('list_directory', { path: 'src' }), call('list_directory', { path: 'missing' }), call('list_directory', { path: 'README.md' }),
@@ -120,7 +125,8 @@ const executions: { name: string; tree: Step[]; calls: Call[] }[] = [
       call('read_file', { path: 'README.md' }, { task: 5 }), call('list_directory', {}, { task: 5 }),
     ] },
   { name: 'edits', tree: [...committed(), file('repo/edit.txt', 'one two three\n'), file('repo/twice.txt', 'a a\n'), file('repo/overlap.txt', 'aaa\n'), file('repo/dollar.txt', 'cost: X\n'),
-    file('repo/secret.md', 'api_key=fixture-secret-value\n'), file('repo/race.txt', 'before\n'), file('repo/cancel.txt', 'cancel\n'), file('repo/late.txt', 'late\n')],
+    file('repo/secret.md', 'api_key=fixture-secret-value\n'), file('repo/race.txt', 'before\n'), file('repo/cancel.txt', 'cancel\n'), file('repo/late.txt', 'late\n'),
+    file('repo/config.txt', 'api_keyX\n'), file('repo/memo.txt', 'note password=fixturepassword\n'), file('repo/scoped.txt', 'scoped\n')],
     calls: [
       call('write_file', { path: 'edit.txt', expectedHash: fileHash('one two three\n'), content: 'replaced\n' }, { whileWaiting: [{ decide: 'approve' }], after: [{ decide: 'approve' }], read: 'edit.txt' }),
       call('write_file', { path: 'edit.txt', expectedHash: fileHash('replaced\n'), content: 'rejected\n' }, { whileWaiting: [{ decide: 'approve', nonce: 'wrong' }, { decide: 'approve', taskId: 6 }, { decide: 'approve', approvalId: 'missing' }, { decide: 'reject' }], read: 'edit.txt' }),
@@ -138,7 +144,14 @@ const executions: { name: string; tree: Step[]; calls: Call[] }[] = [
       call('write_file', { path: 'cancel.txt', expectedHash: fileHash('cancel\n'), content: 'never\n' }, { whileWaiting: [{ cancel: true }, { decide: 'approve' }], read: 'cancel.txt' }),
       call('write_file', { path: 'late.txt', expectedHash: fileHash('late\n'), content: 'never\n' }, { whileWaiting: [{ revoke: 6 }, { revoke: 1 }], after: [{ decide: 'approve' }], read: 'late.txt' }),
       call('write_file', { path: 'README.md', expectedHash: fileHash('hello\n'), content: 'chat\n' }, { task: 2 }),
+      // Secret-like text that only the edit itself holds: the file's current content, and the content the edit produces.
+      call('replace_text', { path: 'memo.txt', expectedHash: fileHash('note password=fixturepassword\n'), oldText: 'note', newText: 'memo' }),
+      call('replace_text', { path: 'config.txt', expectedHash: fileHash('api_keyX\n'), oldText: 'X', newText: '=fixturevalue' }),
+      // Revoking another task's waits leaves this one waiting for its decision.
+      call('write_file', { path: 'scoped.txt', expectedHash: fileHash('scoped\n'), content: 'decided\n' }, { whileWaiting: [{ revoke: 6 }, { decide: 'approve' }], read: 'scoped.txt' }),
     ] },
+  // Secret-like text that only the prepared command holds: its temporary folder, from the runtime's own environment.
+  { name: 'command screening', tree: committed(), temp: 'access_token=fixturetokenvalue', calls: [call('run_command', { command: say('x') })] },
   { name: 'commands', tree: committed(),
     calls: [
       call('run_command', { command: say('ran') }, { whileWaiting: [{ decide: 'approve' }] }),
@@ -197,8 +210,9 @@ it('pins the coding tools: definitions, arguments, search and executions through
       const home = path.join(scratch, 'home');
       const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, USERPROFILE: process.env.USERPROFILE };
       try {
-        for (const folder of ['tmp', 'profile', 'data']) fs.mkdirSync(path.join(scratch, folder));
-        Object.assign(process.env, { TEMP: path.join(scratch, 'tmp'), TMP: path.join(scratch, 'tmp'), USERPROFILE: path.join(scratch, 'profile') });
+        const temp = path.join(scratch, item.temp ?? 'tmp');
+        for (const folder of [temp, path.join(scratch, 'profile'), path.join(scratch, 'data')]) fs.mkdirSync(folder);
+        Object.assign(process.env, { TEMP: temp, TMP: temp, USERPROFILE: path.join(scratch, 'profile') });
         build(scratch, home, item.tree);
         const systemRoot = process.env.SystemRoot!;
         const shell = fs.realpathSync.native(path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'));
@@ -269,7 +283,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
           }
         });
         await service.shutdown();
-        executionVectors.push({ name: item.name, tree: item.tree, steps });
+        executionVectors.push({ name: item.name, tree: item.tree, ...(item.temp ? { temp: item.temp } : {}), steps });
       } finally {
         for (const [name, value] of Object.entries(saved)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
         fs.rmSync(scratch, { recursive: true, force: true });

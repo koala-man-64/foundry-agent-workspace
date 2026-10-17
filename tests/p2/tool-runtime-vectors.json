@@ -7057,6 +7057,20 @@
     {
       "tool": "read_file",
       "input": {
+        "$json": "{\"b\":1,\"10\":2,\"path\":\"a\",\"2\":3}"
+      },
+      "error": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"2\",\n      \"10\",\n      \"b\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"2\\\", \\\"10\\\", \\\"b\\\"\"\n  }\n]"
+    },
+    {
+      "tool": "run_command",
+      "input": {
+        "$json": "{\"command\":\"c\",\"environment\":{\"b\":\"1\",\"10\":\"x\",\"A\":\"v\",\"2\":\"y\"}}"
+      },
+      "error": "[\n  {\n    \"code\": \"invalid_key\",\n    \"origin\": \"record\",\n    \"issues\": [\n      {\n        \"origin\": \"string\",\n        \"code\": \"invalid_format\",\n        \"format\": \"regex\",\n        \"pattern\": \"/^[A-Za-z_][A-Za-z0-9_]*$/\",\n        \"path\": [],\n        \"message\": \"Invalid string: must match pattern /^[A-Za-z_][A-Za-z0-9_]*$/\"\n      }\n    ],\n    \"path\": [\n      \"environment\",\n      \"2\"\n    ],\n    \"message\": \"Invalid key in record\"\n  },\n  {\n    \"code\": \"invalid_key\",\n    \"origin\": \"record\",\n    \"issues\": [\n      {\n        \"origin\": \"string\",\n        \"code\": \"invalid_format\",\n        \"format\": \"regex\",\n        \"pattern\": \"/^[A-Za-z_][A-Za-z0-9_]*$/\",\n        \"path\": [],\n        \"message\": \"Invalid string: must match pattern /^[A-Za-z_][A-Za-z0-9_]*$/\"\n      }\n    ],\n    \"path\": [\n      \"environment\",\n      \"10\"\n    ],\n    \"message\": \"Invalid key in record\"\n  }\n]"
+    },
+    {
+      "tool": "read_file",
+      "input": {
         "path": "a",
         "b": 1
       },
@@ -10180,6 +10194,18 @@
         {
           "file": "repo/late.txt",
           "text": "late\n"
+        },
+        {
+          "file": "repo/config.txt",
+          "text": "api_keyX\n"
+        },
+        {
+          "file": "repo/memo.txt",
+          "text": "note password=fixturepassword\n"
+        },
+        {
+          "file": "repo/scoped.txt",
+          "text": "scoped\n"
         }
       ],
       "steps": [
@@ -11135,6 +11161,215 @@
             "id": "call-17",
             "name": "write_file",
             "content": "Chat tasks can use only project communication and attached browser tools.",
+            "isError": true
+          },
+          "decisions": [],
+          "after": [],
+          "row": null,
+          "events": []
+        },
+        {
+          "call": {
+            "task": 1,
+            "name": "replace_text",
+            "arguments": {
+              "path": "memo.txt",
+              "expectedHash": "6246a1f441aa1426fb73e48c8932fba4645f0e8465a2d06fff5950b613ceef10",
+              "oldText": "note",
+              "newText": "memo"
+            },
+            "id": "call-18"
+          },
+          "result": {
+            "id": "call-18",
+            "name": "replace_text",
+            "content": "This action contains secret-like content and cannot be persisted or executed.",
+            "isError": true
+          },
+          "decisions": [],
+          "after": [],
+          "row": null,
+          "events": []
+        },
+        {
+          "call": {
+            "task": 1,
+            "name": "replace_text",
+            "arguments": {
+              "path": "config.txt",
+              "expectedHash": "fe68341ea62f7fe8e5088bc8274b41c1ed48d277fac3ec9672c5e98eca59da02",
+              "oldText": "X",
+              "newText": "=fixturevalue"
+            },
+            "id": "call-19"
+          },
+          "result": {
+            "id": "call-19",
+            "name": "replace_text",
+            "content": "This action contains secret-like content and cannot be persisted or executed.",
+            "isError": true
+          },
+          "decisions": [],
+          "after": [],
+          "row": null,
+          "events": []
+        },
+        {
+          "call": {
+            "task": 1,
+            "name": "write_file",
+            "arguments": {
+              "path": "scoped.txt",
+              "expectedHash": "9211e913e6b4fa1f10ae2b4866aee198e98707013ad8cec6919dd92f1e04bc01",
+              "content": "decided\n"
+            },
+            "whileWaiting": [
+              {
+                "revoke": 6
+              },
+              {
+                "decide": "approve"
+              }
+            ],
+            "read": "scoped.txt",
+            "id": "call-20"
+          },
+          "result": {
+            "id": "call-20",
+            "name": "write_file",
+            "content": "{\"path\":\"scoped.txt\",\"hash\":\"cc1b789abcfcd67db34d582bc8c36e372d836cbbf6660d0e8b31d1f19a060f76\",\"applied\":true}",
+            "isError": false
+          },
+          "proposal": {
+            "_rowid": 10,
+            "id": "{uuid:19}",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"{uuid:19}\",\"taskId\":\"14141414-0000-4000-8000-000000000001\",\"toolCallId\":\"call-20\",\"nonce\":\"{uuid:20}\",\"tool\":\"write_file\",\"state\":\"awaiting-approval\",\"createdAt\":\"{time}\",\"summary\":\"Edit scoped.txt\",\"path\":\"scoped.txt\",\"before\":\"scoped\\n\",\"after\":\"decided\\n\",\"expectedHash\":\"9211e913e6b4fa1f10ae2b4866aee198e98707013ad8cec6919dd92f1e04bc01\",\"resultingHash\":\"cc1b789abcfcd67db34d582bc8c36e372d836cbbf6660d0e8b31d1f19a060f76\",\"fingerprint\":\"{fingerprint:8}\"}",
+            "state": "awaiting-approval"
+          },
+          "decisions": [
+            {
+              "revoked": 6
+            },
+            {
+              "value": {
+                "accepted": true
+              }
+            }
+          ],
+          "after": [],
+          "row": {
+            "_rowid": 10,
+            "id": "{uuid:19}",
+            "kind": "tool.approval",
+            "data": "{\"id\":\"{uuid:19}\",\"taskId\":\"14141414-0000-4000-8000-000000000001\",\"toolCallId\":\"call-20\",\"nonce\":\"{uuid:20}\",\"tool\":\"write_file\",\"state\":\"complete\",\"createdAt\":\"{time}\",\"summary\":\"Edit scoped.txt\",\"path\":\"scoped.txt\",\"before\":\"scoped\\n\",\"after\":\"decided\\n\",\"expectedHash\":\"9211e913e6b4fa1f10ae2b4866aee198e98707013ad8cec6919dd92f1e04bc01\",\"resultingHash\":\"cc1b789abcfcd67db34d582bc8c36e372d836cbbf6660d0e8b31d1f19a060f76\",\"fingerprint\":\"{fingerprint:8}\",\"result\":{\"content\":\"{\\\"path\\\":\\\"scoped.txt\\\",\\\"hash\\\":\\\"cc1b789abcfcd67db34d582bc8c36e372d836cbbf6660d0e8b31d1f19a060f76\\\",\\\"applied\\\":true}\",\"isError\":false}}",
+            "state": "complete"
+          },
+          "events": [
+            {
+              "sequence": 34,
+              "type": "approval.changed",
+              "task_id": "14141414-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"{uuid:19}\",\"state\":\"awaiting-approval\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "14141414-0000-4000-8000-000000000001"
+            },
+            {
+              "sequence": 35,
+              "type": "approval.changed",
+              "task_id": "14141414-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"{uuid:19}\",\"state\":\"approved\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "14141414-0000-4000-8000-000000000001"
+            },
+            {
+              "sequence": 36,
+              "type": "approval.changed",
+              "task_id": "14141414-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"{uuid:19}\",\"state\":\"executing\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "14141414-0000-4000-8000-000000000001"
+            },
+            {
+              "sequence": 37,
+              "type": "approval.changed",
+              "task_id": "14141414-0000-4000-8000-000000000001",
+              "data": "{\"approvalId\":\"{uuid:19}\",\"state\":\"complete\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "14141414-0000-4000-8000-000000000001"
+            }
+          ],
+          "read": "decided\n"
+        }
+      ]
+    },
+    {
+      "name": "command screening",
+      "tree": [
+        {
+          "dir": "repo"
+        },
+        {
+          "file": "repo/README.md",
+          "text": "hello\n"
+        },
+        {
+          "file": "repo/src/a.ts",
+          "text": "export const a = 1;\n"
+        },
+        {
+          "file": "repo/docs/b.md",
+          "text": "# b\n"
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "init",
+            "-q"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "add",
+            "-A"
+          ]
+        },
+        {
+          "git": [
+            "-C",
+            "repo",
+            "commit",
+            "-qm",
+            "fixture"
+          ]
+        }
+      ],
+      "temp": "access_token=fixturetokenvalue",
+      "steps": [
+        {
+          "call": {
+            "task": 1,
+            "name": "run_command",
+            "arguments": {
+              "command": "[Console]::Out.WriteLine('x')"
+            },
+            "id": "call-1"
+          },
+          "result": {
+            "id": "call-1",
+            "name": "run_command",
+            "content": "This action contains secret-like content and cannot be persisted or executed.",
             "isError": true
           },
           "decisions": [],

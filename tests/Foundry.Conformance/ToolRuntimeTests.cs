@@ -108,11 +108,12 @@ public sealed partial class ToolRuntimeTests
         var item = Raw.GetProperty("executions")[index];
         var steps = ((List<object?>)((Dictionary<string, object?>)((List<object?>)Corpus["executions"]!)[index]!)["steps"]!).Cast<Dictionary<string, object?>>().ToList();
         using var fixture = RepositoryFixture.Create("foundry-p2-tools-");
-        foreach (var folder in new[] { "tmp", "profile", "data" }) Directory.CreateDirectory(fixture.Local(folder));
+        var temp = fixture.Local(item.TryGetProperty("temp", out var folderName) ? folderName.GetString()! : "tmp");
+        foreach (var folder in new[] { temp, fixture.Local("profile"), fixture.Local("data") }) Directory.CreateDirectory(folder);
         await fixture.Build(item.GetProperty("tree"));
         var environment = new Dictionary<string, string>(fixture.Environment(), StringComparer.OrdinalIgnoreCase)
         {
-            ["TEMP"] = fixture.Local("tmp"), ["TMP"] = fixture.Local("tmp"), ["USERPROFILE"] = fixture.Local("profile"),
+            ["TEMP"] = temp, ["TMP"] = temp, ["USERPROFILE"] = fixture.Local("profile"),
         };
         await using var loop = new RuntimeLoop();
         await loop.Invoke(async () =>
@@ -168,7 +169,8 @@ public sealed partial class ToolRuntimeTests
                         }
                     }
                 }
-                var outcome = await pending;
+                // A call that should answer at once but proposes instead would wait for a decision forever.
+                var outcome = await pending.WaitAsync(TimeSpan.FromMinutes(2));
                 object? content = outcome.Content;
                 if (NativeRefusals.TryGetValue(label, out var refusal))
                 {
@@ -270,10 +272,12 @@ public sealed partial class ToolRuntimeTests
 
     private static string Id(int number) => $"14141414-0000-4000-8000-{number.ToString("D12", CultureInfo.InvariantCulture)}";
 
-    /// <summary>The oracle's expand: { $repeat: [text, count] } becomes text repeated.</summary>
+    /// <summary>The oracle's expand: { $repeat: [text, count] } becomes text repeated, and { $json: text } the parsed text, in
+    /// its own key order.</summary>
     private static object? Expand(object? value) => value switch
     {
         Dictionary<string, object?> map when map.GetValueOrDefault("$repeat") is List<object?> repeat => string.Concat(Enumerable.Repeat((string)repeat[0]!, (int)(double)repeat[1]!)),
+        Dictionary<string, object?> map when map.GetValueOrDefault("$json") is string json => PersistedJson.Parse(json),
         Dictionary<string, object?> map => map.ToDictionary(pair => pair.Key, pair => Expand(pair.Value), StringComparer.Ordinal),
         List<object?> items => items.Select(Expand).ToList(),
         _ => value,
