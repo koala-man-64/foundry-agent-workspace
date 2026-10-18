@@ -150,7 +150,8 @@ const cases: Case[] = [
   {
     name: 'Git chats and coding turns with tool calls for each kind', era: 'fresh', steps: [
       ...ready(AZURE), ...ready(CHAT), ...ready(CLAUDE), PROJECT,
-      start(1, 'g', AZURE, [responsesCall('call-1', 'list_project_agents', '{}'), responsesText('Listed the agents.')], { projectId: '{project}' }),
+      // The request after the tools reports no usage, so it cannot inherit the first request's.
+      start(1, 'g', AZURE, [responsesCall('call-1', 'list_project_agents', '{}'), responsesText('Listed the agents.', null)], { projectId: '{project}' }),
       send('g', 'Resume from the stored continuation', [responsesText('Resumed.')]),
       start(2, 'k', AZURE, [responsesCall('call-2', 'read_file', '{"path":"README.md"}', [{ type: 'reasoning', id: 'rs-1', encrypted_content: 'opaque', summary: [] }]), responsesText('Read the readme.')], { projectId: '{project}', mode: 'coding' }),
       start(3, 'cc', CHAT, [chatCall('call-3', 'read_file', '{"path":"README.md"}'), chatText('Chat read it.')], { projectId: '{project}', mode: 'coding' }),
@@ -168,6 +169,7 @@ const cases: Case[] = [
       // budget, until the history's reservation no longer fits it.
       start(1, 'w', AZURE, [responsesText('Warned', { input_tokens: 50, output_tokens: 5 })], { content: `Warn ${'w'.repeat(5200)}`, tokenBudget: 7000 }),
       send('w', 'Again', [responsesText('Warned again', { input_tokens: 60, output_tokens: 6 })]),
+      send('w', `Too long ${'w'.repeat(9000)}`),
       send('w', 'Over budget'),
     ],
   },

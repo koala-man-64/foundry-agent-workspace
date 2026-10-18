@@ -2320,7 +2320,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 **Differences.** None: every step of the oracle matches.
 
 **Evidence.**
-- **The oracle.** `tests/p2/external-chat.test.ts` (`P2_WRITE_EXTERNAL_CHAT`) drives the shipping `RuntimeService`, with `createProvider` over a recording fetch. It has 9 cases, 106 steps and 103 provider requests, on disposable fresh and v3 eras.
+- **The oracle.** `tests/p2/external-chat.test.ts` (`P2_WRITE_EXTERNAL_CHAT`) drives the shipping `RuntimeService`, with `createProvider` over a recording fetch. It has 9 cases, 107 steps and 103 provider requests, on disposable fresh and v3 eras.
   - **Each step records:**
     - its value or refusal;
     - the rows it changed in tasks, messages, provider requests, usage records, task starts, events, intents, projects and profiles;
@@ -2333,8 +2333,8 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - a missing credential, HTTP errors, and failures before and after usage;
     - canaries split across chunks, in provider messages, and in metadata;
     - cancellation with and without usage;
-    - Git chats and coding turns with tool calls for each kind, a secret-bearing continuation, and a secret-bearing call;
-    - budget and context warnings on measured usage;
+    - Git chats and coding turns with tool calls for each kind, a request after tools that reports no usage, a secret-bearing continuation, and a secret-bearing call;
+    - budget and context warnings on measured usage, and the context and budget refusals;
     - a stored continuation after a profile edit: a rename resumes it, an endpoint change refuses it;
     - a version 3 database.
   - **Ported from the integration suites:**
@@ -2348,7 +2348,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - Usage reported as the provider stops after a cancel is still charged to the cancelled request. A scripted provider times it.
 - **`ProfileNativeTests`:** the decision-2 refusal now also leaves usage records and events unchanged (data review L3).
 - **The stdio differential** adds the refused start of an unverified profile.
-- **Mutations** (`foundry-evidence\p2.4-d\mutations-run1` and `run1b`): 24, with 20 caught.
+- **Mutations** (`foundry-evidence\p2.4-d\mutations-run1`, `run1b` and `run1c`): 25, with 21 caught.
   - **The loop:**
     - They stopped reading usage, and dropped usage that arrived with the abort.
     - They left the reported model unredacted.
@@ -2364,11 +2364,60 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **Equivalent (4):**
     - An invalid usage replacing a valid one: a stream reports usage at most once.
     - An unbounded response id: the adapter already bounds it.
-    - Either of the loop's two usage resets: each covers the other, as in TypeScript.
+    - Either of the loop's two usage resets: each covers the other, as in TypeScript. Removing both is caught (`run1c`), since the data review's L2 step was added.
 
-**Validation.** Pending.
+**Validation.** `65af437` (`foundry-evidence\p2.4-d\run1`):
+- Release build with warnings as errors: clean.
+- Native suite: 7,949 tests, 7,947 passed, 0 failed, 2 expected skips.
+- `pnpm check`: 592 of 592 passed across 96 files.
+- The stdio differential: 3 of 3. `git diff --check`: clean.
 
-**Independent review.** Pending: security and data integrity.
+No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+
+**Independent review of `22b3454..65af437`** (seal `foundry-evidence\p2.4-d\seal-65af437.txt`).
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**, with no reportable defect.
+  - **What it ran:**
+    - It verified the seal and built an export.
+    - It ran seven classes, including the Git-chat, offline-tool and transport replays (502 passed), and both profile and external-chat oracles.
+    - It scanned the vectors: the credential's placeholder appears only in request headers and scripted answers.
+  - **Confirmed:**
+    - No path reaches a provider for an unverified or stale configuration. A profile in use cannot be saved, credentials cannot change while a response runs, a new credential clears verification, and a probe result is saved only for an unchanged fingerprint and generation.
+    - The credential reaches only the `api-key` header. Request bodies, saved answers, progress events, metadata, stop reasons, usage reasons and standard error cannot carry it.
+    - Continuations and calls pass the secret-like screen before they are saved.
+    - Channel tools and their instruction go only to a profile that `ProfileReady` accepts.
+    - A stored continuation cannot resume under another profile or kind: the fingerprint, the continuation's kind, and the adapter each refuse it.
+    - Settlement matches `agent-loop.ts`, and each request settles once.
+    - The transport is disposed only when it is the runtime's own. A later use fails closed.
+  - **N4 and N5 closed:**
+    - The depth case runs on the loop's explicit stack, and fails on a 256 KiB one.
+    - The replay compares 21 resumed request bodies byte for byte.
+  - **The mutation equivalents** hold, judged from the code.
+  - **Informational:** the gates run at the start of a turn, as in TypeScript. A probe that fails during a running turn clears verification; that turn continues, and the next one is refused.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO**, with no critical, high or medium finding.
+  - **What it ran:**
+    - It verified the seal and built an export.
+    - It ran four classes (28 passed) and the oracle.
+    - In its own export it ran shutdown during a running external turn, and a failed probe during a running turn on the same profile. Both finish every row, and nothing is half-written.
+  - **Confirmed:**
+    - Settlement, on v4 and v3, matches `agent-loop.ts`'s `settle()`: rows, budget arithmetic, reasons, outcomes and the completion's detail. A request settles once.
+    - All eight refusals in the oracle write nothing. The gates run before the start is reserved, before any worktree intent and before admission, in `service.ts`'s order.
+    - Each kind resumes from its stored state, and an endpoint change refuses it with nothing written.
+    - The recorded tables cover everything these paths write.
+  - **Low:**
+    - **L1. A missing credential is admitted, then fails.** Credentials live in memory, but verification persists. After a restart, each send before the host sends the credential again keeps a full reservation charged. This is TypeScript's pinned behaviour, so it stays until the cutover decides it.
+    - **L2. Removing both usage resets went unnoticed,** because every follow-up request in the oracle reported usage. A Git chat's request after its tools now reports none, and the paired mutation is caught.
+    - **L3. No step refused for the context limit.** The budget case now has one, and it writes nothing.
+  - **Informational:** the settling rule cannot observe a shutdown during a turn or two concurrent turns. The reviewer's own checks covered the first.
+
+**P2.4 status.** Slices a–d are implemented, validated from exports and reviewed GO, on the local branch only. Open for Rudy:
+- **T-1 (TypeScript, P2.4a):** an Anthropic resumption with more than one pending call and one user message sends only the first `tool_result`, and the task gets stuck. Native reproduces it faithfully. Whether to fix it in both runtimes is his decision.
+- **The TypeScript N2 fix (`bbfa5d5`)** landed as a security fix under the program rule. He may drop that commit if he does not accept the classification.
+- **For the P5 readiness list:**
+  - Decision 2 blocks external profiles for anyone with saved MCP servers until the MCP slice (security I3).
+  - After a restart, a send before the host re-sends the credential is admitted and fails with its reservation charged, as in TypeScript (data L1).
+- **Still held:**
+  - Live qualification (`profile.probe` against real deployments) stays his operator gate.
+  - The draft PR, main integration and any publication need his approval.
 
 ## Personal workspace expansion — local implementation
 
