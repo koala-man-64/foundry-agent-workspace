@@ -77,7 +77,7 @@ public sealed class AzureTransport : IDisposable
 
     internal static string HeaderValue(string value)
     {
-        if (value.Any(c => c > 'ÿ')) throw new ProviderTransportException("Cannot convert argument to a ByteString because a character is greater than 255.");
+        if (value.Any(c => c > '\u00ff')) throw new ProviderTransportException("Cannot convert argument to a ByteString because a character is greater than 255.");
         var normalized = value.Trim('\t', '\n', '\r', ' ');
         if (normalized.IndexOfAny(['\0', '\r', '\n']) >= 0) throw new ProviderTransportException("Headers.append: the credential is an invalid header value.");
         if (normalized.Any(c => c < ' ' && c != '\t' || c == '\u007f')) throw new ProviderTransportException("fetch failed");

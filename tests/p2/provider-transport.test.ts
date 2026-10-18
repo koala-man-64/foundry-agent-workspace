@@ -1,36 +1,15 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createProvider, ProviderHttpError } from '../../packages/providers/src/index';
 import { TOOL_DEFINITIONS } from '../../packages/runtime/src/tool-definitions';
-import type { ApiKind, ModelProfile, ProviderContinuation, ProviderEvent, ProviderMessage, ProviderToolResult, ToolDefinition } from '../../packages/protocol/src/index';
+import type { ProviderMessage, ProviderToolResult, ToolDefinition } from '../../packages/protocol/src/index';
+import { recorded, run, type Body, type Input } from './provider-fetch';
 
 // P2.4a: the Azure adapter's requests, transport and SSE framing, and the Chat Completions parser. Each input drives the
-// shipping createProvider(kind, { fetch }).streamTurn with a recording fetch whose response stream returns exactly the
-// listed chunks, one per read. The C# suite (ProviderTransportTests) replays every input through a recording
-// HttpMessageHandler with the same chunks and must reproduce each request, event and error. Responses and Anthropic
-// inputs end at an HTTP error, abort or transport failure: their parsers are slice b.
-//
-// The credential is generated per run and recorded as {credential}, so no committed file holds a token-shaped value.
-const credential = ['fixture', randomBytes(12).toString('hex')].join('-');
-type Chunk = string | { bytes: number[] } | { text: string; times: number };
-type Body = Array<Chunk | { chunk: Chunk; count: number }>;
-interface Input {
-  kind: Exclude<ApiKind, 'fake'>;
-  provider?: Exclude<ApiKind, 'fake'>;
-  // effort is any string: the adapter checks it again whatever the stored profile holds.
-  profile?: Omit<Partial<ModelProfile>, 'effort'> & { effort?: string };
-  credential?: string | null;
-  messages?: ProviderMessage[];
-  tools?: ToolDefinition[];
-  continuation?: ProviderContinuation;
-  toolResults?: ProviderToolResult[];
-  abortBefore?: boolean;
-  abortAfterEvents?: number;
-  now?: number;
-  fetchRejects?: boolean;
-  response?: { status?: number; headers?: [string, string][]; body?: Body | null; end?: 'close' | 'hang' | 'terminated' };
-}
+// shipping createProvider(kind, { fetch }).streamTurn through the recording fetch in provider-fetch.ts, whose response stream
+// returns exactly the listed chunks, one per read. The C# suite (ProviderTransportTests) replays every input through a
+// recording HttpMessageHandler with the same chunks and must reproduce each request, event and error. Responses and
+// Anthropic inputs end at an HTTP error, abort or transport failure: their parsers are slice b.
 const user = (content: string): ProviderMessage => ({ role: 'user', content });
 const system = (content: string): ProviderMessage => ({ role: 'system', content });
 const assistant = (content: string): ProviderMessage => ({ role: 'assistant', content });
@@ -291,59 +270,13 @@ function chatParser(): Input[] {
   ];
 }
 
-// ---- Recording fetch -----------------------------------------------------------------------------------------------
-function encode(body: Body): Uint8Array[] {
-  const encoder = new TextEncoder();
-  const one = (chunk: Chunk): Uint8Array => typeof chunk === 'string' ? encoder.encode(chunk) : 'bytes' in chunk ? Uint8Array.from(chunk.bytes) : encoder.encode(chunk.text.repeat(chunk.times));
-  return body.flatMap(item => typeof item === 'object' && 'chunk' in item ? Array.from({ length: item.count }, () => one(item.chunk)) : [one(item)]);
-}
-const scrub = (value: string): string => value.split(credential).join('{credential}');
-const base = (kind: ApiKind): ModelProfile => ({ id: '0c46787b-9dce-4a8d-a8aa-6fe7f8a44d53', name: 'Transport', apiKind: kind, endpoint: 'https://sample.openai.azure.com', deployment: 'test-model', contextLimit: 4096, outputLimit: 256 });
 const sources = ['packages/providers/src/index.ts', 'packages/protocol/src/limits.ts', 'packages/runtime/src/tool-definitions.ts'];
 
 afterEach(() => { vi.restoreAllMocks(); });
 
 it('pins the Azure adapter requests, transport, SSE framing and the Chat Completions parser', async () => {
   const cases = [];
-  for (const [index, input] of inputs().entries()) {
-    vi.restoreAllMocks();
-    if (input.now !== undefined) vi.spyOn(Date, 'now').mockReturnValue(input.now);
-    const requests: unknown[] = [];
-    const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) => {
-      const headers = init?.headers as Record<string, string>;
-      requests.push({ url: String(url), method: init?.method, headers: Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, scrub(value)])), body: scrub(String(init?.body)), redirect: init?.redirect });
-      if (input.fetchRejects) throw new TypeError('fetch failed');
-      const response = input.response ?? {};
-      const chunks = response.body === null ? null : encode(response.body ?? []);
-      // One chunk per read. After the chunks the stream closes, fails as undici's does on a lost connection, or waits.
-      let next = 0;
-      const stream = chunks === null ? null : new ReadableStream<Uint8Array>({
-        pull(controller) {
-          if (next < chunks.length) { controller.enqueue(chunks[next++]!); return; }
-          const end = response.end ?? 'close';
-          if (end === 'close') controller.close();
-          else if (end === 'terminated') controller.error(new TypeError('terminated'));
-          else return new Promise<void>(() => undefined);
-        },
-      }, { highWaterMark: 0 });
-      return new Response(stream, { status: response.status ?? 200, headers: response.headers ?? [] });
-    });
-    const controller = new AbortController(); if (input.abortBefore) controller.abort();
-    const profile = { ...base(input.kind), ...input.profile } as ModelProfile;
-    const events: ProviderEvent[] = []; let error: Record<string, unknown> | null = null;
-    try {
-      const request = { profile, messages: input.messages ?? [user('hello')], signal: controller.signal, ...(input.credential === null ? {} : { credential: input.credential ?? credential }),
-        ...(input.tools ? { tools: input.tools } : {}), ...(input.continuation ? { continuation: input.continuation } : {}), ...(input.toolResults ? { toolResults: input.toolResults } : {}) };
-      for await (const event of createProvider(input.provider ?? input.kind, { fetch }).streamTurn(request)) {
-        events.push(event);
-        if (events.length === input.abortAfterEvents) controller.abort();
-      }
-    } catch (caught) {
-      if (!(caught instanceof Error)) throw caught;
-      error = { name: caught.name, message: scrub(caught.message), ...(caught instanceof ProviderHttpError ? { status: caught.status, retryAfterSeconds: caught.retryAfterSeconds ?? null } : {}) };
-    }
-    cases.push({ name: `provider-transport:${index}`, input: { ...input, credential: input.credential === undefined ? '{credential}' : input.credential }, expected: { requests, events, error } });
-  }
+  for (const [index, input] of inputs().entries()) cases.push({ name: `provider-transport:${index}`, input: recorded(input), expected: await run(input) });
   const corpus = { oracle: { sources: sources.map(path => ({ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') })) }, cases };
   const text = JSON.stringify(corpus, null, 2) + '\n';
   if (process.env.P2_WRITE_PROVIDER_TRANSPORT === '1') writeFileSync('tests/p2/provider-transport-vectors.json', text);

@@ -95,7 +95,7 @@ public sealed class ProviderTransportNativeTests
 
     /// <summary>fetch's header-value rules for the credential, as measured on Electron 44.4.1's Node.</summary>
     [Theory]
-    [InlineData(" abc ", "abc")] [InlineData("\tabc\t", "abc")] [InlineData("a b", "a b")] [InlineData("abc\r\n", "abc")] [InlineData("café", "café")] [InlineData("\u0085key", "\u0085key")]
+    [InlineData(" abc ", "abc")] [InlineData("\tabc\t", "abc")] [InlineData("a b", "a b")] [InlineData("abc\r\n", "abc")] [InlineData("caf\u00e9", "caf\u00e9")] [InlineData("\u0085key", "\u0085key")]
     public async Task ACredentialIsSentAsFetchNormalizesIt(string credential, string sent)
     {
         var handler = new ScriptedHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Done) });
@@ -108,7 +108,7 @@ public sealed class ProviderTransportNativeTests
     [InlineData(" key1\nkey2 ", "Headers.append: the credential is an invalid header value.")]
     [InlineData("a\rb", "Headers.append: the credential is an invalid header value.")]
     [InlineData("a\0b", "Headers.append: the credential is an invalid header value.")]
-    [InlineData("€", "Cannot convert argument to a ByteString because a character is greater than 255.")]
+    [InlineData("\u20ac", "Cannot convert argument to a ByteString because a character is greater than 255.")]
     [InlineData("a\u007fb", "fetch failed")] [InlineData("a\u0001b", "fetch failed")] [InlineData("a\u000bb", "fetch failed")]
     public async Task AnInvalidCredentialHeaderIsRefusedBeforeAnyRequestWithoutEchoingIt(string credential, string message)
     {

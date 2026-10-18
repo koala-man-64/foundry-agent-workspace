@@ -1834,6 +1834,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Fixed settings:** `AllowAutoRedirect=false`, `UseCookies=false`, no certificate callback, no default credentials, `ResponseHeadersRead`, HTTP/1.1, no automatic decompression.
 - **`UseProxy=false`.** TypeScript's fetch ignores the Windows proxy settings and its runtime receives no proxy variables (`supervisor.ts:21-22`), so it connects directly. .NET would otherwise use the system proxy. This is parity, under the freeze.
 - **No client timeout.** `HttpClient.Timeout` otherwise defaults to 100 seconds and would cut long streams. As in TypeScript, the turn's 10-minute limit, the probe's 20-second deadlines and cancellation bound each request.
+  - **Corrected in P2.4a.** undici bounds fetch as well: 10 seconds to connect and about 300 seconds to receive headers ("fetch failed"), and about 300 seconds without a byte of the body ("terminated"). Native reproduces these bounds; see that entry.
 - **Request bytes:** the UTF-8 bytes of `JsJson.Stringify`, sent with `content-type: application/json` exactly (no charset), `accept: text/event-stream` and `api-key`, plus `anthropic-version: 2023-06-01` for Anthropic.
 - **Measured.** Electron 44.4.1's Node (24.21.0) was run as Node against a loopback server. Native must give the same outcomes:
   - a redirect status, with or without `Location`, rejects with `TypeError: fetch failed` before any body is read, and so does a refused connection;
@@ -1972,6 +1973,69 @@ What each slice adds:
 - **Chunk-dependent framing** (above) is pinned only for identical chunks.
 - **Not tested against Azure.** No P2.4 evidence shows the C# adapters against real deployments. The TypeScript adapters' live qualification is also an open release gate.
 - **Token-shaped fixtures** in tests and vectors (GitGuardian, P2.3): built at run time and recorded as placeholders.
+
+### Azure adapter requests and transport (P2.4a)
+
+**What it is.** `Foundry.Providers` gains the request half of `AzureProvider`, its transport and SSE reader, and the Chat Completions parser. It is unwired: nothing in `DevelopmentChat` or `Program` constructs it, so the development runtime stays at 41 of the 89 methods.
+- **Requests** (`AzureRequests`), for all three kinds, in TypeScript's order of checks: the profile's kind, its effort, the credential, the caller's cancellation, the body with its continuation and tool results, the endpoint, then the request.
+  - **Bodies** are TypeScript's object literals in their property order, so `JsJson` sends the same bytes.
+  - **The endpoint rule** is the WHATWG reading the provider fingerprint already uses. The new `Compatibility.AzureEndpoint` adds TypeScript's second message for a URL that parses under another scheme (`ftp:`).
+- **The transport** (`AzureTransport`): one POST per request through `HttpMessageInvoker`, as listed under the transport rules above.
+  - **The production handler** follows no redirect and keeps no cookies. It uses no proxy, no default credentials and no decompression, adds no certificate callback, and sends header values as Latin-1 bytes. It reads nothing from the environment.
+  - **Bounds:** 10 seconds to connect and 300 seconds to receive headers, both "fetch failed". A read that sees no byte for 300 seconds is "terminated".
+  - **Redirects:** any redirect status (301, 302, 303, 307 or 308), with or without `Location`, is "fetch failed" before the body is read.
+  - **Statuses:** a 204 or 205 has no stream, and any other status outside 2xx is `ProviderHttpException` with TypeScript's `Retry-After` reading.
+- **The SSE reader** (`SseReader`) decodes as TextDecoder does, normalizes line endings per read, keeps the three caps and parses `event:` and `data:` as `parseSse` does. Cancellation is checked before and after each read only, so frames already read are still delivered after an abort, as in TypeScript.
+- **The Chat Completions parser** (`ChatCompletionsStream`): text, metadata from every frame, the last valid usage, tool-call assembly by index, and every terminal check, with the calls emitted only after all of them.
+- **JSON** (`ProviderJson`) is `JSON.parse` over the decoded text: source order, a repeated key keeps its first position and last value, `__proto__` is an ordinary key, `1e400` is infinite, and lone surrogates survive.
+- **`ProviderRequest`** now carries tool definitions (`ProviderTool`) instead of names, plus the stored profile and the credential. Its text never prints the credential. The offline provider and the agent loop read names, and nothing else changes for them.
+
+**Measured, against undici** (Electron 44.4.1's Node 24.21.0, run as Node; loopback servers, and a blackhole address for the connect bound):
+- **Redirects:** a 302 with a `Location` and a 307 without one both reject with `TypeError: fetch failed` (cause "unexpected redirect").
+- **Responses and URLs:** a 204 has no body, and an empty `?` is not sent.
+- **Credential header values:** fetch trims HTTP whitespace from both ends of the value. NUL, CR and LF inside it are refused ("Headers.append: … is an invalid header value."). A character above U+00FF is refused ("Cannot convert argument to a ByteString …"). Other control characters fail as "fetch failed". Latin-1 characters are sent as single bytes.
+- **Bounds:** connecting gives up after 10.6 seconds ("fetch failed", `UND_ERR_CONNECT_TIMEOUT`). Headers time out after about 305 seconds ("fetch failed", `UND_ERR_HEADERS_TIMEOUT`), and an idle body after about 305 seconds ("terminated", `UND_ERR_BODY_TIMEOUT`).
+- **Certificates:** the default CA set is the 121 bundled roots plus the 105 roots in this machine's Windows store.
+
+**Differences, all fail-closed or invisible on success:**
+- **The credential header's messages never include its value.** fetch's messages name the offending character's index and code point, or echo the trimmed value (TypeScript finding T-2 below). Native uses fixed messages.
+- **Depth.** Provider JSON nested deeper than 256 levels is refused as malformed, and tool-call arguments that deep as incomplete JSON. TypeScript fails such a payload only when a recursive check or `JSON.stringify` exhausts its stack. A stack overflow would end the .NET process.
+- **Transport failures.** Before a response they are "fetch failed", and while reading one "terminated", whatever .NET reports. The cause is kept only as the inner exception, which the runtime never reports.
+- **`Retry-After`.** Delta-seconds (JavaScript's `Number`) and the three HTTP-date forms are read, in UTC and ignoring the weekday. Other spellings that `Date.parse` accepts give no value natively: the vectors' "-1" and "5, 6" (two headers, joined), both of which TypeScript reads as past dates (0 seconds). asctime is left out of the vectors because V8 reads it in local time. Only the orchestrator reads the value.
+- **Headers the transport adds,** certificate trust, and chunking, as named in the plan above.
+
+**TypeScript findings, not fixed under the freeze** (neither is a security or data-loss defect):
+- **T-1, Anthropic resumption sends one tool result.**
+  - **Mechanism:** when a stored Anthropic continuation has more than one pending call and the next request carries exactly one user message, `nativeRequest` merges that message with the first result's block only. That is the path `prepareRequest` takes after an interrupted turn, such as a cancellation while two tool calls ran.
+  - **Effect:** the other `tool_use` blocks reach Anthropic with no `tool_result`, which its API refuses. The task cannot continue under that profile, and every later turn fails the same way; the retained state is intact.
+  - **Native:** it ports the behaviour, and the P2.4b vectors pin it.
+  - **Decision:** whether to fix it in both runtimes is Rudy's call.
+- **T-2, an invalid credential header echoes the credential.** undici's invalid-header message holds the trimmed header value. The redactor knows only the untrimmed secret and its JSON escapes, so a credential with surrounding whitespace and an inner CR, LF or NUL would reach a task's failure reason or a probe's detail.
+  - **Not reachable through the shipping UI:** the credential field is an `<input type="password">`, which strips CR and LF, and a NUL cannot be typed into it.
+  - **Native** never echoes the value.
+
+**Evidence.**
+- **The oracle.** `tests/p2/provider-transport.test.ts` drives the shipping `createProvider(kind, { fetch })` through `tests/p2/provider-fetch.ts`, whose response streams return exactly the listed chunks, one per read. It runs 389 cases; the vectors are bound to `index.ts`, `limits.ts` and `tool-definitions.ts`, and regenerating them requires `P2_WRITE_PROVIDER_TRANSPORT=1`. The cases:
+  - **Requests:** each kind's body, with system, assistant and user messages, a lone surrogate, the runtime's tool schemas and fixture tools; every effort for each kind; output limits.
+  - **Checks before any request:** missing, empty, whitespace-only and JavaScript-whitespace credentials; abort before sending; a mismatched kind.
+  - **Continuations** for each kind: results in the request's order, a missing, duplicated, misnamed or foreign result, calls that are absent, invalid or not an array, invalid state, and data that is not an object.
+  - **Endpoints:** 43 spellings. Accepted ones include case, `:443`, a dot path, `%2e`, an empty userinfo, backslashes, tabs and spaces, `%2E` in the host, IDN, and the four suffixes. Refused ones include `http:`, userinfo, a query or fragment, other ports, paths, `//`, look-alike suffixes, a trailing dot, a bare suffix, IP addresses and `ftp:`.
+  - **Statuses:** 14 failures, 2xx variants, 204 and 205, and 26 `Retry-After` headers on a fixed clock (one absent, one repeated).
+  - **Framing:** CR, CRLF and a CRLF split between reads (also before an event name), the byte order mark at the start, split across reads and after the start, invalid and split UTF-8, `data:` spacing and Unicode whitespace, multi-line data, comments and other fields, event names, `[DONE]` spellings, an abort with frames still buffered, a stalled stream, a lost connection, and each cap at and over its limit.
+  - **The Chat Completions parser:** content and empty content, several choices, finish reasons and the terminal checks, `[DONE]` order, refusals, legacy function calls and errors (each with its usage), malformed JSON, duplicate keys, metadata bounds, usage reports (JSON `null` subsets among them), and tool-call assembly.
+- **The replay.** `ProviderTransportTests` replays every case through a recording `HttpMessageHandler`. It reproduces each request (URL, method, the adapter's four headers and nothing else, body bytes), every event and every error, and asserts that no query or fragment marker is sent. The two `Retry-After` spellings above are its only named differences.
+- **Native-only tests** (`ProviderTransportNativeTests`):
+  - the production handler's configuration;
+  - redirects, refused and never followed;
+  - the headers and body bounds, and cancellation during the request and during a read, with the response stream disposed on every path;
+  - the measured credential-header rules, with no part of a refused value in its message;
+  - the depth bound at 256, 257 and 500,000 levels;
+  - the credential absent from every failure message and from `ProviderRequest`'s text.
+- **Mutations** (`foundry-evidence\p2.4-a\mutations-run1` and `run1b`): 25, all caught. They removed the byte order mark drop, the lone-CR normalization, the abort check's placement, the `data:` trim, call validation, the usage on a reported error, the terminal checks, JSON `null` subsets, the `Retry-After` cap, TypeScript's Anthropic merge, `store: false`, the redirect refusal, the credential header's trim and Latin-1 check, the depth bound, the headers and body bounds (both tests then hit the run's 300-second cap), the empty query marker, repeated-key order and infinite numbers; and moved each cap by one and the credential check to .NET whitespace. The first run skipped two whose patterns did not match the source, which held the literal characters instead of their escapes; the escapes are restored and `run1b` caught both.
+
+**Validation.** Pending: the export run of this slice's final commit.
+
+**Independent review.** Pending: security, on the sealed range.
 
 ## Personal workspace expansion — local implementation
 

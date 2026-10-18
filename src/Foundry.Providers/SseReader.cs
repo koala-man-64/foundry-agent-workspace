@@ -45,7 +45,7 @@ internal static class SseReader
             {
                 started = true;
                 // U+FEFF is EF BB BF in UTF-8, so a first decoded U+FEFF is the stream's byte order mark.
-                if (text[0] == '﻿') text = text[1..];
+                if (text[0] == '\ufeff') text = text[1..];
             }
             buffer += text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
             if (Utf8.GetByteCount(buffer) > MaxEventBytes) throw new InvalidOperationException("Provider event exceeded the configured byte limit.");
