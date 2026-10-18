@@ -654,17 +654,15 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>
-    /// Rudy's decision I5 (P2.3f): whether a task's stored worktree is the folder createTaskWorktree makes for it, the final
-    /// path of the app-owned worktree folder joined with its lowercased id, compared ignoring case. Every task TypeScript
-    /// has created qualifies; a hand-edited row, a copied data folder or an alias does not. Not in TypeScript.
+    /// Rudy's decision I5 (P2.3f): whether a task's stored worktree is the folder createTaskWorktree makes for it, the
+    /// app-owned worktree folder joined with its lowercased id. The two are compared as folders, by volume and file
+    /// identity at every level, and neither path may pass through a reparse point. So another spelling of the same folder
+    /// (case or 8.3) qualifies, while a different folder whose name only case-folds alike, or a path under a junctioned
+    /// worktree folder, does not. Every task TypeScript has created qualifies; a hand-edited row or a copied data folder
+    /// does not. Not in TypeScript.
     /// </summary>
-    internal bool IsOwnWorktree(string taskId, string? worktreePath)
-    {
-        if (worktreePath is null || NetworkPathPolicy.IsNetworkOrDevicePath(worktreePath) || !TaskId().IsMatch(taskId)) return false;
-        var requested = FinalPath.Resolve(WorktreeBase);
-        if (!DataClassifier.IsLocal(requested) || !FinalPath.TryResolve(requested, out var worktreeBase)) return false;
-        return EcmaScriptCase.ToLower(worktreePath) == EcmaScriptCase.ToLower(Path.Join(worktreeBase, taskId.ToLowerInvariant()));
-    }
+    internal bool IsOwnWorktree(string taskId, string? worktreePath) =>
+        worktreePath is not null && TaskId().IsMatch(taskId) && RepositoryPaths.SameFolder(worktreePath, Path.Join(FinalPath.Resolve(WorktreeBase), taskId.ToLowerInvariant()));
 
     /// <summary>
     /// removeWorktree: `git worktree remove` without --force, so Git itself refuses untracked or modified files; the

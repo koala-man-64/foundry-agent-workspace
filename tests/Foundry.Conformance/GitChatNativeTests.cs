@@ -187,6 +187,42 @@ public sealed class GitChatNativeTests
         await loop.Invoke(() => { Assert.Equal("idle", store.ReadTask(chatId)["status"]); return Task.FromResult(0); });
     });
 
+    /// <summary>A coding task outside a Git worktree (only a hand-edited row can make one) is refused before any request,
+    /// with its own reason.</summary>
+    [Fact]
+    public Task ACodingTaskOutsideGitIsRefused() => WithGitProject(null, async (fixture, loop, store, chat, projectId) =>
+    {
+        await loop.Invoke(async () =>
+        {
+            store.SaveTask(new()
+            {
+                ["id"] = "79797979-0000-4000-8000-000000000099", ["title"] = "Folder coding", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = "2026-01-02T03:04:05.678Z",
+                ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "folder", ["projectPath"] = fixture.Local("repo"),
+            });
+            var refused = await Record.ExceptionAsync(() => chat.Dispatch("task.send", new() { ["taskId"] = "79797979-0000-4000-8000-000000000099", ["content"] = "Edit" }));
+            Assert.Equal("Coding turns need a Git worktree.", Assert.IsType<NotSupportedException>(refused).Message);
+            Assert.Empty(store.Rows("SELECT * FROM provider_requests"));
+            return 0;
+        });
+    });
+
+    /// <summary>Security I-3 of P2.3f: decision 2 also gates a failed coding start's retry, which keeps its failed state.</summary>
+    [Fact]
+    public Task ACodingRetryIsRefusedWhileExternalToolsAreStored() => WithGitProject(null, async (fixture, loop, store, chat, projectId) =>
+    {
+        var parameters = Start(projectId, "Hello", "coding"); parameters["tokenBudget"] = 1024d;
+        await loop.Invoke(async () =>
+        {
+            Assert.Equal("Insufficient task budget for the conservative request reservation.", (await Record.ExceptionAsync(() => chat.Dispatch("task.start", parameters)))!.Message);
+            store.Execute("INSERT INTO mcp_servers(id,key,data,tools,updated_at) VALUES('listed','listed','{\"enabled\":true}','[{\"name\":\"echo\"}]','2026-01-01T00:00:00.000Z')");
+            var refused = await Record.ExceptionAsync(() => chat.Dispatch("task.start", parameters));
+            Assert.Equal("Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn.", Assert.IsType<NotSupportedException>(refused).Message);
+            Assert.Equal("failed", store.Scalar("SELECT state FROM task_starts"));
+            Assert.Empty(store.Rows("SELECT * FROM provider_requests"));
+            return 0;
+        });
+    });
+
     /// <summary>A coordinated start in a Git project needs the orchestrator; it is refused before any reservation,
     /// intent or worktree.</summary>
     [Fact]

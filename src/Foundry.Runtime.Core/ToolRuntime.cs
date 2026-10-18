@@ -6,6 +6,9 @@ namespace Foundry.Runtime;
 /// <summary>A model's tool call: its provider id, the tool name and the parsed JSON arguments.</summary>
 internal sealed record ToolCall(string Id, string Name, object? Arguments);
 
+/// <summary>An approval's stored state was not the one its writer last saw, so nothing was written (not in TypeScript).</summary>
+internal sealed class ApprovalConflictException() : InvalidOperationException("The approval changed while it was in use; it was not overwritten.");
+
 /// <summary>ProviderToolResult: the redacted, bounded text a tool returns to the model.</summary>
 internal sealed record ToolResult(string Id, string Name, string Content, bool IsError) : IWireModel
 {
@@ -30,7 +33,8 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     private static readonly string[] BrowserTools = ["browser_tabs", "browser_snapshot", "browser_action"];
     private static readonly string[] OrchestrationTools = ["delegate_assignments", "await_children", "integrate_result", "complete_task", "commit_handoff", "submit_handoff"];
 
-    private sealed record Waiter(string TaskId, TaskCompletionSource<bool> Decision, CancellationToken Cancellation);
+    /// <summary>A waiting proposal: its task, its decision, its cancellation, and the proposal as it was saved.</summary>
+    private sealed record Waiter(string TaskId, TaskCompletionSource<bool> Decision, string Proposal, CancellationToken Cancellation);
     private readonly Dictionary<string, Waiter> waiting = new(StringComparer.Ordinal);
 
     /// <summary>The project channel, which the tool runtime owns as TypeScript's does.</summary>
@@ -150,7 +154,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                     approved["result"] = result;
                 }
             }, token);
-            Save(approval, stored); stored = (string)approval["state"]!;
+            SaveOutcome(approval, stored); stored = (string)approval["state"]!;
             var outcome = (Dictionary<string, object?>)approval["result"]!;
             return Result((string)outcome["content"]!, (bool)outcome["isError"]!);
         }
@@ -164,7 +168,9 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                 _ => null,
             };
             var content = redactor.Text(message ?? "Tool failed.");
-            if (approval is not null)
+            // After a conflict this copy is stale and writes nothing more: before its executing state the stored approval
+            // stands, and after it SaveOutcome has already recorded the outcome unknown.
+            if (approval is not null && error is not ApprovalConflictException)
             {
                 var knownUnstarted = error is CommandPreflightException or RepositoryException { Outcome: "none" };
                 var state = approval["state"] as string;
@@ -175,7 +181,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                 var result = new Dictionary<string, object?> { ["content"] = content, ["isError"] = true };
                 if (Present(approval, "command")) result["cleanupVerified"] = false;
                 approval["result"] = result;
-                Save(approval, stored);
+                SaveOutcome(approval, stored);
             }
             if (message is null) throw;
             return Result(content, true);
@@ -200,7 +206,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
         Save(approval);
         var decision = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        waiting[approvalId] = new((string)approval["taskId"]!, decision, token);
+        waiting[approvalId] = new((string)approval["taskId"]!, decision, JsJson.Stringify(approval)!, token);
         using (token.Register(() => cancelled.TrySetResult()))
             await Task.WhenAny(decision.Task, cancelled.Task);
         loop.AssertCurrent();
@@ -220,7 +226,9 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
         if (Present(approval, "rootTaskId")) throw new WorkspaceReadException("This approval belongs to a coordinated task and requires its bound decision.");
         var waiter = waiting.GetValueOrDefault(approvalId);
         if (!Equals(approval.GetValueOrDefault("taskId"), taskId) || !Equals(approval.GetValueOrDefault("nonce"), nonce) || !Equals(approval["state"], "awaiting-approval") || waiter?.TaskId != taskId
-            || waiter.Cancellation.IsCancellationRequested)
+            || waiter.Cancellation.IsCancellationRequested
+            // Not in TypeScript: what the user reviewed (the stored proposal) must still be what would execute.
+            || JsJson.Stringify(approval) != waiter.Proposal)
             throw new WorkspaceReadException("This approval is stale or does not match the active task.");
         approval["state"] = decision == "approve" ? "approved" : "rejected";
         Save(approval); waiting.Remove(approvalId); waiter.Decision.TrySetResult(decision == "approve");
@@ -318,6 +326,25 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     /// none, so a save that changed nothing still leaves the task one such event. Native commits all of it together.
     /// Every approval write goes through here.
     /// </summary>
+    /// <summary>
+    /// Saves an outcome this copy reached. Once its executing state was saved the action may have run, so if the stored
+    /// approval changed meanwhile, the outcome is recorded unknown over that change and the conflict rethrown: the next turn
+    /// waits for reconciliation, and nothing claims the action did not run (P2.3f data review L2). Not in TypeScript.
+    /// </summary>
+    private void SaveOutcome(Dictionary<string, object?> approval, string? expected)
+    {
+        try { Save(approval, expected); }
+        catch (ApprovalConflictException) when (expected == "executing")
+        {
+            approval["state"] = "unknown";
+            var result = new Dictionary<string, object?> { ["content"] = "The approval changed while its action ran, so its outcome is unknown.", ["isError"] = true };
+            if (Present(approval, "command")) result["cleanupVerified"] = false;
+            approval["result"] = result;
+            Save(approval);
+            throw;
+        }
+    }
+
     /// <param name="expected">The stored state this copy last saw, required before it is overwritten (not in TypeScript).</param>
     internal void Save(Dictionary<string, object?> approval, string? expected = null)
     {

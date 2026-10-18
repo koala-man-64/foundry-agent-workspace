@@ -33,7 +33,7 @@ public sealed partial class Store
             var approvalId = (string)approval["id"]!; var state = (string)approval["state"]!;
             var prior = Scalar("SELECT state FROM intents WHERE id=$p0 AND kind='tool.approval'", approvalId) as string;
             // Not in TypeScript: a writer that holds its own copy names the state it last saw, and nothing else is overwritten.
-            if (expected is not null && prior != expected) throw new InvalidOperationException("The approval changed while it was in use; it was not overwritten.");
+            if (expected is not null && prior != expected) throw new ApprovalConflictException();
             Execute("INSERT INTO intents VALUES ($p0,'tool.approval',$p1,$p2) ON CONFLICT(id) DO UPDATE SET data=excluded.data,state=excluded.state", approvalId, JsJson.Stringify(approval), state);
             if (SchemaVersion < 5 || prior == state) return false;
             var data = new Dictionary<string, object?> { ["approvalId"] = approvalId, ["state"] = state };

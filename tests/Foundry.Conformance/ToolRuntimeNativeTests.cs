@@ -126,8 +126,87 @@ public sealed class ToolRuntimeNativeTests
         tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve");
         // The call resumes after this callback, so the row changes first.
         store.Execute("UPDATE intents SET state='revoked' WHERE id=$p0", approval["id"]);
-        Assert.Equal("The approval changed while it was in use; it was not overwritten.", (await Assert.ThrowsAsync<InvalidOperationException>(() => pending)).Message);
+        Assert.Equal("The approval changed while it was in use; it was not overwritten.", (await Assert.ThrowsAsync<ApprovalConflictException>(() => pending)).Message);
         Assert.Equal("revoked", store.Approval((string)approval["id"]!)["state"]);
+        Assert.Equal("hello\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
+    });
+
+    /// <summary>
+    /// Security L-1 of P2.3f: confinement compares folders, not spellings. Another case of the task's own folder qualifies;
+    /// a different folder whose name only case-folds alike (the Kelvin sign folds to k, though NTFS keeps the two apart)
+    /// does not, and neither does any path through a junctioned worktree folder.
+    /// </summary>
+    [Fact]
+    public async Task ConfinementComparesFoldersNotSpellings()
+    {
+        using var fixture = RepositoryFixture.Create("foundry-p2-confinement-");
+        const string Id = "14141414-0000-4000-8000-000000000001";
+        foreach (var folder in new[] { $"work/wt/{Id}", $"wor\u212A/wt/{Id}", $"target/wt/{Id}" }) Directory.CreateDirectory(fixture.Local(folder));
+        await fixture.Junction("linked", "target");
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(() =>
+        {
+            var repositories = new RepositoryService(loop, fixture.Local("work/wt"));
+            Assert.True(repositories.IsOwnWorktree(Id, fixture.Local($"work/wt/{Id}")));
+            Assert.True(repositories.IsOwnWorktree(Id, fixture.Local($"WORK/WT/{Id}")));
+            Assert.False(repositories.IsOwnWorktree(Id, fixture.Local($"wor\u212A/wt/{Id}")));
+            Assert.False(repositories.IsOwnWorktree(Id, fixture.Local($"linked/wt/{Id}")));
+            var junctioned = new RepositoryService(loop, fixture.Local("linked/wt"));
+            Assert.False(junctioned.IsOwnWorktree(Id, fixture.Local($"linked/wt/{Id}")));
+            Assert.False(junctioned.IsOwnWorktree(Id, fixture.Local($"target/wt/{Id}")));
+            return Task.FromResult(0);
+        });
+    }
+
+    /// <summary>Security L-2 and data L1 of P2.3f: a proposal changed while it waits is left as it was changed when the wait
+    /// is cancelled; the stale copy writes nothing.</summary>
+    [Fact]
+    public Task AConflictWhileWaitingLeavesTheChangedApproval() => Run(async (fixture, store, _, tools) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        using var cancellation = new CancellationTokenSource();
+        var pending = tools.Execute(task, new ToolCall("call", "write_file", new Dictionary<string, object?> { ["path"] = "README.md", ["expectedHash"] = Readme, ["content"] = "after\n" }), cancellation.Token);
+        var approval = await Proposal(store, pending);
+        store.Execute("UPDATE intents SET state='rejected' WHERE id=$p0", approval["id"]);
+        await cancellation.CancelAsync();
+        await Assert.ThrowsAsync<ApprovalConflictException>(() => pending);
+        Assert.Equal("rejected", store.Approval((string)approval["id"]!)["state"]);
+        Assert.Equal("hello\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
+    });
+
+    /// <summary>Data L2 of P2.3f: once the executing state is saved the action may have run, so a change to the stored
+    /// approval then records the outcome unknown over it, and the next turn waits for reconciliation.</summary>
+    [Fact]
+    public Task AConflictAfterTheActionRanRecordsItsOutcomeUnknown() => Run(async (fixture, store, _, tools, repositories) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        string? approvalId = null;
+        repositories.EditStage = stage => { if (stage == "written") store.Execute("UPDATE intents SET state='revoked' WHERE id=$p0", approvalId); };
+        var pending = tools.Execute(task, new ToolCall("call", "write_file", new Dictionary<string, object?> { ["path"] = "README.md", ["expectedHash"] = Readme, ["content"] = "after\n" }), CancellationToken.None);
+        var approval = await Proposal(store, pending); approvalId = (string)approval["id"]!;
+        tools.Decide((string)task["id"]!, approvalId, (string)approval["nonce"]!, "approve");
+        await Assert.ThrowsAsync<ApprovalConflictException>(() => pending);
+        var stored = store.Approval(approvalId);
+        Assert.Equal("unknown", stored["state"]);
+        Assert.Equal("The approval changed while its action ran, so its outcome is unknown.", ((Dictionary<string, object?>)stored["result"]!)["content"]);
+        Assert.True(store.HasBlockingUnknown((string)task["id"]!));
+        Assert.Equal("after\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
+    });
+
+    /// <summary>Security I-1 of P2.3f: a decision applies only while the stored proposal, which the user reviews, is the one
+    /// that would run. Not in TypeScript.</summary>
+    [Fact]
+    public Task ADecisionOnAProposalChangedSinceItWasSavedIsRefused() => Run(async (fixture, store, _, tools) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        using var cancellation = new CancellationTokenSource();
+        var pending = tools.Execute(task, new ToolCall("call", "write_file", new Dictionary<string, object?> { ["path"] = "README.md", ["expectedHash"] = Readme, ["content"] = "after\n" }), cancellation.Token);
+        var approval = await Proposal(store, pending);
+        store.Execute("UPDATE intents SET data=json_set(data,'$.after','benign') WHERE id=$p0", approval["id"]);
+        Assert.Equal("This approval is stale or does not match the active task.",
+            Assert.Throws<WorkspaceReadException>(() => tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve")).Message);
+        await cancellation.CancelAsync();
+        Assert.Equal("Action cancelled before execution.", (await pending).Content);
         Assert.Equal("hello\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
     });
 
