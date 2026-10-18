@@ -1695,6 +1695,66 @@
         ],
         "response": {
           "body": [
+            "event: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"type\":{\"kind\":\"x\"},\"id\":\"o1\"}}\n\n",
+            "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":{\"kind\":\"x\"},\"id\":\"o1\"}]}}\n\n"
+          ]
+        },
+        "credential": "{credential}"
+      },
+      "expected": {
+        "requests": [
+          {
+            "url": "https://sample.openai.azure.com/openai/v1/responses",
+            "method": "POST",
+            "headers": {
+              "accept": "text/event-stream",
+              "content-type": "application/json",
+              "api-key": "{credential}"
+            },
+            "body": "{\"model\":\"test-model\",\"input\":[{\"role\":\"user\",\"content\":\"hello\"}],\"stream\":true,\"store\":false,\"include\":[\"reasoning.encrypted_content\"],\"max_output_tokens\":256,\"tools\":[{\"type\":\"function\",\"name\":\"read_file\",\"description\":\"Read a file.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false},\"strict\":false},{\"type\":\"function\",\"name\":\"fixture_tool\",\"description\":\"Fixture.\",\"parameters\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false},\"strict\":false}]}",
+            "redirect": "error"
+          }
+        ],
+        "events": [],
+        "error": {
+          "name": "Error",
+          "message": "Responses completion output did not match an output item event."
+        }
+      }
+    },
+    {
+      "name": "provider-streams:21",
+      "input": {
+        "kind": "responses",
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "fixture_tool",
+            "description": "Fixture.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        ],
+        "response": {
+          "body": [
             "event: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"call-1\",\"name\":\"read_file\",\"arguments\":\"{}\"}}\n\n",
             "event: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"call-1\",\"name\":\"fixture_tool\",\"arguments\":\"{}\"}}\n\n",
             "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"call_id\":\"call-1\",\"name\":\"read_file\",\"arguments\":\"{}\"},{\"type\":\"function_call\",\"call_id\":\"call-1\",\"name\":\"fixture_tool\",\"arguments\":\"{}\"}]}}\n\n"
@@ -1724,7 +1784,7 @@
       }
     },
     {
-      "name": "provider-streams:21",
+      "name": "provider-streams:22",
       "input": {
         "kind": "responses",
         "tools": [
@@ -1784,7 +1844,7 @@
       }
     },
     {
-      "name": "provider-streams:22",
+      "name": "provider-streams:23",
       "input": {
         "kind": "responses",
         "response": {
@@ -1817,7 +1877,7 @@
       }
     },
     {
-      "name": "provider-streams:23",
+      "name": "provider-streams:24",
       "input": {
         "kind": "responses",
         "tools": [
@@ -1876,7 +1936,7 @@
       }
     },
     {
-      "name": "provider-streams:24",
+      "name": "provider-streams:25",
       "input": {
         "kind": "responses",
         "tools": [
@@ -1935,7 +1995,7 @@
       }
     },
     {
-      "name": "provider-streams:25",
+      "name": "provider-streams:26",
       "input": {
         "kind": "responses",
         "tools": [
@@ -1994,7 +2054,7 @@
       }
     },
     {
-      "name": "provider-streams:26",
+      "name": "provider-streams:27",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2053,7 +2113,7 @@
       }
     },
     {
-      "name": "provider-streams:27",
+      "name": "provider-streams:28",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2149,7 +2209,7 @@
       }
     },
     {
-      "name": "provider-streams:28",
+      "name": "provider-streams:29",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2241,7 +2301,7 @@
       }
     },
     {
-      "name": "provider-streams:29",
+      "name": "provider-streams:30",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2339,7 +2399,7 @@
       }
     },
     {
-      "name": "provider-streams:30",
+      "name": "provider-streams:31",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2399,7 +2459,7 @@
       }
     },
     {
-      "name": "provider-streams:31",
+      "name": "provider-streams:32",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2459,7 +2519,7 @@
       }
     },
     {
-      "name": "provider-streams:32",
+      "name": "provider-streams:33",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2519,7 +2579,7 @@
       }
     },
     {
-      "name": "provider-streams:33",
+      "name": "provider-streams:34",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2579,7 +2639,7 @@
       }
     },
     {
-      "name": "provider-streams:34",
+      "name": "provider-streams:35",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2646,7 +2706,7 @@
       }
     },
     {
-      "name": "provider-streams:35",
+      "name": "provider-streams:36",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2713,7 +2773,7 @@
       }
     },
     {
-      "name": "provider-streams:36",
+      "name": "provider-streams:37",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2780,7 +2840,7 @@
       }
     },
     {
-      "name": "provider-streams:37",
+      "name": "provider-streams:38",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2847,7 +2907,7 @@
       }
     },
     {
-      "name": "provider-streams:38",
+      "name": "provider-streams:39",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2919,7 +2979,7 @@
       }
     },
     {
-      "name": "provider-streams:39",
+      "name": "provider-streams:40",
       "input": {
         "kind": "responses",
         "tools": [
@@ -2991,7 +3051,7 @@
       }
     },
     {
-      "name": "provider-streams:40",
+      "name": "provider-streams:41",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3050,7 +3110,7 @@
       }
     },
     {
-      "name": "provider-streams:41",
+      "name": "provider-streams:42",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3109,7 +3169,7 @@
       }
     },
     {
-      "name": "provider-streams:42",
+      "name": "provider-streams:43",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3168,7 +3228,7 @@
       }
     },
     {
-      "name": "provider-streams:43",
+      "name": "provider-streams:44",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3227,7 +3287,7 @@
       }
     },
     {
-      "name": "provider-streams:44",
+      "name": "provider-streams:45",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3299,7 +3359,7 @@
       }
     },
     {
-      "name": "provider-streams:45",
+      "name": "provider-streams:46",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3366,7 +3426,7 @@
       }
     },
     {
-      "name": "provider-streams:46",
+      "name": "provider-streams:47",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3425,7 +3485,7 @@
       }
     },
     {
-      "name": "provider-streams:47",
+      "name": "provider-streams:48",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3490,7 +3550,7 @@
       }
     },
     {
-      "name": "provider-streams:48",
+      "name": "provider-streams:49",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3561,7 +3621,7 @@
       }
     },
     {
-      "name": "provider-streams:49",
+      "name": "provider-streams:50",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3620,7 +3680,7 @@
       }
     },
     {
-      "name": "provider-streams:50",
+      "name": "provider-streams:51",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3680,7 +3740,7 @@
       }
     },
     {
-      "name": "provider-streams:51",
+      "name": "provider-streams:52",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3757,7 +3817,7 @@
       }
     },
     {
-      "name": "provider-streams:52",
+      "name": "provider-streams:53",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3834,7 +3894,7 @@
       }
     },
     {
-      "name": "provider-streams:53",
+      "name": "provider-streams:54",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3893,7 +3953,7 @@
       }
     },
     {
-      "name": "provider-streams:54",
+      "name": "provider-streams:55",
       "input": {
         "kind": "responses",
         "tools": [
@@ -3952,7 +4012,7 @@
       }
     },
     {
-      "name": "provider-streams:55",
+      "name": "provider-streams:56",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4016,7 +4076,7 @@
       }
     },
     {
-      "name": "provider-streams:56",
+      "name": "provider-streams:57",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4075,7 +4135,7 @@
       }
     },
     {
-      "name": "provider-streams:57",
+      "name": "provider-streams:58",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4139,7 +4199,7 @@
       }
     },
     {
-      "name": "provider-streams:58",
+      "name": "provider-streams:59",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4196,7 +4256,7 @@
       }
     },
     {
-      "name": "provider-streams:59",
+      "name": "provider-streams:60",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4256,7 +4316,7 @@
       }
     },
     {
-      "name": "provider-streams:60",
+      "name": "provider-streams:61",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4316,7 +4376,7 @@
       }
     },
     {
-      "name": "provider-streams:61",
+      "name": "provider-streams:62",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4376,7 +4436,7 @@
       }
     },
     {
-      "name": "provider-streams:62",
+      "name": "provider-streams:63",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4443,7 +4503,7 @@
       }
     },
     {
-      "name": "provider-streams:63",
+      "name": "provider-streams:64",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4509,7 +4569,7 @@
       }
     },
     {
-      "name": "provider-streams:64",
+      "name": "provider-streams:65",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4574,7 +4634,7 @@
       }
     },
     {
-      "name": "provider-streams:65",
+      "name": "provider-streams:66",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4646,7 +4706,7 @@
       }
     },
     {
-      "name": "provider-streams:66",
+      "name": "provider-streams:67",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4723,7 +4783,7 @@
       }
     },
     {
-      "name": "provider-streams:67",
+      "name": "provider-streams:68",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4800,7 +4860,7 @@
       }
     },
     {
-      "name": "provider-streams:68",
+      "name": "provider-streams:69",
       "input": {
         "kind": "responses",
         "tools": [
@@ -4950,7 +5010,7 @@
       }
     },
     {
-      "name": "provider-streams:69",
+      "name": "provider-streams:70",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5057,7 +5117,7 @@
       }
     },
     {
-      "name": "provider-streams:70",
+      "name": "provider-streams:71",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5161,7 +5221,7 @@
       }
     },
     {
-      "name": "provider-streams:71",
+      "name": "provider-streams:72",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5260,7 +5320,7 @@
       }
     },
     {
-      "name": "provider-streams:72",
+      "name": "provider-streams:73",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5351,7 +5411,7 @@
       }
     },
     {
-      "name": "provider-streams:73",
+      "name": "provider-streams:74",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5441,7 +5501,7 @@
       }
     },
     {
-      "name": "provider-streams:74",
+      "name": "provider-streams:75",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5526,7 +5586,7 @@
       }
     },
     {
-      "name": "provider-streams:75",
+      "name": "provider-streams:76",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5594,7 +5654,7 @@
       }
     },
     {
-      "name": "provider-streams:76",
+      "name": "provider-streams:77",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5679,7 +5739,7 @@
       }
     },
     {
-      "name": "provider-streams:77",
+      "name": "provider-streams:78",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5764,7 +5824,7 @@
       }
     },
     {
-      "name": "provider-streams:78",
+      "name": "provider-streams:79",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5849,7 +5909,7 @@
       }
     },
     {
-      "name": "provider-streams:79",
+      "name": "provider-streams:80",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -5934,7 +5994,7 @@
       }
     },
     {
-      "name": "provider-streams:80",
+      "name": "provider-streams:81",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6019,7 +6079,7 @@
       }
     },
     {
-      "name": "provider-streams:81",
+      "name": "provider-streams:82",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6099,7 +6159,7 @@
       }
     },
     {
-      "name": "provider-streams:82",
+      "name": "provider-streams:83",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6184,7 +6244,7 @@
       }
     },
     {
-      "name": "provider-streams:83",
+      "name": "provider-streams:84",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6286,7 +6346,7 @@
       }
     },
     {
-      "name": "provider-streams:84",
+      "name": "provider-streams:85",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6424,7 +6484,7 @@
       }
     },
     {
-      "name": "provider-streams:85",
+      "name": "provider-streams:86",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6590,7 +6650,7 @@
       }
     },
     {
-      "name": "provider-streams:86",
+      "name": "provider-streams:87",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6741,7 +6801,7 @@
       }
     },
     {
-      "name": "provider-streams:87",
+      "name": "provider-streams:88",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6877,7 +6937,7 @@
       }
     },
     {
-      "name": "provider-streams:88",
+      "name": "provider-streams:89",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -6979,7 +7039,7 @@
       }
     },
     {
-      "name": "provider-streams:89",
+      "name": "provider-streams:90",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7087,7 +7147,7 @@
       }
     },
     {
-      "name": "provider-streams:90",
+      "name": "provider-streams:91",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7150,7 +7210,7 @@
       }
     },
     {
-      "name": "provider-streams:91",
+      "name": "provider-streams:92",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7213,7 +7273,7 @@
       }
     },
     {
-      "name": "provider-streams:92",
+      "name": "provider-streams:93",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7276,7 +7336,7 @@
       }
     },
     {
-      "name": "provider-streams:93",
+      "name": "provider-streams:94",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7340,7 +7400,7 @@
       }
     },
     {
-      "name": "provider-streams:94",
+      "name": "provider-streams:95",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7455,7 +7515,7 @@
       }
     },
     {
-      "name": "provider-streams:95",
+      "name": "provider-streams:96",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7544,7 +7604,7 @@
       }
     },
     {
-      "name": "provider-streams:96",
+      "name": "provider-streams:97",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7634,7 +7694,7 @@
       }
     },
     {
-      "name": "provider-streams:97",
+      "name": "provider-streams:98",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7703,7 +7763,7 @@
       }
     },
     {
-      "name": "provider-streams:98",
+      "name": "provider-streams:99",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7768,7 +7828,7 @@
       }
     },
     {
-      "name": "provider-streams:99",
+      "name": "provider-streams:100",
       "input": {
         "kind": "anthropic",
         "response": {
@@ -7806,7 +7866,7 @@
       }
     },
     {
-      "name": "provider-streams:100",
+      "name": "provider-streams:101",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7871,7 +7931,7 @@
       }
     },
     {
-      "name": "provider-streams:101",
+      "name": "provider-streams:102",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7934,7 +7994,7 @@
       }
     },
     {
-      "name": "provider-streams:102",
+      "name": "provider-streams:103",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -7995,7 +8055,7 @@
       }
     },
     {
-      "name": "provider-streams:103",
+      "name": "provider-streams:104",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8055,7 +8115,7 @@
       }
     },
     {
-      "name": "provider-streams:104",
+      "name": "provider-streams:105",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8115,7 +8175,7 @@
       }
     },
     {
-      "name": "provider-streams:105",
+      "name": "provider-streams:106",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8175,66 +8235,6 @@
       }
     },
     {
-      "name": "provider-streams:106",
-      "input": {
-        "kind": "anthropic",
-        "tools": [
-          {
-            "name": "read_file",
-            "description": "Read a file.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "path"
-              ],
-              "additionalProperties": false
-            }
-          },
-          {
-            "name": "fixture_tool",
-            "description": "Fixture.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
-            }
-          }
-        ],
-        "response": {
-          "body": [
-            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"orphan\"}}\n\n"
-          ]
-        },
-        "credential": "{credential}"
-      },
-      "expected": {
-        "requests": [
-          {
-            "url": "https://sample.openai.azure.com/anthropic/v1/messages",
-            "method": "POST",
-            "headers": {
-              "accept": "text/event-stream",
-              "content-type": "application/json",
-              "api-key": "{credential}",
-              "anthropic-version": "2023-06-01"
-            },
-            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"stream\":true,\"max_tokens\":256,\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture.\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
-            "redirect": "error"
-          }
-        ],
-        "events": [],
-        "error": {
-          "name": "Error",
-          "message": "Invalid Anthropic content delta."
-        }
-      }
-    },
-    {
       "name": "provider-streams:107",
       "input": {
         "kind": "anthropic",
@@ -8267,8 +8267,7 @@
         ],
         "response": {
           "body": [
-            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
-            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":\"0\",\"delta\":{\"type\":\"text_delta\",\"text\":\"x\"}}\n\n"
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"orphan\"}}\n\n"
           ]
         },
         "credential": "{credential}"
@@ -8329,7 +8328,7 @@
         "response": {
           "body": [
             "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
-            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":\"not a record\"}\n\n"
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":\"0\",\"delta\":{\"type\":\"text_delta\",\"text\":\"x\"}}\n\n"
           ]
         },
         "credential": "{credential}"
@@ -8390,7 +8389,7 @@
         "response": {
           "body": [
             "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
-            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":3}}\n\n"
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":\"not a record\"}\n\n"
           ]
         },
         "credential": "{credential}"
@@ -8451,7 +8450,7 @@
         "response": {
           "body": [
             "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
-            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"citations_delta\",\"citation\":{}}}\n\n"
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":3}}\n\n"
           ]
         },
         "credential": "{credential}"
@@ -8480,6 +8479,67 @@
     },
     {
       "name": "provider-streams:111",
+      "input": {
+        "kind": "anthropic",
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "fixture_tool",
+            "description": "Fixture.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        ],
+        "response": {
+          "body": [
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"citations_delta\",\"citation\":{}}}\n\n"
+          ]
+        },
+        "credential": "{credential}"
+      },
+      "expected": {
+        "requests": [
+          {
+            "url": "https://sample.openai.azure.com/anthropic/v1/messages",
+            "method": "POST",
+            "headers": {
+              "accept": "text/event-stream",
+              "content-type": "application/json",
+              "api-key": "{credential}",
+              "anthropic-version": "2023-06-01"
+            },
+            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"stream\":true,\"max_tokens\":256,\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture.\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
+            "redirect": "error"
+          }
+        ],
+        "events": [],
+        "error": {
+          "name": "Error",
+          "message": "Invalid Anthropic content delta."
+        }
+      }
+    },
+    {
+      "name": "provider-streams:112",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8571,7 +8631,7 @@
       }
     },
     {
-      "name": "provider-streams:112",
+      "name": "provider-streams:113",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8662,7 +8722,7 @@
       }
     },
     {
-      "name": "provider-streams:113",
+      "name": "provider-streams:114",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8753,7 +8813,7 @@
       }
     },
     {
-      "name": "provider-streams:114",
+      "name": "provider-streams:115",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8815,7 +8875,7 @@
       }
     },
     {
-      "name": "provider-streams:115",
+      "name": "provider-streams:116",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8875,7 +8935,7 @@
       }
     },
     {
-      "name": "provider-streams:116",
+      "name": "provider-streams:117",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8936,7 +8996,7 @@
       }
     },
     {
-      "name": "provider-streams:117",
+      "name": "provider-streams:118",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -8998,7 +9058,7 @@
       }
     },
     {
-      "name": "provider-streams:118",
+      "name": "provider-streams:119",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9059,7 +9119,7 @@
       }
     },
     {
-      "name": "provider-streams:119",
+      "name": "provider-streams:120",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9132,7 +9192,7 @@
       }
     },
     {
-      "name": "provider-streams:120",
+      "name": "provider-streams:121",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9193,7 +9253,7 @@
       }
     },
     {
-      "name": "provider-streams:121",
+      "name": "provider-streams:122",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9255,7 +9315,7 @@
       }
     },
     {
-      "name": "provider-streams:122",
+      "name": "provider-streams:123",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9316,7 +9376,7 @@
       }
     },
     {
-      "name": "provider-streams:123",
+      "name": "provider-streams:124",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9378,7 +9438,69 @@
       }
     },
     {
-      "name": "provider-streams:124",
+      "name": "provider-streams:125",
+      "input": {
+        "kind": "anthropic",
+        "tools": [
+          {
+            "name": "read_file",
+            "description": "Read a file.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "fixture_tool",
+            "description": "Fixture.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        ],
+        "response": {
+          "body": [
+            "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}\n\n",
+            "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_tokens\"},\"usage\":{\"output_tokens\":3}}\n\n",
+            "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+          ]
+        },
+        "credential": "{credential}"
+      },
+      "expected": {
+        "requests": [
+          {
+            "url": "https://sample.openai.azure.com/anthropic/v1/messages",
+            "method": "POST",
+            "headers": {
+              "accept": "text/event-stream",
+              "content-type": "application/json",
+              "api-key": "{credential}",
+              "anthropic-version": "2023-06-01"
+            },
+            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"stream\":true,\"max_tokens\":256,\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture.\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
+            "redirect": "error"
+          }
+        ],
+        "events": [],
+        "error": {
+          "name": "Error",
+          "message": "Anthropic completion ended with max_tokens."
+        }
+      }
+    },
+    {
+      "name": "provider-streams:126",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9440,7 +9562,7 @@
       }
     },
     {
-      "name": "provider-streams:125",
+      "name": "provider-streams:127",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9500,7 +9622,7 @@
       }
     },
     {
-      "name": "provider-streams:126",
+      "name": "provider-streams:128",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9560,7 +9682,7 @@
       }
     },
     {
-      "name": "provider-streams:127",
+      "name": "provider-streams:129",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9653,7 +9775,7 @@
       }
     },
     {
-      "name": "provider-streams:128",
+      "name": "provider-streams:130",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9715,7 +9837,7 @@
       }
     },
     {
-      "name": "provider-streams:129",
+      "name": "provider-streams:131",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9777,7 +9899,7 @@
       }
     },
     {
-      "name": "provider-streams:130",
+      "name": "provider-streams:132",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9844,7 +9966,7 @@
       }
     },
     {
-      "name": "provider-streams:131",
+      "name": "provider-streams:133",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9917,7 +10039,7 @@
       }
     },
     {
-      "name": "provider-streams:132",
+      "name": "provider-streams:134",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -9997,7 +10119,7 @@
       }
     },
     {
-      "name": "provider-streams:133",
+      "name": "provider-streams:135",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10057,7 +10179,7 @@
       }
     },
     {
-      "name": "provider-streams:134",
+      "name": "provider-streams:136",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10118,7 +10240,7 @@
       }
     },
     {
-      "name": "provider-streams:135",
+      "name": "provider-streams:137",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10176,7 +10298,7 @@
       }
     },
     {
-      "name": "provider-streams:136",
+      "name": "provider-streams:138",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10267,7 +10389,7 @@
       }
     },
     {
-      "name": "provider-streams:137",
+      "name": "provider-streams:139",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10328,7 +10450,7 @@
       }
     },
     {
-      "name": "provider-streams:138",
+      "name": "provider-streams:140",
       "input": {
         "kind": "chat-completions",
         "tools": [
@@ -10430,7 +10552,7 @@
       }
     },
     {
-      "name": "provider-streams:139",
+      "name": "provider-streams:141",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10500,7 +10622,7 @@
       }
     },
     {
-      "name": "provider-streams:140",
+      "name": "provider-streams:142",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10570,7 +10692,7 @@
       }
     },
     {
-      "name": "provider-streams:141",
+      "name": "provider-streams:143",
       "input": {
         "kind": "anthropic",
         "tools": [
@@ -10637,7 +10759,7 @@
       }
     },
     {
-      "name": "provider-streams:142",
+      "name": "provider-streams:144",
       "input": {
         "kind": "anthropic",
         "tools": [

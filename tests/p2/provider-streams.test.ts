@@ -51,6 +51,8 @@ function responsesCases(): StreamCase[] {
     responses([item({ type: 'message', id: 'm1' }), completed({ output: [{ type: 'message', id: 'm1', status: 'completed' }] })]),
     responses([item({ type: 'message', id: 7 }), completed({ output: [{ type: 'message', id: 7 }] })]),
     responses([item(reasoning), completed({ output: [{ ...reasoning, type: 'other' }] })]),
+    // JavaScript's === never matches two distinct objects, so an object type matches nothing.
+    responses([item({ type: { kind: 'x' }, id: 'o1' }), completed({ output: [{ type: { kind: 'x' }, id: 'o1' }] })]),
     responses([item(fn('call-1', 'read_file', '{}')), item(fn('call-1', 'fixture_tool', '{}')), completed({ output: [fn('call-1', 'read_file', '{}'), fn('call-1', 'fixture_tool', '{}')] })]),
     responses([item(fn('call-1', 'not_advertised', '{}')), completed({ output: [fn('call-1', 'not_advertised', '{}')] })]),
     responses([item(fn('call-1', 'read_file', '{}')), completed({ output: [fn('call-1', 'read_file', '{}')] })], { tools: undefined }),
@@ -173,6 +175,7 @@ function anthropicCases(): StreamCase[] {
     anthropic([a('message_delta', { delta: 'x' }), stopReason('end_turn'), end]),
     anthropic([stopReason(null), end]),
     anthropic([stopReason('stop_sequence'), stopReason('end_turn'), end]),
+    anthropic([stopReason('end_turn'), stopReason('max_tokens'), end]),
     anthropic([stopReason('end_turn'), stopReason('tool_use'), end]),
     anthropic([stopReason('end_turn')]),
     anthropic([end]),
