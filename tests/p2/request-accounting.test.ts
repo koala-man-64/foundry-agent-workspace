@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { estimateContext, estimateRequest, reserveRequest } from '../../packages/runtime/src/agent-loop';
 import { measuredUsage } from '../../packages/runtime/src/usage-accounting';
 import type { ProviderRequest, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 type Input = { operation: string; value: Record<string, unknown>; task?: Record<string, unknown> };
 const inputs: Input[] = [];
@@ -39,6 +40,6 @@ it('pins budget byte counts, strict bounds and conservative measurement validati
     } catch (error) { if (!(error instanceof Error)) throw error; expected = { error: error.message }; }
     return { name: `${input.operation}:${index}`, ...input, expected };
   });
-  if (process.env.P2_WRITE_ACCOUNTING === '1') writeFileSync('tests/p2/request-accounting-vectors.json', JSON.stringify(cases, null, 2) + '\n');
+  if (regenerating('P2_WRITE_ACCOUNTING')) writeFileSync('tests/p2/request-accounting-vectors.json', JSON.stringify(cases, null, 2) + '\n');
   expect(JSON.parse(readFileSync('tests/p2/request-accounting-vectors.json', 'utf8'))).toEqual(JSON.parse(JSON.stringify(cases)));
 });

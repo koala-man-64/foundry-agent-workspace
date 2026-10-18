@@ -6,6 +6,8 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { Store } from '../../packages/runtime/src/store';
 import { build, committed, file, git, normalize, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // project.add outcomes of the shipping TypeScript RuntimeService over disposable folders. The C# conformance suite
 // (ProjectAdmissionTests) rebuilds every tree, dispatches the same calls through DevelopmentChat and must reproduce each
@@ -86,8 +88,8 @@ async function outcomes(item: Case): Promise<{ calls: Outcome[]; projects: unkno
     return { calls, projects, events };
   } finally {
     await service.shutdown();
-    for (const link of links) fs.rmSync(link);
-    fs.rmSync(scratch, { recursive: true, force: true });
+    for (const link of links) fs.unlinkSync(link);
+    removeTree(scratch);
   }
 }
 
@@ -106,6 +108,6 @@ it('pins project.add outcomes to the shipping Node authority without ordinary re
     oracle: { sources: ['packages/runtime/src/service.ts', 'packages/runtime/src/repository.ts', 'packages/runtime/src/store.ts', 'packages/runtime/src/network-path.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
     cases: expected,
   };
-  if (process.env.P2_WRITE_PROJECT_ADMISSION === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_PROJECT_ADMISSION')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 300_000);

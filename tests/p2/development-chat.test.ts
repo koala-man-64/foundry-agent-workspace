@@ -6,6 +6,7 @@ import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import type { RpcMethod, Task, WorkspaceEvent } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const ids = vi.hoisted(() => ({ next: 1 }));
 vi.mock('node:crypto', async original => ({ ...await original<typeof import('node:crypto')>(), randomUUID: () => `77777777-0000-4000-8000-${String(ids.next++).padStart(12, '0')}` as ReturnType<typeof import('node:crypto').randomUUID> }));
@@ -40,7 +41,7 @@ it('pins actual offline service chat execution, reads, idempotence and failures'
     await act('task.cancel', { taskId: task.id });
     await act('task.start', { ...parameters, requestId: '77777777-0000-4000-8000-999999999998', tokenBudget: 1024 });
     const corpus = { timestamp, steps };
-    if (process.env.P2_WRITE_EXECUTION === '1') writeFileSync('tests/p2/development-chat-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_EXECUTION')) writeFileSync('tests/p2/development-chat-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/development-chat-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { await service.shutdown(); vi.useRealTimers(); rmSync(scratch, { recursive: true, force: true }); }
 });

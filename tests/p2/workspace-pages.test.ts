@@ -7,6 +7,7 @@ import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import type { ModelProfile, Task } from '../../packages/protocol/src/index';
 import type { TaskPage, WorkspaceMethod } from '../../packages/protocol/src/workspace';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `66666666-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -104,7 +105,7 @@ it('pins read-only workspace pages, task cursors and legacy/runtime event projec
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { timestamp, tasks: allTasks, profiles, eventRows, cases };
-    if (process.env.P2_WRITE_PAGES === '1') writeFileSync('tests/p2/workspace-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_PAGES')) writeFileSync('tests/p2/workspace-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/workspace-page-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

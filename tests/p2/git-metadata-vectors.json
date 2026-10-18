@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "oracle": {
-    "nodeVersion": "v24.14.0",
+    "nodeVersion": "v24.21.0",
     "sources": [
       {
         "path": "packages/runtime/src/repository.ts",

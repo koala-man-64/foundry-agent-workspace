@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import type { Task, Message } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const root = '11111111-0000-4000-8000-000000000001';
@@ -67,7 +68,7 @@ it('pins task/message rows, projections and lifecycle events for every disposabl
         } finally { store.close(); }
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
-    if (process.env.P2_WRITE_TASKS === '1') writeFileSync('tests/p2/task-store-vectors.json', JSON.stringify(cases, null, 2) + '\n');
+    if (regenerating('P2_WRITE_TASKS')) writeFileSync('tests/p2/task-store-vectors.json', JSON.stringify(cases, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/task-store-vectors.json', 'utf8'))).toEqual(cases);
   } finally { vi.useRealTimers(); }
 });

@@ -7,6 +7,8 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, git, normalize, runGit, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // task.commit, task.push, task.reconcilePublication and task.retire outcomes of the shipping TypeScript RuntimeService:
 // results and refusals, every persisted task, intent and event, and the state of the project, its task branches and a
@@ -117,7 +119,7 @@ async function outcomes(item: Case): Promise<unknown> {
     return { calls, ...(stable(normalize({ rows, git: repositories, worktree }, scratch), identities) as object) };
   } finally {
     await service.shutdown();
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -132,6 +134,6 @@ it('pins Git publication and retirement outcomes to the shipping Node authority 
     cases: expected,
   };
   const target = 'tests/p2/task-publication-vectors.json';
-  if (process.env.P2_WRITE_TASK_PUBLICATION === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_TASK_PUBLICATION')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 600_000);

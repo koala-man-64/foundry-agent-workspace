@@ -10,6 +10,7 @@ import { profileFingerprint } from '../../packages/runtime/src/profile-fingerpri
 import { AutomationService } from '../../packages/runtime/src/automation';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import type { RpcMethod, WorkspaceEvent } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const stamp = '2026-01-02T03:04:05.678Z';
 const projectId = '17171717-0000-4000-8000-000000000001';
@@ -56,7 +57,7 @@ it('pins saved-project and preference service admission across disposable eras',
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     }
     const corpus = { stamp, project, preferences, cases };
-    if (process.env.P2_WRITE_ADMISSION === '1') writeFileSync('tests/p2/service-admission-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_ADMISSION')) writeFileSync('tests/p2/service-admission-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/service-admission-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });
