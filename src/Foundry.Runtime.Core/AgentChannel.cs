@@ -40,7 +40,9 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     /// time with the progress kept after each batch, so a long history is never held in memory at once. It reads committed
     /// rows only: while a transaction is open it waits, so a message that an enclosing transaction later rolls back never
     /// enters it (TypeScript's index would keep that sequence). A row it cannot read is passed over, so one damaged row
-    /// never stops the channel; TypeScript's index fails on malformed JSON.
+    /// never stops the channel; TypeScript's index fails on malformed JSON. Inside a transaction the index is therefore
+    /// not current, which is why <see cref="Send"/> refuses to run inside one. The scan reads the primary key's range (the
+    /// unary plus keeps SQLite from sorting each batch through the type index).
     /// </summary>
     private void RefreshIndex()
     {
@@ -49,7 +51,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         var maximum = (long)store.Scalar("SELECT COALESCE(MAX(sequence),0) FROM events")!;
         while (indexedThrough < maximum)
         {
-            var rows = store.Rows("SELECT sequence,type,task_id,data,created_at FROM events WHERE sequence>$p0 AND sequence<=$p1 AND type IN ($p2,$p3) ORDER BY sequence LIMIT $p4",
+            var rows = store.Rows("SELECT sequence,type,task_id,data,created_at FROM events WHERE sequence>$p0 AND sequence<=$p1 AND +type IN ($p2,$p3) ORDER BY sequence LIMIT $p4",
                 indexedThrough, maximum, Message, Receipt, ScanBatch);
             foreach (var row in rows) Index(row);
             indexedThrough = rows.Count < ScanBatch ? maximum : (long)rows[^1]["sequence"]!;
@@ -57,7 +59,8 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     }
 
     /// <summary>One event row into the index, if every field the channel reads has its type: a receipt's finite cursor, or a
-    /// message's project, actor, content, sender title and (absent, null or text) recipient.</summary>
+    /// message's project, actor, content, sender title, (absent, null or text) recipient and (absent or text) request id.
+    /// TypeScript only ever writes text there; a nested request id would otherwise be serialized recursively.</summary>
     private void Index(Dictionary<string, object?> row)
     {
         if (row["task_id"] is not string taskId || row["data"] is not string json || row["created_at"] is not string createdAt) return;
@@ -75,7 +78,8 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
             return;
         }
         if (data.GetValueOrDefault("project") is not string project || data.GetValueOrDefault("actor") is not string actor || data.GetValueOrDefault("content") is not string
-            || data.GetValueOrDefault("senderTitle") is not string || data.GetValueOrDefault("recipientTaskId") is not (null or string)) return;
+            || data.GetValueOrDefault("senderTitle") is not string || data.GetValueOrDefault("recipientTaskId") is not (null or string)
+            || data.GetValueOrDefault("callId", Undefined.Value) is not (Undefined or string)) return;
         if (!projects.TryGetValue(project, out var messages)) projects[project] = messages = [];
         messages.Add(new(sequence, taskId, data.GetValueOrDefault("recipientTaskId") as string, actor, createdAt));
         requests[RequestKey(taskId, actor, data.GetValueOrDefault("callId", Undefined.Value))] = sequence;
@@ -241,6 +245,8 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     internal Dictionary<string, object?> Send(string taskId, string callId, object? input, string actor)
     {
         loop.AssertCurrent();
+        // The index answers idempotency and the message limit, and it is not current inside a transaction.
+        if (store.InTransaction) throw new InvalidOperationException("Channel sends run outside any enclosing transaction.");
         var arguments = ToolDefinitions.Parse("send_agent_message", input);
         if (callId.Length is 0 or > 200) throw new WorkspaceReadException("Invalid message request identity.");
         var serialized = JsJson.Stringify(arguments)!;

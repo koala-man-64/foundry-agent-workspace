@@ -207,6 +207,9 @@ public sealed partial class AgentChannelTests
             "{\"recipientTaskId\":null,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":\"c\",\"senderTitle\":\"t\"}",
             "{\"recipientTaskId\":5,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":\"c\",\"actor\":\"user\",\"senderTitle\":\"t\"}",
             "{\"recipientTaskId\":null,\"content\":7,\"project\":\"" + project + "\",\"callId\":\"c\",\"actor\":\"user\",\"senderTitle\":\"t\"}",
+            "{\"recipientTaskId\":null,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":7,\"actor\":\"user\",\"senderTitle\":\"t\"}",
+            // A request id nested 100,000 deep would overflow the stack if it were serialized into the index's key.
+            "{\"recipientTaskId\":null,\"content\":\"x\",\"project\":\"" + project + "\",\"callId\":" + new string('[', 100_000) + new string(']', 100_000) + ",\"actor\":\"user\",\"senderTitle\":\"t\"}",
         })
             store.Execute("INSERT INTO events(type,task_id,data,created_at,version,source,root_task_id) VALUES('channel.message',$p0,$p1,'2026-01-02T00:00:00.000Z',1,'runtime',$p0)", Id(1), data);
         foreach (var data in UnreadableReceipts)
@@ -216,17 +219,27 @@ public sealed partial class AgentChannelTests
         Assert.Equal(["Readable"], ((List<object?>)view["messages"]!).Cast<Dictionary<string, object?>>().Select(message => message["content"]));
     });
 
-    /// <summary>Review M1 of P2.3d: a message written inside an enclosing transaction that rolls back never enters the
-    /// index, so the channel keeps answering and its request id stays free. TypeScript's index would keep that sequence.</summary>
+    /// <summary>
+    /// Review M1 of P2.3d: a message written inside a transaction that rolls back never enters the index, even when the
+    /// channel is read inside that transaction, so the channel keeps answering and the request id stays free. TypeScript's
+    /// index would keep that sequence. A send refuses to run inside a transaction at all, since the index is not current there.
+    /// </summary>
     [Fact]
     public Task AMessageAnEnclosingTransactionRollsBackNeverEntersTheIndex() => WithChannel(async (fixture, store, chat) =>
     {
+        var project = ProjectKey(fixture, "a");
         Func<int> enclosing = () =>
         {
-            chat.Tools.Channel.Send(Id(1), "rolled-back", new Dictionary<string, object?> { ["content"] = "Gone" }, "user");
+            store.Event("channel.message", new Dictionary<string, object?>
+            {
+                ["recipientTaskId"] = null, ["content"] = "Gone", ["project"] = project, ["callId"] = "rolled-back", ["actor"] = "user", ["senderTitle"] = "Task 1",
+            }, Id(1));
+            Assert.Empty((List<object?>)chat.Tools.Channel.View(Id(2))["messages"]!);
+            Assert.Equal("Channel sends run outside any enclosing transaction.",
+                Assert.Throws<InvalidOperationException>(() => chat.Tools.Channel.Send(Id(1), "inside", new Dictionary<string, object?> { ["content"] = "Inside" }, "user")).Message);
             throw new InvalidOperationException("Roll the enclosing transaction back.");
         };
-        Assert.Throws<InvalidOperationException>(() => store.Transaction(enclosing));
+        Assert.Equal("Roll the enclosing transaction back.", Assert.Throws<InvalidOperationException>(() => store.Transaction(enclosing)).Message);
         var view = (Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(2) }))!;
         Assert.Empty((List<object?>)view["messages"]!);
         var kept = chat.Tools.Channel.Send(Id(1), "rolled-back", new Dictionary<string, object?> { ["content"] = "Kept" }, "user");
@@ -251,6 +264,9 @@ public sealed partial class AgentChannelTests
         var view = (Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(2) }))!;
         var messages = ((List<object?>)view["messages"]!).Cast<Dictionary<string, object?>>().ToList();
         Assert.Equal(("Retained 4480", "Retained 4499"), ((string)messages[0]["content"]!, (string)messages[^1]["content"]!));
+        // A read across the first batch boundary returns each message once, in order.
+        var read = (Dictionary<string, object?>)PersistedJson.Parse(JsJson.Stringify(chat.Tools.Channel.Execute(Id(2), new ToolCall("read", "read_agent_messages", new Dictionary<string, object?> { ["after"] = 1990d })))!)!;
+        Assert.Equal(Enumerable.Range(1991, 20).Select(sequence => (double)sequence), ((List<object?>)read["messages"]!).Cast<Dictionary<string, object?>>().Select(message => (double)message["sequence"]!));
         // Replays of an early and a late message prove both batches indexed; the count across all of them holds the limit.
         foreach (var index in RetainedReplays)
             Assert.Equal($"Retained {index}", chat.Tools.Channel.Send(Id(1), $"retained-{index}", new Dictionary<string, object?> { ["content"] = $"Retained {index}" }, "user")["content"]);
