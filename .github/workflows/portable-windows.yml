@@ -55,7 +55,18 @@ jobs:
         run: pnpm check --maxWorkers=1 --bail=1
 
       - name: Test Electron user workflows with offline fixtures
+        id: e2e
         run: pnpm test:e2e
+
+      # Traces, screenshots and the state files the specs write on failure; fixtures are offline and temporary.
+      - name: Upload Electron test evidence
+        if: failure() && steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build the portable executable
         run: pnpm package:portable

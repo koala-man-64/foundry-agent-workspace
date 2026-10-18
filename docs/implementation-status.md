@@ -226,6 +226,29 @@ Dual-landed fixes:
     - **Re-review of `b66735e`: GO.** L1-a, I-1 and I-2 are closed. Not blocking: any failure of the read after the save takes the fallback, which is now fully redacted.
   - **Validation of `b66735e`** (run2, from a `git archive` export): native 7,164 passed, 0 failed, 2 expected skips; `pnpm check` 569 passed; `pnpm test:e2e` 21 passed; `pnpm package:dir` and `pnpm smoke:package` passed; `git diff --check` clean.
   - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
+- **Keeping worktree reads off the index lock during an approved integration** (18 October 2026).
+  - **The defect.** `git-operations.ts` ran `git status` with Git's optional locks on. Every read of a worktree therefore held its `index.lock` while Git refreshed the index.
+    - `orchestration.get` reads the root worktree (`completionState` → `state`). The renderer calls it right after each Approve and on every event.
+    - An approved `git cherry-pick` that started while such a read held the lock exited with "Unable to create index.lock".
+    - It was recorded as a failed integration with no effect, and the coordinator stopped.
+  - **How it showed up.** The coordinated-workflow e2e failed intermittently on main's CI (runs 39068678776 and 39076689934): no approval card, and a coordinator that never finished.
+    - CI kept no state, so this cause is inferred, not observed.
+    - The lock race was measured in isolation: 2 of 40 cherry-picks failed against concurrent `git status`, none with optional locks off.
+    - The stopped state was reproduced by holding the lock during the approved cherry-pick.
+  - **The fix.**
+    - Every Git call in `git-operations.ts` runs with `GIT_OPTIONAL_LOCKS=0`.
+    - A refused cherry-pick or continuation now carries Git's own first error line in its detail.
+  - **Not changed.** `gitEnvironment()`, `repository.ts` and the `command-runner.ts` fingerprint still take the optional lock, so the P2 vectors are unchanged.
+    - None of them reads the root automatically during an integration: they are commit verification, retirement, the continuation-source check, and the pre-approval fingerprint.
+    - `git diff` against the worktree refreshes the index regardless of the variable.
+      - `task.diff` runs it when a task is selected, when the coordinated view opens, and on the inspector's Refresh. Opening a coordinated task during its integration can therefore still refuse the cherry-pick, which then reports Git's reason.
+      - It also runs inside a child's own handoff, in sequence with that child's commit.
+  - **Native side.** There is no native orchestration Git yet. The port of `git-operations.ts` must run its Git with optional locks off.
+  - **Tests.**
+    - `git-operations.test.ts`: `state()` and `changedPaths()` leave a stat-dirty index byte-for-byte untouched, with a control proving plain `git status` rewrites it. This failed before the fix.
+    - `git-operations.test.ts`: a held `index.lock` makes `cherryPick` return no effect with Git's reason.
+    - The e2e now fails as soon as the coordinator stops, and writes the orchestration state, transcript, UI text and screenshot to its output folder.
+    - The Portable Windows workflow uploads `test-results/` when the e2e step fails.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |

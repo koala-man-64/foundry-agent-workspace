@@ -371,6 +371,24 @@ describe('GitOperations cherry-pick integration', () => {
     expect(await fx.ops.isAncestor(integration.worktreePath, outcomeB.commit, base)).toBe(false);
   }, 60000);
 
+  it('names Git\'s reason when a held index.lock refuses the cherry-pick, which has no effect', async () => {
+    const fx = await fixture();
+    const base = await headSha(fx.sourceRoot);
+    const integration = await createChild(fx, base);
+    const child = await createChild(fx, base);
+    const result = await prepareAndCommit(fx, child, 'a.txt', 'from child a\n');
+    const pre = await fx.ops.prepareCherryPick(integration.worktreePath, { branch: integration.branch, expectedHead: base, sha: result.commit });
+    const lock = path.resolve(integration.worktreePath, (await git(integration.worktreePath, ['rev-parse', '--git-path', 'index.lock'])).trim());
+    await fs.writeFile(lock, '');
+    try {
+      const outcome = await fx.ops.cherryPick(integration.worktreePath, {
+        branch: integration.branch, expectedHead: base, expectedTree: pre.tree, sha: result.commit, expectedManifest: pre.sourceManifest,
+      });
+      expect(outcome).toMatchObject({ kind: 'no-effect', detail: expect.stringMatching(/Git exited \d+: .*index\.lock/) });
+    } finally { await fs.rm(lock, { force: true }); }
+    expect(await headSha(integration.worktreePath)).toBe(base);
+  }, 60_000);
+
   it('rejects a cherry-pick prepared against a stale target head', async () => {
     const fx = await fixture();
     const base = await headSha(fx.sourceRoot);
@@ -605,6 +623,28 @@ describe('GitOperations cherry-pick integration', () => {
     });
     return fx.ops.commitHandoff(prepared, { staged: () => {}, committed: () => {} });
   }
+});
+
+describe('GitOperations read-only inspection', () => {
+  // The orchestration view reads the root worktree while an approved cherry-pick runs there. A read that
+  // takes Git's optional index lock makes that cherry-pick fail on index.lock, so reads never write the index.
+  it('leaves the index of the inspected worktree untouched when its stat data is stale', async () => {
+    const fx = await fixture();
+    const child = await createChild(fx);
+    const index = path.resolve(child.worktreePath, (await git(child.worktreePath, ['rev-parse', '--git-path', 'index'])).trim());
+    const stale = new Date(Date.now() - 3_600_000);
+    await fs.utimes(path.join(child.worktreePath, 'README.md'), stale, stale);
+    const before = { bytes: await fs.readFile(index), mtimeMs: (await fs.stat(index)).mtimeMs };
+
+    expect(await fx.ops.state(child.worktreePath)).toMatchObject({ head: child.baseCommit, clean: true, operation: 'none' });
+    expect(await fx.ops.changedPaths(child.worktreePath)).toEqual([]);
+
+    expect((await fs.readFile(index)).equals(before.bytes)).toBe(true);
+    expect((await fs.stat(index)).mtimeMs).toBe(before.mtimeMs);
+    // An ordinary status would have refreshed and rewritten it: the check above can fail.
+    await execFile('git', ['status', '--porcelain=v2'], { cwd: child.worktreePath, windowsHide: true, env: { ...process.env, GIT_OPTIONAL_LOCKS: '1' } });
+    expect((await fs.readFile(index)).equals(before.bytes)).toBe(false);
+  }, 60_000);
 });
 
 describe('GitOperations.isAncestor', () => {
