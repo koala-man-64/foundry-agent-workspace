@@ -5,8 +5,8 @@ using Foundry.Protocol;
 namespace Foundry.Providers;
 
 /// <summary>
-/// AzureProvider of packages/providers for one API kind (P2.4a: requests, transport and the Chat Completions parser; the
-/// Responses and Anthropic parsers are P2.4b). Unwired: nothing in the runtime constructs it yet. Checks run in TypeScript's
+/// AzureProvider of packages/providers for one API kind: requests and transport (P2.4a) and the three stream parsers
+/// (P2.4a and P2.4b). Unwired: nothing in the runtime constructs it yet. Checks run in TypeScript's
 /// order: the profile's kind, its effort, the credential, the caller's cancellation, the request body and its continuation,
 /// the endpoint, then the request. A non-2xx status is <see cref="ProviderHttpException"/>; a 204 or 205 has no stream.
 /// </summary>
@@ -51,8 +51,9 @@ public sealed class AzureProvider
             var frames = SseReader.Read(stream, transport.Limits.BodyIdle, cancellationToken);
             var events = kind switch
             {
+                AzureRequests.Responses => ResponsesStream.Read(frames, prepared),
                 AzureRequests.ChatCompletions => ChatCompletionsStream.Read(frames, prepared),
-                _ => throw new NotSupportedException("The Responses and Anthropic parsers are not ported yet."),
+                _ => AnthropicStream.Read(frames, prepared),
             };
             await foreach (var item in events) yield return item;
         }

@@ -38,15 +38,34 @@ public sealed class ProviderTransportTests
         var item = (Dictionary<string, object?>)PersistedJson.Parse(json)!;
         var input = (Dictionary<string, object?>)item["input"]!;
         var expected = (Dictionary<string, object?>)item["expected"]!;
+        var outcome = await Run(input, (expected["requests"] as List<object?>)?.Cast<Dictionary<string, object?>>().ToList() ?? []);
+        var error = outcome.Error;
+        if (input.GetValueOrDefault("now") is double && RetryAfterValue(input) is { } retry && DateParseOnly.Contains(retry))
+        {
+            Assert.NotNull(error);
+            Assert.Null(error["retryAfterSeconds"]);
+            error["retryAfterSeconds"] = ((Dictionary<string, object?>)expected["error"]!)["retryAfterSeconds"];
+        }
+        var actual = new Dictionary<string, object?> { ["requests"] = outcome.Requests, ["events"] = outcome.Events, ["error"] = error };
+        Assert.Equal(JsJson.Stringify(expected), JsJson.Stringify(actual));
+    }
+
+    /// <summary>
+    /// Streams one oracle input through the adapter and a recording handler, with a fresh credential, and returns what the
+    /// oracle records: each request, every event and the error as JavaScript names it. The provider stream replay
+    /// (<see cref="ProviderStreamTests"/>) uses it too.
+    /// </summary>
+    internal static async Task<(List<object?> Requests, List<object?> Events, Dictionary<string, object?>? Error)> Run(Dictionary<string, object?> input, List<Dictionary<string, object?>> expectedRequests)
+    {
         var credential = "fixture-" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(12));
-        var handler = new RecordingHandler(input, (expected["requests"] as List<object?>)?.Cast<Dictionary<string, object?>>().ToList() ?? [], credential);
+        var handler = new RecordingHandler(input, expectedRequests, credential);
         using var transport = new AzureTransport(handler);
         var kind = (string)input["kind"]!;
         var provider = new AzureProvider((string?)input.GetValueOrDefault("provider") ?? kind, transport, () => input.GetValueOrDefault("now") is double now ? (long)now : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         var request = Request(input, credential);
         using var cancelled = new CancellationTokenSource();
-        if (Equals(input.GetValueOrDefault("abortBefore"), true)) cancelled.Cancel();
-        var events = new List<object?>(); Dictionary<string, object?>? error = null; Exception? lastCause = null;
+        if (Equals(input.GetValueOrDefault("abortBefore"), true)) await cancelled.CancelAsync();
+        var events = new List<object?>(); Dictionary<string, object?>? error = null; Exception? cause = null;
         try
         {
             await foreach (var value in provider.StreamTurn(request, cancelled.Token))
@@ -57,7 +76,7 @@ public sealed class ProviderTransportTests
         }
         catch (Exception caught) when (caught is InvalidOperationException or OperationCanceledException)
         {
-            lastCause = caught.InnerException;
+            cause = caught.InnerException;
             error = new()
             {
                 ["name"] = caught switch { OperationCanceledException => "AbortError", ProviderTransportException => "TypeError", ProviderHttpException => "ProviderHttpError", _ => "Error" },
@@ -65,16 +84,10 @@ public sealed class ProviderTransportTests
             };
             if (caught is ProviderHttpException http) { error["status"] = (double)http.Status; error["retryAfterSeconds"] = http.RetryAfterSeconds; }
         }
-        if (input.GetValueOrDefault("now") is double && RetryAfterValue(input) is { } value2 && DateParseOnly.Contains(value2))
-        {
-            Assert.NotNull(error);
-            Assert.Null(error["retryAfterSeconds"]);
-            error["retryAfterSeconds"] = ((Dictionary<string, object?>)expected["error"]!)["retryAfterSeconds"];
-        }
         if (handler.Failure is not null) throw handler.Failure;
-        if (error is not null && Equals(error["message"], "fetch failed") && handler.Requests.Count == 0 && !Equals(input.GetValueOrDefault("fetchRejects"), true)) throw new Xunit.Sdk.XunitException("Transport failed before the handler: " + lastCause);
-        var actual = new Dictionary<string, object?> { ["requests"] = handler.Requests, ["events"] = events, ["error"] = error };
-        Assert.Equal(JsJson.Stringify(expected), JsJson.Stringify(actual));
+        if (error is not null && Equals(error["message"], "fetch failed") && handler.Requests.Count == 0 && !Equals(input.GetValueOrDefault("fetchRejects"), true))
+            throw new Xunit.Sdk.XunitException("Transport failed before the handler: " + cause);
+        return (handler.Requests, events, error);
     }
 
     private static string? RetryAfterValue(Dictionary<string, object?> input)
