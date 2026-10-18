@@ -1697,6 +1697,27 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - #45 changed `git-operations.ts`, which no P2 vector binds.
     - #40 added `preparation/cli-drivers`, which sits outside `Foundry.slnx`.
   - **The one conflict** was in this file. This branch's record of L1's native half replaced main's one-line pointer to it, and main's index-lock entry was kept.
+- **CI's first run of the stack (#46) failed: the tests' scratch profiles, not the runtimes.**
+  - **What failed:**
+    - natively, the coding demo's replay, and two outside-writer tests;
+    - in TypeScript, the Git-chat oracle.
+  - **What the failures had in common.** Every executed command that failed called a cmdlet without naming its module:
+    - the offline demo's `Write-Output`, which both runtimes run with its 10-second limit;
+    - the two native tests' `Add-Type`;
+    - the TypeScript helper `job-runner.ps1`'s `Add-Type`, which runs for every command.
+
+    The commands that used only .NET calls passed.
+  - **The cause,** inferred from that pattern, local probes and the image's module list. The rerun with the fix on CI is what confirms it. Windows PowerShell 5.1 finds an unqualified cmdlet through its module analysis cache, which it keeps in the profile's local application data.
+    - The tests give each command a fresh scratch `USERPROFILE`, which has no cache, so every start analyses every installed module first.
+    - Here that costs about 0.15 seconds. The `windows-2025-vs2026` image also has AWSPowerShell, Microsoft.Graph, SqlServer and Az installed, so there it took 10 to 60 seconds:
+      - the demo timed out;
+      - the outside-writer test exceeded its 30-second bound;
+      - the unverified-cleanup command hit its 60-second limit.
+    - Production runs commands under the user's own profile, so this was a property of the tests' environment, not of either runtime.
+  - **The fix, test-only.**
+    - `PowerShellModuleCache.cs` and `tests/p2/powershell-module-cache.ts` warm the cache once under their own scratch profile and copy it into every fixture's profile, as a real profile would have it. The shared copy is `%TEMP%\foundry-p2-powershell-module-cache`.
+    - PowerShell still reports the same first-use progress, so nothing a command prints changes, and no vector changed.
+    - The two native-only `Add-Type` calls are module-qualified (`Microsoft.PowerShell.Utility\Add-Type`). They run under the real profile, and qualifying the call skips the analysis.
 
 **Independent reviews of `7d01f30..ddc6636` and `ddc6636..4466b4f`.**
 - **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import type { Task, ToolCall } from '../../packages/protocol/src/index';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
@@ -10,6 +10,7 @@ import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { TOOL_DEFINITIONS, ToolArguments, type ToolName } from '../../packages/runtime/src/tool-definitions';
 import type { ToolRuntime } from '../../packages/runtime/src/tool-runtime';
 import { build, committed, file, sha256File, type Step, withIsolatedGit } from './repository-fixture';
+import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
 
 // The coding tools of the shipping TypeScript runtime (tool-definitions.ts, tool-runtime.ts and repository.ts search),
 // pinned for the C# port (ToolRuntimeTests): the advertised definitions byte for byte; zod's parse of every tool's
@@ -190,6 +191,8 @@ const decisionCalls: [number, number, string, 'approve' | 'reject'][] = [[1, 301
   [1, 303, 'nonce-303', 'approve'], [1, 399, 'nonce-399', 'approve']];
 
 type Row = Record<string, unknown>;
+beforeAll(() => { warmPowerShellModuleCache(); }, 600_000);
+
 it('pins the coding tools: definitions, arguments, search and executions through the shipping Node authority', async () => {
   {
     const argumentsVectors = argumentCases.map(({ tool, input }) => {
@@ -230,6 +233,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
       try {
         const temp = path.join(scratch, item.temp ?? 'tmp');
         for (const folder of [temp, path.join(scratch, 'profile'), path.join(scratch, 'data')]) fs.mkdirSync(folder);
+        seedPowerShellModuleCache(path.join(scratch, 'profile'));
         Object.assign(process.env, { TEMP: temp, TMP: temp, USERPROFILE: path.join(scratch, 'profile') });
         build(scratch, home, item.tree);
         const systemRoot = process.env.SystemRoot!;

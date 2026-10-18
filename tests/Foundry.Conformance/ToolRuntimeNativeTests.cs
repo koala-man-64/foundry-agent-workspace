@@ -222,7 +222,8 @@ public sealed class ToolRuntimeNativeTests
         var command = "$sig = '[DllImport(\"kernel32.dll\")] public static extern IntPtr GetStdHandle(int n); [DllImport(\"kernel32.dll\")] public static extern IntPtr GetCurrentProcess(); "
             + "[DllImport(\"kernel32.dll\")] public static extern IntPtr OpenProcess(uint a, bool i, int p); "
             + "[DllImport(\"kernel32.dll\")] public static extern bool DuplicateHandle(IntPtr sp, IntPtr h, IntPtr tp, out IntPtr d, uint a, bool i, uint o);'; "
-            + "$k = Add-Type -MemberDefinition $sig -Name K -Namespace P -PassThru; "
+            // Module-qualified, so PowerShell imports the one module rather than first analysing every installed one.
+            + "$k = Microsoft.PowerShell.Utility\\Add-Type -MemberDefinition $sig -Name K -Namespace P -PassThru; "
             + $"$t = $k::OpenProcess(0x40, $false, {Environment.ProcessId}); $d = [IntPtr]::Zero; "
             + "[void]$k::DuplicateHandle($k::GetCurrentProcess(), $k::GetStdHandle(-11), $t, [ref]$d, 0, $false, 2); "
             + "[IO.File]::WriteAllText('handle.txt', [string]$d.ToInt64()); [Console]::Out.Write('hello')";
@@ -307,6 +308,7 @@ public sealed class ToolRuntimeNativeTests
     {
         using var fixture = RepositoryFixture.Create("foundry-p2-tools-native-");
         foreach (var folder in new[] { "tmp", "profile", "data" }) Directory.CreateDirectory(fixture.Local(folder));
+        await PowerShellModuleCache.Seed(fixture.Local("profile"));
         using (var tree = JsonDocument.Parse(Tree)) await fixture.Build(tree.RootElement);
         var environment = new Dictionary<string, string>(fixture.Environment(), StringComparer.OrdinalIgnoreCase)
         {

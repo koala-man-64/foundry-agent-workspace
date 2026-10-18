@@ -6,10 +6,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import Database from 'better-sqlite3';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { BrowserHostCallSchema, RpcResponseSchema } from '../../packages/protocol/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import { build, committed, file, git, isolatedGitEnvironment } from './repository-fixture';
+import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
 
 type ObjectValue = Record<string, unknown>;
 
@@ -158,6 +159,7 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
   for (const name of Object.keys(env)) if (/^GIT_/i.test(name)) delete env[name];
   // Commands inherit a fresh temporary folder and profile, so both runtimes start PowerShell alike.
   for (const folder of ['tmp', 'profile']) mkdirSync(join(scratch, folder));
+  seedPowerShellModuleCache(join(scratch, 'profile'));
   Object.assign(env, isolatedGitEnvironment(home), { FOUNDRY_WORKSPACE_DATA: data, TEMP: join(scratch, 'tmp'), TMP: join(scratch, 'tmp'), USERPROFILE: join(scratch, 'profile') },
     kind === 'dotnet' ? { FOUNDRY_RUNTIME_P2_CHAT: '1' } : {});
   const child = kind === 'node'
@@ -270,6 +272,8 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
     rmSync(scratch, { recursive: true, force: true });
   }
 }
+
+beforeAll(() => { warmPowerShellModuleCache(); }, 600_000);
 
 it('matches Node and C# actual entry points for fake chat, retained rows and durable notifications', async () => {
   const expected = await exercise('node'); const actual = await exercise('dotnet'); expect(actual).toEqual(expected);

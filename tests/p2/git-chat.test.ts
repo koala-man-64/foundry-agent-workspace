@@ -2,13 +2,14 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { beforeAll, expect, it, vi } from 'vitest';
 import type { ProviderAdapter, ProviderEvent, ProviderRequest, RpcMethod, ToolCall, WorkspaceEvent } from '../../packages/protocol/src/index';
 import { createProvider, profileFingerprint } from '../../packages/providers/src/index';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, file, git, normalize, runGit, sha256File, withIsolatedGit } from './repository-fixture';
+import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
 
 // Git-project chats through the shipping RuntimeService: task.start, task.send and task.cancel with the agent loop's
 // tool iterations, the project channel's delivery and acknowledgment, and the failed-start retry. The offline provider
@@ -221,6 +222,7 @@ async function run(item: Case, budgets: Record<string, number> | undefined): Pro
   // Commands inherit these, as their minimal environment does; the shell and SystemRoot become placeholders.
   const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, USERPROFILE: process.env.USERPROFILE };
   for (const folder of ['tmp', 'profile']) fs.mkdirSync(path.join(scratch, folder));
+  seedPowerShellModuleCache(path.join(scratch, 'profile'));
   Object.assign(process.env, { TEMP: path.join(scratch, 'tmp'), TMP: path.join(scratch, 'tmp'), USERPROFILE: path.join(scratch, 'profile') });
   const systemRoot = process.env.SystemRoot!;
   const shell = fs.realpathSync.native(path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'));
@@ -316,6 +318,8 @@ async function run(item: Case, budgets: Record<string, number> | undefined): Pro
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
+
+beforeAll(() => { warmPowerShellModuleCache(); }, 600_000);
 
 it('pins Git-project chats, the agent loop and the project channel through the shipping Node authority', async () => {
   const recorded = [];

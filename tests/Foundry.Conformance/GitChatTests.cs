@@ -56,6 +56,7 @@ public sealed class GitChatTests
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
         // Commands inherit these, as the oracle sets them; a case on the real clock records timestamps as {time}.
         foreach (var folder in new[] { "tmp", "profile" }) Directory.CreateDirectory(fixture.Local(folder));
+        await PowerShellModuleCache.Seed(fixture.Local("profile"));
         var environment = new Dictionary<string, string>(fixture.Environment(), StringComparer.OrdinalIgnoreCase)
         {
             ["TEMP"] = fixture.Local("tmp"), ["TMP"] = fixture.Local("tmp"), ["USERPROFILE"] = fixture.Local("profile"),

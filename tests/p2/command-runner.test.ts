@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { CommandPreflightError, CommandRunner, type PreparedCommand } from '../../packages/runtime/src/command-runner';
 import { build, committed, file, git, normalize, sha256File, type Step, withIsolatedGit } from './repository-fixture';
+import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
 
 // The approved-command runner of the shipping TypeScript runtime (command-runner.ts and its job-runner.ps1 helper),
 // driven directly over disposable Git worktrees with real Windows PowerShell 5.1 runs. The C# suite (CommandRunnerTests)
@@ -137,6 +138,8 @@ const waitForFile = async (target: string): Promise<void> => {
   while (!fs.existsSync(target)) { if (Date.now() > deadline) throw new Error(`Timed out waiting for ${target}.`); await new Promise(resolve => setTimeout(resolve, 50)); }
 };
 
+beforeAll(() => { warmPowerShellModuleCache(); }, 600_000);
+
 it('pins the approved-command runner of the shipping Node authority', async () => {
   const systemRoot = process.env.SystemRoot!;
   const shell = fs.realpathSync.native(path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'));
@@ -145,6 +148,7 @@ it('pins the approved-command runner of the shipping Node authority', async () =
     const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-command-')));
     const home = path.join(scratch, 'home'); const temp = path.join(scratch, 'tmp'); const profile = path.join(scratch, 'profile');
     for (const directory of [home, temp, profile]) fs.mkdirSync(directory);
+    seedPowerShellModuleCache(profile);
     const machine = (value: unknown): unknown => {
       if (typeof value === 'string') return value.replaceAll(shell, '{shell}').replaceAll(systemRoot, '{SystemRoot}');
       if (Array.isArray(value)) return value.map(machine);

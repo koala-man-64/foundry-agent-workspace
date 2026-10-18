@@ -110,6 +110,7 @@ public sealed partial class ToolRuntimeTests
         using var fixture = RepositoryFixture.Create("foundry-p2-tools-");
         var temp = fixture.Local(item.TryGetProperty("temp", out var folderName) ? folderName.GetString()! : "tmp");
         foreach (var folder in new[] { temp, fixture.Local("profile"), fixture.Local("data") }) Directory.CreateDirectory(folder);
+        await PowerShellModuleCache.Seed(fixture.Local("profile"));
         await fixture.Build(item.GetProperty("tree"));
         var environment = new Dictionary<string, string>(fixture.Environment(), StringComparer.OrdinalIgnoreCase)
         {
