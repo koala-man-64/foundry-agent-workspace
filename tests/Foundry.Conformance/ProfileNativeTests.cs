@@ -62,6 +62,50 @@ public sealed class ProfileNativeTests
     }
 
     [Fact]
+    public async Task AProbeDetailCarryingTheCredentialIsRedacted()
+    {
+        await using var harness = await Harness.Open("fresh");
+        await harness.Run(chat => chat.Dispatch("profile.save", Profile("anthropic")));
+        await harness.Run(chat => { chat.SetCredential(Azure, Credential, Binding(Profile("anthropic"))); return Task.FromResult<object?>(null); });
+        // The provider names the credential as its stop reason, which the adapter's failure message quotes.
+        static string Frame(string type, string data) => $"event: {type}\ndata: {{\"type\":\"{type}\",{data}}}\n\n";
+        harness.Handler.Answer = _ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(Frame("message_start", "\"message\":{\"usage\":{\"input_tokens\":3}}") + Frame("content_block_start", "\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}")
+                + Frame("content_block_delta", "\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"OK\"}") + Frame("content_block_stop", "\"index\":0")
+                + Frame("message_delta", "\"delta\":{\"stop_reason\":" + JsJson.Stringify(Credential) + "},\"usage\":{\"output_tokens\":1}") + Frame("message_stop", "\"x\":0")),
+        };
+        var probe = (Dictionary<string, object?>)(await harness.Run(chat => chat.Dispatch("profile.probe", new() { ["profileId"] = Azure })))!;
+        Assert.Equal("Anthropic completion ended with [REDACTED].", probe["detail"]);
+        Assert.Single(harness.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task ARightToLeftHostIsRefusedAtSave()
+    {
+        // A named difference, fail-closed: TypeScript saves this host, which the adapter then refuses natively (P2.4a).
+        await using var harness = await Harness.Open("fresh");
+        var before = await harness.Rows("SELECT rowid AS _rowid,* FROM profiles ORDER BY rowid");
+        var profile = Profile(); profile["endpoint"] = "https://" + (char)0x05D0 + ".openai.azure.com";
+        var refused = await Assert.ThrowsAsync<WorkspaceReadException>(() => harness.Run(chat => chat.Dispatch("profile.save", profile)));
+        Assert.Equal("Invalid URL", refused.Message);
+        Assert.Equal(JsJson.Stringify(before), JsJson.Stringify(await harness.Rows("SELECT rowid AS _rowid,* FROM profiles ORDER BY rowid")));
+    }
+
+    [Fact]
+    public async Task AProbeWithABlankCredentialSendsNothing()
+    {
+        // JavaScript's trim, not .NET's: a byte order mark and an ideographic space are whitespace too.
+        var blank = " \t" + (char)0xFEFF + (char)0x3000;
+        var handler = new Handler();
+        using var transport = new AzureTransport(handler);
+        var result = await new AzureProvider("responses", transport).Probe(Profile(), blank);
+        Assert.False(result.Ok);
+        Assert.Equal("A matching profile and credential are required to probe this provider.", result.Detail);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task ShutdownWaitsForAProbeToFinishAndDiscardsItsResult()
     {
         await using var harness = await Harness.Open("fresh");

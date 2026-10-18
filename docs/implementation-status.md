@@ -1879,6 +1879,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 2. **The MCP repair a credential triggers.** In TypeScript, a new credential queues `repairMcpConfigurations`. Stored MCP configurations that the redactor would now change are rewritten after a verified, protected backup. MCP methods, starts, sends and probes wait for that repair. Native has no MCP slice yet.
    - **(A)** Port the repair now: the stored-MCP sanitizer, the verified protected backup and the guarded rewrite, ahead of the MCP slice.
    - **(B, recommended)** Fail closed until the MCP slice. While any MCP server row is stored, native refuses `runtime.credential` with a fixed message and writes nothing. P2.4's fixtures hold no MCP rows. The MCP slice ports the repair and lifts the refusal.
+     - **Correction, found in P2.4c:** the v3 fixture does save MCP servers. See P2.4c for how its oracle case and native test handle that.
 3. **API kinds and capabilities.** Recommended: all three Azure kinds, with every capability and every task kind listed under Scope. Coordinated orchestration, MCP tools and browser tools stay refused. Alternative: Responses only in P2.4, and the other two kinds in a later slice.
 4. **Live providers and the test transport.** Recommended:
    - **No live or paid request in P2.4,** from any test, tool or person. Every adapter test injects fetch (TypeScript) or an `HttpMessageHandler` (native). Tests inspect the production handler but never send through it.
@@ -2152,6 +2153,97 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **N4 and N5 (slice d):**
   - N4: give the runtime loop's thread an explicit stack size, or run a depth case on the loop.
   - N5: replay the follow-ups through `SaveProviderState` and `ReadProviderState`.
+
+### Profiles, credentials and probes (P2.4c)
+
+**What it is.** The development runtime (`FOUNDRY_RUNTIME_P2_CHAT=1`) now serves `profile.save` and `profile.probe`, and accepts the `runtime.credential` frame. That brings it to 43 of the 89 methods. Turns still refuse every external profile; that is slice d.
+- **`profile.save`** runs `service.ts`'s checks in their order:
+  - effort before schema v4;
+  - the reserved offline profile;
+  - a profile that a running response uses;
+  - the output budget;
+  - then, for any profile that is not offline, the save-time endpoint rule (`Compatibility.ProfileEndpointError`), which gives "Invalid URL" or "Use a credential-free HTTPS Azure resource endpoint without a path or query." as TypeScript does.
+  - A changed binding drops the credential, and every save starts a new generation. Verification is kept only when the runtime fingerprint is unchanged. The save publishes `profiles.changed`.
+- **The `runtime.credential` frame** (decision 1):
+  - `Program` checks it against its schema before any RPC handling. A frame that is neither it nor an RPC request is answered "Invalid request." under the id "invalid", as `entry.ts` answers it.
+  - The binding must name the stored profile's API kind, endpoint and deployment.
+  - The same credential again changes nothing.
+  - Otherwise it is refused while a response runs and, under decision 2, while any MCP server is saved, with nothing written.
+  - An accepted credential is held in memory only and registered with the redactor. Its generation advances, and verification is cleared without an event, as in TypeScript.
+- **`profile.probe`:**
+  - `AzureProvider.Probe` sends the adapter's four requests, each with a 20-second deadline: text with usage, the cancellation check, a fixture tool call, and its continuation.
+  - On schema v4 and later, each request is a probe usage request, settled with its measured usage and redacted metadata.
+  - A result is saved as verification only when it found streaming and cancellation, and only if neither the profile nor its credential changed while it ran. A failed probe clears verification if nothing changed.
+  - One probe per profile runs at a time. The offline profile's probe is the fake provider's.
+  - Shutdown waits for a running probe and then discards its result, as TypeScript does ("Runtime is shutting down.").
+
+**Differences.**
+- **The continued cancellation.** When a provider keeps streaming after the probe's abort, TypeScript leaves that request's stream open, so its usage request stays pending. Native closes it, records the request cancelled and unmeasured, and publishes its `usage.changed`. `ProfileTests` expects exactly that one change.
+- **The trimmed credential is redacted too.** Fetch sends the credential trimmed of HTTP whitespace, so native also registers that spelling. This was the P2.4a review's suggestion on T-2.
+- **Decision 2:** credentials are refused while any MCP server is saved.
+- **Endpoints (P2.4b review N3).**
+  - U+007F in a host is now refused, as WHATWG and TypeScript refuse it. The oracles hold both spellings.
+  - Three remaining differences are fail-closed, because native refuses and TypeScript accepts:
+    - a label with a leading or trailing hyphen, in a host that has non-ASCII characters (`IdnMapping` checks hyphens);
+    - an empty label, such as `x..openai.azure.com`;
+    - 30 spellings that both refuse, with different messages.
+  - **A right-to-left host is refused at save** as "Invalid URL", as the adapter refuses it (P2.4a). TypeScript saves it, for example as `xn--4db.openai.azure.com`. This is fail-closed too.
+
+**A plan correction.** Decision 2's text says P2.4's fixtures hold no MCP rows, but the v3 fixture saves MCP servers.
+- Its oracle case therefore deletes them first (a `clear-mcp` step), so it can still record a v3 credential and probe.
+- `ProfileNativeTests` pins the refusal against the unchanged fixture.
+
+**Evidence.**
+- **The oracle.** `tests/p2/profiles.test.ts` drives the shipping `RuntimeService`, with `createProvider` over the shared recording fetch, through `dispatch` and `setCredential`.
+  - 7 cases and 94 steps on disposable fresh and v3 eras.
+  - Each step records:
+    - its value or refusal;
+    - the rows it changed in `profiles`, `provider_requests` and `events`;
+    - its notifications;
+    - every request the provider received.
+  - **Cases:**
+    - saves and their verification;
+    - credentials and their binding;
+    - probes that verify each kind;
+    - probes that fail at each stage;
+    - a cancellation stream that continues after the abort;
+    - changes while a probe runs, with held requests;
+    - a version 3 database.
+  - The vectors are bound to their sources; regenerating them requires `P2_WRITE_PROFILES=1`.
+- **The replay.** `ProfileTests` replays every step through `DevelopmentChat` with the same identities, clock and answers. Each step must match exactly, except the named difference.
+- **Native-only** (`ProfileNativeTests`):
+  - decision 2 against the v3 fixture;
+  - the credential, raw and padded, redacted from the probe's records;
+  - a probe detail that quotes the credential (an Anthropic stop reason), redacted;
+  - a blank credential, by JavaScript's trim, refused before any request;
+  - a right-to-left host refused at save;
+  - shutdown waiting for a probe;
+  - the refusals while a response runs.
+- **The stdio differential** adds the paths that reach no network, and checks that the credential appears in no reply, row or notification and that standard error is empty:
+  - saves and their refusals;
+  - credential frames: a stale binding, an unknown profile, two malformed frames, an accepted credential, and the same one again;
+  - the offline probe, an external probe without a credential, and a missing profile;
+  - a rebinding save.
+- **Mutations** (`foundry-evidence\p2.4-c\mutations-run1`, `run1b` and `run1c`): 40, with 39 caught.
+  - **`profile.save`:** they removed each check in turn, the endpoint rule, the credential drop, the generation, `credentialRef` and `profiles.changed`; kept verification across a changed fingerprint; and admitted an output budget equal to the context.
+  - **The credential:** they removed the binding check, the same-credential shortcut, both refusals, both redactions, the generation and the cleared verification.
+  - **`profile.probe`:**
+    - They allowed two probes of one profile.
+    - They ignored a credential change during a probe, kept verification after a failure, and left the detail and the reported model unredacted.
+    - They recorded a cancelled request as failed.
+    - They saved a probe after shutdown began, and let shutdown skip waiting for a probe.
+    - They wrote probe usage before v4.
+  - **The adapter's probe:** they passed a blank credential through, accepted text without usage, skipped or forgave the cancellation check, left the continuation token unchecked, changed the output limit, and reported a deadline as the abort.
+  - **Endpoints:** they allowed DELETE, saved a right-to-left host, and dropped the other-scheme rule.
+  - **The frame:** they stopped handling it, and stopped enforcing its schema. Both ran through the stdio differential.
+  - **The first run:**
+    - Three did not compile, because the replacements were constant patterns, and were rewritten for `run1b`. Two were caught there. The third, the right-to-left save, survived `run1b` because no test saved such a host; `run1c` caught it after its test.
+    - Three survived. Two were gaps, now pinned by the native tests above: the redacted probe detail, and the blank credential. `run1b` caught both.
+  - **Equivalent: verification without cancellation.** The adapters return all capabilities or none, so dropping the cancellation condition changes nothing.
+
+**Validation.** Pending: the export run of the stack's final commit.
+
+**Independent review.** Pending: security (continued from the P2.4a and P2.4b reviewer), and data integrity.
 
 ## Personal workspace expansion — local implementation
 
