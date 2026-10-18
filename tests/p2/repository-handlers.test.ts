@@ -7,6 +7,8 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, expand, file, normalize, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // RPC outcomes of the shipping TypeScript RuntimeService for the Git/files handlers over seeded tasks and disposable
 // trees. The C# conformance suite (RepositoryHandlerTests) seeds the same tasks into a fresh Store, rebuilds every tree,
@@ -82,8 +84,8 @@ async function outcomes(item: Case): Promise<Outcome[]> {
     return results;
   } finally {
     await service.shutdown();
-    for (const link of links) fs.rmSync(link);
-    fs.rmSync(scratch, { recursive: true, force: true });
+    for (const link of links) fs.unlinkSync(link);
+    removeTree(scratch);
   }
 }
 
@@ -96,6 +98,6 @@ it('pins Git/files handler outcomes to the shipping Node authority without ordin
     cases: expected,
   };
   const target = 'tests/p2/repository-handler-vectors.json';
-  if (process.env.P2_WRITE_REPOSITORY_HANDLERS === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_REPOSITORY_HANDLERS')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 300_000);

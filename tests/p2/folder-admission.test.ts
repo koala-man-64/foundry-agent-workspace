@@ -10,6 +10,7 @@ import { AgentChannel } from '../../packages/runtime/src/agent-channel';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { execFileSync } from 'node:child_process';
+import { removeTree } from './scratch';
 
 // Saved project paths are canonical (project.add stores the real path), so fixtures use canonical scratch folders even
 // where TEMP is an 8.3 spelling, as on hosted Windows runners.
@@ -42,10 +43,10 @@ it('retains admission for both queued worktree requests and refuses alias replac
   try {
     await started;
     second = repositories.createTaskWorktree(alias, '18181818-0000-4000-8000-000000000012').catch((error: unknown) => error);
-    fs.rmSync(alias); fs.symlinkSync(other, alias, 'junction'); release();
+    fs.unlinkSync(alias); fs.symlinkSync(other, alias, 'junction'); release();
     for (const outcome of await Promise.all([first, second])) expect(outcome).toMatchObject({ outcome: 'none', mutationStarted: false });
     expect([repositoryState(root), repositoryState(other)]).toEqual(before);
-  } finally { release(); await Promise.all([first, second]); vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { release(); await Promise.all([first, second]); vi.restoreAllMocks(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it('refuses alias rebinding during final Git executable lookup as a known pre-mutation failure', async () => {
@@ -58,14 +59,14 @@ it('refuses alias rebinding during final Git executable lookup as a known pre-mu
   vi.spyOn(internal, 'prepareWorktreeBase').mockImplementation(async () => { const base = await prepare(); armed = true; return base; });
   vi.spyOn(internal, 'getGitExecutable').mockImplementation(async folder => {
     const value = await executable(folder);
-    if (armed) { armed = false; fs.rmSync(alias); fs.symlinkSync(other, alias, 'junction'); }
+    if (armed) { armed = false; fs.unlinkSync(alias); fs.symlinkSync(other, alias, 'junction'); }
     return value;
   });
   const before = [repositoryState(root), repositoryState(other)];
   try {
     await expect(repositories.createTaskWorktree(alias, '18181818-0000-4000-8000-000000000013')).rejects.toMatchObject({ outcome: 'none', mutationStarted: false });
     expect([repositoryState(root), repositoryState(other)]).toEqual(before);
-  } finally { vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it('retains an unknown outcome when checkout fails after worktree add has actually run', async () => {
@@ -80,7 +81,7 @@ it('retains an unknown outcome when checkout fails after worktree add has actual
     await expect(repositories.createTaskWorktree(alias, id)).rejects.toMatchObject({ outcome: 'unknown', mutationStarted: true });
     expect(fixtureGit(root, 'for-each-ref', '--format=%(refname)')).toContain(`refs/heads/codex/task/${id}`);
     expect(fixtureGit(root, 'worktree', 'list', '--porcelain')).toContain(id);
-  } finally { vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it.each(['task.create', 'task.start'] as const)('carries trusted %s admission through repository invocation instead of admitting replacement metadata afresh', async method => {
@@ -106,7 +107,7 @@ it.each(['task.create', 'task.start'] as const)('carries trusted %s admission th
     expect(store.db.prepare('SELECT * FROM tasks').all()).toEqual([]);
     expect(store.db.prepare('SELECT * FROM task_starts').all()).toEqual([]);
     expect(store.unknownIntents()).toBe(0);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it.each(['chat', 'coordinated'] as const)('refuses same-common Git-directory rebinding on %s retry without ledger or execution effects', async mode => {
@@ -132,7 +133,7 @@ it.each(['chat', 'coordinated'] as const)('refuses same-common Git-directory reb
   try {
     await expect(service.dispatch('task.start', input)).rejects.toThrow('Project channel identity changed.');
     expect(pending).not.toHaveBeenCalled(); expect(resume).not.toHaveBeenCalled(); expect(provider).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); removeTree(scratch); }
 });
 
 it('rechecks metadata after executable resolution before the first Git command', async () => {
@@ -148,7 +149,7 @@ it('rechecks metadata after executable resolution before the first Git command',
   try {
     await expect(repositories.isGitWorkingTree(root)).rejects.toThrow('Project channel identity changed during admission.');
     expect(git).not.toHaveBeenCalled();
-  } finally { vi.restoreAllMocks(); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); removeTree(scratch); }
 });
 
 it('rejects a replaced approved alias after project classification without saving it', async () => {
@@ -158,12 +159,12 @@ it('rejects a replaced approved alias after project classification without savin
   const store = new Store(path.join(scratch, 'workspace.db'));
   const repositories = new RepositoryService(path.join(scratch, 'wt'));
   const service = new RuntimeService(store, repositories, () => {});
-  vi.spyOn(repositories, 'isGitWorkingTree').mockImplementation(async () => { await Promise.resolve(); fs.rmSync(alias); fs.symlinkSync(other, alias, 'junction'); return false; });
+  vi.spyOn(repositories, 'isGitWorkingTree').mockImplementation(async () => { await Promise.resolve(); fs.unlinkSync(alias); fs.symlinkSync(other, alias, 'junction'); return false; });
   const before = store.db.prepare('SELECT * FROM projects').all();
   try {
     await expect(service.dispatch('project.add', { path: alias })).rejects.toThrow('The saved folder now resolves to a different location.');
     expect(store.db.prepare('SELECT * FROM projects').all()).toEqual(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it.each(['gitdir', 'commondir'] as const)('rejects network/device %s before classification can launch Git or mutate admission', async pointer => {
@@ -192,7 +193,7 @@ it.each(['gitdir', 'commondir'] as const)('rejects network/device %s before clas
       await expect(service.dispatch('task.start', { requestId: '18181818-0000-4000-8000-000000000003', projectId: project.id, profileId: FAKE_PROFILE_ID, mode: 'chat', tokenBudget: 100000, content: 'denied' })).rejects.toThrow('Projects on network shares are not supported.');
       expect(executable).not.toHaveBeenCalled(); expect(provider).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
     }
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); removeTree(scratch); }
 });
 
 it.each(['project.add', 'task.start'] as const)('rejects local metadata rebinding across %s classification without persisted changes', async method => {
@@ -213,7 +214,7 @@ it.each(['project.add', 'task.start'] as const)('rejects local metadata rebindin
     const input = method === 'project.add' ? { path: root } : { requestId: '18181818-0000-4000-8000-000000000003', projectId: project!.id, profileId: FAKE_PROFILE_ID, mode: 'chat', tokenBudget: 100000, content: 'denied' };
     await expect(service.dispatch(method, input)).rejects.toThrow('Project channel identity changed during admission.');
     expect(create).not.toHaveBeenCalled(); expect(provider).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); removeTree(scratch); }
 });
 
 it('rejects raw network/device namespaces before any ancestor probe', () => {
@@ -238,7 +239,7 @@ it('checks network alias metadata before missing descendants and canonicalizatio
     await expect(repositories.listFiles(path.join(alias, 'missing'), '')).rejects.toThrow('Projects on network shares are not supported.');
     expect(probes.mock.calls.some(([value]) => String(value).startsWith(alias + path.sep))).toBe(false);
     expect(canonical).not.toHaveBeenCalled(); expect(asyncCanonical).not.toHaveBeenCalled();
-  } finally { vi.restoreAllMocks(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it('denies network alias projects before task/worktree admission or file probes', async () => {
@@ -267,7 +268,7 @@ it('denies network alias projects before task/worktree admission or file probes'
     expect(canonical).not.toHaveBeenCalled(); expect(asyncCanonical).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
     expect(probes.mock.calls.some(([value]) => String(value).startsWith(alias + path.sep))).toBe(false);
     expect(JSON.stringify({ tasks: store.db.prepare('SELECT * FROM tasks').all(), starts: store.db.prepare('SELECT * FROM task_starts').all(), intents: store.db.prepare('SELECT * FROM intents').all(), projects: store.db.prepare('SELECT * FROM projects').all(), events: store.db.prepare('SELECT * FROM events').all() })).toBe(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it('retains normal local folder and file-path classification', () => {
@@ -278,7 +279,7 @@ it('retains normal local folder and file-path classification', () => {
     const file = path.join(folder, 'ordinary.txt'); fs.writeFileSync(file, 'fixture');
     expect(() => assertNoReparseDirectories(file)).not.toThrow();
     expect(() => assertNoReparseDirectories('relative-folder')).toThrow('Repository root must be an absolute path.');
-  } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { removeTree(scratch); }
 });
 
 it('preserves a local alias at admission and stores its canonical project identity', async () => {
@@ -294,7 +295,7 @@ it('preserves a local alias at admission and stores its canonical project identi
     const row = store.db.prepare('SELECT path_key FROM projects WHERE id = ?').get(project.id);
     await service.dispatch('workspace.projects', {});
     expect(store.db.prepare('SELECT path_key FROM projects WHERE id = ?').get(project.id)).toEqual(row);
-  } finally { await service.shutdown(); fs.rmSync(alias); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { await service.shutdown(); fs.unlinkSync(alias); removeTree(scratch); }
 });
 
 it('rejects a failed-start retry after root replacement without ledger or Git activity', async () => {
@@ -316,7 +317,7 @@ it('rejects a failed-start retry after root replacement without ledger or Git ac
   try {
     await expect(service.dispatch('task.start', input)).rejects.toThrow('Project folder is unavailable or resolves to a different location.');
     expect(git).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(approved); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.unlinkSync(approved); removeTree(scratch); }
 });
 
 it.each(['chat', 'coordinated'] as const)('rejects %s retry metadata rebinding before pending, orchestration or provider work', async mode => {
@@ -343,5 +344,5 @@ it.each(['chat', 'coordinated'] as const)('rejects %s retry metadata rebinding b
   try {
     await expect(service.dispatch('task.start', input)).rejects.toThrow('Project channel identity changed.');
     expect(pending).not.toHaveBeenCalled(); expect(resume).not.toHaveBeenCalled(); expect(provider).not.toHaveBeenCalled(); expect(git).not.toHaveBeenCalled(); expect(snapshot()).toBe(before);
-  } finally { vi.restoreAllMocks(); await service.shutdown(); fs.rmSync(scratch, { recursive: true, force: true }); }
+  } finally { vi.restoreAllMocks(); await service.shutdown(); removeTree(scratch); }
 });

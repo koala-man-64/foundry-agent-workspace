@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { createProvider } from '../../packages/providers/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import type { ModelProfile, ProviderContinuation, ProviderEvent, ProviderMessage } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 type Input = { messages: ProviderMessage[]; continuation?: ProviderContinuation; abortBefore?: boolean; cancelAfterTexts?: number };
 const user = (content: string): ProviderMessage => ({ role: 'user', content });
@@ -36,6 +37,6 @@ it('pins the no-tools fake text/continuation slice, UTF16 chunks and cancellatio
     } catch (caught) { if (!(caught instanceof Error)) throw caught; error = caught.message; }
     cases.push({ name: `fake-chat:${index}`, input, expected: { events, error } });
   }
-  if (process.env.P2_WRITE_FAKE === '1') writeFileSync('tests/p2/fake-chat-vectors.json', JSON.stringify(cases, null, 2) + '\n');
+  if (regenerating('P2_WRITE_FAKE')) writeFileSync('tests/p2/fake-chat-vectors.json', JSON.stringify(cases, null, 2) + '\n');
   expect(JSON.parse(readFileSync('tests/p2/fake-chat-vectors.json', 'utf8'))).toEqual(cases);
 });

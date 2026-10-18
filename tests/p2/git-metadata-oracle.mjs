@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
 import { log } from 'node:console';
+import { requirePinnedNode } from './oracle-node.mjs';
 
 const root = new URL('../../', import.meta.url);
 const corpusPath = new URL('git-metadata-vectors.json', import.meta.url);
@@ -91,6 +92,7 @@ const sources = sourcePaths.map((path, index) => ({ path, sha256: sha256(sourceB
 const oracle = { nodeVersion: process.version, sources, pointerPattern, networkPattern, maximumBytes };
 assert.equal(new Set(vectors.map(item => item.name)).size, vectors.length);
 if (process.argv.length === 3 && process.argv[2] === '--write') {
+  requirePinnedNode('--write');
   writeFileSync(corpusPath, JSON.stringify({ schemaVersion: 1, oracle, vectors }, null, 2) + '\n');
 } else {
   assert.equal(process.argv.length, 2, 'Use no arguments to verify, or --write to regenerate.');

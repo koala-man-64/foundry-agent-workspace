@@ -5,6 +5,8 @@ import { beforeAll, expect, it } from 'vitest';
 import { CommandPreflightError, CommandRunner, type PreparedCommand } from '../../packages/runtime/src/command-runner';
 import { build, committed, file, git, normalize, sha256File, type Step, withIsolatedGit } from './repository-fixture';
 import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // The approved-command runner of the shipping TypeScript runtime (command-runner.ts and its job-runner.ps1 helper),
 // driven directly over disposable Git worktrees with real Windows PowerShell 5.1 runs. The C# suite (CommandRunnerTests)
@@ -225,7 +227,7 @@ it('pins the approved-command runner of the shipping Node authority', async () =
     } finally {
       for (const [name, value] of Object.entries(saved)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
       for (const link of ['repo/inner', 'repo/outer', 'repo/lnk']) { try { fs.rmdirSync(path.join(scratch, link)); } catch { /* absent */ } }
-      fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      removeTree(scratch, 10);
     }
   }
   const corpus = {
@@ -234,6 +236,6 @@ it('pins the approved-command runner of the shipping Node authority', async () =
     cases: recorded,
   };
   const target = 'tests/p2/command-runner-vectors.json';
-  if (process.env.P2_WRITE_COMMAND_RUNNER === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_COMMAND_RUNNER')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 900_000);

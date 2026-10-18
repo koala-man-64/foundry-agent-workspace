@@ -7,6 +7,7 @@ import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import type { Task } from '../../packages/protocol/src/index';
 import type { WorkspaceMethod } from '../../packages/protocol/src/workspace';
+import { regenerating } from './oracle-node.mjs';
 
 const stamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `12121212-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -65,7 +66,7 @@ it('pins bounded usage/compaction projections and chunks without exposing provid
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { stamp, tasks, records, compactions, cases };
-    if (process.env.P2_WRITE_RETAINED_READS === '1') writeFileSync('tests/p2/retained-read-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_RETAINED_READS')) writeFileSync('tests/p2/retained-read-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/retained-read-page-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

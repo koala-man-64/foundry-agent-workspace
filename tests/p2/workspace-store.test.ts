@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { Store, FAKE_PROFILE_ID, pathKey } from '../../packages/runtime/src/store';
 import type { ModelProfile, Project, WorkspacePreferences } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const ids = vi.hoisted(() => ({ next: 2 }));
 vi.mock('node:crypto', async original => ({ ...await original<typeof import('node:crypto')>(),
@@ -42,7 +43,7 @@ it('pins workspace persistence results and exact stored JSON to the shipping Sto
     const corpus = JSON.parse(JSON.stringify(steps, (_key, value: unknown) => typeof value === 'string'
       ? value.replaceAll(directory, '$project').replaceAll(JSON.stringify(directory).slice(1, -1), '$project')
         .replaceAll(pathKey(directory), '$project-key').replaceAll(JSON.stringify(pathKey(directory)).slice(1, -1), '$project-key') : value));
-    if (process.env.P2_WRITE_WORKSPACE === '1') writeFileSync('tests/p2/workspace-store-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_WORKSPACE')) writeFileSync('tests/p2/workspace-store-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/workspace-store-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { store.close(); vi.useRealTimers(); rmSync(scratch, { recursive: true, force: true }); }
 });
