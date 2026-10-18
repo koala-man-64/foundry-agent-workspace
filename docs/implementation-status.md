@@ -1470,15 +1470,19 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   1. The project is checked and classified as before. For a Git project, the channel identity is resolved, and that admission is held until the binding commits.
   2. Coordination settings, the coordinated mode, the profile and any unknown worktree creation are checked; then coding is refused (below).
   3. The start is reserved, and a `worktree.create` intent, with the request id, is written before any Git mutation. The task, its channel binding and the completed intent commit together, and the first turn starts.
-  4. A failure leaves the intent complete, and forgets the start, only when the repository reported that nothing started. A first turn that could not start leaves the start failed. A retry re-checks the project and re-admits the channel.
+  4. A failure leaves the intent complete, and forgets the start, only when the repository reported that nothing started; the repository's refusal then reaches the caller with TypeScript's text. A first turn that could not start leaves the start failed. A retry re-checks the project and re-admits the channel.
 
   `task.create` now binds through the same `AgentChannel.Admit`.
-- **Turns.** A Git chat's turn is refused while a commit, push or reconciliation runs ("Wait for the Git operation to finish before starting a response."), and as retired while its worktree retires, as `startTurn` refuses them.
+- **Turns.** A Git chat's turn is refused while a commit, push or reconciliation runs ("Wait for the Git operation to finish before starting a response.", now also passed to RPC callers), and as retired while its worktree retires, as `startTurn` refuses them.
 - **The offline provider** gains three stages, with call ids from the runtime's id source:
   - the channel demo: `/channel-demo` makes one `send_agent_message` call;
   - its result stage;
   - the stopped browser demo: `/browser-demo` without browser tools.
-- **Participants** (security I-1 and data L2 of P2.3d). Every task's first binding is loaded once, and a task bound to another project is passed over without admitting its folder. Unbound Git tasks and tasks bound to the same project are still admitted one by one, so the page is unchanged.
+- **Participants** (security I-1 and data L2 of P2.3d). Every task's first binding is loaded once, and a task bound to another project is passed over without admitting its folder. So is a task whose binding row does not parse, which `Project` would refuse. Unbound Git tasks and tasks bound to the same project are still admitted one by one. A page lists the tasks TypeScript's lists, including when a binding row cannot be read (below).
+- **Binding rows** are read as TypeScript reads them (review fixes, `e08ae79`):
+  - **The first complete row decides.** Its identity is the binding, absent when the row is not an object or the identity is missing or null.
+  - **Identities that are not objects.** A truthy one never matches, so its task is refused; a falsy one (0, false, "") is unbound. Before this, native treated any identity that is not an object as unbound (security I-4).
+  - **Unreadable rows.** A row that does not parse refuses only its own task, and a row SQLite cannot read refuses only the tasks whose lookup scans past it. A page leaves out exactly those tasks, and the runtime keeps serving. Before the fix, one such row made every participants page fail, and `channel.get` ended the runtime (security L-1, data L1).
 
 **Differences, all fail-closed or invisible on success:**
 - **Coding and coordinated tasks.**
@@ -1490,6 +1494,8 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Stored continuations.** A turn is refused before any reservation unless its stored continuation is in a stage the offline provider serves natively: `chat`, `complete` or `channel-send`. The coding, MCP, browser and orchestration demos' stages need their slices.
 - **Unclassified tool failures** (P2.3c review I-2). A failure the tool runtime does not classify as a refusal stops the turn as failed, with its redacted message. TypeScript hands the model the message and continues. No reservation is open while tools run, and the runtime keeps serving.
 - **No browser host.** No turn has attached tabs, and the browser demo always stops. TypeScript asks its host before each `task.send`.
+- **Unreadable binding rows** are refused with "Project channel binding is unreadable." TypeScript reports its JSON reader's or SQLite's own error. SQLite reads JSON5 that the strict JSON reader refuses.
+- **An unknown start outcome over RPC.** "Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying." carries the failure's detail in TypeScript. Over RPC, native reports "Runtime request failed." instead, as it has for projectless and folder chats since P2.2f (data review I2).
 - **Iteration limit.** As in TypeScript, the 51-response limit cannot be reached: 51 responses with calls exceed the 50-call limit first.
 
 **A correction the provider port makes.** TypeScript's offline provider answers `/browser-demo` (after trimming) in every chat, projectless and folder chats included: "Offline browser demo stopped…" instead of "Fake response: /browser-demo". The native provider gave the latter until this slice; no earlier vector sent that text.
@@ -1501,18 +1507,19 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - later and earlier user messages, and stored and invalid continuations;
   - result stages with matching, mismatched, missing and erroring results;
   - cancellation and the browser demo.
-- **The Git-chat oracle.** `tests/p2/git-chat.test.ts` drives the shipping `RuntimeService` over a disposable repository, with deterministic identities and a fixed clock, through four cases (92 steps):
+- **The Git-chat oracle.** `tests/p2/git-chat.test.ts` drives the shipping `RuntimeService` over a disposable repository, with deterministic identities and a fixed clock, through five cases (103 steps):
   - **the channel:**
     - two Git chats and the channel demo;
     - the second chat's first request carrying the broadcast and acknowledging it;
     - an oversized message refused, and the browser demo;
     - cancel of an idle chat;
     - retirement and the refused turn after it;
-    - an overlapping send and a missing task;
+    - an overlapping send, made in one step so that it never depends on timing (data L2), and a missing task;
   - **failed starts:**
     - a start refused by its budget after its worktree is made, and two retries;
     - a hidden project, coordination settings and a missing profile;
     - an unknown worktree creation;
+  - **worktree creation failures** (data M1): a repository with no commit, whose start is forgotten, re-run and, after a commit, served; and a task branch that already exists, which leaves the intent and the start unknown and blocks the next start;
   - **coding**, the named difference;
   - **the loop's limits**, with a scripted provider:
     - two and three iterations;
@@ -1529,25 +1536,59 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   Each step records its value or refusal, the rows it added, changed or removed in seven tables, its notifications, and every request a provider received. Paths and the fixture's project key are placeholders. The vectors are bound to twelve runtime and provider sources; regenerating them requires `P2_WRITE_GIT_CHAT=1`.
 - **The replay.** `GitChatTests` replays every step through `DevelopmentChat` with the same identities, clock, offline provider and scripts, and reproduces every record byte for byte. The coding step must be refused with nothing changed.
 - **Folder chats.** The P2.2f oracle's Git-project step is now served. Its named difference is removed, a wait is added, and `FolderChatTests` reproduces both steps.
+- **The channel oracle** (`tests/p2/agent-channel.test.ts`, P2.3d) gains a fifth case of unusual binding rows: JSON5, not JSON, a string, zero, an array and no identity, a child of a task whose binding does not parse, and a task bound after an unreadable row. It pins the pages and refusals both runtimes give alike.
 - **Native-only tests** (`GitChatNativeTests`):
   - a cancellation between iterations;
+  - a chat without tools refusing a provider's tool call (security I-1);
   - an unclassified tool failure (I-2);
   - a coordinated start refused before any intent;
   - turns refused during a commit and during a retirement;
   - stored continuations: a coding stage refused, and an interrupted channel demo resumed with the "not replayed" result.
 
-  `AgentChannelTests` pins the participants prefilter by counting admissions.
-- **Process differential.** The stdio differential now also runs a Git-project chat through both entry points, with an isolated Git configuration: a worktree-backed start, the channel demo, a second chat reached by its broadcast, the channel page, and native's coding refusal.
-- **Mutations.** Recorded once they complete.
+  `AgentChannelTests` pins the participants prefilter by counting admissions, a task whose first and latest bindings differ, and the refusal of unreadable binding rows through `channel.get` with the runtime still serving.
+- **Process differential.** The stdio differential now also runs a Git-project chat through both entry points, with an isolated Git configuration: a worktree-backed start, the channel demo, a second chat reached by its broadcast, the channel page, a repository with no commit and its refusal's text, and native's coding refusal.
+- **Mutations,** in `foundry-evidence\p2.3-e\mutations`:
+  - **First run (`db4a117`):** 51 mutations. 43 were caught, 6 survived, and 2 did not build.
+  - **Two survivors are by design.** The 52-response limit, which cannot be reached. The failed-start retry's channel check, which the turn's enrichment repeats with the same refusal.
+  - **The other four survivors were test gaps, now closed:** a chat without tools accepting a tool call, a refused worktree keeping its start reserved, the prefilter taking a task's latest binding, and the result stage reading the last call.
+  - **Second run:** recorded once it completes.
 
 **Validation.**
 - **`db4a117`** (run1, from a `git archive` export): native 7,284 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
 
-**Independent reviews.** Recorded once they complete.
+**Independent reviews of `2120abf..ca41410` and `ca41410..a4dc6c0`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
+  - **What it ran:** it verified both seals, built an export, ran seven classes (92 passed) and three TypeScript oracles, and wrote one probe.
+  - **Confirmed:**
+    - a chat task can run only the channel tools;
+    - coding and coordinated tasks are refused before any reservation, intent or worktree;
+    - every provider-output check precedes persistence and execution, in TypeScript's order;
+    - `Enrich` and `Acknowledge` match TypeScript;
+    - the Git start holds its admission through the binding;
+    - the checks against Git operations leave no window on the loop.
+  - **L-1 (low), fixed in `e08ae79`:** an unreadable binding row, as above.
+  - **I-1, fixed:** no test pinned a chat without tools refusing a tool call.
+  - **I-4, fixed:** identities that are not objects.
+  - **I-2 and I-3:** the worktree was mid-mutation while it worked, and validation is to be recorded at the final commit. Both are addressed below.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical, high or data-corrupting finding.
+  - **What it ran:** it verified both seals and ran the classes, the oracle and the full conformance project (7,084 passed).
+  - **Probes:** it compared rows written and read by both runtimes, in scratch databases.
+    - Git chats resumed across runtimes, complete and interrupted at `channel-send`, left identical rows.
+    - Cancellation, provider failure and shutdown in each response settled every reservation once and left no task running.
+    - Both Git-start failure branches matched TypeScript.
+    - A 22-task prefilter seed gave the unfiltered page.
+  - **M1 (medium, evidence), fixed:** the Git-start failure branches had no test. The oracle now pins both.
+  - **L1 (low), fixed:** a binding row that is not JSON made every page fail; the same fix as security L-1.
+  - **L2 (low), fixed:** the overlapping send depended on timing natively under load.
+  - **I1:** the 1 MiB edit it saw was a mutation in flight, not a change; the worktree is clean.
+  - **I2:** a Git start's repository refusal reached RPC callers as "Runtime request failed."; it now carries TypeScript's text. The unknown-outcome message stays masked, as recorded under Differences.
+  - **I3, recorded:** `Store.IsGitDocument` does not treat an empty `workspaceKind` as Git, as TypeScript does. TypeScript never writes one, and `RequireChat` refuses such a task before any request.
+  - **I4, parity:** a response transaction that fails at commit leaves its request pending until recovery marks it interrupted, as in TypeScript.
+- **Re-review of `a4dc6c0..e08ae79`:** recorded once it completes.
 
 **Open, for later slices.**
 - **P2.3f:** coding turns with approvals, and `approval.decide`. Rudy's worktree-confinement decision (P2.3c, I5) comes first.
-- **Participants cost, remaining.** A page still admits every unbound Git task and every task of the caller's own project, one by one, as TypeScript does.
+- **Participants cost, remaining.** A page still admits every unbound Git task and every task of the caller's own project, one by one, as TypeScript does. The data review measured 117 admissions and 327 ms for 722 tasks, 600 of them bound elsewhere.
 - **External profiles** still refuse every turn. The loop reads no usage or metadata events, which only external providers produce.
 
 ## Personal workspace expansion — local implementation
