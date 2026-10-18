@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
 import { resolveGitAdmission } from '../../packages/runtime/src/repository';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // Git identity admission outcomes of the shipping TypeScript resolver over disposable fixture trees. The C# conformance
 // suite (GitRepositoryLeaseTests) rebuilds every tree and must reproduce each outcome, except where a case names an
@@ -126,8 +128,8 @@ function outcome(item: Case): Outcome {
     const code = (error as NodeJS.ErrnoException).code;
     return typeof code === 'string' ? { systemError: code } : { error: error.message };
   } finally {
-    for (const link of links) fs.rmSync(link);
-    fs.rmSync(scratch, { recursive: true, force: true });
+    for (const link of links) fs.unlinkSync(link);
+    removeTree(scratch);
   }
 }
 const sha256 = (file: string) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -139,6 +141,6 @@ it('pins Git identity admission outcomes to the shipping Node authority without 
     cases: cases.map(item => ({ ...item, expected: outcome(item) })),
   };
   const file = 'tests/p2/git-identity-vectors.json';
-  if (process.env.P2_WRITE_GIT_IDENTITY === '1') fs.writeFileSync(file, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_GIT_IDENTITY')) fs.writeFileSync(file, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(corpus);
 }, 120_000);

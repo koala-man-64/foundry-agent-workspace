@@ -7,6 +7,8 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { profileFingerprint, RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, file, git, normalize, runGit, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // task.create outcomes of the shipping TypeScript RuntimeService: returned tasks and refusals, every persisted task,
 // intent, project and event, and the repository's refs, worktrees and checkouts. The C# conformance suite
@@ -143,8 +145,8 @@ async function outcomes(item: Case): Promise<unknown> {
     return { calls, ...state };
   } finally {
     await service.shutdown();
-    for (const link of links) fs.rmSync(link);
-    fs.rmSync(scratch, { recursive: true, force: true });
+    for (const link of links) fs.unlinkSync(link);
+    removeTree(scratch);
   }
 }
 
@@ -157,6 +159,6 @@ it('pins task.create outcomes, rows and repository state to the shipping Node au
     cases: expected,
   };
   const target = 'tests/p2/task-creation-vectors.json';
-  if (process.env.P2_WRITE_TASK_CREATION === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_TASK_CREATION')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 600_000);

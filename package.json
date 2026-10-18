@@ -19,6 +19,7 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "test:integration": "vitest run --project integration",
+    "oracle": "node scripts/electron-node.mjs node_modules/vitest/vitest.mjs run --project unit tests/p2/",
     "test:e2e": "pnpm build && playwright test",
     "package:dir": "pnpm build && electron-builder --dir",
     "package:win": "pnpm build && electron-builder --win nsis",

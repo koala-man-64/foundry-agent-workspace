@@ -4,6 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { createProvider } from '../../packages/providers/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import type { ModelProfile, ProviderContinuation, ProviderEvent, ProviderMessage, ProviderToolResult, ToolDefinition } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 // The offline provider's tool stages that native serves: the project-channel demo and its result stage, and the browser
 // demo, which stops when no browser tools are advertised. The C# suite (FakeToolTests) streams every input through
@@ -110,6 +111,6 @@ it('pins the offline provider tool stages native serves: the channel demo, its r
     cases.push({ name: `fake-tools:${index}`, input, expected: { events, error } });
   }
   const corpus = { oracle: { sources: sources.map(path => ({ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') })) }, cases };
-  if (process.env.P2_WRITE_FAKE_TOOLS === '1') writeFileSync('tests/p2/fake-tool-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_FAKE_TOOLS')) writeFileSync('tests/p2/fake-tool-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(readFileSync('tests/p2/fake-tool-vectors.json', 'utf8'))).toEqual(corpus);
 });

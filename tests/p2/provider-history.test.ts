@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { Store, FAKE_PROFILE_ID, type ProviderState } from '../../packages/runtime/src/store';
 import { applyCompactions, type OrdinalMessage } from '../../packages/runtime/src/compaction';
 import type { CompactionRecord, Message, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `55555555-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -31,7 +32,7 @@ it('pins complete-message compaction transform including ordering, overlap and d
     [range('a', 2, 4), range('b', 2, 6)], [range('b', 2, 6), range('a', 2, 4)],
     [range('same', 1, 2), range('same', 5, 6)], [range('A', 1, 2), range('a', 5, 6)], [range('empty', 2, 4, '')]];
   const cases = inputs.flatMap(input => ranges.map(compactions => ({ messages: input, compactions, expected: applyCompactions(input as unknown as OrdinalMessage[], compactions as CompactionRecord[]) })));
-  if (process.env.P2_WRITE_HISTORY === '1') writeFileSync('tests/p2/provider-history-vectors.json', JSON.stringify(cases, null, 2) + '\n');
+  if (regenerating('P2_WRITE_HISTORY')) writeFileSync('tests/p2/provider-history-vectors.json', JSON.stringify(cases, null, 2) + '\n');
   expect(JSON.parse(readFileSync('tests/p2/provider-history-vectors.json', 'utf8'))).toEqual(cases);
 });
 
@@ -59,7 +60,7 @@ it('pins raw retained messages, compaction projections and opaque provider-state
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { task, messages, state, cases };
-    if (process.env.P2_WRITE_HISTORY === '1') writeFileSync('tests/p2/retained-history-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_HISTORY')) writeFileSync('tests/p2/retained-history-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/retained-history-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

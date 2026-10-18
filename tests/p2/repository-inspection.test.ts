@@ -5,6 +5,8 @@ import { expect, it } from 'vitest';
 import { gitEnvironment } from '../../packages/runtime/src/git-environment';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { build, committed, file, git, isolatedGitEnvironment, normalize, runGit, sha256File, withIsolatedGit, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // Read-only repository inspection outcomes of the shipping TypeScript RepositoryService over disposable fixture trees.
 // The C# conformance suite (RepositoryInspectionTests) rebuilds every tree and must reproduce each outcome, except where a
@@ -175,8 +177,8 @@ async function outcome(item: Case): Promise<Outcome> {
       }
     });
   } finally {
-    for (const link of links) fs.rmSync(link);
-    fs.rmSync(scratch, { recursive: true, force: true });
+    for (const link of links) fs.unlinkSync(link);
+    removeTree(scratch);
   }
 }
 /** Which inherited variable names gitEnvironment() keeps; JavaScript upper-cases the dotless i, and full mappings can expand. */
@@ -201,6 +203,6 @@ it('pins read-only repository inspection outcomes to the shipping Node authority
     cases: expected,
   };
   const target = 'tests/p2/repository-inspection-vectors.json';
-  if (process.env.P2_WRITE_REPOSITORY_INSPECTION === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_REPOSITORY_INSPECTION')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 300_000);
