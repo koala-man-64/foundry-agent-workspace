@@ -1360,7 +1360,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **A correction to the record.** The first main merge (`5730c1d`) brought in main at `891cf73` (#43), which includes #35, #39 and #42; it was not `e482b03`.
 
 **Open, for later slices.**
-- **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired. The worktree paths stored in the six fixture eras, and where TypeScript has computed worktree paths over its history, would give that decision its evidence (review I-4).
+- **Worktree confinement (security I5 of P2.3b), decided at P2.3f.** Rudy chose to confine the coding tools to the task's own app-owned worktree; see the P2.3f entry for the decision, its evidence and the check.
 - **Rethrown failures (review I-2), resolved in P2.3e.** An unexpected failure now stops the turn as failed. No reservation is open while tools run, the task is not left running, and the runtime keeps serving. TypeScript hands the model the failure's message instead; see the P2.3e entry.
 - **Commands too long to launch (review I-3).** A `run_command` longer than about 12,200 characters can be proposed and approved, then fails at launch as "none", because its `-EncodedCommand` line exceeds the 32,767-character command line. TypeScript's helper has the same limit. A preparation-time length check would spare the user an approval that cannot run.
 
@@ -1593,9 +1593,56 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - Its 22-task prefilter seed still gives the unfiltered page. Three tasks with identities that are not objects now leave it, as in TypeScript.
 
 **Open, for later slices.**
-- **P2.3f:** coding turns with approvals, and `approval.decide`. Rudy's worktree-confinement decision (P2.3c, I5) comes first.
+- **P2.3f, done:** coding turns with approvals, and `approval.decide`, with Rudy's worktree-confinement decision; see that entry.
 - **Participants cost, remaining.** A page still admits every unbound Git task and every task of the caller's own project, one by one, as TypeScript does. The data review measured 117 admissions and 327 ms for 722 tasks, 600 of them bound elsewhere.
 - **External profiles** still refuse every turn. The loop reads no usage or metadata events, which only external providers produce.
+
+### Coding turns and approval decisions (P2.3f)
+
+**Decision I5, recorded 18 October 2026.** Asked whether native should confine the model-driven coding tools to the task's own app-owned worktree, Rudy chose "Confine tools (Recommended)".
+- **What it means.** The six coding tools and their approvals run only when the stored worktree is exactly `<data>\wt\<task id>`. File views, `task.diff` and commit, push, reconcile and retire keep TypeScript's behaviour.
+- **Its evidence.** Since the foundation commit (`6bbaef8`, 16 September 2026), TypeScript has kept its data in `%LOCALAPPDATA%\FoundryAgentWorkspace`; only unpackaged builds may override that, for tests. It has created every task worktree at `<data>\wt\<task id>`, and coordinated children at `wt\children\<task id>`. All six fixture eras store exactly those paths. Only a hand-edited row or a copied data folder can name another.
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime serves coding tasks in Git projects and `approval.decide`, bringing it to **41** of the 89 methods.
+- **Requests.** A coding task's turn advertises the six repository tools before the channel's three, under TypeScript's coding instruction and `CHANNEL_SYSTEM`. External (MCP) and browser tools are never advertised.
+- **Starts and turns.** `task.start` creates a coding task as it creates a Git chat (P2.3e), and `task.send` turns it.
+- **Approvals.** Edits and commands are proposed, saved and held until the user's one-shot decision through `approval.decide`, then executed as P2.3c ported them. A cancelled turn revokes its waiting proposal. A decision with another nonce, from another task, or for a missing approval is refused.
+- **The offline provider** gains the coding demo on a task's first turn: `/demo` reads `README.md`, proposes appending a line, then proposes `Write-Output 'Foundry command demo completed'`. Its stored stages (read, replace and command) now resume natively; the MCP, browser and orchestration demos' stages are still refused.
+- **Commands** inherit the runtime's environment, which tests now supply to commands as they do to Git.
+
+**Differences, all fail-closed or invisible on success:**
+- **Confinement (decision I5).** Before any argument check, read, proposal or execution, a coding tool requires the stored worktree to be the app-owned worktree folder's final path joined with the task id, compared ignoring case. Otherwise the model is told "This task's worktree is not its app-owned worktree, so coding tools are refused." TypeScript uses the stored path.
+- **External tools (decision 2).** A coding start or turn is refused before any reservation while an enabled MCP server has stored tools, or a server row that does not parse: "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn." TypeScript advertises those tools.
+- **Compare-and-set (P2.3b's carried item).** Each save the tool runtime makes from its own copy of an approval requires the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome. A row changed under it is neither overwritten nor executed: "The approval changed while it was in use; it was not overwritten." `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
+- **Coordinated tasks** remain refused before any reservation.
+
+**Evidence.**
+- **The Git-chat oracle** (P2.3e) now serves its coding case, and gains two cases on the real clock. TypeScript's command helper checks its parent's start time, which a faked clock breaks. Timestamps become `{time}`, and progress notifications, whose count depends on timing, are left out.
+  - **The coding demo, approved:** the read, the approved edit and command, the approvals page, `files.read`, `task.diff`, and `/demo` again on a later turn, which runs no demo.
+  - **Rejected, cancelled, resumed and decided stale:**
+    - a rejected edit;
+    - a cancellation while waiting, which revokes, and the next turn resuming from the stored replace stage;
+    - a stale nonce, another task's decision and a missing approval, each refused;
+    - an approved edit and a rejected command.
+
+  A coding step is recorded once its task stops running or proposes a new approval, which both runtimes reach alike. The shell, SystemRoot and approval fingerprints become placeholders, as in the P2.3c oracle. TypeScript's command helper draws a result nonce that nothing records and native has no use for (P2.3a); the oracle gives that one draw a real UUID, so the identities after a command match.
+- **The provider oracle** gains 30 coding-demo inputs: advertised tools, result matching, unreadable and incomplete read results, and JavaScript's own errors for a missing result. `FakeToolTests` replays all 63.
+- **The tool-runtime oracle** (P2.3c) places its fixture worktrees where the product puts them: task 1's at `data\wt\<id>`, with a copy for task 5. Every outcome is unchanged; only paths differ.
+- **Native-only tests:**
+  - **confinement:** four foreign worktrees refused for each of the five tools, and a spelling that differs only in case served;
+  - **the compare-and-set:** a row revoked between the decision and the resumed call, with nothing written;
+  - **decision 2:** disabled and empty servers ignored, listed and unreadable servers refusing coding starts and turns with nothing written, and chats unaffected.
+- **Process differential.** The stdio differential now also runs the coding demo through `task.start`, `task.approvals`, `approval.get` and `approval.decide` in both entry points, including a stale decision. Approval fingerprints are normalized.
+- **Mutations.** Recorded once they complete.
+
+**Validation.** Recorded once it completes.
+
+**Independent reviews.** Recorded once they complete.
+
+**Open, for later slices.**
+- **External tools:** decision 2's refusal lifts with the MCP slice.
+- **Browser tools, coordinated orchestration and external profiles** remain refused.
+- **Confinement covers the coding tools only.** File views, `task.diff` and the Git actions follow TypeScript, as decided.
 
 ## Personal workspace expansion — local implementation
 
