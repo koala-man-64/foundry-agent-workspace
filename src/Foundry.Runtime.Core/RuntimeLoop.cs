@@ -46,12 +46,15 @@ public sealed class RuntimeLoop : SynchronizationContext, IAsyncDisposable
     internal SynchronousScope EnterSynchronousScope() { AssertCurrent(); return new(); }
 
 #pragma warning disable RS0030 // This class is the sole owner of the execution thread and state-free offload.
+    internal const int StackSize = 8 * 1024 * 1024;
     private readonly Thread thread;
     private bool IsOwnerThread => ReferenceEquals(Thread.CurrentThread, thread);
     public RuntimeLoop()
     {
         continuations = new ContinuationContext(this);
-        thread = new Thread(Run) { IsBackground = true, Name = "Foundry RuntimeLoop" };
+        // Provider payloads up to ProviderJson.MaxDepth are walked recursively on this thread (P2.4b review N4): an explicit
+        // stack keeps that headroom independent of the platform's default.
+        thread = new Thread(Run, StackSize) { IsBackground = true, Name = "Foundry RuntimeLoop" };
         thread.Start();
     }
 

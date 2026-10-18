@@ -22,6 +22,46 @@ public static class Compatibility
         }
         return Hash(fields);
     }
+    /// <summary>
+    /// normalizeEndpoint of packages/providers: the WHATWG serialization of an HTTPS Azure resource endpoint with no path,
+    /// credentials, query or fragment, or an <see cref="ArgumentException"/> with TypeScript's message. An input WHATWG parses
+    /// under another scheme gets the second message, as TypeScript gives it; for a non-special scheme this assumes that
+    /// WHATWG parses it, which it does except for an authority it cannot read (the message is the only difference). A host
+    /// with a right-to-left character is refused with the first message: WHATWG refuses those that break the IDNA Bidi
+    /// rule, which this reader does not apply, so native refuses them all (P2.4a review F1, a named difference).
+    /// </summary>
+    public static string AzureEndpoint(string endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        if (EcmaUrl.TryParse(endpoint, out var url))
+            return url!.HasRightToLeftHost() ? throw new ArgumentException("Endpoint must be a valid HTTPS Azure URL.") : url.AzureEndpoint();
+        throw new ArgumentException(OtherScheme(endpoint) ? "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment." : "Endpoint must be a valid HTTPS Azure URL.");
+    }
+    /// <summary>
+    /// profile.save's endpoint check in service.ts, for a profile that is not offline: null when the endpoint may be saved,
+    /// else the message. An input <c>new URL</c> cannot read is "Invalid URL", its TypeError's text; anything else that fails
+    /// is TypeScript's single message. A host with a right-to-left character is refused as "Invalid URL", which is what
+    /// TypeScript reports for one that breaks the IDNA Bidi rule; valid right-to-left hosts are a named difference (P2.4c).
+    /// </summary>
+    public static string? ProfileEndpointError(string endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        const string Refused = "Use a credential-free HTTPS Azure resource endpoint without a path or query.";
+        if (!EcmaUrl.TryParse(endpoint, out var url)) return OtherScheme(endpoint) ? Refused : "Invalid URL";
+        if (url!.HasRightToLeftHost()) return "Invalid URL";
+        return url.SaveRuleHolds() ? null : Refused;
+    }
+
+    private static bool OtherScheme(string endpoint)
+    {
+        var text = endpoint.Trim([.. Enumerable.Range(0, 33).Select(value => (char)value)]).Replace("\t", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal);
+        var colon = text.IndexOf(':', StringComparison.Ordinal);
+        if (colon < 1 || !char.IsAsciiLetter(text[0]) || !text[..colon].All(c => char.IsAsciiLetterOrDigit(c) || c is '+' or '-' or '.')) return false;
+        var scheme = text[..colon].ToLowerInvariant();
+        if (scheme is "http" or "https") return false;
+        // The other special schemes with a host parse as http does; file and non-special schemes parse.
+        return scheme is not ("ftp" or "ws" or "wss") || EcmaUrl.TryParse("http" + text[colon..], out _);
+    }
     public static List<object?> SortManifest(List<object?> entries) => entries.OrderBy(entry => (string)((Dictionary<string, object?>)entry!)["path"]!, Utf8Order.Instance).ToList();
     private sealed class Utf8Order : IComparer<string>
     {
