@@ -9,6 +9,13 @@ public sealed partial class Store
 
     internal Dictionary<string, object?> ReadTask(string taskId)
         => ReadDocument("SELECT data FROM tasks WHERE id=$p0", taskId) ?? throw new InvalidOperationException("Task not found.");
+    /// <summary>store.allTasks: every task document, in the table's own order.</summary>
+    internal List<Dictionary<string, object?>> AllTasks()
+    {
+        loop.AssertCurrent();
+        return [.. Rows("SELECT data FROM tasks").Select(row => Document((string)row["data"]!))];
+    }
+
     internal Dictionary<string, object?> ReadGitTask(string taskId)
     {
         var task = ReadTask(taskId);

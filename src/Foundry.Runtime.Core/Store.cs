@@ -134,6 +134,9 @@ public sealed partial class Store : IDisposable
         return rows;
     }
 
+    /// <summary>Whether a transaction (or a savepoint within one) is open, so rows it wrote are not yet committed.</summary>
+    internal bool InTransaction => transaction is not null;
+
     public T Transaction<T>(Func<T> callback) => Transact(callback, false);
     public T Immediate<T>(Func<T> callback) => Transact(callback, true);
     [Obsolete("Transaction callbacks must be synchronous.", true)]

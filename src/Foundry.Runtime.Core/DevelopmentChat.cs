@@ -6,7 +6,11 @@ using Foundry.Providers;
 
 namespace Foundry.Runtime;
 
-/// <summary>Development-only ordinary projectless fake chat. No repository, command, browser or external-provider authority.</summary>
+/// <summary>
+/// Development-only tasks with the offline provider: chats projectless, in saved folders and in Git projects, and coding
+/// tasks in Git projects, whose edits and commands run only after the user's one-shot decision. No browser, orchestration,
+/// external-tool or external-provider authority.
+/// </summary>
 public sealed class DevelopmentChat
 {
     private sealed class Running : IDisposable
@@ -21,35 +25,41 @@ public sealed class DevelopmentChat
     private readonly Redactor redactor = new();
     private readonly Func<DateTimeOffset> now;
     private readonly Func<Guid> id;
-    private readonly Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream;
     private readonly RepositoryService repositories;
+    private readonly ToolRuntime tools;
+    private readonly AgentLoop agent;
     private readonly Dictionary<string, Running> running = new(StringComparer.Ordinal);
     private readonly HashSet<string> publishing = new(StringComparer.Ordinal);
     private readonly HashSet<string> retiring = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Hash, Task<Dictionary<string, object?>> Work)> starts = new(StringComparer.Ordinal);
-    private readonly List<TaskCompletionSource> slotWaiters = [];
     private readonly TaskCompletionSource failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Exception? backgroundFailure;
-    private int activeSlots;
     private bool closing;
     public Task Failure => failure.Task;
     /// <summary>The repository service, for tests that observe or interrupt its Git launches.</summary>
     internal RepositoryService Repositories => repositories;
+    /// <summary>The tool runtime and its project channel, for tests that drive them directly.</summary>
+    internal ToolRuntime Tools => tools;
 
     public DevelopmentChat(RuntimeLoop loop, Store store, Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
-        : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), now, id) { }
+        : this(loop, store, null, now, id) { }
 
-    /// <summary>Tests supply the environment Git inherits, so fixtures never read the machine's Git configuration.</summary>
+    /// <summary>Tests supply the environment Git and commands inherit, so fixtures never read the machine's Git configuration or profile.</summary>
     internal DevelopmentChat(RuntimeLoop loop, Store store, Func<IReadOnlyDictionary<string, string>> gitEnvironment)
-        : this(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), gitEnvironment: gitEnvironment) { }
+        : this(loop, store, null, gitEnvironment: gitEnvironment) { }
 
+    /// <summary>Without a stream, turns use the offline provider, which draws its tool-call ids from <paramref name="id"/>.</summary>
     internal DevelopmentChat(RuntimeLoop loop, Store store,
-        Func<IReadOnlyList<ProviderMessage>, ProviderContinuation?, CancellationToken, IAsyncEnumerable<ProviderChatEvent>> stream,
+        Func<ProviderRequest, CancellationToken, IAsyncEnumerable<ProviderChatEvent>>? stream,
         Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Func<IReadOnlyDictionary<string, string>>? gitEnvironment = null)
     {
         loop.AssertCurrent();
-        this.loop = loop; this.store = store; this.stream = stream; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
+        this.loop = loop; this.store = store; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
+        var provider = new FakeChatProvider(id: this.id);
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
+        var slots = new ExecutionSlots(loop);
+        tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories, gitEnvironment), redactor, slots, this.now, this.id);
+        agent = new AgentLoop(loop, store, tools, slots, redactor, stream ?? provider.StreamTurn, this.now);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
@@ -58,7 +68,7 @@ public sealed class DevelopmentChat
     // TypeScript keeps silent, and the explicit event workspace-operations publishes with its removed-worktree count.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
         or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning"
-        or "task.committed" or "task.pushed"
+        or "task.committed" or "task.pushed" or "approval.changed" or "channel.changed" or "task.tool-result"
         || item.Type == "task.retired" && item.Data is IDictionary<string, object?> data && data.ContainsKey("removedWorktrees");
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
@@ -104,10 +114,21 @@ public sealed class DevelopmentChat
                 await sending.Started.Task;
                 return new Dictionary<string, object?> { ["accepted"] = true };
             case "task.cancel":
-                var task = store.ReadTask((string)parameters["taskId"]!); RequireOrdinary(task);
+                var task = store.ReadTask((string)parameters["taskId"]!); RequireStandalone(task);
                 var present = running.TryGetValue((string)task["id"]!, out var entry); entry?.Abort.Cancel();
                 return new Dictionary<string, object?> { ["accepted"] = present };
             case "task.read": return store.TaskRead((string)parameters["taskId"]!);
+            case "task.approvals": return store.ApprovalPage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"));
+            case "approval.get": return store.ApprovalRead((string)parameters["taskId"]!, (string)parameters["approvalId"]!, redactor);
+            case "approval.content":
+                return store.ApprovalContent((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["field"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 32 * 1024), redactor);
+            case "approval.decide":
+                return tools.Decide((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["nonce"]!, (string)parameters["decision"]!);
+            case "approval.reconcile": return tools.Reconcile((string)parameters["taskId"]!, (string)parameters["approvalId"]!);
+            case "channel.get": return tools.Channel.View((string)parameters["taskId"]!, Ordinal(parameters, "before"), parameters.GetValueOrDefault("afterTaskId") as string);
+            case "channel.send":
+                return tools.Channel.Send((string)parameters["taskId"]!, (string)parameters["requestId"]!,
+                    new Dictionary<string, object?> { ["recipientTaskId"] = parameters.GetValueOrDefault("recipientTaskId"), ["content"] = parameters["content"] }, "user");
             case "task.messages": return store.MessagePage((string)parameters["taskId"]!, Integer(parameters, "limit", 50), Ordinal(parameters, "before"), Ordinal(parameters, "through"), redactor);
             case "task.messageContent": return store.MessageContent((string)parameters["taskId"]!, (string)parameters["messageId"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 65536), redactor);
             case "project.add": return await Repository(async () => await AddProject((string)parameters["path"]!));
@@ -225,14 +246,7 @@ public sealed class DevelopmentChat
                 task["profileId"] = parameters["profileId"]; task["status"] = "idle"; task["createdAt"] = stamp; task["updatedAt"] = stamp;
                 task["tokenBudget"] = parameters.GetValueOrDefault("tokenBudget") ?? 100000; task["usedTokens"] = 0; task["mode"] = mode;
                 store.SaveTask(task);
-                // agent-channel admit: the project still resolves to the identity admitted before the worktree was made.
-                channel.Revalidate(identity);
-                var binding = store.Intent("channel.identity", new Dictionary<string, object?>
-                {
-                    ["taskId"] = taskId,
-                    ["identity"] = new Dictionary<string, object?> { ["path"] = identity.Path, ["root"] = identity.Root, ["gitDirectory"] = identity.GitDirectory, ["common"] = identity.Common },
-                });
-                store.FinishIntent(binding, "complete");
+                tools.Channel.Admit(task, channel, identity);
                 store.FinishIntent(intent, "complete");
                 store.Event("tasks.changed", new Dictionary<string, object?>(), taskId);
                 return task;
@@ -496,17 +510,27 @@ public sealed class DevelopmentChat
     }
 
     private const string ProjectUnavailable = "Project folder is unavailable or resolves to a different location.";
-    private const string GitProjectChat = "Chats in Git projects need the native tool loop, which a later runtime slice ports.";
+    // Decision 2 of P2.3: until the MCP slice, a coding turn is refused before any reservation while it would advertise
+    // external tools.
+    private const string ExternalTools = "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn.";
 
     /// <summary>
-    /// service.ts startTask, for projectless chats and chats in saved folders that are not Git repositories. Its order
-    /// is kept: an earlier request with this ID is answered first, then the project and its folder are checked and the
-    /// folder classified, then the mode, coordination and profile. A Git project is refused before any reservation:
-    /// its chats advertise project-channel and coding tools, which need the native tool loop.
+    /// service.ts startTask, for chats: projectless, in saved folders, and in Git projects. Its order is kept: an earlier
+    /// request with this ID is answered first, then the project and its folder are checked and the folder classified, then
+    /// the mode, coordination and profile, then (for a Git project) any unknown worktree creation. Coding and coordinated
+    /// tasks are refused before any reservation; they need native approvals and the orchestrator.
+    /// <para>
+    /// A Git chat is admitted as task.create admits one: its channel identity is resolved while the project is classified
+    /// and held until the task is bound to it; a worktree.create intent is written before any Git mutation; the task, its
+    /// binding and the completed intent commit together; the first turn starts after. A failure leaves the intent complete
+    /// only when the repository reported that no mutation started, and then forgets the start; otherwise the intent is
+    /// unknown and blocks later creations until someone inspects the retained worktree.
+    /// </para>
     /// </summary>
     private async Task<Dictionary<string, object?>> StartDeferred(Dictionary<string, object?> parameters, string hash)
     {
         loop.AssertCurrent(); var requestId = (string)parameters["requestId"]!;
+        RepositoryAdmission? admission = null;
         try
         {
             if (closing) throw new InvalidOperationException("Runtime is shutting down.");
@@ -530,48 +554,74 @@ public sealed class DevelopmentChat
             }
             var project = parameters.GetValueOrDefault("projectId") is string projectId ? store.Project(projectId) ?? throw new WorkspaceReadException("Project not found.") : null;
             if (project is not null && Truthy(project.GetValueOrDefault("hidden"))) throw new WorkspaceReadException("Restore this project before starting a chat.");
-            var kind = "none";
+            var kind = "none"; GitAdmissionIdentity? identity = null;
             if (project is not null)
             {
                 var path = (string)project["path"]!;
                 if (NetworkPathPolicy.IsNetworkOrDevicePath(path)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
                 using (SavedProjectFolder(path))
                 {
-                    using var identity = RepositoryAdmission.Open(loop, path);
+                    admission = RepositoryAdmission.Open(loop, path);
                     kind = await repositories.IsGitWorkingTree(path) ? "git" : "folder";
-                    identity.Revalidate();
+                    admission.Revalidate();
                 }
+                // agent-channel prepareAdmission: the identity a Git chat is bound to, held until the binding commits.
+                if (kind == "git") identity = admission.Identity ?? throw new WorkspaceReadException("Project channel requires an available local Git project.");
+                else { admission.Dispose(); admission = null; }
             }
-            if (kind == "git") throw new NotSupportedException(GitProjectChat);
-            if (!Equals(parameters["mode"], "chat")) throw new WorkspaceReadException("Coding and coordination require a Git project.");
-            if (parameters.ContainsKey("coordination")) throw new WorkspaceReadException("Coordination settings apply only to coordinated tasks.");
+            var mode = (string)parameters["mode"]!;
+            if (kind != "git" && mode != "chat") throw new WorkspaceReadException("Coding and coordination require a Git project.");
+            if (mode != "coordinated" && parameters.ContainsKey("coordination")) throw new WorkspaceReadException("Coordination settings apply only to coordinated tasks.");
+            if (mode == "coordinated") throw new NotSupportedException("Coordinated tasks are not available in this build.");
             var profile = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile."); RequireFake(profile);
+            if (kind == "git" && store.UnknownWorktreeIntents() > 0) throw new WorkspaceReadException("An earlier worktree creation has an unknown outcome. Inspect it before creating another task.");
+            if (mode == "coding" && store.HasExternalTools()) throw new NotSupportedException(ExternalTools);
             var taskId = id().ToString(); var content = (string)parameters["content"]!;
             var lineEnd = content.IndexOf('\n'); var title = lineEnd < 0 ? content : content[..(lineEnd > 0 && content[lineEnd - 1] == '\r' ? lineEnd - 1 : lineEnd)];
             title = redactor.Text(parameters.TryGetValue("title", out var supplied) ? (string)supplied! : title[..Math.Min(80, title.Length)]);
+            // Durable reservation precedes any worktree creation or first-message dispatch. A retry can return only a
+            // completed task; pending and unknown outcomes are never replayed.
             store.ReserveTaskStart(requestId, hash, taskId);
-            var saved = false; var sending = false;
+            string? intent = null; var created = false; var saved = false; var sending = false;
             try
             {
+                RepositoryService.CreatedWorktree? worktree = null;
+                if (kind == "git")
+                {
+                    intent = store.Intent("worktree.create", new Dictionary<string, object?> { ["taskId"] = taskId, ["projectPath"] = project!["path"], ["requestId"] = requestId });
+                    worktree = await repositories.CreateTaskWorktree((string)project["path"]!, taskId, identity);
+                    created = true;
+                }
                 var stamp = Clock.Iso(now());
                 var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = title };
                 if (project is not null) task["projectId"] = project["id"];
                 task["profileId"] = parameters["profileId"]; task["status"] = "idle"; task["createdAt"] = stamp; task["updatedAt"] = stamp;
-                task["tokenBudget"] = parameters["tokenBudget"]; task["usedTokens"] = 0; task["mode"] = "chat"; task["workspaceKind"] = kind;
+                task["tokenBudget"] = parameters["tokenBudget"]; task["usedTokens"] = 0; task["mode"] = mode; task["workspaceKind"] = kind;
                 if (project is not null) task["projectPath"] = project["path"];
-                store.SaveTask(task); saved = true; store.Event("tasks.changed", new Dictionary<string, object?>(), taskId); sending = true;
+                if (worktree is not null) { task["worktreePath"] = worktree.WorktreePath; task["branch"] = worktree.Branch; task["baseCommit"] = worktree.BaseCommit; }
+                store.Transaction(() =>
+                {
+                    store.SaveTask(task);
+                    if (admission is not null) tools.Channel.Admit(task, admission, identity!);
+                    if (intent is not null) store.FinishIntent(intent, "complete");
+                    return 0;
+                });
+                saved = true; store.Event("tasks.changed", new Dictionary<string, object?>(), taskId); sending = true;
                 StartTurn(taskId, content); store.FinishTaskStart(requestId, "complete"); return store.ReadTask(taskId);
             }
             catch (EventDeliveryException) { throw; }
             catch (Exception error)
             {
+                if (intent is not null && !saved) store.FinishIntent(intent, created || error is not RepositoryException { Outcome: "none" } ? "unknown" : "complete");
+                // The repository's refusal reaches the caller as task.create's does: TypeScript reports its text.
+                if (!saved && !created && error is RepositoryException { Outcome: "none" }) { store.ClearTaskStart(requestId); throw new WorkspaceReadException(redactor.Text(error.Message)); }
                 if (saved && sending && !store.HasTaskUserMessage(taskId)) { store.FinishTaskStart(requestId, "failed"); throw; }
                 store.FinishTaskStart(requestId, "unknown");
                 throw new InvalidOperationException("Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying. " + redactor.Text(error.Message), error);
             }
         }
         catch (EventDeliveryException error) { Fail(error); throw; }
-        finally { starts.Remove(requestId); }
+        finally { admission?.Dispose(); starts.Remove(requestId); }
     }
 
     /// <summary>
@@ -598,33 +648,39 @@ public sealed class DevelopmentChat
     /// <summary>
     /// The failed-start retry of a project chat: the task's saved project is still the requested, visible project, its
     /// folder still resolves under its saved spelling, and the task's own folder spelling names that same folder by
-    /// identity. A Git task's retry would run a tool-enabled turn, which needs a later slice.
+    /// identity. A Git task's project channel must also still resolve to its binding.
     /// </summary>
     private void RequireRetryableFolder(Dictionary<string, object?> task, string? projectId)
     {
-        if (Store.IsGitDocument(task)) throw new NotSupportedException(GitProjectChat);
         var project = task.GetValueOrDefault("projectId") is string saved ? store.Project(saved) : null;
         if (project is null || !Equals(project["id"], projectId) || Truthy(project.GetValueOrDefault("hidden"))) throw new WorkspaceReadException(ProjectUnavailable);
         var path = (string)project["path"]!;
         if (NetworkPathPolicy.IsNetworkOrDevicePath(path)) throw new WorkspaceReadException(ProjectUnavailable);
         using (SavedProjectFolder(path))
             if (task.GetValueOrDefault("projectPath") is not string folder || !RepositoryPaths.SameFolder(folder, path)) throw new WorkspaceReadException(ProjectUnavailable);
+        if (Store.IsGitDocument(task)) tools.Channel.AssertAdmission(task);
     }
 
+    /// <summary>
+    /// service.ts startTurn, for chats. A Git chat's turn is refused while its worktree retires or a Git operation runs, and
+    /// a stored continuation must be in a stage the offline provider serves natively. The request is prepared and enriched
+    /// before the reservation, the user message, the streaming answer and the running status commit together.
+    /// </summary>
     private Running StartTurn(string taskId, string content)
     {
         loop.AssertCurrent();
         if (closing) throw new InvalidOperationException("Runtime is shutting down.");
         if (running.ContainsKey(taskId)) throw new InvalidOperationException("This task already has an active response.");
         if (running.Count >= 16) throw new InvalidOperationException("Too many active tasks. Finish or cancel a task first.");
-        var task = store.ReadTask(taskId); RequireOrdinary(task);
-        if (Equals(task["status"], "retired")) throw new InvalidOperationException("This task worktree is retired. Create a new task to continue the work.");
+        var task = store.ReadTask(taskId); RequireTurn(task);
+        if (Equals(task["status"], "retired") || retiring.Contains(taskId)) throw new InvalidOperationException("This task worktree is retired. Create a new task to continue the work.");
         store.AssertNoChatExecutionIntents(taskId);
+        if (publishing.Contains(taskId)) throw new InvalidOperationException("Wait for the Git operation to finish before starting a response.");
         var profile = store.Profile((string)task["profileId"]!) ?? throw new InvalidOperationException("Profile not found."); RequireFake(profile);
         var clean = redactor.Text(content); var fingerprint = Compatibility.ProfileFingerprint(profile);
-        var request = store.PrepareChatRequest(taskId, profile, fingerprint, clean);
+        var request = agent.Prepare(task, profile, fingerprint, clean);
         if (request.GetValueOrDefault("continuation") is Dictionary<string, object?> native
-            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not string stage || stage is not "chat" and not "complete"))
+            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send" or "read" or "replace" or "command")))
             throw new NotSupportedException("This native continuation requires a later runtime feature slice.");
         var stamp = Clock.Iso(now()); var answer = new Dictionary<string, object?> { ["id"] = id().ToString(), ["taskId"] = taskId, ["role"] = "assistant", ["content"] = "", ["createdAt"] = stamp, ["status"] = "streaming" };
         TaskReservation? reservation = null;
@@ -642,7 +698,7 @@ public sealed class DevelopmentChat
             entry.Started.TrySetResult();
             try
             {
-                await Run(taskId, request, answer, reservation!, fingerprint, entry.Abort.Token);
+                await agent.Run(taskId, request, answer, reservation!, fingerprint, entry.Abort);
             }
             catch (Exception error) { Fail(error); }
             finally { loop.AssertCurrent(); running.Remove(taskId); entry.Dispose(); }
@@ -652,116 +708,6 @@ public sealed class DevelopmentChat
         var started = store.ReadTask(taskId);
         if (Number(started["usedTokens"]) >= Number(task["tokenBudget"]) * 0.8) store.Event("task.budget-warning", new Dictionary<string, object?> { ["usedTokens"] = started["usedTokens"], ["budget"] = task["tokenBudget"] }, taskId);
         return entry;
-    }
-
-    private async Task Run(string taskId, Dictionary<string, object?> request, Dictionary<string, object?> answer, TaskReservation initial, string fingerprint, CancellationToken token)
-    {
-        loop.AssertCurrent(); TaskReservation? handle = initial; var raw = new StringBuilder(); var profile = (Dictionary<string, object?>)request["profile"]!;
-        var rawBytes = 0L; var lastProgress = 0L; var finished = false; ProviderContinuation? continuation = null;
-        void CheckCancellation() { if (token.IsCancellationRequested) throw new OperationCanceledException("This operation was aborted", token); }
-        void Settle(string outcome, string? reason)
-        {
-            if (handle is null) return;
-            var current = handle; store.SettleTaskRequest(taskId, current, null, outcome, reason); handle = null;
-            store.Event("usage.changed", new Dictionary<string, object?> { ["requestId"] = current.RequestId }, taskId);
-        }
-        async Task Expire(CancellationToken lifetime)
-        {
-            try { await loop.Delay(TimeSpan.FromMinutes(10), lifetime); loop.AssertCurrent(); if (running.TryGetValue(taskId, out var current)) current.Abort.Cancel(); }
-            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        }
-        try
-        {
-            var contextLimit = Number(profile["contextLimit"]);
-            if (initial.Amount >= contextLimit * 0.8) store.Event("task.context-warning", new Dictionary<string, object?> { ["estimatedTokens"] = initial.Amount, ["contextLimit"] = profile["contextLimit"], ["percent"] = Math.Floor(initial.Amount / contextLimit * 100 + 0.5) }, taskId);
-            try
-            {
-                await UseSlot(async () =>
-                {
-                    store.AttemptUsage(initial.RequestId); using var lifetime = new CancellationTokenSource(); var expiry = Expire(lifetime.Token);
-                    try
-                    {
-                        var messages = ((System.Collections.IEnumerable)request["messages"]!).Cast<Dictionary<string, object?>>().Select(message => new ProviderMessage((string)message["role"]!, (string)message["content"]!)).ToArray();
-                        var native = request.GetValueOrDefault("continuation") as Dictionary<string, object?>;
-                        var prior = native is null ? null : new ProviderContinuation((string)native["apiKind"]!, native["data"]);
-                        await foreach (var item in stream(messages, prior, token))
-                        {
-                            loop.AssertCurrent();
-                            if (finished) throw new InvalidOperationException("Provider emitted data after its completion event.");
-                            CheckCancellation();
-                            if (item is ProviderText text)
-                            {
-                                raw.Append(text.Text); rawBytes += Encoding.UTF8.GetByteCount(text.Text);
-                                if (rawBytes > 256 * 1024) throw new InvalidOperationException("Response exceeded the local output limit.");
-                                var tick = now().ToUnixTimeMilliseconds();
-                                if (tick - lastProgress >= 100) { store.PublishProgress(new Dictionary<string, object?> { ["receivedCharacters"] = raw.Length }, taskId); lastProgress = tick; }
-                            }
-                            else if (item is ProviderDone done) { finished = true; continuation = done.Continuation; }
-                            else throw new InvalidOperationException("Unexpected or duplicate provider tool call.");
-                        }
-                    }
-                    finally { lifetime.Cancel(); await expiry; }
-                }, token);
-            }
-            catch (EventDeliveryException) { throw; }
-            catch
-            {
-                Settle(token.IsCancellationRequested ? "cancelled" : "failed", "Provider stream failed or was cancelled before usage was confirmed."); throw;
-            }
-            CheckCancellation();
-            if (!finished) throw new InvalidOperationException("Provider stream ended without a completion event.");
-            Dictionary<string, object?>? state = null;
-            var previous = store.ReadProviderState(taskId);
-            if (previous is not null)
-            {
-                if (continuation is null || continuation.ApiKind != (string)profile["apiKind"]!) throw new InvalidOperationException("Provider omitted native continuation; tools were not executed.");
-                var serialized = JsJson.Stringify(continuation)!;
-                if (Encoding.UTF8.GetByteCount(serialized) > 512 * 1024) throw new InvalidOperationException("Native conversation exceeded the persistence limit.");
-                if (redactor.Text(serialized) != serialized) throw new InvalidOperationException("Native conversation contained secret-like data; it was not persisted and tools were not executed.");
-                var seen = previous.GetValueOrDefault("seenToolCallIds") as List<object?>
-                    ?? ((List<object?>)previous["pending"]!).Cast<Dictionary<string, object?>>().Select(call => call["id"]).ToList();
-                var unique = seen.Cast<string>().Distinct(StringComparer.Ordinal).ToList();
-                if (unique.Count > 1000) throw new InvalidOperationException("Task tool-history limit reached. Create a new task.");
-                state = new() { ["fingerprint"] = fingerprint, ["continuation"] = continuation.ToWire(), ["pending"] = new List<object?>(), ["results"] = new List<object?>(), ["seenToolCallIds"] = unique };
-            }
-            var priorContent = (string)answer["content"]!; var clean = redactor.Text(raw.ToString());
-            answer["content"] = priorContent + (priorContent.Length > 0 && raw.Length > 0 ? "\n\n" : "") + clean; raw.Clear();
-            if (Encoding.UTF8.GetByteCount((string)answer["content"]!) > 512 * 1024) throw new InvalidOperationException("Turn transcript exceeded the local limit.");
-            store.Transaction(() =>
-            {
-                if (state is not null) store.Execute("INSERT OR REPLACE INTO intents VALUES($p0,'provider.context',$p1,'complete')", taskId, JsJson.Stringify(state));
-                store.SaveMessage(answer); Settle("completed", "Provider completed without reporting usage; the reservation is retained."); return 0;
-            });
-            answer["status"] = "complete"; store.SaveMessage(answer);
-            var detail = new Dictionary<string, object?> { ["usageKnown"] = false, ["chargedTokens"] = initial.Amount };
-            store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = "idle", ["updatedAt"] = Clock.Iso(now()) }, detail);
-            if (store.SchemaVersion < 5) store.Event("task.completed", detail, taskId);
-        }
-        catch (EventDeliveryException) { throw; }
-        catch (Exception error)
-        {
-            Settle(token.IsCancellationRequested ? "cancelled" : "failed", "Turn stopped before this request completed.");
-            var content = (string)answer["content"]!;
-            answer["content"] = content + (content.Length > 0 && raw.Length > 0 ? "\n\n" : "") + redactor.Text(raw.ToString());
-            answer["status"] = token.IsCancellationRequested ? "cancelled" : "failed";
-            var reason = token.IsCancellationRequested ? "Response cancelled. Unreported usage remains reserved conservatively." : redactor.Text(error.Message);
-            store.Transaction(() => { store.SaveMessage(answer); store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = answer["status"], ["updatedAt"] = Clock.Iso(now()) }, new() { ["reason"] = reason }); return 0; });
-            if (store.SchemaVersion < 5) store.Event("task.stopped", new Dictionary<string, object?> { ["reason"] = reason }, taskId);
-        }
-    }
-
-    private async Task UseSlot(Func<Task> action, CancellationToken token)
-    {
-        while (activeSlots >= 3)
-        {
-            token.ThrowIfCancellationRequested(); var waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); slotWaiters.Add(waiter);
-            using var registration = token.Register(() => waiter.TrySetResult());
-            try { await waiter.Task; }
-            finally { loop.AssertCurrent(); slotWaiters.Remove(waiter); }
-        }
-        token.ThrowIfCancellationRequested(); activeSlots++;
-        try { await action(); }
-        finally { loop.AssertCurrent(); activeSlots--; foreach (var waiter in slotWaiters.ToArray()) waiter.TrySetResult(); }
     }
 
     public async Task Shutdown()
@@ -775,13 +721,25 @@ public sealed class DevelopmentChat
     {
         if (!Equals(profile.GetValueOrDefault("apiKind"), "fake")) throw new NotSupportedException("External providers are not supported by the development chat runtime.");
     }
-    /// <summary>A chat turn with no tools: projectless, or in a saved folder that is not a Git repository (agent-loop.ts
-    /// prepareRequest gives neither any tool, channel or system prompt).</summary>
-    private static void RequireOrdinary(Dictionary<string, object?> task)
+    /// <summary>A standalone task: no coordinated mode, role, parent or root, all of which need the orchestrator.</summary>
+    private static void RequireStandalone(Dictionary<string, object?> task)
     {
-        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat") || task.GetValueOrDefault("workspaceKind") is not ("none" or "folder")
-            || task.ContainsKey("parentTaskId") || task.ContainsKey("rootTaskId") || task.ContainsKey("role"))
-            throw new NotSupportedException("The development chat runtime supports projectless and folder ordinary chat only.");
+        if (Equals(task.GetValueOrDefault("mode"), "coordinated") || task.ContainsKey("parentTaskId") || task.ContainsKey("rootTaskId") || task.ContainsKey("role"))
+            throw new NotSupportedException("The development chat runtime supports standalone tasks only.");
+    }
+    /// <summary>A turn native can run: a chat projectless or in a saved folder, with no tools, or in a Git project (no
+    /// workspace kind, as legacy tasks have, or Git), with the project channel's tools; or a coding task in a Git project,
+    /// with the repository tools as well, while no external tool would be advertised (decision 2).</summary>
+    private void RequireTurn(Dictionary<string, object?> task)
+    {
+        RequireStandalone(task);
+        if (task.TryGetValue("mode", out var mode) && mode is not ("chat" or "coding"))
+            throw new NotSupportedException("The development chat runtime supports chat and coding tasks only.");
+        if (task.GetValueOrDefault("workspaceKind") is not (null or "none" or "folder" or "git"))
+            throw new NotSupportedException("The development chat runtime supports projectless, folder and Git chats only.");
+        if (!Equals(mode, "coding")) return;
+        if (!Store.IsGitDocument(task)) throw new NotSupportedException("Coding turns need a Git worktree.");
+        if (store.HasExternalTools()) throw new NotSupportedException(ExternalTools);
     }
     private static double Number(object? value) => Convert.ToDouble(value, CultureInfo.InvariantCulture);
     private static long? Ordinal(Dictionary<string, object?> value, string key) => value.TryGetValue(key, out var field) ? checked((long)Number(field)) : null;

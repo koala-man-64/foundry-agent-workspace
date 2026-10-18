@@ -225,7 +225,13 @@ Dual-landed fixes:
     - **I-2.** A caller cannot tell a preview from the whole approval. The protocol comment now says so.
     - **Re-review of `b66735e`: GO.** L1-a, I-1 and I-2 are closed. Not blocking: any failure of the read after the save takes the fallback, which is now fully redacted.
   - **Validation of `b66735e`** (run2, from a `git archive` export): native 7,164 passed, 0 failed, 2 expected skips; `pnpm check` 569 passed; `pnpm test:e2e` 21 passed; `pnpm package:dir` and `pnpm smoke:package` passed; `git diff --check` clean.
-  - **Native half.** The native half lands on the P2.3 branch, with the approval vectors regenerated from this source.
+  - **Native half (P2.3 branch).** `ToolRuntime.Reconcile` returns `Store.ApprovalRead`'s projection, using the chat's `Redactor`, with the same fallback.
+    - **One difference, fail-closed.** Native takes the fallback only when the redacted document does not parse (`WorkspaceReadException`). TypeScript's catch-all also covers a store read that fails just after the save; native reports that as a runtime failure.
+    - **Oracle.** The approval oracle gains six reconciliations: labelled secrets in a command and its environment, a command above the preview bound, unterminated private keys on a command and on a completed edit without a `toolCallId`, labelled secrets in the fallback's `toolCallId`, nonce and fingerprint (L1-a), and a fallback without a summary (I-1). Its vectors are regenerated from this source.
+    - **Mutations.** Seven of eight native mutations fail the replay, among them copying the fallback's fields unredacted and writing absent fields as null. Leaving the fallback's result content unredacted survives, because reconciliation writes only runtime-authored result text.
+    - **Corrupt-data edges (informational, named by the review).** For a stored approval above 128 KiB, a missing summary previews natively as an empty one, where TypeScript's projection throws and its fallback omits the summary; a `path` that is not a string faults native, where TypeScript falls back. Neither leaks, and the runtime always writes both as strings.
+    - **Review** (the same reviewer): **GO** for `07de8b3..985d6f3`. It verified the seal and that the cherry-picked TypeScript files match `b66735e` byte for byte, ran the replay (9 passed), and confirmed the shared `Redactor`, the fallback's key order and absent fields, and that the named difference is fail-closed.
+    - **Validation of `985d6f3`** (from a `git archive` export): native 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 571 passed; the stdio differential passed; `git diff --check` clean. An earlier run of `0c1b727` failed once in `JobProcessTests.StartupDiagnosticsAreBoundedAndDoNotConsumeOutput`. That test dates from #32, races the console host's exit, and passed 10 of 10 alone. Evidence is in `foundry-evidence\fix-l1-reconcile-redaction`.
 - **Keeping worktree reads off the index lock during an approved integration** (18 October 2026).
   - **The defect.** `git-operations.ts` ran `git status` with Git's optional locks on. Every read of a worktree therefore held its `index.lock` while Git refreshed the index.
     - `orchestration.get` reads the root worktree (`completionState` → `state`). The renderer calls it right after each Approve and on every event.
@@ -976,7 +982,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
 **Messages now aligned with TypeScript.** A projectless chat in coding or coordinated mode is refused with TypeScript's "Coding and coordination require a Git project.", and coordination settings on a chat with its message; both were a native "not supported" before.
 
 **Differences:**
-- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan.
+- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan. Git-project chats are served since P2.3e.
 - **External profiles.** These remain refused for any turn, as before.
 
 **Evidence.**
@@ -987,7 +993,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - a Git-project chat.
 
   After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
-- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
+- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it required the refusal and an unchanged snapshot; since P2.3e it serves that chat and reproduces its snapshots.
 
 **Finding outside this slice: the native Store pinned every ancestor of its data folder with read-only sharing. Fixed after P2.2, on Rudy's instruction (17 October 2026).**
 - P1's Store admission pinned the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
@@ -1058,6 +1064,704 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - It verified both seals, built `26a8e4a`, and ran the runner, publication and creation suites (64 passed).
   - It confirmed that the check order and messages match `assertNoGitHooks` and `git()`'s `finally`, and that native's additions only add refusals.
   - It confirmed that the check after exit runs on every path once Git has started and never makes an earlier mutation look like "none", that every lease is disposed, and that no native launch can pass an empty `core.hooksPath`.
+
+### P2.3 commands and approvals — authority and slices
+
+Recorded 17 October 2026. Rudy approved the slice plan: "Approved: P2.3 slices a–f with decisions 1–5 as recommended. Start P2.3a." The slices, each sealed, reviewed and recorded on its own:
+- **a:** the native command runner, unwired;
+- **b:** approval records, the approval read projections and `approval.reconcile`;
+- **c:** the tool runtime for the repository tools and approval decisions, unwired;
+- **d:** the project channel, with `channel.get` and `channel.send`;
+- **e:** agent-loop tool iterations and Git-project chats (`task.start`, `task.send` and `task.cancel`);
+- **f:** coding turns with approvals, and `approval.decide`.
+
+**Decisions.**
+1. The project channel and its two methods move into P2.3; the migration plan had placed the channel in a later slice. Every Git task's turn advertises channel tools.
+2. Until the MCP slice, a coding turn is refused before any reservation while an enabled MCP server has stored tools.
+3. The plan's runtime-loader environment names (section 8) are refused natively only, as a named difference. TypeScript is unchanged under the freeze.
+4. #35 (the TypeScript H1 fix, which changes `command-runner.ts`) merges before P2.3a's vectors are final; #37 lands before P2.3c.
+5. Local commits and a seal per slice; one draft pull request for the stack on Rudy's approval, merged on his approval.
+
+Every other hold is unchanged: no shipping or runtime selector, no Electron-side .NET enablement, no schema v6 or adoption, no real data or repositories, no live or paid providers, no coordinated mode, no cutover. New-file creation stays disabled. Commands run with the user's Windows privileges; approval is not a sandbox.
+
+### Native command runner (P2.3a)
+
+**What it is.** `CommandRunner` is internal and unwired, the native counterpart of `command-runner.ts` and its `job-runner.ps1` helper. Nothing in `DevelopmentChat`, `Program` or the protocol calls it, so the development runtime stays at 34 of the 89 methods.
+- **Preparation**, in TypeScript's order and with its messages:
+  1. The request is validated.
+  2. The root is admitted, with its folder and Git identity pinned.
+  3. The working directory is pinned and must stay inside the root.
+  4. Windows PowerShell 5.1 is resolved and hashed.
+  5. The minimal environment is composed in `localeCompare` order.
+  6. The worktree state is read: HEAD, porcelain status and a content digest of at most 10,000 files and 64 MiB.
+
+  The fingerprint covers all of it.
+- **Execution.**
+  - **One shot.** A prepared command is consumed before the first await, prepared again and required to match.
+  - **Launch.** It runs in process through `JobProcess`, with the helper's command line (`-EncodedCommand`, UTF-16LE Base64). Only the three pipe ends and the reviewed environment block are passed.
+  - **Termination.** A timeout or cancellation terminates the job. After a normal exit, anything still in the job is terminated, and reported with TypeScript's marker unless it is only the console host (below). Cleanup is verified when the job is empty within 5 seconds.
+  - **Output.** Each stream keeps its first 64 KiB, is drained to its end on the thread pool, and is bounded again to 64 Ki UTF-16 units, as `boundedText` does.
+  - **Settle window.** Everything after the command ends is bounded by 10 seconds, TypeScript's `HELPER_GRACE_MS`. Examples are an exit that never comes, a cleanup check, and a pipe write end held outside the job. When the window ends, the drains are cancelled, and the result keeps the output read so far with cleanup unverified, so the tool runtime records it as unknown.
+- **Outcomes.** Every failure through launch is a `CommandPreflightException` ("none"). Results report the exit code, cancellation, timeout and verified cleanup as TypeScript's do; the tool runtime (P2.3c) classifies them.
+
+**Differences, all fail-closed or invisible on success:**
+- **In process.** There is no helper, `%TEMP%` file, nonce or `Add-Type`. The runtime owns the kill-on-close job (plan section 8), so TypeScript's "[runtime parent exited; job terminated]" result cannot occur. The timeout counts from resume. The settle window replaces TypeScript's watchdog (timeout plus 70 seconds), which reports such a run as timed out, with no output.
+- **Handles.** Only the pipe ends are inherited (`HANDLE_LIST`); `job-runner.ps1` inherits every inheritable handle.
+- **Console host.** Windows starts a `conhost.exe` for the command inside its job; TypeScript's command shared its helper's console instead. Measured: 2 of 30 runs left the console host for a moment after the root exited, and 1 had exited between listing and opening. Without a filter, about 1 command in 15 reported a phantom descendant.
+  - **What happens now.** After the root exits, anything left in the job is terminated. It is reported as a background descendant unless the only processes left are the system `conhost.exe`.
+  - **Classification.** The new Platform `JobProcess.ProcessImages` leaves out a process that has exited: its id no longer opens, or its exit code is set. A live process whose image cannot be read counts as a descendant.
+- **Exact command text.** Until #39 (T1, below), TypeScript's helper read its stdin spec in the console code page, so non-ASCII command text reached PowerShell altered. Native runs the exact text. Since #39 both runtimes run it exactly, and the vectors show no difference.
+- **Runtime-loader names (decision 3).** `DOTNET_*`, `COMPLUS_*`, `COR_*` and `CORECLR_*`, plus `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `PYTHONPATH`, `PYTHONSTARTUP`, `PERL5OPT`, `RUBYOPT` and `__COMPAT_LAYER`, are refused before approval, ignoring case.
+- **Case-only duplicates.** A change whose name differs only in case from another change, or from `TEMP`, `TMP` or `USERPROFILE`, is refused before approval. TypeScript prepares it; its helper then fails before launch, and the outcome is recorded as unknown.
+- **Launch failures.** A launch that fails before the process resumes is "none". An example is a command line beyond `CreateProcess`'s 32,767 characters, about 12,200 command characters. TypeScript's helper cannot tell, and records unknown.
+- **Working directory.** Any reparse point in its chain is refused (the approved alias refusal); TypeScript follows a junction that stays inside the root. A segment ending in a dot or space, a colon, or NUL is refused, where Node raises a raw error.
+- **Worktree state.**
+  - **Git.** It runs through `GitRunner`, with the app's empty hooks folder and the H1 guard, and never an empty `core.hooksPath`.
+  - **Content digest.** It runs off the loop (the first use of `RuntimeLoop.Offload`) and never follows a reparse point. Symbolic links and junctions are hashed by their stored target, as TypeScript hashes `readlink`. Any other reparse point (a cloud placeholder, a socket) refuses the state, where Node reads through it.
+  - **Walk.** It keeps its own stack in TypeScript's pre-order, so a deep tree cannot exhaust a thread's stack. Folders and links count against their own limit of 10,000, where TypeScript counts files only.
+  - **Fingerprints.** The values differ between runtimes. They are session-scoped, because approvals awaiting a decision are revoked on restart, so the corpus compares them by identity within a case.
+- **Other refusals.** A `SystemRoot` that is not on a fixed local drive is refused before it is probed, and Node's raw errors become fixed messages.
+
+**Evidence.**
+- `tests/p2/command-runner.test.ts` drives the shipping `CommandRunner` with real Windows PowerShell 5.1 runs in disposable worktrees, through 13 cases and 193 steps, 36 of them executions:
+  - validation, and root and working-directory admission;
+  - environment composition and its fallbacks;
+  - fingerprint sensitivity: modification time only, content, ignored files, empty folders, Git metadata, commits and junction retargeting;
+  - the file and byte limits, and a Git status beyond the output limit;
+  - exact output, exit codes and environment isolation (a runtime canary is absent);
+  - output bounds: 65,535, 65,536 and 70,000 bytes, multibyte cuts, and 1 MiB drained;
+  - timeout, cancellation and background termination with a grandchild;
+  - one-shot use: replay, concurrent execution, tampering with each field, discard, stale state and identical twins.
+
+  It is bound to the SHA-256 of `command-runner.ts` and `job-runner.ps1`. Regenerating the vectors requires `P2_WRITE_COMMAND_RUNNER=1`. Commands use .NET calls only: a cmdlet makes PowerShell write a timing-dependent number of "Preparing modules for first use" progress records to standard error.
+- `CommandRunnerTests` replays every step, or its named difference. Native-only tests cover:
+  - a planted hook, which refuses preparation with no Git launch;
+  - state Git calls that name the hooks folder;
+  - a launch that is exactly the reviewed command line, directory and environment;
+  - a launch failure, which is "none";
+  - cancellation before launch, which never launches;
+  - a timeout that ends a grandchild;
+  - the console host, which is not a descendant: the decision as a pure function, and 40 real runs;
+  - a pipe write end held outside the job (the command hands its standard output to the test process): the result returns within the settle window, keeping the output, with cleanup unverified;
+  - a 3,000-folder-deep tree, which is fingerprinted, and 10,001 folders, which are refused;
+  - a caller's later edit of the environment changes, which cannot alter the approved command;
+  - loop affinity, and Node's `join` and `dirname`.
+- `JobProcessTests` covers the new Platform primitives: `ProcessImagesNameTheRootAndItsConsoleHost`, and `DrainKeepsItsLimitAndCancellationEndsAPendingRead`.
+- **Mutations.** Each of these failed a test:
+  - consuming the capability after the first await;
+  - skipping the fingerprint comparison;
+  - stopping a stream at its limit instead of draining it;
+  - dropping the runtime-loader names;
+  - dropping the case-collision refusal;
+  - hashing Git metadata into the content state;
+  - counting the console host as a descendant.
+
+  The last one first ran against the real-run test alone, which is probabilistic (the host lingers in about 1 run in 15) and passed that time. The decision is now a pure function under a deterministic test.
+
+**Independent review.** A read-only security reviewer (`cloud-security-vulnerability-expert`, Opus at high effort below the xhigh owner, chosen for the security verdict) reviewed the sealed range `91ac821..36ad511`. It verified the seal, built an export, and ran the runner and job suites (34 and 28 passed). Its probes confirmed T1. Its verdict was **GO with conditions**: F1 and F2 to be fixed, with regression tests, before any slice wires the runner. The approval-integrity core was found sound: no path runs anything but the freshly re-prepared command, and none reports a started command as "none".
+- **F1 (medium).** Nothing bounded `Execute` after launch. A pipe write end handed to a process outside the job kept the drains open even after `JobProcess.Dispose`, because synchronous pipe reads ignore disposal. A process stuck in I/O that cannot be cancelled kept the exit wait open. TypeScript's watchdog bounds both.
+  - **Fixed.** The settle window above bounds everything after the command ends. The drains take a cancellation token: probed, .NET cancels a pending synchronous pipe read in about 1 second. When the window ends, cleanup is unverified.
+- **F2 (medium).** The content walk recursed with no depth bound. The reviewer's probe crashed the process with a stack overflow at about 3,000 levels, which a cloned repository or an earlier command could leave. Node's async recursion has no such limit.
+  - **Fixed.** The walk keeps its own stack in the same pre-order, and folders and links count against a limit of 10,000.
+- **F3 (low).** After a normal exit, the job was terminated only when a readable image other than the console host remained. A live process whose image could not be read was treated as exited, so a descendant could outlive the root for the cleanup window without being reported.
+  - **Fixed.** Anything left in the job is terminated. `ProcessImages` now tells an exited process from an unreadable live one, which counts as a descendant.
+- **F4 (low).** Every 16 KiB of output queued a continuation on the runtime loop.
+  - **Fixed.** The drain moved into Platform (`JobProcess.DrainAsync`), where its continuations stay on the thread pool. `ConfigureAwait` is banned in `Runtime.Core`.
+- **F5 (informational).** `JobProcess.Start` built its streams after resuming the child. **Fixed:** they are built before, so every exception from `Start` means the child never ran.
+- **F6 (informational).**
+  - The process specification is now built inside the block that releases the leases.
+  - Not changed:
+    - the removal of a re-approved identical command after a run (fails closed, as in TypeScript);
+    - the unpinned walk (it affects only the hash, as in TypeScript).
+  - **Noted for P3:** any native launcher in the WebView2 or WPF process that inherits handles without a handle list could capture the pipe ends.
+- **Mutations of the fixes.** Each of these failed its regression test:
+  - removing the settle bound on the drains (the test hung until its timeout);
+  - removing the folder limit;
+  - restoring the reviewed recursive walk (a real stack overflow ended the test process);
+  - counting an unreadable image as exited.
+
+  The always-terminate rule (F3) and stream construction before resume (F5) have no deterministic trigger: an unreadable live descendant, or a stream that fails to construct. They rest on review.
+- **Re-review.** The same reviewer reviewed two sealed ranges and returned **GO, with no new finding**:
+  - `7df623a..18c4881`, 36ad511 rebased onto #37 (every code, test and vector blob identical);
+  - `18c4881..38ce289`, the fixes.
+
+  What it did:
+  - It verified both seals, built an export, and ran the job suite (29 passed) and the runner suite (37 passed).
+  - It hashed the same trees with both builds: the iterative walk gives the reviewed recursive walk's digest on a mixed tree and on a 1,000-deep chain.
+  - It found that the walk now handles depths of 3,000 and 9,000.
+
+  Its informational residuals:
+  - After the drains are cancelled there is no second bound. It relies on .NET cancelling a synchronous pipe read, which the Platform test shows it does.
+  - A folder's names are read whole before a limit applies, as in TypeScript.
+  - The outside-writer test's 60-second bound was loose; `81823ca` tightens it to the settle and cleanup windows plus 15 seconds.
+
+  Carried forward:
+  - P2.3c must record a settle-window result (exit code 0, cleanup unverified) as unknown.
+  - Handle inheritance by other launchers is re-checked at P3.
+- **T1 amplification (untested).** Under a double-byte OEM code page such as 932, a UTF-8 trail byte could combine with the next ASCII byte and change a command's structure, not just its literals.
+- **Evidence manifest.** It was stale during the run and has since been regenerated.
+
+**Validation (local, from `git archive` exports).** Evidence, seals and mutation logs are in `foundry-evidence\p2.3-a`.
+- **`36ad511` (run1).**
+  - Release build with warnings as errors: clean.
+  - Native suite: 7,151 tests, 7,149 passed, 0 failed, 2 expected skips.
+  - `pnpm check`: 556 passed.
+  - `git diff --check`: clean.
+- **`38ce289` (run2, retained).** Two failures, both in code this slice does not touch, while the reviewer's build and tests ran on the same machine:
+  - the native WebView2 test `BasicAuthenticationIsCancelledWithoutAPrompt` (two requests where one was expected);
+  - the TypeScript `git-operations` handoff-commit case (a 30-second timeout, then `EBUSY`; P2.1 recorded the same flake under load).
+
+  Run alone, both passed (1/1 and 27/27).
+- **`81823ca` (run3, idle machine).**
+  - Build: zero warnings or errors.
+  - Native suite: 7,179 tests, 7,177 passed, 0 failed. The 2 skips are the expected local registry-policy test and the file-symbolic-link test.
+  - `pnpm check`: 556 passed across 85 files.
+  - `git diff --check`: clean.
+
+No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+
+**Dependencies, resolved.** #35 (H1) and #39 (the T1 fix) merged on 17 October 2026, and main was merged into this branch. The vectors bound to `command-runner.ts` and `job-runner.ps1` were regenerated:
+- **#35** changed only the source hash.
+- **#39** brought TypeScript to native's outcome at "runs exactly the approved command#12" and "#14", so those named differences were removed. `CommandRunnerTests` passes 37 of 37.
+
+**T1 (shipping TypeScript, fixed by #39).** `job-runner.ps1` reads its JSON spec with `[Console]::In.ReadToEnd()`, which decodes in the console's OEM code page while Node writes UTF-8.
+- **What breaks.** Every non-ASCII character in the command, its environment values, its working directory or the result and cancel paths reaches the helper altered. An approved `'café'` runs as `'caf├⌐'`, so the command that runs is not the one approved; a filter or path with non-ASCII text matches different files.
+- **Non-ASCII user folders.** Where the user's profile path is not ASCII, the working directory and temporary paths are altered too, so no command can launch. Each is then recorded as unknown and blocks its task.
+- **Status.** Fixed under the dual-landing rule by #39, which reads standard input through a strict UTF-8 reader (security review GO; merged 17 October 2026). Native was not affected.
+- **Shared limit.** PowerShell encodes command output in the console code page and both runtimes decode it as UTF-8, so non-ASCII output becomes U+FFFD in both. That is a shared fidelity limit, not an approval defect.
+
+**Reviewer probe debris.** The first review's deep-tree probe wrote 14 small untracked files (`content 1` to `content 14`) into the worktree root, though it was told to work read-only in its own export. No tracked file changed. They were removed before P2.3b, and the evidence folder records them (`notes\reviewer-probe-debris.txt`).
+
+### Approval records and reconciliation (P2.3b)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `task.approvals`, `approval.get`, `approval.content` and `approval.reconcile`, bringing it to **38** of the 89 methods. The Store reads and saves approvals as `store.ts` does. The new `ToolRuntime` holds reconciliation; the tool execution and decision paths join it in later slices.
+- **`task.approvals`.** The task's approvals, newest first, are keyed by rowid in the same SQL. Each item has the id, task, tool, the row's state, the creation time and the path; fields absent from the stored document stay absent.
+- **`approval.get`.** The whole document is redacted, then parsed back from the redacted text.
+  - When it fits in 128 KiB, it is returned whole.
+  - Otherwise a preview is returned: its identity, hashes, binding and origin, with the summary and path clipped to 1,000 bytes and the omitted fields named.
+- **`approval.content`.** One field (or the whole redacted document) is returned in a UTF-8-aligned chunk of at most 32 KiB.
+- **`approval.reconcile`.** Only an unknown outcome of the same task can be checked, and nothing is replayed.
+  - **Edits.** The file in the task's worktree is compared by hash. The approved content completes the edit, and the original content fails it. Anything else, including a file that cannot be read safely, leaves it unknown.
+  - **Everything else.** Commands, external tools, browser actions and orchestration operations stay unknown, with TypeScript's guidance.
+- **Events.** The approval is saved with its `approval.changed` event as `service.ts` records it:
+  - before schema v5, always;
+  - from v5, when the state changed, or when the task has no such event yet, because the publish falls back to recording one.
+
+  `approval.changed` is now among the notifications the development runtime sends.
+
+**Differences, all invisible on success or fail-closed:**
+- **Re-sent notifications.** When a reconciliation leaves the state unchanged and the task already has an `approval.changed` event, TypeScript re-sends that earlier event (its canonical re-read), and native sends nothing. This is the approved publication-after-commit difference, and the durable rows are identical.
+- **One commit.** The saved approval and any event recorded after it commit together; TypeScript commits them separately.
+- **Aliases.** An edit is reconciled through native file access, so a worktree reached through an alias cannot be checked: the approved alias refusal, which leaves the outcome unknown.
+- **Malformed rows.** A stored approval that is not a JSON object (not valid JSON, or valid JSON of another kind) faults the request. That ends the development runtime, as every native read of malformed persisted data does. TypeScript answers with an error, or with a document spread from the value. Both runtimes' pages skip such rows. Neither runtime ever writes one.
+
+**Evidence.**
+- **The oracle.** `tests/p2/approvals.test.ts` drives the shipping `RuntimeService` over fresh data and disposable copies of all six fixture eras. It seeds four tasks (one a coordinated child) and 31 approval rows covering:
+  - edits, commands, rejected and secret-bearing approvals;
+  - a 140,000-byte approval with a multibyte summary and long path (preview);
+  - external tool, browser, handoff and integration approvals;
+  - unknown edits whose file holds the approved content, the original, neither, or nothing;
+  - lone surrogates, a document without a stored state, and a row that is not JSON;
+  - since the L1 fix, secret-bearing, large and unparseable-when-redacted unknown approvals.
+
+  It pins, in `approval-vectors.json`:
+  - every era's own approvals (each fixture era since v1 holds approved and rejected coding demos), with pages and reads;
+  - a full keyset traversal at limit 2;
+  - 138 reads (pages, previews, every field, offsets inside multibyte characters, out-of-range offsets, absent fields and foreign tasks), proving the rows unchanged;
+  - 30 reconciliations, each with the approval row and every event row it adds. Among them are an origin on a state change, a child task's event (`root_task_id` is its root), a row that recovery left with a stale document state, a document with no state, integer-like keys and unusual numbers (`1e21`, `-0`, a 20-digit integer), and a lone surrogate on the write path.
+
+  It is bound to the SHA-256 of `workspace-queries.ts`, `tool-runtime.ts`, `store.ts`, `service.ts`, `redaction.ts` and `repository.ts`. Regenerating the vectors requires `P2_WRITE_APPROVALS=1`.
+- **The replay.** `ApprovalTests` seeds the same rows into the same copies and replays every step through `DevelopmentChat`. Values, refusals, approval rows and event rows (sequences included) must match. A native-only test pins the malformed-row difference.
+- **Process differential.** The real Node/C# stdio differential (`tests/p2/development-chat-process.parity.ts`) now also calls each approval method. The two entry points agree on the empty page, the missing-task refusal and the missing-approval refusals.
+- **Mutations.** Each of these failed the replay:
+  - dropping the event when the state changes (v5);
+  - dropping the fallback event, and dropping the pre-v5 event;
+  - returning the unredacted document;
+  - ignoring UTF-8 boundaries in chunks;
+  - ignoring the approval's task, in reads and in reconciliation;
+  - failing an edit whose file cannot be read.
+
+  The first mutation's original edit did not build (unreachable code); its rerun was caught. After the review follow-ups, dropping the event's `origin` also fails the replay, in the three v5 eras.
+
+**Independent reviews of `48c5eb8..f9f40ae`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**. It verified the seal, built an export and ran the replay (9 passed), and compared the code line by line with TypeScript and the renderer's call site.
+  - **Confirmed.**
+    - All three read methods redact everything they return.
+    - Cross-task access is refused on all four methods.
+    - Reconciliation can read only inside the worktree, through the pinned, link-refusing file access, and decides an outcome only on a hash match.
+    - The contract bounds every parameter before dispatch.
+  - **L1 (low, shared with shipping TypeScript; Rudy's decision).** `approval.reconcile` returns the stored approval unredacted, where the three read methods redact. The renderer's only call discards the value and refreshes, so nothing is retained today. A fix would return the redacted read in both runtimes; native keeps parity until then.
+    - **Fixed in both runtimes, 17 October 2026**, on Rudy's decision: see "Redacting the approval `approval.reconcile` returns" under Dual-landed fixes.
+  - **I1 (condition for P5, not for this slice).** A corrupt stored approval ends the native runtime. Before a shipping selector, read projections must refuse malformed persisted documents per request.
+  - **I2–I5 (parity, no action).**
+    - Page items are not redacted (paths were screened at creation).
+    - The two not-found messages tell an existing approval from a missing one.
+    - Redaction that breaks the JSON fails closed.
+    - Reconciliation trusts the task's stored worktree path (worth confining when the tool runtime grows).
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO**. It verified the seal, built an export, ran the replay and the TypeScript oracle, and probed both runtimes directly: 40 reconciliations against fresh, v1, v4 and v5 stores, with 0 differences in stored text, state, events, errors or reads.
+  - **Confirmed.**
+    - Era event semantics, with root task ids at v5.
+    - Byte-identical document round-trips.
+    - Keyset stability.
+    - Recovery interplay.
+    - Atomicity: an aborted event insert leaves the row unchanged and the store usable.
+  - **Follow-ups applied in the next commit.**
+    - **L1.** The malformed-row note and test now cover every non-object document.
+    - **L2.** The oracle gaps it found are now cases: origin, child root id, a recovery-shaped row, a document with no state, unusual numbers and keys, and a lone surrogate on the write path.
+    - **L3.** One `ToolRuntime.Save` now mirrors `save()` plus `publish`, so later slices cannot skip the v5 fallback event.
+  - **Not changed.**
+    - **L4.** A row whose document names another id would overwrite that row. TypeScript is the same, and only corrupt data reaches it.
+  - **Carried forward.**
+    - The automation slice decides whether TypeScript's re-sent `approval.changed` matters to hooks.
+    - P2.3c and P2.3f add a compare-and-set to approval saves once execution is asynchronous.
+    - Corrupt-data divergences in clipping and type checks.
+- **Follow-up re-review of `f9f40ae..f519a93`** (data reviewer): **GO, no new finding.**
+  - It verified the seal and ran the replay (9 passed) and the TypeScript oracle.
+  - It confirmed that the new vectors pin each gap it had named.
+  - Five mutations of its own failed the replay: dropping the origin, ignoring the task in the fallback check, using the document state instead of the column, hard-coding the event state, and a wrong root task id.
+  - Its 40-case direct differential, rerun on `f519a93`, shows 0 differences.
+  - `Save` takes the event's approval id from the document, as `save()` does.
+- **Validation.**
+  - **`f9f40ae` (run1).** Native suite 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 570 passed; stdio differential passed.
+  - **`f519a93` (run2).** Native suite 7,212 passed, 0 failed, 2 expected skips; `pnpm check` 570 passed.
+  - **Common to both.** Clean Release builds with warnings as errors, from `git archive` exports. Evidence, seals and mutation logs are in `foundry-evidence\p2.3-b`.
+
+### Coding tools and decisions (P2.3c)
+
+**What it is.** The native `ToolRuntime` gains TypeScript's `execute`, `awaitDecision`, `decide` and `revokeWaiting` for the six repository tools of an ordinary coding task. It is unwired: no RPC, turn or decision reaches it, and the development runtime still serves **38** of the 89 methods.
+- **Definitions.** `ToolDefinitions.All` is `TOOL_DEFINITIONS` byte for byte (the six tools, as `z.toJSONSchema` writes them for draft-7).
+- **Arguments.** `ToolDefinitions.Parse` reproduces zod 4.6.5 for exactly these schemas: the parsed value with defaults, or the text the model receives, `JSON.stringify(issues, null, 2)` with zod's English messages. It covers:
+  - shape order, then unrecognized keys in JavaScript key order;
+  - string lengths counted in code points once over a limit;
+  - JavaScript-exact patterns;
+  - record keys checked before their values, and a `__proto__` key passed over;
+  - the safe-integer and range checks;
+  - the length checks zod runs even after a type issue, on any value with a `length`, compared with JavaScript coercion.
+- **Search.** `RepositoryService.Search` is `search()`: depth first over the read tools' own listing and reading; 2,000 visits; 100 matches; 500-unit excerpts; and the five skipped folders.
+- **Slots.** `ExecutionSlots` is the chat's three slots as their own class. Provider requests and approved tool executions share one instance, as in `service.ts`. Waiting for a decision never holds a slot.
+- **Execution.**
+  - **Order.** TypeScript's checks, in its order: cancellation, browser tools, Git task, chat mode, coordinated roles, the tool name, secret screening of the arguments, then the schema.
+  - **Read tools** answer at once.
+  - **Edits and commands** are prepared, screened for secrets again and saved as a proposal. The proposal waits for its one-shot decision.
+  - **Mutation.** Once approved, the executing state is saved before any write or launch, inside a slot.
+  - **Outcomes** are classified as TypeScript classifies them. After the executing state, an outcome is unknown unless the failure is known to precede any effect. A cancelled wait is revoked; a rejection or revocation answers the model with TypeScript's text.
+  - **Results** are redacted and bounded to 192 KiB of UTF-8.
+- **Decisions.** `Decide` requires the waiting call, its task and its nonce, and refuses a coordinated approval. `RevokeWaiting` revokes one task's waiting proposals.
+
+**Differences, all fail-closed or invisible on success:**
+- **Not yet served.** These answer "Tool is not available." until their slices:
+  - the project channel's tools (served since P2.3d);
+  - coordinated roles, which are refused before any reservation;
+  - external MCP tools (decision 2);
+  - hook-origin drafts.
+
+  Browser tools answer "Browser tools are unavailable.", as TypeScript does without a browser host.
+- **Unexpected failures.** A failure other than the runtime's own refusals is classified and saved like any other, then rethrown instead of being handed to the model as text.
+- **Node's raw filesystem errors** (seven cases in the vectors) are native's fixed messages.
+- **Search** admits the root once and holds it for a walk off the loop. TypeScript admits it again for every listing and read.
+- **Revocation timing.** TypeScript's abort listener revokes a waiting proposal synchronously. Native revokes when the wait resumes on the loop, and until then `Decide` refuses the cancelled wait as stale. The rows and answers are the same; the vectors pin a decision sent right after a cancellation.
+- **Not ported.** The per-profile slot key (coordinated tasks only) and the orchestration hooks.
+
+**Evidence.**
+- **The oracle.** `tests/p2/tool-runtime.test.ts` drives the shipping runtime: the definitions; 269 argument parses; 19 searches over three trees (skipped folders, binary, oversized and secret files, CRLF and lone CR, excerpts cut inside a surrogate pair, the match and visit limits); 57 tool calls of ordinary, chat, folder and legacy tasks through `RuntimeService`'s `ToolRuntime`, with real Windows PowerShell 5.1 commands in disposable Git repositories; and six decisions on stored approvals no call awaits. The tool calls cover:
+  - reads and refusals, invalid and secret-bearing arguments, and the result bound;
+  - edits: approve, reject, wrong nonce, other task, missing approval, stale hash, non-unique and overlapping text, `$` patterns, secret-like content in the arguments, in the file and in the result of the edit, a file changed while waiting, and cancellation before and after approval;
+  - a decision sent right after a cancellation, and `revokeWaiting` of this task and of another;
+  - commands: complete, failed, rejected, refused at preparation, a changed worktree, a timeout, cancellation, and a prepared command whose temporary folder is secret-like.
+
+  It records each result, proposal, decision, approval row and event row. Paths, the shell, fingerprints, UUIDs and timestamps become placeholders; the clock is real, because the command helper checks its parent's start time. The vectors are bound to the SHA-256 of `tool-definitions.ts`, `tool-runtime.ts`, `repository.ts`, `command-runner.ts`, `job-runner.ps1`, `redaction.ts`, `store.ts`, `service.ts` and `execution-slots.ts`. Regenerating them requires `P2_WRITE_TOOL_RUNTIME=1`.
+- **The replay.** `ToolRuntimeTests` replays every section natively. Every raw Node error has a native refusal, and the map is exhaustive.
+- **Native-only tests.** `ToolRuntimeNativeTests` covers:
+  - the refused channel tools and coordinated roles;
+  - an unexpected launch failure saved unknown and rethrown;
+  - an unexpected failure before any proposal, which leaves no row;
+  - an edit whose write began before the failure, left unknown;
+  - a command that exits 0 while its output handle is held outside its job: unknown, with cleanup unverified (review L-1);
+  - three slots, and a cancelled waiter that takes none.
+- **Mutations.** 34 native mutations.
+  - **First run: four survived, because no fixture reached them.** They were edit-content screening, prepared-command screening, `revokeWaiting`'s task filter and JavaScript key order. Four new cases now reach them, and each of these mutations fails the replay. The replay also bounds each call's wait at two minutes, so a call that proposes where it should refuse fails rather than hanging.
+  - **After the review's L-1 test, 33 of 34 fail.** The one that survives by design drops the cancellation check after approval, which the slot repeats.
+  - **Evidence** is in `foundry-evidence\p2.3-c\mutations`.
+
+**Validation.** All runs are from `git archive` exports, with a locked restore and install, a Release build with warnings as errors, and a clean `git diff --check`. Evidence and seals are in `foundry-evidence\p2.3-c`.
+- **`362e728` (run1: the slice, the regenerated vectors and this record):** native 7,228 passed, 0 failed, 2 expected skips; `pnpm check` 581 passed.
+- **`39eda38` (run2: after merging main at `1b88ff8`, which carries #41 and #43):** native 7,228 passed, 0 failed, 2 expected skips; `pnpm check` 581 passed.
+- **`1472a70` (run3: with the review's L-1 test):** native 7,229 passed (the L-1 test included), 0 failed, 2 expected skips. `pnpm check` first failed one test: `publish.test.ts`'s push case took 40 seconds against its 30-second timeout. That load-sensitive test has also timed out in other sessions today, and this range changes no TypeScript. Its rerun in the same export passed 581 of 581.
+
+**Independent review** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO** for `089e894..e258793` and `5730c1d..362e728`. It verified both seals, built an export, ran the four replay classes (62 passed), audited the docs merge, and compared the code line by line with TypeScript.
+- **Confirmed.**
+  - Only the exact reviewed edit or command can run.
+  - The executing state is durable before any mutation.
+  - Every failure path is classified as TypeScript classifies it, and startup recovery covers a crash in between.
+  - Every return is redacted and bounded.
+  - Cancellation, the slots and the off-loop search keep loop affinity.
+  - Search inherits the read tools' filesystem rules.
+  - Rethrowing an unexpected failure after saving its classification is the right call.
+- **L-1 (low), fixed in `1472a70`.** The unverified-cleanup branch had no test, though P2.3a's outside-writer command reaches it natively. `ToolRuntimeNativeTests` now runs that command through `Execute`. The row is unknown with cleanup unverified, and the mutation that completed it now fails.
+- **I-1, resolved.** The bullet about regenerating these vectors when #35 and #39 merged was stale; `c4459e5` did that.
+- **I-2 to I-4** are recorded below, under Open.
+- **A correction to the record.** The first main merge (`5730c1d`) brought in main at `891cf73` (#43), which includes #35, #39 and #42; it was not `e482b03`.
+
+**Open, for later slices.**
+- **Worktree confinement (security I5 of P2.3b), decided at P2.3f.** Rudy chose to confine the coding tools to the task's own app-owned worktree; see the P2.3f entry for the decision, its evidence and the check.
+- **Rethrown failures (review I-2), resolved in P2.3e.** An unexpected failure now stops the turn as failed. No reservation is open while tools run, the task is not left running, and the runtime keeps serving. TypeScript hands the model the failure's message instead; see the P2.3e entry.
+- **Commands too long to launch (review I-3).** A `run_command` longer than about 12,200 characters can be proposed and approved, then fails at launch as "none", because its `-EncodedCommand` line exceeds the 32,767-character command line. TypeScript's helper has the same limit. A preparation-time length check would spare the user an approval that cannot run.
+
+### Project channel (P2.3d)
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime now serves `channel.get` and `channel.send`, bringing it to **40** of the 89 methods, and sends `channel.changed`. `AgentChannel` is `agent-channel.ts` line for line:
+- **No schema change.** Messages are `channel.message` events and model deliveries `channel.received` events. An index rebuilt from those events answers pages; after its first scan it reads only new sequences.
+- **Project.** A task's project is the SHA-256 of its lowercased Git common directory, the key TypeScript stores in every message.
+  - **Bound tasks.** The identity is the one bound at trusted admission: the first complete `channel.identity` binding, or the root's for a coordinated child. The project folder must still be the approved one, and its current identity must equal the binding exactly.
+  - **Legacy tasks** (no binding) keep access only from a plain repository.
+- **Participants.** The project's tasks, in `localeCompare` order of their ids, 50 at a time. A task whose channel cannot be resolved is left out. Titles are redacted, and availability is reported: retired, cancelled and fenced coordinated tasks are listed but unavailable.
+- **Sends.**
+  - A send is idempotent by its request id for one sender and actor. Reusing the id with different content is refused.
+  - The sender must be available, and running when it is an agent; a recipient must be another available task of the same project.
+  - Each task may send at most 1,000 messages. The text is trimmed, at most 2,048 characters and 2,048 UTF-8 bytes, and screened for secrets.
+  - The message and its event commit together, and `channel.changed` is recorded after, as `service.ts` publishes it.
+- **Pages.** At most 20 messages and 64 KiB of message JSON, forward from a cursor or backward before one. A task sees broadcasts and its own direct messages.
+- **Tools.** `ToolRuntime` owns the channel, as TypeScript's does, and runs `list_project_agents`, `send_agent_message` and `read_agent_messages` for any Git task, chat tasks included. The arguments are screened, then parsed as zod parses them.
+- **Model context, for the native tool loop (P2.3e).** `Enrich` adds the task's unacknowledged messages as one bounded `PROJECT_CHANNEL_DATA` user message after the system messages. It stays within a quarter of the profile's context, between 3 and 8 KiB of UTF-8. A first message too large on its own is cut at a code point and marked. Nothing counts as delivered until `Acknowledge` records the cursor.
+- **Definitions.** `ToolDefinitions` carries `CHANNEL_TOOL_DEFINITIONS` and `CHANNEL_SYSTEM` byte for byte. Its zod port now builds each field from rules (uuid, nullable, optional, trim and the UTF-8 byte refinement); the 269 argument vectors of P2.3c are unchanged.
+
+**Differences, all fail-closed or invisible on success:**
+- **Alias refusal.** A project reached through a junction or symbolic link is not resolved: its task is not listed, and its reads and sends are refused. TypeScript follows the alias to the same identity and shares the channel.
+- **Legacy fallback by file identity.** An unbound task's Git and common directories are compared with the root's `.git` by file identity, not by lowercased paths, which in a case-sensitive directory could treat two folders as one.
+- **Coordinated children** are fenced from the channel ("This agent is cancelled, fenced or finished."), as TypeScript fences one without an orchestration binding. Native has no orchestration.
+- **A missing recipient or task** is refused with TypeScript's "Task not found." rather than faulting the runtime.
+- **The index** (review M1, L1 and L2, fixed in `779b690`):
+  - **Committed rows only.** It reads only committed rows: while a transaction is open it waits, so a message that an enclosing transaction later rolls back never enters it. TypeScript's index would keep that sequence and then fail on it.
+  - **No sends inside a transaction.** Inside a transaction the index is therefore not current, so a send there would not enforce idempotency or the message limit. `Send` refuses to run inside one (re-review condition, `461c5c4`); no caller does.
+  - **Unreadable rows.** A row with malformed JSON or a mistyped field is passed over, so one damaged row never stops the channel. The checked fields include the request id, which must be absent or text, as TypeScript writes it; a nested one would overflow the stack when serialized into the index's key. TypeScript's index fails on malformed JSON, and files a message without a project under no project.
+  - **Batches.** It reads the history 2,000 rows at a time along the primary key's range, where TypeScript streams it.
+- **Alias-refused history.** A task refused as an alias keeps its stored messages, but cannot read them after adoption.
+
+**Evidence.**
+- **The oracle.** `tests/p2/agent-channel.test.ts` drives the shipping `RuntimeService`, its `ToolRuntime` and its channel over a disposable tree of Git metadata folders. The tree holds a plain repository with a subfolder, a second project, a linked worktree through `gitdir` and `commondir` pointers, and a folder without a repository.
+  - **Seeds.** Tasks cover every binding and availability state: bound, legacy plain and legacy linked, an incomplete binding, a first incomplete then complete binding, retired, cancelled, a coordinated child (in the project and in the linked worktree), chat, folder, a task created after every message, and a secret-bearing title.
+  - **Planted row.** A message row written outside `send`, with a raw secret-like title and content, shows that pages redact both.
+  - **Cases.** Four: discovery, sends, reads and context (71 steps), message pages, participant pages, and the 1,000-message limit. Each step records its value or refusal and every event row it adds.
+  - **Cleaning.** Paths and timestamps become placeholders. Only the project keys TypeScript's formula gives for the fixture's common directories become `{project:a}` and `{project:b}`, so a key computed any other way fails.
+  - **Binding.** The vectors are bound to the SHA-256 of `agent-channel.ts`, `channel-tools.ts`, the protocol's `agent-channel.ts` and `limits.ts`, `tool-runtime.ts`, `repository.ts`, `redaction.ts`, `store.ts` and `service.ts`. Regenerating them requires `P2_WRITE_AGENT_CHANNEL=1`.
+- **The replay.** `AgentChannelTests` replays every step through `DevelopmentChat`, its `ToolRuntime` and its channel, with the definitions and system text byte for byte. A native-only test pins the alias refusal.
+- **Process differential.** The real Node/C# stdio differential now also calls `channel.get` and `channel.send` across the RPC boundary: a projectless chat's refusals, an oversized message, and a missing task.
+- **Native tests for the review fixes.**
+  - **Unreadable rows:** twelve, nine messages (among them a request id nested 100,000 deep) and three receipts.
+  - **Transactions:** a channel read inside a transaction whose message then rolls back, and the refusal of a send there.
+  - **Batches:** 4,500 retained messages indexed across batches, with a read across the first batch boundary returning each message once, early and late replays, and the limit count.
+- **Mutations.** 40 native mutations; 38 fail the replay. The six added for the review fixes all fail; the unchecked nested request id fails by overflowing the test process's stack, as it would the runtime's.
+  - **First run.** It found three gaps, now closed: the inbox leaving out an agent's own broadcast, pages redacting a stored sender title, and zod's uuid versions and variants. One more mutation did not build and was rewritten.
+  - **Two survive by design.** The idle-agent check inside `send` is one: the tool path refuses an idle agent first, in TypeScript too. The other is counting the context cut in UTF-16 units: completing a surrogate pair always costs less than a lone half, so the cut lands in the same place here.
+  - **Evidence** is in `foundry-evidence\p2.3-d\mutations`.
+
+**Validation.**
+- **`59b9f34`** (run1, from a `git archive` export): native 7,236 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed; `git diff --check` clean.
+- **`8afdb6f`** (run2, after the review fixes): native 7,239 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed.
+- **`461c5c4`** (run3, after the re-review fixes): native 7,239 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed; `git diff --check` clean.
+
+**Independent reviews of `c9ab458..f6f3d0d`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**, with no critical, high or medium finding.
+  - **What it ran:** it verified the seal, built an export, ran four replay classes (33 passed), and compared the code line by line with TypeScript.
+  - **Confirmed:**
+    - a task reads, lists and sends only within its own project, and sees only broadcasts and its own direct messages;
+    - the key is TypeScript's formula, so messages written before adoption stay visible;
+    - binding fails closed on every branch;
+    - every untrusted value is redacted on the way out;
+    - no model-reachable input faults the runtime.
+  - **I-3** (a malformed row breaks the index) is fixed with data L1.
+  - **I-1, I-2 and I-4** are recorded below, under Open.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical or high finding.
+  - **Seal and suite:** it verified the seal, built an export, and ran the replay and the TypeScript oracle.
+  - **Probes against both runtimes:**
+    - rows are byte-compatible in both directions;
+    - each runtime reads the other's messages, request ids and delivery cursors;
+    - a 30-page differential, with the 64 KiB cap binding, was identical;
+    - a restart rebuilds the same pages, replays and cursors.
+  - **M1 (medium), L1 and L2 (low):** fixed in `779b690`, as the index entry under Differences describes. M1 was a condition before P2.3e.
+  - **L3 (evidence gaps):** the rollback, corrupt-row and batch gaps are now pinned. A restart rescan and a coordinated child sender's `root_task_id` remain probe-verified only.
+  - **Re-review of `f6f3d0d..8afdb6f`: GO with conditions.**
+    - **Confirmed fixed:** M1, L1 and the memory half of L2.
+    - **Batch progress** is correct across 23 boundary layouts, among them exactly 2,000 rows, batches ending on other events, deleted rows and later appends.
+    - **Conditions, all closed in `461c5c4`:**
+      - validate the request id, since a tampered nested one overflowed the stack;
+      - refuse a send inside a transaction;
+      - correct these notes.
+    - **Optional, also applied:** the scan reads along the primary key instead of sorting each batch.
+  - **Confirmation of `8afdb6f..e3bc05f`: GO, with no conditions remaining.**
+    - It confirmed each condition closed and found nothing new.
+    - It re-ran its boundary probe on 24 layouts with the primary-key scan; all were correct.
+    - The first read of 200,000 rows now takes 3.96 s.
+
+**Open, for later slices.**
+- **Wiring, done in P2.3e.** `Enrich` and `Acknowledge` are wired by the native tool loop, `Acknowledge` in the response transaction as TypeScript wires it. With M1 fixed, the index never takes a row from that transaction before it commits.
+- **Participants cost** (security I-1, data L2). The prefilter below landed in P2.3e, for tasks bound to other projects; see that entry for what remains.
+  - **The cost:** each participants page reads every task and admits each one's folder and Git identity on the loop, as TypeScript does. The data review measured 151 ms for 100 tasks and 4.7 s for 2,000.
+  - **Fix:** load the first binding of every task once, and admit only the candidates whose bound or stored common directory can equal the caller's.
+- **A lowercased key is a shared limit (security I-2).** Two repositories whose paths differ only in case, inside a case-sensitive folder, share one project key in both runtimes. Changing the key would hide messages written before adoption.
+- **Refusal text (security I-4).** Refusals tell a missing task from one in another project, as TypeScript's do. The texts are fixed strings, and ids come only from the caller's own participants.
+
+### Agent loop and Git-project chats (P2.3e)
+
+**What it is.** The development runtime's `task.start`, `task.send` and `task.cancel` now serve chats in Git projects. The method count is unchanged at 40. `AgentLoop` ports `agent-loop.ts`'s `prepareRequest` and `run` for the chats native serves:
+- **Requests.** A projectless or folder chat advertises nothing, as before. A Git chat advertises the project channel's three tools and leads a fresh history with the chat instruction and `CHANNEL_SYSTEM`. Every request it makes carries its unacknowledged channel messages (`Enrich`). A stored conversation resumes with its continuation and its calls' results; an interrupted call gets the explicit "not replayed" error.
+- **Iterations.** Up to 51 provider responses, each with at most 16 calls with distinct, non-empty ids, and at most 50 tool calls in the turn.
+  - **Responses.** A tooling response must carry its provider's continuation, within 512 KiB. The continuation and the calls must be free of secret-like data. No call may reuse an id the task has used, and the task keeps at most 1,000.
+  - **Persistence.** The provider state, the channel acknowledgment (`Acknowledge`), the answer and the request's settlement commit together. The state is saved again after each tool result, with a `task.tool-result` event, now also a notification.
+  - **Further requests.** An unknown mutation outcome after a tool stops the turn. Each further request is enriched and admitted against the task's budget. The context warning is published once per turn and the budget warning on each admission.
+- **Git starts** follow `startTask`:
+  1. The project is checked and classified as before. For a Git project, the channel identity is resolved, and that admission is held until the binding commits.
+  2. Coordination settings, the coordinated mode, the profile and any unknown worktree creation are checked; then coding is refused (below).
+  3. The start is reserved, and a `worktree.create` intent, with the request id, is written before any Git mutation. The task, its channel binding and the completed intent commit together, and the first turn starts.
+  4. A failure leaves the intent complete, and forgets the start, only when the repository reported that nothing started; the repository's refusal then reaches the caller with TypeScript's text. A first turn that could not start leaves the start failed. A retry re-checks the project and re-admits the channel.
+
+  `task.create` now binds through the same `AgentChannel.Admit`.
+- **Turns.** A Git chat's turn is refused while a commit, push or reconciliation runs ("Wait for the Git operation to finish before starting a response.", now also passed to RPC callers), and as retired while its worktree retires, as `startTurn` refuses them.
+- **The offline provider** gains three stages, with call ids from the runtime's id source:
+  - the channel demo: `/channel-demo` makes one `send_agent_message` call;
+  - its result stage;
+  - the stopped browser demo: `/browser-demo` without browser tools.
+- **Participants** (security I-1 and data L2 of P2.3d). Every task's first binding is loaded once, and a task bound to another project is passed over without admitting its folder. So is a task whose binding row does not parse, which `Project` would refuse. Unbound Git tasks and tasks bound to the same project are still admitted one by one. A page lists the tasks TypeScript's lists, including when a binding row cannot be read (below).
+- **Binding rows** are read as TypeScript reads them (review fixes, `e08ae79`):
+  - **The first complete row decides.** Its identity is the binding, absent when the row is not an object or the identity is missing or null.
+  - **Identities that are not objects.** A truthy one never matches, so its task is refused; a falsy one (0, false, "") is unbound. Before this, native treated any identity that is not an object as unbound (security I-4).
+  - **Unreadable rows.** A row that does not parse refuses only its own task, and a row SQLite cannot read refuses only the tasks whose lookup scans past it. A page leaves out exactly those tasks, and the runtime keeps serving. Before the fix, one such row made every participants page fail, and `channel.get` ended the runtime (security L-1, data L1).
+
+**Differences, all fail-closed or invisible on success:**
+- **Coding and coordinated tasks.**
+  - **Coding mode.** `task.start` refuses it ("Coding turns need native approvals, which a later runtime slice wires.") after TypeScript's checks and before any reservation or worktree.
+  - **Coordinated mode.** `task.start` refuses it ("Coordinated tasks are not available in this build.") where TypeScript checks it.
+  - **Turns.** `task.send` refuses a coding task's turn, and both methods refuse coordinated roles, before any reservation.
+
+  P2.3f serves coding turns.
+- **Stored continuations.** A turn is refused before any reservation unless its stored continuation is in a stage the offline provider serves natively: `chat`, `complete` or `channel-send`. The coding, MCP, browser and orchestration demos' stages need their slices.
+- **Unclassified tool failures** (P2.3c review I-2). A failure the tool runtime does not classify as a refusal stops the turn as failed, with its redacted message. TypeScript hands the model the message and continues. No reservation is open while tools run, and the runtime keeps serving.
+- **No browser host.** No turn has attached tabs, and the browser demo always stops. TypeScript asks its host before each `task.send`.
+- **Unreadable binding rows** are refused with "Project channel binding is unreadable." TypeScript reports its JSON reader's or SQLite's own error. SQLite reads JSON5 that the strict JSON reader refuses.
+- **An unknown start outcome over RPC.** "Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying." carries the failure's detail in TypeScript. Over RPC, native reports "Runtime request failed." instead, as it has for projectless and folder chats since P2.2f (data review I2).
+- **Iteration limit.** As in TypeScript, the 51-response limit cannot be reached: 51 responses with calls exceed the 50-call limit first.
+
+**A correction the provider port makes.** TypeScript's offline provider answers `/browser-demo` (after trimming) in every chat, projectless and folder chats included: "Offline browser demo stopped…" instead of "Fake response: /browser-demo". The native provider gave the latter until this slice; no earlier vector sent that text.
+
+**Evidence.**
+- **The provider oracle.** `tests/p2/fake-tools.test.ts` streams 33 inputs through the shipping offline provider. `FakeToolTests` replays each one. The vectors are bound to the provider sources. The inputs cover:
+  - the channel demo with and without tools;
+  - JavaScript trimming: U+3000 and U+FEFF trimmed, U+0085 kept;
+  - later and earlier user messages, and stored and invalid continuations;
+  - result stages with matching, mismatched, missing and erroring results;
+  - cancellation and the browser demo.
+- **The Git-chat oracle.** `tests/p2/git-chat.test.ts` drives the shipping `RuntimeService` over a disposable repository, with deterministic identities and a fixed clock, through five cases (103 steps):
+  - **the channel:**
+    - two Git chats and the channel demo;
+    - the second chat's first request carrying the broadcast and acknowledging it;
+    - an oversized message refused, and the browser demo;
+    - cancel of an idle chat;
+    - retirement and the refused turn after it;
+    - an overlapping send, made in one step so that it never depends on timing (data L2), and a missing task;
+  - **failed starts:**
+    - a start refused by its budget after its worktree is made, and two retries;
+    - a hidden project, coordination settings and a missing profile;
+    - an unknown worktree creation;
+  - **worktree creation failures** (data M1): a repository with no commit, whose start is forgotten, re-run and, after a commit, served; and a task branch that already exists, which leaves the intent and the start unknown and blocks the next start;
+  - **coding**, the named difference;
+  - **the loop's limits**, with a scripted provider:
+    - two and three iterations;
+    - duplicate, seventeen, reused and empty call ids;
+    - a missing and a foreign continuation, secret-bearing continuations and calls, and a continuation over 512 KiB;
+    - data after completion, and no completion;
+    - six tool refusals the model sees;
+    - the output and transcript limits, and the context warning;
+    - the 50-tool limit, and the recovery of its unfinished call;
+    - the 1,000-id history;
+    - a refused second admission, and the budget warning on a continuation;
+    - an unknown mutation outcome.
+
+  Each step records its value or refusal, the rows it added, changed or removed in seven tables, its notifications, and every request a provider received. Paths and the fixture's project key are placeholders. The vectors are bound to twelve runtime and provider sources; regenerating them requires `P2_WRITE_GIT_CHAT=1`.
+- **The replay.** `GitChatTests` replays every step through `DevelopmentChat` with the same identities, clock, offline provider and scripts, and reproduces every record byte for byte. The coding step must be refused with nothing changed.
+- **Folder chats.** The P2.2f oracle's Git-project step is now served. Its named difference is removed, a wait is added, and `FolderChatTests` reproduces both steps.
+- **The channel oracle** (`tests/p2/agent-channel.test.ts`, P2.3d) gains a fifth case of unusual binding rows: JSON5, not JSON, a string, zero, an array and no identity, a child of a task whose binding does not parse, and a task bound after an unreadable row. It pins the pages and refusals both runtimes give alike.
+- **Native-only tests** (`GitChatNativeTests`):
+  - a cancellation between iterations;
+  - a chat without tools refusing a provider's tool call (security I-1);
+  - an unclassified tool failure (I-2);
+  - a coordinated start refused before any intent;
+  - turns refused during a commit and during a retirement;
+  - stored continuations: a coding stage refused, and an interrupted channel demo resumed with the "not replayed" result.
+
+  `AgentChannelTests` pins the participants prefilter by counting admissions, a task whose first and latest bindings differ, and the refusal of unreadable binding rows through `channel.get` with the runtime still serving.
+- **Process differential.** The stdio differential now also runs a Git-project chat through both entry points, with an isolated Git configuration: a worktree-backed start, the channel demo, a second chat reached by its broadcast, the channel page, a repository with no commit and its refusal's text, and native's coding refusal.
+- **Mutations,** in `foundry-evidence\p2.3-e\mutations`:
+  - **First run (`db4a117`):** 51 mutations. 43 were caught, 6 survived, and 2 did not build.
+  - **Two survivors are by design.** The 52-response limit, which cannot be reached. The failed-start retry's channel check, which the turn's enrichment repeats with the same refusal.
+  - **The other four survivors were test gaps, now closed:** a chat without tools accepting a tool call, a refused worktree keeping its start reserved, the prefilter taking a task's latest binding, and the result stage reading the last call.
+  - **Second run (`e08ae79`):** 18 mutations: the four test-gap survivors, the two that did not build (now rewritten so they do), seven for the review fixes and five rechecks. 17 fail.
+    - The survivor is equivalent: passing over a binding row that does not parse is also what the next check does with any binding that is not an object.
+
+**Validation.**
+- **`db4a117`** (run1, from a `git archive` export): native 7,284 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
+- **`9e93406`** (run2, from a `git archive` export, after the review fixes): native 7,288 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential's two cases passed in the worktree at the same commit.
+
+**Independent reviews of `2120abf..ca41410` and `ca41410..a4dc6c0`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
+  - **What it ran:** it verified both seals, built an export, ran seven classes (92 passed) and three TypeScript oracles, and wrote one probe.
+  - **Confirmed:**
+    - a chat task can run only the channel tools;
+    - coding and coordinated tasks are refused before any reservation, intent or worktree;
+    - every provider-output check precedes persistence and execution, in TypeScript's order;
+    - `Enrich` and `Acknowledge` match TypeScript;
+    - the Git start holds its admission through the binding;
+    - the checks against Git operations leave no window on the loop.
+  - **L-1 (low), fixed in `e08ae79`:** an unreadable binding row, as above.
+  - **I-1, fixed:** no test pinned a chat without tools refusing a tool call.
+  - **I-4, fixed:** identities that are not objects.
+  - **I-2 and I-3:** the worktree was mid-mutation while it worked, and validation is to be recorded at the final commit. Both are addressed below.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical, high or data-corrupting finding.
+  - **What it ran:** it verified both seals and ran the classes, the oracle and the full conformance project (7,084 passed).
+  - **Probes:** it compared rows written and read by both runtimes, in scratch databases.
+    - Git chats resumed across runtimes, complete and interrupted at `channel-send`, left identical rows.
+    - Cancellation, provider failure and shutdown in each response settled every reservation once and left no task running.
+    - Both Git-start failure branches matched TypeScript.
+    - A 22-task prefilter seed gave the unfiltered page.
+  - **M1 (medium, evidence), fixed:** the Git-start failure branches had no test. The oracle now pins both.
+  - **L1 (low), fixed:** a binding row that is not JSON made every page fail; the same fix as security L-1.
+  - **L2 (low), fixed:** the overlapping send depended on timing natively under load.
+  - **I1:** the 1 MiB edit it saw was a mutation in flight, not a change; the worktree is clean.
+  - **I2:** a Git start's repository refusal reached RPC callers as "Runtime request failed."; it now carries TypeScript's text. The unknown-outcome message stays masked, as recorded under Differences.
+  - **I3, recorded:** `Store.IsGitDocument` does not treat an empty `workspaceKind` as Git, as TypeScript does. TypeScript never writes one, and `RequireChat` refuses such a task before any request.
+  - **I4, parity:** a response transaction that fails at commit leaves its request pending until recovery marks it interrupted, as in TypeScript.
+- **Re-reviews of `a4dc6c0..e08ae79` and `e08ae79..9e93406`: both GO, with no conditions remaining.**
+  - **Security:** it confirmed L-1, I-1 and I-4 fixed and found nothing new. It verified both seals and ran five classes (60 passed) and three oracles. Its probes found that an identity of `1e400` or a lone surrogate escape leaves `channel.get` serving.
+  - **Data integrity:** it confirmed M1, L1, L2 and I2 fixed and found nothing above informational. It verified both seals and ran five classes (52 passed) and two oracles.
+    - Its Git-start probes match TypeScript in both branches.
+    - Its 22-task prefilter seed still gives the unfiltered page. Three tasks with identities that are not objects now leave it, as in TypeScript.
+
+**Open, for later slices.**
+- **P2.3f, done:** coding turns with approvals, and `approval.decide`, with Rudy's worktree-confinement decision; see that entry.
+- **Participants cost, remaining.** A page still admits every unbound Git task and every task of the caller's own project, one by one, as TypeScript does. The data review measured 117 admissions and 327 ms for 722 tasks, 600 of them bound elsewhere.
+- **External profiles** still refuse every turn. The loop reads no usage or metadata events, which only external providers produce.
+
+### Coding turns and approval decisions (P2.3f)
+
+**Decision I5, recorded 18 October 2026.** Asked whether native should confine the model-driven coding tools to the task's own app-owned worktree, Rudy chose "Confine tools (Recommended)".
+- **What it means.** The six coding tools and their approvals run only when the stored worktree is exactly `<data>\wt\<task id>`. File views, `task.diff` and commit, push, reconcile and retire keep TypeScript's behaviour.
+- **Its evidence.** Since the foundation commit (`6bbaef8`, 16 September 2026), TypeScript has kept its data in `%LOCALAPPDATA%\FoundryAgentWorkspace`; only unpackaged builds may override that, for tests. It has created every task worktree at `<data>\wt\<task id>`, and coordinated children at `wt\children\<task id>`. All six fixture eras store exactly those paths. Only a hand-edited row or a copied data folder can name another.
+- **The check, after the security review (`7512036`).** The stored worktree and the task's own folder are compared as folders, by volume and file identity at every level, and neither path may pass through a reparse point. Another spelling of the task's own folder (case or 8.3) is served. A different folder whose name only case-folds alike (the Kelvin sign folds to k, which NTFS keeps apart), or any path through a junctioned worktree folder, is refused. The first version compared lowercased spellings, which let both through (security L-1).
+
+**What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime serves coding tasks in Git projects and `approval.decide`, bringing it to **41** of the 89 methods.
+- **Requests.** A coding task's turn advertises the six repository tools before the channel's three, under TypeScript's coding instruction and `CHANNEL_SYSTEM`. External (MCP) and browser tools are never advertised.
+- **Starts and turns.** `task.start` creates a coding task as it creates a Git chat (P2.3e), and `task.send` turns it.
+- **Approvals.** Edits and commands are proposed, saved and held until the user's one-shot decision through `approval.decide`, then executed as P2.3c ported them. A cancelled turn revokes its waiting proposal. A decision with another nonce, from another task, or for a missing approval is refused.
+- **The offline provider** gains the coding demo on a task's first turn: `/demo` reads `README.md`, proposes appending a line, then proposes `Write-Output 'Foundry command demo completed'`. Its stored stages (read, replace and command) now resume natively; the MCP, browser and orchestration demos' stages are still refused.
+- **Commands** inherit the runtime's environment, which tests now supply to commands as they do to Git.
+
+**Differences, all fail-closed or invisible on success:**
+- **Confinement (decision I5).** Before any argument check, read, proposal or execution, a coding tool requires the stored worktree to be the task's own app-owned folder, compared by identity as above. Otherwise the model is told "This task's worktree is not its app-owned worktree, so coding tools are refused." TypeScript uses the stored path.
+- **External tools (decision 2).** A coding start or turn is refused before any reservation while an enabled MCP server has stored tools, or a server row that does not parse: "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn." TypeScript advertises those tools.
+- **Compare-and-set (P2.3b's carried item).** The saves the tool runtime makes from its own copy of an approval require the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome once a decision is known. The one exception is a failure's outcome while the proposal still waits, which only a failure other than a conflict can reach. `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
+  - **Before the executing state** nothing has run: a changed row stands, and the stale copy writes nothing more ("The approval changed while it was in use; it was not overwritten.").
+  - **After it** the action may have run: the outcome is recorded unknown over the change ("The approval changed while its action ran, so its outcome is unknown."), so the next turn waits for reconciliation.
+  - **The first version** let the failure path save the stale copy after a conflict, and left an executed action unrecorded (security L-2, data L1 and L2); both are fixed in `7512036`.
+- **The reviewed proposal is the one that runs.** A decision applies only while the stored proposal, which `approval.get` shows the user, is the copy that would execute; otherwise it is refused as stale (security I-1, `7512036`).
+- **Coordinated tasks** remain refused before any reservation.
+
+**Evidence.**
+- **The Git-chat oracle** (P2.3e) now serves its coding case, and gains two cases on the real clock. TypeScript's command helper checks its parent's start time, which a faked clock breaks. Timestamps become `{time}`, and progress notifications, whose count depends on timing, are left out.
+  - **The coding demo, approved:** the read, the approved edit and command, the approvals page, `files.read`, `task.diff`, and `/demo` again on a later turn, which runs no demo.
+  - **Rejected, cancelled, resumed and decided stale:**
+    - a rejected edit;
+    - a cancellation while waiting, which revokes, and the next turn resuming from the stored replace stage;
+    - a stale nonce, another task's decision and a missing approval, each refused;
+    - an approved edit and a rejected command.
+
+  A coding step is recorded once its task stops running or proposes a new approval, which both runtimes reach alike. The shell, SystemRoot and approval fingerprints become placeholders, as in the P2.3c oracle. TypeScript's command helper draws a result nonce that nothing records and native has no use for (P2.3a); the oracle gives that one draw a real UUID, so the identities after a command match.
+- **The provider oracle** gains 30 coding-demo inputs: advertised tools, result matching, unreadable and incomplete read results, and JavaScript's own errors for a missing result. `FakeToolTests` replays all 63.
+- **The tool-runtime oracle** (P2.3c) places its fixture worktrees where the product puts them: task 1's at `data\wt\<id>`, with a copy for task 5. Every outcome is unchanged; only paths differ.
+- **Native-only tests:**
+  - **confinement:** four foreign worktrees refused for each of the five tools, and a spelling that differs only in case served; the identity check itself against a Kelvin-sign sibling and a junctioned worktree folder;
+  - **the compare-and-set:** a row revoked between the decision and the resumed call, a row changed while its proposal waits and then cancelled, and a row changed while the action ran, recorded unknown;
+  - **a decision on a proposal changed since it was saved,** refused, with nothing run;
+  - **decision 2:** disabled and empty servers ignored, listed and unreadable servers refusing coding starts, turns and a failed start's retry with nothing written, and chats unaffected;
+  - **a coding task outside Git,** refused with its reason.
+- **Process differential.** The stdio differential now also runs the coding demo through `task.start`, `task.approvals`, `approval.get` and `approval.decide` in both entry points, including a stale decision. Approval fingerprints are normalized.
+- **Mutations,** in `foundry-evidence\p2.3-f\mutations`:
+  - **First run (`ddc6636`):** 29 mutations. 26 were caught, 2 survived and 1 did not build.
+  - **The two survivors were test gaps:** the final save without its expected state, and the refusal of a coding task outside Git (a later layer refused it with another message). Both are pinned since `7512036`. The one that did not build is rewritten.
+  - **Second run (`7512036`):** 13 mutations, for the review fixes and the earlier gaps. 11 were caught and 2 did not build; both were rewritten, and a third run caught both.
+
+**Validation.**
+- **`ddc6636`** (run1, from a `git archive` export): native 7,323 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
+- **`7512036`** (run2, from a `git archive` export, after the review fixes): native 7,329 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The data reviewer's export of `6245bb0` ran the stdio differential after the fixes; it passed.
+- **`b8b55c2`** (run3, from a `git archive` export, after merging main at `6ed63d6` as `2235d5f`): native 7,330 passed, 0 failed, 2 expected skips; `pnpm check` 587 passed; the stdio differential passed (2 of 2) in the same export; `git diff --check` clean against main.
+  - **What main brought in.**
+    - #44 (F1) changed `repository.ts`. The four oracles bound to it (agent channel, approvals, Git chats and tool runtime) were regenerated, and only that source hash changed (`b8b55c2`).
+    - #45 changed `git-operations.ts`, which no P2 vector binds.
+    - #40 added `preparation/cli-drivers`, which sits outside `Foundry.slnx`.
+  - **The one conflict** was in this file. This branch's record of L1's native half replaced main's one-line pointer to it, and main's index-lock entry was kept.
+- **CI's first run of the stack (#46) failed: the tests' scratch profiles, not the runtimes.**
+  - **What failed:**
+    - natively, the coding demo's replay, and two outside-writer tests;
+    - in TypeScript, the Git-chat oracle.
+  - **What the failures had in common.** Every executed command that failed called a cmdlet without naming its module:
+    - the offline demo's `Write-Output`, which both runtimes run with its 10-second limit;
+    - the two native tests' `Add-Type`;
+    - the TypeScript helper `job-runner.ps1`'s `Add-Type`, which runs for every command.
+
+    The commands that used only .NET calls passed.
+  - **The cause,** inferred from that pattern, local probes and the image's module list. The rerun with the fix on CI is what confirms it. Windows PowerShell 5.1 finds an unqualified cmdlet through its module analysis cache, which it keeps in the profile's local application data.
+    - The tests give each command a fresh scratch `USERPROFILE`, which has no cache, so every start analyses every installed module first.
+    - Here that costs about 0.15 seconds. The `windows-2025-vs2026` image also has AWSPowerShell, Microsoft.Graph, SqlServer and Az installed, so there it took 10 to 60 seconds:
+      - the demo timed out;
+      - the outside-writer test exceeded its 30-second bound;
+      - the unverified-cleanup command hit its 60-second limit.
+    - Production runs commands under the user's own profile, so this was a property of the tests' environment, not of either runtime.
+  - **The fix, test-only.**
+    - `PowerShellModuleCache.cs` and `tests/p2/powershell-module-cache.ts` warm the cache once under their own scratch profile and copy it into every fixture's profile, as a real profile would have it. The shared copy is `%TEMP%\foundry-p2-powershell-module-cache`.
+    - PowerShell still reports the same first-use progress, so nothing a command prints changes, and no vector changed.
+    - The two native-only `Add-Type` calls are module-qualified (`Microsoft.PowerShell.Utility\Add-Type`). They run under the real profile, and qualifying the call skips the analysis.
+
+**Independent reviews of `7d01f30..ddc6636` and `ddc6636..4466b4f`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
+  - **What it ran:** it verified both seals, built an export, ran six classes (107 passed) and three TypeScript oracles, and wrote probes.
+  - **Confirmed:**
+    - nothing in model output, repository text or stored state grants execution;
+    - an edit or command runs only after the one-shot decision on exactly the prepared action;
+    - stale, cross-task, missing, coordinated and repeated decisions are refused;
+    - restart recovery revokes waiting and approved rows, and nothing replays;
+    - decision 2 gates every path to a coding turn before any reservation;
+    - the coding instruction is byte-identical, and the demo matches TypeScript;
+    - production passes no test environment to commands.
+  - **L-1 and L-2 (low), fixed in `7512036`,** as above: spellings that case-fold alike or a junctioned base passed confinement, and a stale copy saved after a conflict.
+  - **I-1, adopted:** the reviewed proposal must be the one that runs.
+  - **I-3, pinned:** decision 2 on a failed start's retry.
+  - **Recorded, not changed:**
+    - **I-2:** `Reconcile` reads the stored worktree, within Rudy's choice to leave everything but the coding tools unconfined.
+    - **I-4:** a malformed MCP row whose failure is not a JSON or cast error refuses with a generic error, still before any reservation.
+    - **I-5:** `RevokeWaiting` has no caller yet; scoped cancellation in later slices uses it.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical or high finding.
+  - **What it ran:** it verified both seals and ran the classes, the oracles and the stdio differential.
+  - **Its cross-runtime probes:**
+    - a writer stopped while a command proposal waited, resumed by either runtime: identical rows and responses in all four combinations;
+    - rows rewritten to executing or approved before reopening: identical recovery and reconciliation;
+    - provider state dropped on tasks of either runtime, and a graceful shutdown while a proposal waited: identical rows.
+  - **L1 and L2 (low), fixed:** the stale save after a conflict, and an executed action left unrecorded after one.
+  - **L3, fixed:** the entry overstated the compare-and-set, and two mutations survived; both are corrected and pinned.
+  - **Recorded:**
+    - `HasBlockingUnknown` scans every task's approvals, as TypeScript does;
+    - decision 2's reading of disabled servers with unreadable tools, and of tools whose names cannot be composed, differs from TypeScript's listing, fail-closed;
+    - the real-clock cases check timestamps' format, not their values or order.
+- **Re-reviews of `4466b4f..7512036` and `7512036..6245bb0`: both GO, with no conditions remaining.**
+  - **Security:** it confirmed L-1, L-2 and I-1 fixed and found nothing new. It verified both seals, built an export and ran five classes (49 passed).
+  - **Data integrity:** it confirmed its four conditions met and found nothing above informational. It verified both seals, ran five classes (49 passed), two oracles and the stdio differential, and re-ran its cross-runtime probes; they again gave identical rows.
+    - **Its own mutations:** of the two earlier survivors, both now fail.
+    - **The I-1 check, probed:** proposals holding line and paragraph separators, a lone surrogate, control characters, emoji, backslashes and quotes still round-trip and are decided normally.
+  - **Informational, recorded:**
+    - **`SameFolder`** catches only I/O errors, so a folder it may not open fails the turn rather than returning the confinement refusal; fail-closed.
+    - **A conflict on the failure path's own save** surfaces the conflict instead of the original error; the stored outcome is correct.
+
+**Open, for later slices.**
+- **External tools:** decision 2's refusal lifts with the MCP slice.
+- **Browser tools, coordinated orchestration and external profiles** remain refused.
+- **Confinement covers the coding tools only.** File views, `task.diff` and the Git actions follow TypeScript, as decided.
 
 ## Personal workspace expansion — local implementation
 

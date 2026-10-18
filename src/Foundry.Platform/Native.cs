@@ -125,6 +125,19 @@ internal static unsafe partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool TerminateJobObject(SafeKernelHandle job, uint exitCode);
 
+    internal const int JobObjectBasicProcessIdList = 3;
+    internal const uint ProcessQueryLimitedInformation = 0x1000;
+    internal const int ErrorMoreData = 234;
+    internal const int ErrorInvalidParameter = 87;
+    internal const uint StillActive = 259;
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial SafeKernelHandle OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool QueryFullProcessImageName(SafeKernelHandle process, uint flags, char* name, uint* size);
+
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool InitializeProcThreadAttributeList(void* list, int count, uint flags, nuint* size);

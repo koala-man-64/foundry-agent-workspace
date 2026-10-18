@@ -169,7 +169,13 @@ internal sealed partial class RepositoryService
     internal List<Dictionary<string, object?>> ListFiles(string root, string relativePath = "")
     {
         using var admitted = RequireRoot(root);
-        using var target = OpenSafe(admitted.Path, relativePath, true);
+        return ListFilesWithin(admitted.Path, relativePath);
+    }
+
+    /// <summary>listFiles beneath an already admitted root.</summary>
+    internal static List<Dictionary<string, object?>> ListFilesWithin(string root, string relativePath)
+    {
+        using var target = OpenSafe(root, relativePath, true);
         if (!target.Entry.IsDirectory) throw new WorkspaceReadException(NotDirectory);
         var entries = new List<Dictionary<string, object?>>();
         List<(string Name, FileAttributes Attributes)> children;
@@ -184,7 +190,7 @@ internal sealed partial class RepositoryService
         {
             // libuv reports every reparse point as a link, which listFiles skips.
             if (RepositoryPaths.IsDeniedName(name) || attributes.HasFlag(FileAttributes.ReparsePoint) || attributes.HasFlag(FileAttributes.Device)) continue;
-            var relative = RepositoryPaths.PortableRelative(admitted.Path, System.IO.Path.Join(target.Path, name));
+            var relative = RepositoryPaths.PortableRelative(root, System.IO.Path.Join(target.Path, name));
             if (relative.Length == 0 || RepositoryPaths.IsDeniedRelativePath(relative)) continue;
             entries.Add(new() { ["path"] = relative, ["kind"] = attributes.HasFlag(FileAttributes.Directory) ? "directory" : "file" });
         }
@@ -646,6 +652,17 @@ internal sealed partial class RepositoryService
         }
         catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException) { return null; }
     }
+
+    /// <summary>
+    /// Rudy's decision I5 (P2.3f): whether a task's stored worktree is the folder createTaskWorktree makes for it, the
+    /// app-owned worktree folder joined with its lowercased id. The two are compared as folders, by volume and file
+    /// identity at every level, and neither path may pass through a reparse point. So another spelling of the same folder
+    /// (case or 8.3) qualifies, while a different folder whose name only case-folds alike, or a path under a junctioned
+    /// worktree folder, does not. Every task TypeScript has created qualifies; a hand-edited row or a copied data folder
+    /// does not. Not in TypeScript.
+    /// </summary>
+    internal bool IsOwnWorktree(string taskId, string? worktreePath) =>
+        worktreePath is not null && TaskId().IsMatch(taskId) && RepositoryPaths.SameFolder(worktreePath, Path.Join(FinalPath.Resolve(WorktreeBase), taskId.ToLowerInvariant()));
 
     /// <summary>
     /// removeWorktree: `git worktree remove` without --force, so Git itself refuses untracked or modified files; the
