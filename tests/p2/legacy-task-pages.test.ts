@@ -8,6 +8,7 @@ import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import type { Task } from '../../packages/protocol/src/index';
 import { WorkspaceRpc, type TaskPage } from '../../packages/protocol/src/workspace';
+import { regenerating } from './oracle-node.mjs';
 
 const count = 20000;
 const key = (n: number) => `99999999-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -67,7 +68,7 @@ it('streams 20000 legacy tasks with identical whole-history reference ordering a
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { count, stamp, cases };
-    if (process.env.P2_WRITE_LEGACY_MEMORY === '1') writeFileSync('tests/p2/legacy-task-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_LEGACY_MEMORY')) writeFileSync('tests/p2/legacy-task-page-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/legacy-task-page-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 }, 60000);

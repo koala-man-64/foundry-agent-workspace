@@ -6,6 +6,7 @@ import { Store } from '../../packages/runtime/src/store';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
 import type { Message, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `33333333-0000-4000-8000-${n.toString().padStart(12, '0')}`;
@@ -85,7 +86,7 @@ it('pins bounded redacted history and UTF8 chunks without rewriting retained doc
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { tasks, messages, secret: 'hidden-fixture-secret', cases };
-    if (process.env.P2_WRITE_MESSAGES === '1') writeFileSync('tests/p2/message-query-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_MESSAGES')) writeFileSync('tests/p2/message-query-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/message-query-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

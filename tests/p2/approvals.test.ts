@@ -8,6 +8,7 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { normalize, sha256File } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
 
 // Approval records through the shipping RuntimeService, over fresh data and disposable copies of all six fixture eras:
 // task.approvals, approval.get and approval.content (read projections that never rewrite a row), then approval.reconcile
@@ -154,7 +155,7 @@ it('pins approval records, projections and read-only reconciliation through the 
       stamp, tasks, files, approvals, reads, reconciles, cases,
     };
     const target = 'tests/p2/approval-vectors.json';
-    if (process.env.P2_WRITE_APPROVALS === '1') writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_APPROVALS')) writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync(target, 'utf8'))).toEqual(JSON.parse(JSON.stringify(corpus)));
   } finally { vi.useRealTimers(); }
 }, 300_000);

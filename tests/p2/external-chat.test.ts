@@ -9,8 +9,10 @@ import { profileFingerprint } from '../../packages/runtime/src/profile-fingerpri
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { Store } from '../../packages/runtime/src/store';
+import { regenerating } from './oracle-node.mjs';
 import { credential, encode, scrub, type Body } from './provider-fetch';
 import { build, committed, normalize, sha256File, withIsolatedGit } from './repository-fixture';
+import { removeTree } from './scratch';
 
 // P2.4d: chats with external profiles through the shipping RuntimeService, with createProvider over a recording fetch.
 // Projectless, folder and Git chats and coding turns for each kind; the probe and tool gates; channel tools only for a
@@ -303,7 +305,7 @@ async function run(item: Case): Promise<unknown[]> {
     return recorded;
   } finally {
     await service.shutdown(); vi.useRealTimers();
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -316,6 +318,6 @@ it('pins external-profile chats, their accounting and their gates through the sh
   const corpus = { timestamp, head: HEAD, oracle: { sources: sources.map(source => ({ path: source, sha256: sha256File(source) })) }, cases: recorded };
   const target = 'tests/p2/external-chat-vectors.json';
   const text = JSON.stringify(corpus, null, 2) + '\n';
-  if (process.env.P2_WRITE_EXTERNAL_CHAT === '1') fs.writeFileSync(target, text);
+  if (regenerating('P2_WRITE_EXTERNAL_CHAT')) fs.writeFileSync(target, text);
   expect(fs.readFileSync(target, 'utf8')).toBe(text);
 }, 600_000);

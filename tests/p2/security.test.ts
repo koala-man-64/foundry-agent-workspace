@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { ORCHESTRATION_LIMITS } from '../../packages/protocol/src/limits';
 import { assertAcyclic, covers, inScope, normalizeScope, normalizeScopePath, ordered, scopesOverlap } from '../../packages/runtime/src/scope';
 import { isNetworkOrDevicePath } from '../../packages/runtime/src/network-path';
+import { regenerating } from './oracle-node.mjs';
 
 type Input = { operation: string; arguments: unknown[] };
 const inputs: Input[] = [];
@@ -47,6 +48,6 @@ it('pins all P2 policy outcomes to the shipping Node authority without ordinary 
     return { name: `${input.operation}:${index}`, ...input, expected };
   });
   const path = 'tests/p2/security-vectors.json';
-  if (process.env.P2_WRITE_SECURITY === '1') writeFileSync(path, JSON.stringify(cases, null, 2) + '\n');
+  if (regenerating('P2_WRITE_SECURITY')) writeFileSync(path, JSON.stringify(cases, null, 2) + '\n');
   expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(cases);
 });

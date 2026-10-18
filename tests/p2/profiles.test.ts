@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
@@ -8,7 +8,9 @@ import { createProvider } from '../../packages/providers/src/index';
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
+import { regenerating } from './oracle-node.mjs';
 import { credential, encode, scrub, type Body } from './provider-fetch';
+import { removeTree } from './scratch';
 
 // P2.4c: profile.save, the runtime.credential frame and profile.probe through the shipping RuntimeService, with
 // createProvider over a recording fetch for external profiles. Each step records its value or refusal, the rows it changed
@@ -221,7 +223,7 @@ async function run(item: Case): Promise<unknown[]> {
     release?.();
     await pending?.catch(() => undefined);
     await service.shutdown(); vi.useRealTimers();
-    rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -231,6 +233,6 @@ it('pins profile saves, credential frames and probes through the shipping Node a
   const sources = ['packages/runtime/src/service.ts', 'packages/runtime/src/profile-fingerprint.ts', 'packages/runtime/src/usage-ledger.ts', 'packages/runtime/src/store.ts', 'packages/providers/src/index.ts', 'packages/protocol/src/limits.ts'];
   const corpus = { timestamp, oracle: { sources: sources.map(path => ({ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') })) }, cases: recorded };
   const text = JSON.stringify(corpus, null, 2) + '\n';
-  if (process.env.P2_WRITE_PROFILES === '1') writeFileSync('tests/p2/profile-vectors.json', text);
+  if (regenerating('P2_WRITE_PROFILES')) writeFileSync('tests/p2/profile-vectors.json', text);
   expect(readFileSync('tests/p2/profile-vectors.json', 'utf8')).toBe(text);
 }, 300_000);

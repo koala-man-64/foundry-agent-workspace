@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '24'
+          node-version-file: .node-version
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -48,11 +48,27 @@ jobs:
       - name: Download the pinned Electron runtime
         run: node node_modules/electron/install.js
 
+      # P2 vectors are written under Electron's Node and CI installs the same version, so an Electron upgrade moves the pin.
+      - name: Check that .node-version is Electron's Node
+        run: |
+          $pinned = (Get-Content -LiteralPath .node-version -Raw).Trim()
+          $shipped = node scripts/electron-node.mjs -p process.versions.node
+          if ($LASTEXITCODE -ne 0) { throw 'Electron did not report its Node version.' }
+          if ($shipped -cne $pinned) { throw "Electron ships Node $shipped but .node-version pins $pinned. Move the pin with Electron, then check every oracle with pnpm oracle." }
+          if ((node -p process.versions.node) -cne $pinned) { throw "setup-node did not install the pinned Node $pinned." }
+
       - name: Configure isolated Git fixtures
         run: git config --global init.defaultBranch main
 
       - name: Run type checks, lint, and tests
         run: pnpm check --maxWorkers=1 --bail=1
+
+      # Electron builds Node with its own V8 and ICU, so the P2 vectors are checked again on the runtime the app ships.
+      - name: Check the P2 oracles under Electron's Node
+        run: |
+          pnpm oracle --maxWorkers=1 --bail=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/electron-node.mjs tests/p2/git-metadata-oracle.mjs
 
       - name: Test Electron user workflows with offline fixtures
         id: e2e

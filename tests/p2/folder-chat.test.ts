@@ -7,6 +7,8 @@ import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, file, normalize, sha256File, withIsolatedGit } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // Project-backed task.start in a saved folder that is not a Git repository, through the shipping RuntimeService with the
 // offline provider: every step's value or refusal, then the task, message, request, start, event and project rows and
@@ -95,10 +97,10 @@ it('pins project-backed folder chats through the shipping Node authority without
       steps: recorded,
     };
     const target = 'tests/p2/folder-chat-vectors.json';
-    if (process.env.P2_WRITE_FOLDER_CHAT === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_FOLDER_CHAT')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
   } finally {
     await service.shutdown(); vi.useRealTimers();
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }, 120_000);

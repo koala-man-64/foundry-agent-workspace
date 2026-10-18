@@ -10,6 +10,7 @@ import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import type { ToolRuntime } from '../../packages/runtime/src/tool-runtime';
 import { build, file, sha256File, type Step } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
 
 // The project channel of the shipping TypeScript runtime (agent-channel.ts, channel-tools.ts), pinned for the C# port
 // (AgentChannelTests): the channel tool definitions and system text byte for byte, then channel.get and channel.send
@@ -188,6 +189,6 @@ it('pins the project channel: definitions, channel.get/send, channel tools and m
     stamp, tree, definitions: JSON.stringify(CHANNEL_TOOL_DEFINITIONS), system: CHANNEL_SYSTEM, cases: vectors,
   };
   const target = 'tests/p2/agent-channel-vectors.json';
-  if (process.env.P2_WRITE_AGENT_CHANNEL === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_AGENT_CHANNEL')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(JSON.parse(JSON.stringify(corpus)));
 }, 600_000);

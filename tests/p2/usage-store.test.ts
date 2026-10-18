@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { Store } from '../../packages/runtime/src/store';
 import type { ModelProfile, ProviderEvent, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const root = { id: '22222222-root', title: 'Root 😀', profileId: 'fixture', status: 'idle', createdAt: timestamp, updatedAt: timestamp, tokenBudget: 4096, usedTokens: 0 } as Task;
@@ -69,7 +70,7 @@ it('pins usage admission, first attempt, terminal settlement and restart on disp
         } finally { store.close(); }
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
-    if (process.env.P2_WRITE_USAGE === '1') writeFileSync('tests/p2/usage-store-vectors.json', JSON.stringify(cases, null, 2) + '\n');
+    if (regenerating('P2_WRITE_USAGE')) writeFileSync('tests/p2/usage-store-vectors.json', JSON.stringify(cases, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/usage-store-vectors.json', 'utf8'))).toEqual(cases);
   } finally { vi.useRealTimers(); }
 });

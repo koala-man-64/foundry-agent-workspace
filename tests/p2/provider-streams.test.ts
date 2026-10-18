@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ProviderContinuation, ProviderEvent, ProviderMessage, ToolDefinition } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 import { recorded, run, type Body, type Input } from './provider-fetch';
 
 // P2.4b: the Responses and Anthropic parsers. Each input streams through the shipping createProvider(kind, { fetch }) with
@@ -225,6 +226,6 @@ it('pins the Responses and Anthropic parsers and the next request each continuat
   }
   const corpus = { oracle: { sources: sources.map(path => ({ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') })) }, cases };
   const text = JSON.stringify(corpus, null, 2) + '\n';
-  if (process.env.P2_WRITE_PROVIDER_STREAMS === '1') writeFileSync('tests/p2/provider-stream-vectors.json', text);
+  if (regenerating('P2_WRITE_PROVIDER_STREAMS')) writeFileSync('tests/p2/provider-stream-vectors.json', text);
   expect(readFileSync('tests/p2/provider-stream-vectors.json', 'utf8')).toBe(text);
 }, 120_000);

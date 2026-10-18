@@ -5,6 +5,8 @@ import path from 'node:path';
 import { expect, it } from 'vitest';
 import { type PreparedEdit, RepositoryError, RepositoryService } from '../../packages/runtime/src/repository';
 import { build, committed, file, normalize, sha256File, type Step, withIsolatedGit } from './repository-fixture';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // The one-shot existing-file edit primitive of the shipping TypeScript RepositoryService (prepareEdit and applyEdit),
 // driven directly over disposable trees. The C# suite (ExistingFileEditTests) rebuilds every tree, replays every step
@@ -137,7 +139,7 @@ it('pins the one-shot existing-file edit primitive of the shipping Node authorit
       recorded.push({ ...item, steps, files: files(scratch) });
     } finally {
       for (const [relative] of files(scratch)) fs.chmodSync(path.join(scratch, relative), 0o666);
-      fs.rmSync(scratch, { recursive: true, force: true });
+      removeTree(scratch);
     }
   }
   const corpus = {
@@ -146,6 +148,6 @@ it('pins the one-shot existing-file edit primitive of the shipping Node authorit
     cases: recorded,
   };
   const target = 'tests/p2/existing-file-edit-vectors.json';
-  if (process.env.P2_WRITE_EXISTING_FILE_EDIT === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_EXISTING_FILE_EDIT')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 120_000);

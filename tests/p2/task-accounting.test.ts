@@ -6,6 +6,7 @@ import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import { legacyHooks, type ReservationHandle } from '../../packages/runtime/src/agent-loop';
 import { admitRequest, measuredUsage } from '../../packages/runtime/src/usage-accounting';
 import type { ModelProfile, ProviderEvent, ProviderRequest, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const ids = vi.hoisted(() => ({ next: 1 }));
 vi.mock('node:crypto', async original => ({ ...await original<typeof import('node:crypto')>(),
@@ -80,7 +81,7 @@ it('pins single-task reservation and terminal accounting against shipping hooks 
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { task, request, cases };
-    if (process.env.P2_WRITE_TASK_ACCOUNTING === '1') writeFileSync('tests/p2/task-accounting-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_TASK_ACCOUNTING')) writeFileSync('tests/p2/task-accounting-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/task-accounting-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

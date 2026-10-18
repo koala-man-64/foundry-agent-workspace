@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TOOL_DEFINITIONS } from '../../packages/runtime/src/tool-definitions';
 import type { ProviderMessage, ProviderToolResult, ToolDefinition } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 import { recorded, run, type Body, type Input } from './provider-fetch';
 
 // P2.4a: the Azure adapter's requests, transport and SSE framing, and the Chat Completions parser. Each input drives the
@@ -286,6 +287,6 @@ it('pins the Azure adapter requests, transport, SSE framing and the Chat Complet
   for (const [index, input] of inputs().entries()) cases.push({ name: `provider-transport:${index}`, input: recorded(input), expected: await run(input) });
   const corpus = { oracle: { sources: sources.map(path => ({ path, sha256: createHash('sha256').update(readFileSync(path)).digest('hex') })) }, cases };
   const text = JSON.stringify(corpus, null, 2) + '\n';
-  if (process.env.P2_WRITE_PROVIDER_TRANSPORT === '1') writeFileSync('tests/p2/provider-transport-vectors.json', text);
+  if (regenerating('P2_WRITE_PROVIDER_TRANSPORT')) writeFileSync('tests/p2/provider-transport-vectors.json', text);
   expect(readFileSync('tests/p2/provider-transport-vectors.json', 'utf8')).toBe(text);
 }, 120_000);

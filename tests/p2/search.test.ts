@@ -7,6 +7,7 @@ import { WorkspaceQueries } from '../../packages/runtime/src/workspace-queries';
 import { Redactor } from '../../packages/runtime/src/redaction';
 import type { Task, Message } from '../../packages/protocol/src/index';
 import type { SearchHit, SearchCursor } from '../../packages/protocol/src/workspace';
+import { regenerating } from './oracle-node.mjs';
 
 const stamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `15151515-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -58,7 +59,7 @@ it('pins search phases, filters, cursors, locale/FTS differences and immutable s
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { stamp, tasks, messages, cases };
-    if (process.env.P2_WRITE_SEARCH === '1') writeFileSync('tests/p2/search-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_SEARCH')) writeFileSync('tests/p2/search-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/search-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });

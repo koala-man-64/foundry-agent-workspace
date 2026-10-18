@@ -11,6 +11,8 @@ import { TOOL_DEFINITIONS, ToolArguments, type ToolName } from '../../packages/r
 import type { ToolRuntime } from '../../packages/runtime/src/tool-runtime';
 import { build, committed, file, sha256File, type Step, withIsolatedGit } from './repository-fixture';
 import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // The coding tools of the shipping TypeScript runtime (tool-definitions.ts, tool-runtime.ts and repository.ts search),
 // pinned for the C# port (ToolRuntimeTests): the advertised definitions byte for byte; zod's parse of every tool's
@@ -218,7 +220,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
           }
         }
         searchVectors.push({ name: item.name, tree: item.tree, fills: item.fills ?? [], results });
-      } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
+      } finally { removeTree(scratch); }
     }
 
     const executionVectors = [];
@@ -308,7 +310,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
         executionVectors.push({ name: item.name, tree: item.tree, ...(item.temp ? { temp: item.temp } : {}), steps });
       } finally {
         for (const [name, value] of Object.entries(saved)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
-        fs.rmSync(scratch, { recursive: true, force: true });
+        removeTree(scratch);
       }
     }
 
@@ -328,7 +330,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
         }
         expect(JSON.stringify(store.db.prepare('SELECT rowid,* FROM intents').all()) + JSON.stringify(store.db.prepare('SELECT * FROM events').all())).toBe(before);
         await service.shutdown();
-      } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
+      } finally { removeTree(scratch); }
     }
 
     const corpus = {
@@ -338,7 +340,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
       stamp, tasks, definitions: JSON.stringify(TOOL_DEFINITIONS), arguments: argumentsVectors, search: searchVectors, executions: executionVectors, stored, decisions: decisionVectors,
     };
     const target = 'tests/p2/tool-runtime-vectors.json';
-    if (process.env.P2_WRITE_TOOL_RUNTIME === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_TOOL_RUNTIME')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(JSON.parse(JSON.stringify(corpus)));
   }
 }, 600_000);

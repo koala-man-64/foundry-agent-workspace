@@ -10,6 +10,8 @@ import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
 import { build, committed, file, git, normalize, runGit, sha256File, withIsolatedGit } from './repository-fixture';
 import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershell-module-cache';
+import { regenerating } from './oracle-node.mjs';
+import { removeTree } from './scratch';
 
 // Git-project chats through the shipping RuntimeService: task.start, task.send and task.cancel with the agent loop's
 // tool iterations, the project channel's delivery and acknowledgment, and the failed-start retry. The offline provider
@@ -315,7 +317,7 @@ async function run(item: Case, budgets: Record<string, number> | undefined): Pro
   } finally {
     await service.shutdown(); vi.useRealTimers();
     for (const [name, value] of Object.entries(saved)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
-    fs.rmSync(scratch, { recursive: true, force: true });
+    removeTree(scratch);
   }
 }
 
@@ -345,6 +347,6 @@ it('pins Git-project chats, the agent loop and the project channel through the s
     'packages/runtime/src/workspace-operations.ts', 'packages/runtime/src/redaction.ts', 'packages/providers/src/index.ts', 'packages/providers/src/browser-fixture.ts'];
   const corpus = { schemaVersion: 1, timestamp, scripts: SCRIPTS, secret: SECRET, oracle: { sources: sources.map(source => ({ path: source, sha256: sha256File(source) })) }, cases: recorded };
   const target = 'tests/p2/git-chat-vectors.json';
-  if (process.env.P2_WRITE_GIT_CHAT === '1') fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
+  if (regenerating('P2_WRITE_GIT_CHAT')) fs.writeFileSync(target, JSON.stringify(corpus, null, 2) + '\n');
   expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual(corpus);
 }, 600_000);

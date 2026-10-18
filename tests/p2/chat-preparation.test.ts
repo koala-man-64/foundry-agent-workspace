@@ -6,6 +6,7 @@ import { Store, FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
 import { prepareRequest } from '../../packages/runtime/src/agent-loop';
 import { hasBlockingUnknown } from '../../packages/runtime/src/browser-tools';
 import type { Message, ModelProfile, Task } from '../../packages/protocol/src/index';
+import { regenerating } from './oracle-node.mjs';
 
 const timestamp = '2026-01-02T03:04:05.678Z';
 const task = { id: '66666666-0000-4000-8000-000000000001', title: 'Preparation', workspaceKind: 'none', mode: 'chat', profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: timestamp, updatedAt: timestamp, tokenBudget: 4096, usedTokens: 0 } as Task;
@@ -43,7 +44,7 @@ it('pins ordinary chat preparation gates and pending results without replay on d
       } finally { rmSync(scratch, { recursive: true, force: true }); }
     });
     const corpus = { task, profile, messages, cases };
-    if (process.env.P2_WRITE_PREPARATION === '1') writeFileSync('tests/p2/chat-preparation-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
+    if (regenerating('P2_WRITE_PREPARATION')) writeFileSync('tests/p2/chat-preparation-vectors.json', JSON.stringify(corpus, null, 2) + '\n');
     expect(JSON.parse(readFileSync('tests/p2/chat-preparation-vectors.json', 'utf8'))).toEqual(corpus);
   } finally { vi.useRealTimers(); }
 });
