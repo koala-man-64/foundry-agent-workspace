@@ -1445,6 +1445,10 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
       - refuse a send inside a transaction;
       - correct these notes.
     - **Optional, also applied:** the scan reads along the primary key instead of sorting each batch.
+  - **Confirmation of `8afdb6f..e3bc05f`: GO, with no conditions remaining.**
+    - It confirmed each condition closed and found nothing new.
+    - It re-ran its boundary probe on 24 layouts with the primary-key scan; all were correct.
+    - The first read of 200,000 rows now takes 3.96 s.
 
 **Open, for later slices.**
 - **Wiring.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them. With M1 fixed, the index never takes a row from that transaction before it commits.
