@@ -1551,10 +1551,12 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **First run (`db4a117`):** 51 mutations. 43 were caught, 6 survived, and 2 did not build.
   - **Two survivors are by design.** The 52-response limit, which cannot be reached. The failed-start retry's channel check, which the turn's enrichment repeats with the same refusal.
   - **The other four survivors were test gaps, now closed:** a chat without tools accepting a tool call, a refused worktree keeping its start reserved, the prefilter taking a task's latest binding, and the result stage reading the last call.
-  - **Second run:** recorded once it completes.
+  - **Second run (`e08ae79`):** 18 mutations: the four test-gap survivors, the two that did not build (now rewritten so they do), seven for the review fixes and five rechecks. 17 fail.
+    - The survivor is equivalent: passing over a binding row that does not parse is also what the next check does with any binding that is not an object.
 
 **Validation.**
 - **`db4a117`** (run1, from a `git archive` export): native 7,284 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
+- **`9e93406`** (run2, from a `git archive` export, after the review fixes): native 7,288 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential's two cases passed in the worktree at the same commit.
 
 **Independent reviews of `2120abf..ca41410` and `ca41410..a4dc6c0`.**
 - **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
@@ -1584,7 +1586,11 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **I2:** a Git start's repository refusal reached RPC callers as "Runtime request failed."; it now carries TypeScript's text. The unknown-outcome message stays masked, as recorded under Differences.
   - **I3, recorded:** `Store.IsGitDocument` does not treat an empty `workspaceKind` as Git, as TypeScript does. TypeScript never writes one, and `RequireChat` refuses such a task before any request.
   - **I4, parity:** a response transaction that fails at commit leaves its request pending until recovery marks it interrupted, as in TypeScript.
-- **Re-review of `a4dc6c0..e08ae79`:** recorded once it completes.
+- **Re-reviews of `a4dc6c0..e08ae79` and `e08ae79..9e93406`: both GO, with no conditions remaining.**
+  - **Security:** it confirmed L-1, I-1 and I-4 fixed and found nothing new. It verified both seals and ran five classes (60 passed) and three oracles. Its probes found that an identity of `1e400` or a lone surrogate escape leaves `channel.get` serving.
+  - **Data integrity:** it confirmed M1, L1, L2 and I2 fixed and found nothing above informational. It verified both seals and ran five classes (52 passed) and two oracles.
+    - Its Git-start probes match TypeScript in both branches.
+    - Its 22-task prefilter seed still gives the unfiltered page. Three tasks with identities that are not objects now leave it, as in TypeScript.
 
 **Open, for later slices.**
 - **P2.3f:** coding turns with approvals, and `approval.decide`. Rudy's worktree-confinement decision (P2.3c, I5) comes first.
