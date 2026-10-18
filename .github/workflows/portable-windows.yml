@@ -48,7 +48,7 @@ jobs:
       - name: Download the pinned Electron runtime
         run: node node_modules/electron/install.js
 
-      # P2 vectors are written and checked on the Node that Electron ships, so an Electron upgrade must move the pin.
+      # P2 vectors are written under Electron's Node and CI installs the same version, so an Electron upgrade moves the pin.
       - name: Check that .node-version is Electron's Node
         run: |
           $pinned = (Get-Content -LiteralPath .node-version -Raw).Trim()
@@ -62,6 +62,13 @@ jobs:
 
       - name: Run type checks, lint, and tests
         run: pnpm check --maxWorkers=1 --bail=1
+
+      # Electron builds Node with its own V8 and ICU, so the P2 vectors are checked again on the runtime the app ships.
+      - name: Check the P2 oracles under Electron's Node
+        run: |
+          pnpm oracle --maxWorkers=1 --bail=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/electron-node.mjs tests/p2/git-metadata-oracle.mjs
 
       - name: Test Electron user workflows with offline fixtures
         id: e2e

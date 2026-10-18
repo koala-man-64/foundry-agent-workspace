@@ -17,16 +17,17 @@ export function removeTree(target: string, retries = 0): void {
 }
 
 function remove(target: string): void {
-  let entry: fs.Stats;
-  try { entry = fs.lstatSync(target); } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
-    throw error;
+  try {
+    const entry = fs.lstatSync(target);
+    if (entry.isDirectory()) {
+      for (const name of fs.readdirSync(target)) remove(path.join(target, name));
+      fs.rmdirSync(target);
+      return;
+    }
+    if (!entry.isSymbolicLink() && (entry.mode & 0o200) === 0) fs.chmodSync(target, 0o666);
+    fs.unlinkSync(target); // a junction or symbolic link goes, never its target
+  } catch (error) {
+    // As with fs.rmSync's force, an entry that is already gone (a Git process may still be pruning) is removed.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
-  if (entry.isDirectory()) {
-    for (const name of fs.readdirSync(target)) remove(path.join(target, name));
-    fs.rmdirSync(target);
-    return;
-  }
-  if (!entry.isSymbolicLink() && (entry.mode & 0o200) === 0) fs.chmodSync(target, 0o666);
-  fs.unlinkSync(target); // a junction or symbolic link goes, never its target
 }

@@ -33,6 +33,8 @@ Schedules run only while the application is open and create reminders or prompt 
 
 Run `pnpm check` for code changes, `pnpm test:e2e` for renderer/IPC/runtime user-path changes, and `pnpm package:dir && pnpm smoke:package` for packaging/runtime/dependency changes. Use isolated fixtures; never run tests against a user's working repository or existing application data.
 
+P2 oracles are generated and checked on the Node in `.node-version`, the one Electron ships: write vectors only under Electron's own Node with `pnpm oracle`, never under a standalone Node of that version, whose V8, ICU and filesystem behaviour differ.
+
 Run independent review for credential, filesystem, IPC, concurrency, or persistence changes. Preserve exact build/test evidence and name unverified live deployment and installer gates. No external publication, provider fallback, migrations, main-branch integration, or destructive worktree cleanup without the applicable user authorization.
 
 E2E screenshots belong in `test-results`. Update documentation images only through the explicit `pnpm docs:screenshots` command and review those image changes separately.
