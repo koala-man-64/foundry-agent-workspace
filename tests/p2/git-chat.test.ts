@@ -58,6 +58,7 @@ const SCRIPTS: Record<string, ScriptEvent[][]> = {
   'tool-limit': Array.from({ length: 51 }, (_, index) => [read(`t${index}`), done()]),
   'recovered': [[text('Recovered after an interrupted call.'), done()]],
   'budget': [[read('b1'), done()], [text('Never requested.'), done()]],
+  'budget-warning': [[read('w2'), done()], [text('Within budget.'), done()]],
   'one-call': [[read('o1'), done()], [text('One call.'), done()]],
   'unknown-mutation': [[{ type: 'insert-unknown' }, read('u1'), done()], [text('Never requested.'), done()]],
 };
@@ -148,6 +149,7 @@ const cases: Case[] = [
       start(2, 'b', { content: 'script:tool-limit', tokenBudget: 10_000_000 }), wait('b'), ...turn('b', 'script:recovered'),
       { method: 'seed-seen', params: { taskId: '{task:b}', count: 1000 } }, ...turn('b', 'script:one-call'),
       start(3, 'c', { content: 'script:budget', tokenBudget: 0 }), wait('c'), ...turn('c', 'script:one-call'),
+      start(5, 'e', { content: 'script:budget-warning', tokenBudget: -1 }), wait('e'),
       start(4, 'd', { content: 'script:unknown-mutation' }), wait('d'), send('d', 'script:two-calls'),
     ],
   },
@@ -176,7 +178,7 @@ function delta(before: Rows, after: Rows): Record<string, unknown> {
   return output;
 }
 
-async function run(item: Case, budget: number | undefined): Promise<unknown[]> {
+async function run(item: Case, budgets: Record<string, number> | undefined): Promise<unknown[]> {
   const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-chat-')));
   const home = path.join(scratch, 'home'); fs.mkdirSync(home);
   build(scratch, home, committed([], 'work/repo'));
@@ -202,9 +204,9 @@ async function run(item: Case, budget: number | undefined): Promise<unknown[]> {
     await withIsolatedGit(home, async () => {
       for (const step of item.steps) {
         let value: unknown = null; let error: string | null = null;
-        // The budget case reserves the first request and refuses the second; its budget is the first request's reservation.
+        // A budget of 0 is the first request's reservation, so the second is refused; -1 is exactly the first two requests'.
         const params = expand(step.params) as Record<string, unknown>;
-        if (params.tokenBudget === 0) params.tokenBudget = budget ?? 100000;
+        if (params.tokenBudget === 0 || params.tokenBudget === -1) params.tokenBudget = budgets?.[String(params.tokenBudget)] ?? 10_000_000;
         try {
           if (step.method === 'wait') {
             for (let n = 0; store.task(params.taskId as string).status === 'running'; n++) { if (n > 5000) throw new Error('Oracle did not complete.'); await new Promise(resolve => setTimeout(resolve, 1)); }
@@ -233,14 +235,21 @@ async function run(item: Case, budget: number | undefined): Promise<unknown[]> {
 it('pins Git-project chats, the agent loop and the project channel through the shipping Node authority', async () => {
   const recorded = [];
   for (const item of cases) {
-    // The budget case needs the first request's reservation, which a dry run of the same steps measures.
-    let budget: number | undefined;
+    // The budget cases need request reservations, which a dry run of the same steps with ample budgets measures: the
+    // first request of the 0 case, and the first two requests of the -1 case, which its start and wait steps record.
+    let budgets: Record<string, number> | undefined;
     if (item.scripted) {
-      const dry = await run(item, undefined) as { params: Record<string, unknown>; expected: { delta: { requests?: { changed: { reserved: number }[] } } } }[];
-      const index = item.steps.findIndex(step => step.params.tokenBudget === 0);
-      budget = dry[index]!.expected.delta.requests!.changed.at(-1)!.reserved;
+      type Recorded = { value: { id?: string } | null; expected: { value: { id?: string } | null; delta: { requests?: { changed: { task_id: string; reserved: number }[] } } } };
+      const dry = await run(item, undefined) as Recorded[];
+      const first = item.steps.findIndex(step => step.params.tokenBudget === 0);
+      const two = item.steps.findIndex(step => step.params.tokenBudget === -1);
+      const task = dry[two]!.expected.value!.id!;
+      budgets = {
+        0: dry[first]!.expected.delta.requests!.changed.at(-1)!.reserved,
+        [-1]: dry[two + 1]!.expected.delta.requests!.changed.filter(row => row.task_id === task).reduce((sum, row) => sum + row.reserved, 0),
+      };
     }
-    recorded.push({ name: item.name, scripted: item.scripted ?? false, steps: await run(item, budget), budget: budget ?? null });
+    recorded.push({ name: item.name, scripted: item.scripted ?? false, steps: await run(item, budgets), budgets: budgets ?? null });
   }
   const sources = ['packages/runtime/src/service.ts', 'packages/runtime/src/agent-loop.ts', 'packages/runtime/src/agent-channel.ts', 'packages/runtime/src/channel-tools.ts',
     'packages/runtime/src/tool-runtime.ts', 'packages/runtime/src/usage-accounting.ts', 'packages/runtime/src/store.ts', 'packages/runtime/src/repository.ts',

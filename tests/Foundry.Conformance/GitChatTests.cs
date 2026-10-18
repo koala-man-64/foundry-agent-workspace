@@ -45,7 +45,7 @@ public sealed class GitChatTests
     {
         var item = (Dictionary<string, object?>)((List<object?>)Corpus["cases"]!)[index]!;
         Assert.Equal(name, item["name"]);
-        var scripted = (bool)item["scripted"]!; var budget = item["budget"];
+        var scripted = (bool)item["scripted"]!; var budgets = item["budgets"] as Dictionary<string, object?>;
         var scripts = (Dictionary<string, object?>)Corpus["scripts"]!; var secret = (string)Corpus["secret"]!;
         var timestamp = DateTimeOffset.Parse((string)Corpus["timestamp"]!, System.Globalization.CultureInfo.InvariantCulture);
         using var fixture = RepositoryFixture.Create("foundry-p2-git-chat-");
@@ -137,7 +137,9 @@ public sealed class GitChatTests
             foreach (var (step, position) in ((List<object?>)item["steps"]!).Cast<Dictionary<string, object?>>().Select((step, position) => (step, position)))
             {
                 var method = (string)step["method"]!; var parameters = (Dictionary<string, object?>)Expand(step["params"])!;
-                if (Equals(parameters.GetValueOrDefault("tokenBudget"), 0d)) parameters["tokenBudget"] = budget ?? 100000d;
+                // A budget of 0 is the first request's reservation and -1 the first two requests', as the oracle measured them.
+                if (parameters.GetValueOrDefault("tokenBudget") is double sentinel && sentinel is 0 or -1)
+                    parameters["tokenBudget"] = budgets?.GetValueOrDefault(sentinel == 0 ? "0" : "-1") ?? 10_000_000d;
                 if (method == "wait")
                     while (await loop.Invoke(() => Task.FromResult(Equals(store!.ReadTask((string)parameters["taskId"]!)["status"], "running")))) await Task.Delay(1, TestContext.Current.CancellationToken);
                 var actual = await loop.Invoke(async () =>
