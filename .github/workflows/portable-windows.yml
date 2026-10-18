@@ -19,7 +19,8 @@ jobs:
   portable:
     name: Validate and package Windows x64
     runs-on: windows-2025
-    timeout-minutes: 45
+    # A slow runner took 43 minutes once the P2 oracles also ran under Electron's Node (run 39169401633).
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
