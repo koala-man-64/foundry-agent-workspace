@@ -1602,6 +1602,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 **Decision I5, recorded 18 October 2026.** Asked whether native should confine the model-driven coding tools to the task's own app-owned worktree, Rudy chose "Confine tools (Recommended)".
 - **What it means.** The six coding tools and their approvals run only when the stored worktree is exactly `<data>\wt\<task id>`. File views, `task.diff` and commit, push, reconcile and retire keep TypeScript's behaviour.
 - **Its evidence.** Since the foundation commit (`6bbaef8`, 16 September 2026), TypeScript has kept its data in `%LOCALAPPDATA%\FoundryAgentWorkspace`; only unpackaged builds may override that, for tests. It has created every task worktree at `<data>\wt\<task id>`, and coordinated children at `wt\children\<task id>`. All six fixture eras store exactly those paths. Only a hand-edited row or a copied data folder can name another.
+- **The check, after the security review (`7512036`).** The stored worktree and the task's own folder are compared as folders, by volume and file identity at every level, and neither path may pass through a reparse point. Another spelling of the task's own folder (case or 8.3) is served. A different folder whose name only case-folds alike (the Kelvin sign folds to k, which NTFS keeps apart), or any path through a junctioned worktree folder, is refused. The first version compared lowercased spellings, which let both through (security L-1).
 
 **What it is.** With `FOUNDRY_RUNTIME_P2_CHAT=1`, the development runtime serves coding tasks in Git projects and `approval.decide`, bringing it to **41** of the 89 methods.
 - **Requests.** A coding task's turn advertises the six repository tools before the channel's three, under TypeScript's coding instruction and `CHANNEL_SYSTEM`. External (MCP) and browser tools are never advertised.
@@ -1611,9 +1612,13 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Commands** inherit the runtime's environment, which tests now supply to commands as they do to Git.
 
 **Differences, all fail-closed or invisible on success:**
-- **Confinement (decision I5).** Before any argument check, read, proposal or execution, a coding tool requires the stored worktree to be the app-owned worktree folder's final path joined with the task id, compared ignoring case. Otherwise the model is told "This task's worktree is not its app-owned worktree, so coding tools are refused." TypeScript uses the stored path.
+- **Confinement (decision I5).** Before any argument check, read, proposal or execution, a coding tool requires the stored worktree to be the task's own app-owned folder, compared by identity as above. Otherwise the model is told "This task's worktree is not its app-owned worktree, so coding tools are refused." TypeScript uses the stored path.
 - **External tools (decision 2).** A coding start or turn is refused before any reservation while an enabled MCP server has stored tools, or a server row that does not parse: "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn." TypeScript advertises those tools.
-- **Compare-and-set (P2.3b's carried item).** Each save the tool runtime makes from its own copy of an approval requires the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome. A row changed under it is neither overwritten nor executed: "The approval changed while it was in use; it was not overwritten." `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
+- **Compare-and-set (P2.3b's carried item).** Each save the tool runtime makes from its own copy of an approval requires the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome. `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
+  - **Before the executing state** nothing has run: a changed row stands, and the stale copy writes nothing more ("The approval changed while it was in use; it was not overwritten.").
+  - **After it** the action may have run: the outcome is recorded unknown over the change ("The approval changed while its action ran, so its outcome is unknown."), so the next turn waits for reconciliation.
+  - **The first version** let the failure path save the stale copy after a conflict, and left an executed action unrecorded (security L-2, data L1 and L2); both are fixed in `7512036`.
+- **The reviewed proposal is the one that runs.** A decision applies only while the stored proposal, which `approval.get` shows the user, is the copy that would execute; otherwise it is refused as stale (security I-1, `7512036`).
 - **Coordinated tasks** remain refused before any reservation.
 
 **Evidence.**
@@ -1629,15 +1634,52 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **The provider oracle** gains 30 coding-demo inputs: advertised tools, result matching, unreadable and incomplete read results, and JavaScript's own errors for a missing result. `FakeToolTests` replays all 63.
 - **The tool-runtime oracle** (P2.3c) places its fixture worktrees where the product puts them: task 1's at `data\wt\<id>`, with a copy for task 5. Every outcome is unchanged; only paths differ.
 - **Native-only tests:**
-  - **confinement:** four foreign worktrees refused for each of the five tools, and a spelling that differs only in case served;
-  - **the compare-and-set:** a row revoked between the decision and the resumed call, with nothing written;
-  - **decision 2:** disabled and empty servers ignored, listed and unreadable servers refusing coding starts and turns with nothing written, and chats unaffected.
+  - **confinement:** four foreign worktrees refused for each of the five tools, and a spelling that differs only in case served; the identity check itself against a Kelvin-sign sibling and a junctioned worktree folder;
+  - **the compare-and-set:** a row revoked between the decision and the resumed call, a row changed while its proposal waits and then cancelled, and a row changed while the action ran, recorded unknown;
+  - **a decision on a proposal changed since it was saved,** refused, with nothing run;
+  - **decision 2:** disabled and empty servers ignored, listed and unreadable servers refusing coding starts, turns and a failed start's retry with nothing written, and chats unaffected;
+  - **a coding task outside Git,** refused with its reason.
 - **Process differential.** The stdio differential now also runs the coding demo through `task.start`, `task.approvals`, `approval.get` and `approval.decide` in both entry points, including a stale decision. Approval fingerprints are normalized.
-- **Mutations.** Recorded once they complete.
+- **Mutations,** in `foundry-evidence\p2.3-f\mutations`:
+  - **First run (`ddc6636`):** 29 mutations. 26 were caught, 2 survived and 1 did not build.
+  - **The two survivors were test gaps:** the final save without its expected state, and the refusal of a coding task outside Git (a later layer refused it with another message). Both are pinned since `7512036`. The one that did not build is rewritten.
+  - **Second run:** recorded once it completes.
 
-**Validation.** Recorded once it completes.
+**Validation.**
+- **`ddc6636`** (run1, from a `git archive` export): native 7,323 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
+- **After the review fixes:** recorded once it completes.
 
-**Independent reviews.** Recorded once they complete.
+**Independent reviews of `7d01f30..ddc6636` and `ddc6636..4466b4f`.**
+- **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
+  - **What it ran:** it verified both seals, built an export, ran six classes (107 passed) and three TypeScript oracles, and wrote probes.
+  - **Confirmed:**
+    - nothing in model output, repository text or stored state grants execution;
+    - an edit or command runs only after the one-shot decision on exactly the prepared action;
+    - stale, cross-task, missing, coordinated and repeated decisions are refused;
+    - restart recovery revokes waiting and approved rows, and nothing replays;
+    - decision 2 gates every path to a coding turn before any reservation;
+    - the coding instruction is byte-identical, and the demo matches TypeScript;
+    - production passes no test environment to commands.
+  - **L-1 and L-2 (low), fixed in `7512036`,** as above: spellings that case-fold alike or a junctioned base passed confinement, and a stale copy saved after a conflict.
+  - **I-1, adopted:** the reviewed proposal must be the one that runs.
+  - **I-3, pinned:** decision 2 on a failed start's retry.
+  - **Recorded, not changed:**
+    - **I-2:** `Reconcile` reads the stored worktree, within Rudy's choice to leave everything but the coding tools unconfined.
+    - **I-4:** a malformed MCP row whose failure is not a JSON or cast error refuses with a generic error, still before any reservation.
+    - **I-5:** `RevokeWaiting` has no caller yet; scoped cancellation in later slices uses it.
+- **Data integrity** (`db-steward`, Sonnet at high effort): **GO with conditions**, with no critical or high finding.
+  - **What it ran:** it verified both seals and ran the classes, the oracles and the stdio differential.
+  - **Its cross-runtime probes:**
+    - a writer stopped while a command proposal waited, resumed by either runtime: identical rows and responses in all four combinations;
+    - rows rewritten to executing or approved before reopening: identical recovery and reconciliation;
+    - provider state dropped on tasks of either runtime, and a graceful shutdown while a proposal waited: identical rows.
+  - **L1 and L2 (low), fixed:** the stale save after a conflict, and an executed action left unrecorded after one.
+  - **L3, fixed:** the entry overstated the compare-and-set, and two mutations survived; both are corrected and pinned.
+  - **Recorded:**
+    - `HasBlockingUnknown` scans every task's approvals, as TypeScript does;
+    - decision 2's reading of disabled servers with unreadable tools, and of tools whose names cannot be composed, differs from TypeScript's listing, fail-closed;
+    - the real-clock cases check timestamps' format, not their values or order.
+- **Re-reviews of `4466b4f..7512036`:** recorded once they complete.
 
 **Open, for later slices.**
 - **External tools:** decision 2's refusal lifts with the MCP slice.
