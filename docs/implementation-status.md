@@ -1765,7 +1765,11 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 
 ### P2.4 Azure providers — authority and slices
 
-**Status: proposed 18 October 2026, awaiting Rudy's approval.** No P2.4 code exists. No slice starts before Rudy approves this plan and answers the decisions below.
+**Recorded 18 October 2026. Rudy approved the plan and chose the recommended answer to every decision.** His answers:
+- slices a–d with decisions 1 and 5: "Approve (Recommended)";
+- decision 2: "(B) Fail closed (Recommended)";
+- decision 3: "All three (Recommended)";
+- decision 4: "No live calls, no seam (Recommended)".
 
 **Scope.** Port the Azure adapter in `packages/providers/src/index.ts` (`AzureProvider`) and the runtime paths that use it. The development runtime (`FOUNDRY_RUNTIME_P2_CHAT=1`) then serves external profiles as TypeScript does:
 - **API kinds:** Responses (`/openai/v1/responses`), Chat Completions (`/openai/v1/chat/completions`) and Anthropic (`/anthropic/v1/messages`).
