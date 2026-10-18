@@ -1691,6 +1691,12 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 **Validation.**
 - **`ddc6636`** (run1, from a `git archive` export): native 7,323 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
 - **`7512036`** (run2, from a `git archive` export, after the review fixes): native 7,329 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The data reviewer's export of `6245bb0` ran the stdio differential after the fixes; it passed.
+- **`b8b55c2`** (run3, from a `git archive` export, after merging main at `6ed63d6` as `2235d5f`): native 7,330 passed, 0 failed, 2 expected skips; `pnpm check` 587 passed; the stdio differential passed (2 of 2) in the same export; `git diff --check` clean against main.
+  - **What main brought in.**
+    - #44 (F1) changed `repository.ts`. The four oracles bound to it (agent channel, approvals, Git chats and tool runtime) were regenerated, and only that source hash changed (`b8b55c2`).
+    - #45 changed `git-operations.ts`, which no P2 vector binds.
+    - #40 added `preparation/cli-drivers`, which sits outside `Foundry.slnx`.
+  - **The one conflict** was in this file. This branch's record of L1's native half replaced main's one-line pointer to it, and main's index-lock entry was kept.
 
 **Independent reviews of `7d01f30..ddc6636` and `ddc6636..4466b4f`.**
 - **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
