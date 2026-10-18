@@ -2030,6 +2030,8 @@ What each slice adds:
       - Native accepts nothing that TypeScript refuses, under either the adapter rule or the save rule. Where both accept, the targets are identical.
       - Every difference is native refusing: 230 adapter spellings and 38 save spellings. They are this class, the sub-delimiter hosts, the hyphen-edge labels and the empty labels, all named.
       - One class now agrees: Arabic-Indic digit hosts (`١٢`), which Node 24.14 accepted, are refused by both runtimes.
+    - **Decided by Rudy, 18 October 2026: keep the refusal.** Native does not follow ada 4.0.0 in accepting these hosts.
+    - **Follow-up:** the oracles are being pinned to Electron's Node (`.node-version`, a CI check and a guard on regeneration) in a separate change, so that vectors cannot drift from the shipping runtime again.
 
 **Native corrections from the review (F1).** These were defects in the shared URL reader, where TypeScript already refuses the spellings; they apply to the `http-url` contract too.
 - **Userinfo:** `https://::@host` now counts as credentials. WHATWG reads it as an empty username and the password ":"; the reader used to see empty userinfo.
