@@ -4992,6 +4992,334 @@
       ]
     },
     {
+      "name": "unusual binding rows",
+      "seeds": [
+        {
+          "n": 1,
+          "title": "Alpha",
+          "at": "a",
+          "binding": "full"
+        },
+        {
+          "n": 2,
+          "title": "Beta",
+          "at": "a",
+          "binding": "full"
+        },
+        {
+          "n": 3,
+          "title": "JSON5 binding",
+          "at": "a",
+          "raw": "{taskId:\"{task}\",identity:{}}"
+        },
+        {
+          "n": 4,
+          "title": "String identity",
+          "at": "a",
+          "raw": "{\"taskId\":\"{task}\",\"identity\":\"bound\"}"
+        },
+        {
+          "n": 5,
+          "title": "Zero identity",
+          "at": "a",
+          "raw": "{\"taskId\":\"{task}\",\"identity\":0}"
+        },
+        {
+          "n": 6,
+          "title": "No identity",
+          "at": "a",
+          "raw": "{\"taskId\":\"{task}\"}"
+        },
+        {
+          "n": 8,
+          "title": "Array identity",
+          "at": "a",
+          "raw": "{\"taskId\":\"{task}\",\"identity\":[]}"
+        },
+        {
+          "n": 12,
+          "title": "Other project",
+          "at": "b",
+          "binding": "full"
+        },
+        {
+          "n": 11,
+          "title": "Child of JSON5",
+          "at": "a",
+          "extra": {
+            "role": "child",
+            "parentTaskId": "15151515-0000-4000-8000-000000000003",
+            "rootTaskId": "15151515-0000-4000-8000-000000000003"
+          }
+        },
+        {
+          "n": 9,
+          "title": "Unreadable",
+          "at": "a",
+          "raw": "not json"
+        },
+        {
+          "n": 10,
+          "title": "After the unreadable row",
+          "at": "a",
+          "binding": "direct"
+        }
+      ],
+      "steps": [
+        {
+          "op": "get",
+          "task": 1,
+          "value": {
+            "messages": [],
+            "nextCursor": null,
+            "participants": [
+              {
+                "taskId": "15151515-0000-4000-8000-000000000001",
+                "title": "Alpha",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000002",
+                "title": "Beta",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000005",
+                "title": "Zero identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000006",
+                "title": "No identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              }
+            ],
+            "participantsCursor": null
+          },
+          "events": []
+        },
+        {
+          "op": "get",
+          "task": 4,
+          "error": "Project channel identity changed.",
+          "events": []
+        },
+        {
+          "op": "get",
+          "task": 5,
+          "value": {
+            "messages": [],
+            "nextCursor": null,
+            "participants": [
+              {
+                "taskId": "15151515-0000-4000-8000-000000000001",
+                "title": "Alpha",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000002",
+                "title": "Beta",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000005",
+                "title": "Zero identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000006",
+                "title": "No identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              }
+            ],
+            "participantsCursor": null
+          },
+          "events": []
+        },
+        {
+          "op": "get",
+          "task": 6,
+          "value": {
+            "messages": [],
+            "nextCursor": null,
+            "participants": [
+              {
+                "taskId": "15151515-0000-4000-8000-000000000001",
+                "title": "Alpha",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000002",
+                "title": "Beta",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000005",
+                "title": "Zero identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              },
+              {
+                "taskId": "15151515-0000-4000-8000-000000000006",
+                "title": "No identity",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              }
+            ],
+            "participantsCursor": null
+          },
+          "events": []
+        },
+        {
+          "op": "get",
+          "task": 8,
+          "error": "Project channel identity changed.",
+          "events": []
+        },
+        {
+          "op": "get",
+          "task": 12,
+          "value": {
+            "messages": [],
+            "nextCursor": null,
+            "participants": [
+              {
+                "taskId": "15151515-0000-4000-8000-000000000012",
+                "title": "Other project",
+                "role": "coding",
+                "status": "running",
+                "available": true
+              }
+            ],
+            "participantsCursor": null
+          },
+          "events": []
+        },
+        {
+          "op": "send",
+          "task": 6,
+          "request": 1,
+          "content": "From the task without an identity",
+          "value": {
+            "sequence": 12,
+            "senderTaskId": "15151515-0000-4000-8000-000000000006",
+            "senderTitle": "No identity",
+            "actor": "user",
+            "recipientTaskId": null,
+            "content": "From the task without an identity",
+            "createdAt": "{time}"
+          },
+          "events": [
+            {
+              "sequence": 12,
+              "type": "channel.message",
+              "task_id": "15151515-0000-4000-8000-000000000006",
+              "data": "{\"recipientTaskId\":null,\"content\":\"From the task without an identity\",\"project\":\"{project:a}\",\"callId\":\"16161616-0000-4000-8000-000000000001\",\"actor\":\"user\",\"senderTitle\":\"No identity\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "15151515-0000-4000-8000-000000000006"
+            },
+            {
+              "sequence": 13,
+              "type": "channel.changed",
+              "task_id": "15151515-0000-4000-8000-000000000006",
+              "data": "{}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "15151515-0000-4000-8000-000000000006"
+            }
+          ]
+        },
+        {
+          "op": "send",
+          "task": 2,
+          "request": 2,
+          "content": "From Beta",
+          "value": {
+            "sequence": 14,
+            "senderTaskId": "15151515-0000-4000-8000-000000000002",
+            "senderTitle": "Beta",
+            "actor": "user",
+            "recipientTaskId": null,
+            "content": "From Beta",
+            "createdAt": "{time}"
+          },
+          "events": [
+            {
+              "sequence": 14,
+              "type": "channel.message",
+              "task_id": "15151515-0000-4000-8000-000000000002",
+              "data": "{\"recipientTaskId\":null,\"content\":\"From Beta\",\"project\":\"{project:a}\",\"callId\":\"16161616-0000-4000-8000-000000000002\",\"actor\":\"user\",\"senderTitle\":\"Beta\"}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "15151515-0000-4000-8000-000000000002"
+            },
+            {
+              "sequence": 15,
+              "type": "channel.changed",
+              "task_id": "15151515-0000-4000-8000-000000000002",
+              "data": "{}",
+              "created_at": "{time}",
+              "version": 1,
+              "source": "runtime",
+              "root_task_id": "15151515-0000-4000-8000-000000000002"
+            }
+          ]
+        },
+        {
+          "op": "tool",
+          "task": 2,
+          "name": "list_project_agents",
+          "arguments": {},
+          "value": {
+            "id": "call-9",
+            "name": "list_project_agents",
+            "content": "{\"participants\":[{\"taskId\":\"15151515-0000-4000-8000-000000000001\",\"title\":\"Alpha\",\"role\":\"coding\",\"status\":\"running\",\"available\":true},{\"taskId\":\"15151515-0000-4000-8000-000000000002\",\"title\":\"Beta\",\"role\":\"coding\",\"status\":\"running\",\"available\":true},{\"taskId\":\"15151515-0000-4000-8000-000000000005\",\"title\":\"Zero identity\",\"role\":\"coding\",\"status\":\"running\",\"available\":true},{\"taskId\":\"15151515-0000-4000-8000-000000000006\",\"title\":\"No identity\",\"role\":\"coding\",\"status\":\"running\",\"available\":true}],\"participantsCursor\":null}",
+            "isError": false
+          },
+          "events": []
+        },
+        {
+          "op": "tool",
+          "task": 5,
+          "name": "read_agent_messages",
+          "arguments": {},
+          "value": {
+            "id": "call-10",
+            "name": "read_agent_messages",
+            "content": "{\"messages\":[{\"sequence\":12,\"senderTaskId\":\"15151515-0000-4000-8000-000000000006\",\"senderTitle\":\"No identity\",\"actor\":\"user\",\"recipientTaskId\":null,\"content\":\"From the task without an identity\",\"createdAt\":\"{time}\"},{\"sequence\":14,\"senderTaskId\":\"15151515-0000-4000-8000-000000000002\",\"senderTitle\":\"Beta\",\"actor\":\"user\",\"recipientTaskId\":null,\"content\":\"From Beta\",\"createdAt\":\"{time}\"}],\"nextCursor\":null}",
+            "isError": false
+          },
+          "events": []
+        }
+      ]
+    },
+    {
       "name": "message limit",
       "seeds": [
         {

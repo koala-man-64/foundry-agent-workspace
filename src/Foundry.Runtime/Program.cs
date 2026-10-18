@@ -163,6 +163,7 @@ catch
 static bool IsChatError(string message) => message is "Runtime is shutting down." or "Task not found." or "Profile not found." or "Select an existing model profile."
     or "This request ID belongs to different chat settings." or "This task already has an active response." or "Too many active tasks. Finish or cancel a task first."
     or "This task worktree is retired. Create a new task to continue the work."
+    or "Wait for the Git operation to finish before starting a response."
     or "This task has an unknown mutation outcome. Check the outcome before continuing."
     or "This task has native conversation state for an earlier profile configuration. Create a new task for this configuration."
     or "This task has an unknown worktree retirement outcome. Reconcile state before starting a response."

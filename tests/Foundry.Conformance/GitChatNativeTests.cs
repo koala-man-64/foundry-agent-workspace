@@ -122,6 +122,35 @@ public sealed class GitChatNativeTests
         });
     }
 
+    /// <summary>Security I-1 of P2.3e: a chat that advertises no tools refuses a provider's tool call as agent-loop.ts does,
+    /// and keeps no provider state.</summary>
+    [Fact]
+    public async Task AChatWithoutToolsRefusesAToolCall()
+    {
+        async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest request, [EnumeratorCancellation] CancellationToken token)
+        {
+            await Task.Yield();
+            Assert.Null(request.Tools);
+            yield return new ProviderToolCall("t1", "list_project_agents", new Dictionary<string, object?>());
+            yield return new ProviderDone(new("fake", Complete));
+        }
+        await WithGitProject(Stream, async (fixture, loop, store, chat, projectId) =>
+        {
+            var parameters = Start(projectId, "No tools here"); parameters["projectId"] = null;
+            var taskId = await loop.Invoke(async () => (string)((Dictionary<string, object?>)(await chat.Dispatch("task.start", parameters))!)["id"]!);
+            await Idle(loop, store, taskId);
+            await loop.Invoke(() =>
+            {
+                Assert.Equal("failed", store.ReadTask(taskId)["status"]);
+                var stopped = store.Rows("SELECT data FROM events WHERE type='task.stopped' AND task_id=$p0", taskId).Single();
+                Assert.Contains("Unexpected or duplicate provider tool call.", (string)stopped["data"]!, StringComparison.Ordinal);
+                Assert.Null(store.ReadProviderState(taskId));
+                Assert.Equal(["failed"], Outcomes(store, taskId));
+                return Task.FromResult(0);
+            });
+        });
+    }
+
     /// <summary>A coordinated start in a Git project needs the orchestrator; it is refused before any reservation,
     /// intent or worktree.</summary>
     [Fact]

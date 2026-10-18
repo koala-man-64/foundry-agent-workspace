@@ -8,7 +8,7 @@ import { createProvider, profileFingerprint } from '../../packages/providers/src
 import { RepositoryService } from '../../packages/runtime/src/repository';
 import { RuntimeService } from '../../packages/runtime/src/service';
 import { FAKE_PROFILE_ID, Store } from '../../packages/runtime/src/store';
-import { build, committed, normalize, sha256File, withIsolatedGit } from './repository-fixture';
+import { build, committed, file, git, normalize, runGit, sha256File, withIsolatedGit } from './repository-fixture';
 
 // Git-project chats through the shipping RuntimeService: task.start, task.send and task.cancel with the agent loop's
 // tool iterations, the project channel's delivery and acknowledgment, and the failed-start retry. The offline provider
@@ -25,7 +25,9 @@ const timestamp = '2026-01-02T03:04:05.678Z';
 
 type ScriptEvent = { type: 'text'; text?: string; repeat?: [string, number] } | { type: 'tool_call'; call: ToolCall }
   | { type: 'done'; omit?: true; apiKind?: string; secret?: true; pad?: number } | { type: 'insert-unknown' };
-type Step = { method: RpcMethod | 'wait' | 'seed-intent' | 'seed-seen'; params: Record<string, unknown>; as?: string; native?: { error: string; difference: string } };
+// git runs a fixture Git command, where {next-task} is the id the next task will draw; overlap sends twice in one step, so
+// the second always meets the first's turn.
+type Step = { method: RpcMethod | 'wait' | 'seed-intent' | 'seed-seen' | 'git' | 'overlap'; params: Record<string, unknown>; as?: string; native?: { error: string; difference: string } };
 type Case = { name: string; scripted?: true; steps: Step[] };
 
 const text = (value: string): ScriptEvent => ({ type: 'text', text: value });
@@ -120,7 +122,7 @@ const cases: Case[] = [
       send('b', 'After retiring'),
       ...turn('a', '/channel-demo After retiring'),
       { method: 'channel.get', params: { taskId: '{task:a}' } },
-      send('a', 'Again'), send('a', 'Overlapping'), wait('a'),
+      { method: 'overlap', params: { taskId: '{task:a}', first: 'Again', second: 'Overlapping' } }, wait('a'),
       { method: 'task.send', params: { taskId: '78787878-0000-4000-8000-999999999999', content: 'Missing' } },
     ],
   },
@@ -133,6 +135,16 @@ const cases: Case[] = [
       start(5, 'd', { profileId: '78787878-0000-4000-8000-999999999998' }),
       { method: 'seed-intent', params: { id: '78787878-0000-4000-8000-999999999997', kind: 'worktree.create', data: { taskId: '78787878-0000-4000-8000-999999999996', projectPath: 'C:\\earlier' }, state: 'unknown' } },
       start(6, 'd'), start(3, 'c', { tokenBudget: 1024 }),
+    ],
+  },
+  {
+    name: 'worktree creation failures', steps: [
+      // No commit yet: the worktree is refused before any mutation, so the start is forgotten and the same request runs again.
+      { method: 'project.add', params: { path: '{scratch}\\work\\unborn' } }, start(1, 'u'), start(1, 'u'),
+      { method: 'git', params: { args: ['-C', 'work/unborn', 'add', '-A'] } }, { method: 'git', params: { args: ['-C', 'work/unborn', 'commit', '-qm', 'first'] } },
+      start(1, 'u'), wait('u'),
+      // The task's branch already exists: the failure follows the mutation boundary, so both outcomes are unknown.
+      PROJECT, { method: 'git', params: { args: ['-C', 'work/repo', 'branch', 'codex/task/{next-task}'] } }, start(2, 'v'), start(3, 'w'), start(2, 'v'),
     ],
   },
   {
@@ -181,7 +193,7 @@ function delta(before: Rows, after: Rows): Record<string, unknown> {
 async function run(item: Case, budgets: Record<string, number> | undefined): Promise<unknown[]> {
   const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-git-chat-')));
   const home = path.join(scratch, 'home'); fs.mkdirSync(home);
-  build(scratch, home, committed([], 'work/repo'));
+  build(scratch, home, [...committed([], 'work/repo'), { dir: 'work/unborn' }, file('work/unborn/a.txt', 'a\n'), git('-C', 'work/unborn', 'init', '-q')]);
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(timestamp)); ids.next = 1;
   const data = path.join(scratch, 'data'); fs.mkdirSync(data);
   const store = new Store(path.join(data, 'workspace.db'));
@@ -205,6 +217,7 @@ async function run(item: Case, budgets: Record<string, number> | undefined): Pro
       for (const step of item.steps) {
         let value: unknown = null; let error: string | null = null;
         // A budget of 0 is the first request's reservation, so the second is refused; -1 is exactly the first two requests'.
+        expanded['{next-task}'] = `78787878-0000-4000-8000-${String(ids.next).padStart(12, '0')}`;
         const params = expand(step.params) as Record<string, unknown>;
         if (params.tokenBudget === 0 || params.tokenBudget === -1) params.tokenBudget = budgets?.[String(params.tokenBudget)] ?? 10_000_000;
         try {
@@ -215,6 +228,12 @@ async function run(item: Case, budgets: Record<string, number> | undefined): Pro
             const profile = store.profile(FAKE_PROFILE_ID)!;
             const seenToolCallIds = Array.from({ length: params.count as number }, (_, index) => `seen-${index}`);
             store.saveProviderState(params.taskId as string, { fingerprint: profileFingerprint(profile), continuation: { apiKind: 'fake', data: { stage: 'complete', calls: [] } }, pending: [], results: [], seenToolCallIds });
+          } else if (step.method === 'git') runGit(scratch, home, params.args as string[]);
+          else if (step.method === 'overlap') {
+            const first = await service.dispatch('task.send', { taskId: params.taskId, content: params.first });
+            let second: string | null = null;
+            try { await service.dispatch('task.send', { taskId: params.taskId, content: params.second }); } catch (cause) { second = (cause as Error).message; }
+            value = { first, second };
           } else value = await service.dispatch(step.method, params);
           if (step.method === 'project.add' && (value as { kind?: string }).kind === 'git') expanded['{project}'] = (value as { id: string }).id;
           if (step.method === 'task.start' && step.as) expanded[`{task:${step.as}}`] = (value as { id: string }).id;

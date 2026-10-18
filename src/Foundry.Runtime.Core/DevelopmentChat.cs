@@ -608,7 +608,8 @@ public sealed class DevelopmentChat
             catch (Exception error)
             {
                 if (intent is not null && !saved) store.FinishIntent(intent, created || error is not RepositoryException { Outcome: "none" } ? "unknown" : "complete");
-                if (!saved && !created && error is RepositoryException { Outcome: "none" }) { store.ClearTaskStart(requestId); throw; }
+                // The repository's refusal reaches the caller as task.create's does: TypeScript reports its text.
+                if (!saved && !created && error is RepositoryException { Outcome: "none" }) { store.ClearTaskStart(requestId); throw new WorkspaceReadException(redactor.Text(error.Message)); }
                 if (saved && sending && !store.HasTaskUserMessage(taskId)) { store.FinishTaskStart(requestId, "failed"); throw; }
                 store.FinishTaskStart(requestId, "unknown");
                 throw new InvalidOperationException("Chat creation has an unknown outcome. Inspect the saved chat and retained intent before retrying. " + redactor.Text(error.Message), error);

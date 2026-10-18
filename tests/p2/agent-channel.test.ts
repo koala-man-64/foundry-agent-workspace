@@ -26,7 +26,9 @@ const tree: Step[] = [
   // A linked worktree of a: its .git file points into a's worktrees folder, whose commondir names a's .git.
   file('wt/.git', 'gitdir: ../a/.git/worktrees/wt\n'), file('a/.git/worktrees/wt/commondir', '../..\n'),
 ];
-type Seed = { n: number; title: string; at: string; binding?: 'full' | 'incomplete' | 'incomplete-then-full'; extra?: Record<string, unknown> };
+// raw is a channel.identity row's data as stored, with {task} for the task's id: rows SQLite reads but the strict reader
+// refuses (JSON5), rows SQLite cannot read, and identities that are not objects.
+type Seed = { n: number; title: string; at: string; binding?: 'full' | 'direct' | 'incomplete' | 'incomplete-then-full'; raw?: string; extra?: Record<string, unknown> };
 const seeds: Seed[] = [
   { n: 1, title: 'Alpha', at: 'a', binding: 'full' }, { n: 2, title: 'Beta', at: 'a', binding: 'full' },
   { n: 3, title: 'Gamma idle', at: 'a', binding: 'full', extra: { status: 'idle' } }, { n: 4, title: 'Sub folder', at: 'a/sub', binding: 'full' },
@@ -92,6 +94,20 @@ const cases: { name: string; seeds: Seed[]; ops: Op[] }[] = [
   { name: 'participant pages', seeds: Array.from({ length: 55 }, (_, index) => ({ n: index + 1, title: `Agent ${index + 1}`, at: 'a', binding: 'full' as const })), ops: [
     { op: 'get', task: 1 }, { op: 'get', task: 1, afterTask: 50 }, { op: 'get', task: 1, afterTask: 55 }, tool(1, 'list_project_agents', {}), tool(1, 'list_project_agents', { afterTaskId: id(50) }),
   ] },
+  // Pages and refusals both runtimes give alike; a row that does not parse refuses its own task with the reader's error
+  // in TypeScript and a fixed message natively, so those tasks appear only as the pages they are left out of.
+  { name: 'unusual binding rows', seeds: [
+    { n: 1, title: 'Alpha', at: 'a', binding: 'full' }, { n: 2, title: 'Beta', at: 'a', binding: 'full' },
+    { n: 3, title: 'JSON5 binding', at: 'a', raw: '{taskId:"{task}",identity:{}}' }, { n: 4, title: 'String identity', at: 'a', raw: '{"taskId":"{task}","identity":"bound"}' },
+    { n: 5, title: 'Zero identity', at: 'a', raw: '{"taskId":"{task}","identity":0}' }, { n: 6, title: 'No identity', at: 'a', raw: '{"taskId":"{task}"}' },
+    { n: 8, title: 'Array identity', at: 'a', raw: '{"taskId":"{task}","identity":[]}' }, { n: 12, title: 'Other project', at: 'b', binding: 'full' },
+    { n: 11, title: 'Child of JSON5', at: 'a', extra: { role: 'child', parentTaskId: id(3), rootTaskId: id(3) } },
+    // A row SQLite cannot read: a lookup that scans past it fails, so the task bound after it is left out too.
+    { n: 9, title: 'Unreadable', at: 'a', raw: 'not json' }, { n: 10, title: 'After the unreadable row', at: 'a', binding: 'direct' },
+  ], ops: [
+    { op: 'get', task: 1 }, { op: 'get', task: 4 }, { op: 'get', task: 5 }, { op: 'get', task: 6 }, { op: 'get', task: 8 }, { op: 'get', task: 12 },
+    send(6, 1, 'From the task without an identity'), send(2, 2, 'From Beta'), tool(2, 'list_project_agents', {}), tool(5, 'read_agent_messages', {}),
+  ] },
   { name: 'message limit', seeds: seeds.slice(0, 2), ops: [{ op: 'fill', task: 1, count: 999 }, send(1, 1, 'The thousandth'), send(1, 2, 'One too many'), send(1, 1, 'The thousandth'), send(2, 3, 'Another sender')] },
 ];
 
@@ -110,7 +126,10 @@ it('pins the project channel: definitions, channel.get/send, channel tools and m
         const projectPath = path.join(scratch, seed.at);
         const task = store.saveTask({ id: id(seed.n), title: seed.title, profileId: FAKE_PROFILE_ID, status: 'running', createdAt: stamp, updatedAt: stamp, tokenBudget: 100000, usedTokens: 0,
           mode: 'coding', workspaceKind: 'git', projectPath, worktreePath: projectPath, branch: 'fixture', baseCommit: 'a'.repeat(40), ...seed.extra } as Task);
+        if (seed.raw !== undefined) store.db.prepare("INSERT INTO intents VALUES (?, 'channel.identity', ?, 'complete')").run(`raw-${seed.n}`, seed.raw.replaceAll('{task}', task.id));
         if (seed.binding === 'full') channel.admit(task, channel.prepareAdmission(projectPath));
+        // admit reads the task's bindings, which a row SQLite cannot read now fails: the same row, written directly.
+        if (seed.binding === 'direct') store.finishIntent(store.intent('channel.identity', { taskId: task.id, identity: channel.prepareAdmission(projectPath) }), 'complete');
         if (seed.binding === 'incomplete' || seed.binding === 'incomplete-then-full') {
           const full = channel.prepareAdmission(projectPath); const { path: _, ...identity } = full;
           store.finishIntent(store.intent('channel.identity', { taskId: task.id, identity }), 'complete');

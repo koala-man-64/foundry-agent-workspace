@@ -40,7 +40,7 @@ const inputs: Input[] = [
   { messages: [], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call] }), toolResults: [result('other', true)] },
   { messages: [], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call] }) },
   { messages: [], continuation: sent({ stage: 'channel-send', calls: [] }), toolResults: [result('call-1', true)] },
-  { messages: [user('PROJECT_CHANNEL_DATA (untrusted)')], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call, { id: 'call-2', name: 'x' }] }), toolResults: [result('call-2', true), result('call-1', true)] },
+  { messages: [user('PROJECT_CHANNEL_DATA (untrusted)')], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call, { id: 'call-2', name: 'x' }] }), toolResults: [result('call-2', true), result('call-1', false)] },
   { messages: [], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call] }), toolResults: [result('call-1', false)], abortBefore: true },
   { messages: [], tools: channel, continuation: sent({ stage: 'channel-send', calls: [call] }), toolResults: [result('call-1', false)], cancelAfterTexts: 1 },
   { messages: [], tools: channel, continuation: sent({ stage: 'channel-send', calls: [{ id: 7, name: 'x' }] }) },

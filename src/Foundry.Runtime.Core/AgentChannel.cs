@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Foundry.Platform;
 using Foundry.Protocol;
+using Microsoft.Data.Sqlite;
 
 namespace Foundry.Runtime;
 
@@ -25,6 +26,11 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     private const int PageBytes = 64 * 1024;
     private const int ScanBatch = 2000;
     private const string Stopped = "This agent is stopped, cancelled or finished.";
+    private const string UnreadableBinding = "Project channel binding is unreadable.";
+    // SQLITE_ERROR: what json_extract raises for a row that is not JSON.
+    private const int SqliteError = 1;
+    /// <summary>A binding row that does not parse: <see cref="Project"/> refuses its task.</summary>
+    private static readonly object Damaged = new();
     private static readonly CompareInfo Collation = CultureInfo.GetCultureInfo("en-US").CompareInfo;
 
     private sealed record Indexed(long Sequence, string Sender, string? Recipient, string Actor, string CreatedAt);
@@ -92,22 +98,49 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
 
     private Dictionary<string, object?> Row(long sequence) => store.Rows("SELECT sequence,task_id,data,created_at FROM events WHERE sequence=$p0", sequence).Single();
 
-    /// <summary>The first complete channel.identity binding of the task, as stored. An incomplete older binding is kept as
-    /// evidence only: it never equals a current identity, and nothing fills it in from current metadata.</summary>
-    private Dictionary<string, object?>? Binding(string taskId)
+    /// <summary>
+    /// binding: the identity stored in the task's first complete channel.identity row, as TypeScript reads it. Null when
+    /// there is no row, or its identity is absent or null; otherwise the stored value, which only an equal object matches.
+    /// An incomplete older binding is kept as evidence only: it never equals a current identity, and nothing fills it in
+    /// from current metadata. A row that SQLite or the JSON reader cannot read refuses the task with a fixed message, where
+    /// TypeScript reports the reader's own error.
+    /// </summary>
+    private object? Binding(string taskId)
     {
-        var data = store.Scalar("SELECT data FROM intents WHERE kind='channel.identity' AND state='complete' AND json_extract(data,'$.taskId')=$p0 ORDER BY rowid LIMIT 1", taskId) as string;
-        return data is null ? null : ((Dictionary<string, object?>)PersistedJson.Parse(data)!).GetValueOrDefault("identity") as Dictionary<string, object?>;
+        string? data;
+        try { data = store.Scalar("SELECT data FROM intents WHERE kind='channel.identity' AND state='complete' AND json_extract(data,'$.taskId')=$p0 ORDER BY rowid LIMIT 1", taskId) as string; }
+        catch (SqliteException error) when (error.SqliteErrorCode == SqliteError) { throw new WorkspaceReadException(UnreadableBinding); }
+        return data is null ? null : StoredIdentity(data);
     }
 
-    /// <summary>Every task's first complete binding, as <see cref="Binding"/> reads it one task at a time: the first row's
-    /// identity, or null when that row's identity is not an object.</summary>
-    private Dictionary<string, Dictionary<string, object?>?> Bindings()
+    /// <summary>JSON.parse(row.data).identity: a row that does not parse, or is null, is refused; any other row gives its
+    /// identity field, absent when the row is not an object. SQLite reads JSON5 that the strict reader refuses.</summary>
+    private static object? StoredIdentity(string data)
     {
-        var bindings = new Dictionary<string, Dictionary<string, object?>?>(StringComparer.Ordinal);
-        foreach (var row in store.Rows("SELECT json_extract(data,'$.taskId') AS task,data FROM intents WHERE kind='channel.identity' AND state='complete' ORDER BY rowid"))
-            if (row["task"] is string id && !bindings.ContainsKey(id))
-                bindings[id] = ((Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!).GetValueOrDefault("identity") as Dictionary<string, object?>;
+        object? row;
+        try { row = PersistedJson.Parse(data); }
+        catch (JsonException) { throw new WorkspaceReadException(UnreadableBinding); }
+        if (row is null) throw new WorkspaceReadException(UnreadableBinding);
+        return row is Dictionary<string, object?> document ? document.GetValueOrDefault("identity") : null;
+    }
+
+    /// <summary>
+    /// Every task's first complete binding, as <see cref="Binding"/> reads it one task at a time: the stored identity, null,
+    /// or <see cref="Damaged"/> for a row that does not parse. Null when SQLite cannot read some row: a lookup that scans past
+    /// that row fails, so each candidate's own lookup must decide, as TypeScript's does.
+    /// </summary>
+    private Dictionary<string, object?>? Bindings()
+    {
+        List<Dictionary<string, object?>> rows;
+        try { rows = store.Rows("SELECT json_extract(data,'$.taskId') AS task,data FROM intents WHERE kind='channel.identity' AND state='complete' ORDER BY rowid"); }
+        catch (SqliteException error) when (error.SqliteErrorCode == SqliteError) { return null; }
+        var bindings = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            if (row["task"] is not string id || bindings.ContainsKey(id)) continue;
+            try { bindings[id] = StoredIdentity((string)row["data"]!); }
+            catch (WorkspaceReadException) { bindings[id] = Damaged; }
+        }
         return bindings;
     }
 
@@ -128,7 +161,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         if (!IsGit(task)) return;
         admission.Revalidate(identity);
         var expected = Identity(identity);
-        if (Binding((string)task["id"]!) is { } existing)
+        if (Binding((string)task["id"]!) is { } existing && Truthy(existing))
         {
             if (JsJson.Stringify(existing) != JsJson.Stringify(expected)) throw new WorkspaceReadException("Project channel identity changed during admission.");
             return;
@@ -148,16 +181,16 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         if (!IsGit(task)) throw new WorkspaceReadException("Project channel requires a Git worktree.");
         var projectPath = (string)task["projectPath"]!;
         if (NetworkPathPolicy.IsNetworkOrDevicePath(projectPath)) throw new WorkspaceReadException(RepositoryFolderLease.Network);
-        var binding = Binding((string)task["id"]!) ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") ? Binding((string)task["rootTaskId"]!) : null);
+        var binding = Binding((string)task["id"]!) ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") && task["rootTaskId"] is string root ? Binding(root) : null);
         var saved = Present(task, "projectId") && store.SchemaVersion >= 3 ? store.Project((string)task["projectId"]!) : null;
-        var approved = binding?.GetValueOrDefault("path") as string ?? saved?.GetValueOrDefault("path") as string ?? projectPath;
+        var approved = (binding as Dictionary<string, object?>)?.GetValueOrDefault("path") as string ?? saved?.GetValueOrDefault("path") as string ?? projectPath;
         Admissions++;
         using var admission = RepositoryAdmission.Open(loop, projectPath);
         // resolveLocalPath(projectPath, approved): an 8.3 or case spelling of the approved folder is the same folder.
         if (approved.Length > 0 && EcmaScriptCase.ToLower(FinalPath.Resolve(admission.Path)) != EcmaScriptCase.ToLower(FinalPath.Resolve(approved)) && !RepositoryPaths.SameFolder(approved, admission.Path))
             throw new WorkspaceReadException("The saved folder now resolves to a different location.");
         var current = admission.Identity ?? throw new WorkspaceReadException("Project channel requires an available local Git project.");
-        if (binding is not null)
+        if (Truthy(binding))
         {
             if (JsJson.Stringify(Identity(current)) != JsJson.Stringify(binding)) throw new WorkspaceReadException("Project channel identity changed.");
         }
@@ -197,8 +230,9 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     /// channel cannot be resolved is not listed, whatever stops it, as TypeScript's catch-all leaves it out.
     /// <para>
     /// Every task's first binding is loaded once. A bound task resolves only to its binding's common directory, so one
-    /// bound elsewhere is passed over without admitting its folder: Project would refuse it or key it to another project.
-    /// Unbound Git tasks and those bound to this project are admitted, as TypeScript admits every task.
+    /// bound elsewhere is passed over without admitting its folder, as is one whose binding does not parse: Project would
+    /// refuse it or key it to another project. Unbound Git tasks and those bound to this project are admitted, as
+    /// TypeScript admits every task.
     /// </para>
     /// </summary>
     internal Dictionary<string, object?> Participants(string taskId, string? afterTaskId)
@@ -210,9 +244,13 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         foreach (var task in store.AllTasks())
         {
             if (afterTaskId is not null && string.CompareOrdinal((string)task["id"]!, afterTaskId) <= 0) continue;
-            var binding = bindings.GetValueOrDefault((string)task["id"]!)
-                ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") && task["rootTaskId"] is string root ? bindings.GetValueOrDefault(root) : null);
-            if (binding is not null && (binding.GetValueOrDefault("common") is not string common || Key(common) != project)) continue;
+            if (bindings is not null)
+            {
+                var binding = bindings.GetValueOrDefault((string)task["id"]!)
+                    ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") && task["rootTaskId"] is string root ? bindings.GetValueOrDefault(root) : null);
+                if (ReferenceEquals(binding, Damaged)) continue;
+                if (Truthy(binding) && (binding is not Dictionary<string, object?> bound || bound.GetValueOrDefault("common") is not string common || Key(common) != project)) continue;
+            }
             try { if (Project(task) == project) tasks.Add(task); }
             catch (Exception error) when (error is not OperationCanceledException) { }
         }
@@ -418,5 +456,8 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     }
 
     /// <summary>JavaScript truthiness for a stored field.</summary>
-    private static bool Present(Dictionary<string, object?> value, string key) => value.GetValueOrDefault(key) is not (null or false or "" or 0 or 0L or 0d or Undefined);
+    private static bool Present(Dictionary<string, object?> value, string key) => Truthy(value.GetValueOrDefault(key));
+
+    /// <summary>JavaScript truthiness for a stored value.</summary>
+    private static bool Truthy(object? value) => value is not (null or false or "" or 0 or 0L or 0d or Undefined) && !(value is double number && double.IsNaN(number));
 }

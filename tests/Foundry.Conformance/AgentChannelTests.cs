@@ -66,12 +66,16 @@ public sealed partial class AgentChannelTests
                 };
                 foreach (var (key, value) in (Dictionary<string, object?>?)seed.GetValueOrDefault("extra") ?? []) task[key] = value;
                 store.SaveTask(task);
+                // A channel.identity row's data as the oracle stored it, with {task} for the task's id.
+                if (seed.GetValueOrDefault("raw") is string raw)
+                    store.Execute("INSERT INTO intents VALUES($p0,'channel.identity',$p1,'complete')", $"raw-{((long)(double)seed["n"]!).ToString(CultureInfo.InvariantCulture)}", raw.Replace("{task}", (string)task["id"]!, StringComparison.Ordinal));
                 if (seed.GetValueOrDefault("binding") is not string binding) continue;
                 // Trusted admission binds the identity it resolved; an incomplete older binding lacks the path.
                 using var admission = RepositoryAdmission.Open(loop, projectPath);
                 var identity = new Dictionary<string, object?> { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
                 var full = new Dictionary<string, object?>(identity);
-                if (binding != "full") identity.Remove("path");
+                // A direct binding is the row admit writes, written without admit's own binding lookup.
+                if (binding is not ("full" or "direct")) identity.Remove("path");
                 store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = task["id"], ["identity"] = identity }), "complete");
                 if (binding == "incomplete-then-full") store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = task["id"], ["identity"] = full }), "complete");
             }
@@ -296,13 +300,57 @@ public sealed partial class AgentChannelTests
             // Task 30 is a legacy task: no binding, so only its folder can say which project it belongs to.
             if (number < 30) store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(number), ["identity"] = other }), "complete");
         }
+        // Task 40's first binding is to a and a later one to b: the first binding decides, for the prefilter as for Project.
+        Dictionary<string, object?> own;
+        using (var admission = RepositoryAdmission.Open(loop, fixture.Local("a")))
+            own = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
+        store.SaveTask(new()
+        {
+            ["id"] = Id(40), ["title"] = "Task 40", ["profileId"] = Store.FakeProfileId, ["status"] = "running", ["createdAt"] = "2026-01-01T00:00:00.000Z",
+            ["updatedAt"] = "2026-01-01T00:00:00.000Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("a"),
+            ["worktreePath"] = fixture.Local("a"), ["branch"] = "fixture", ["baseCommit"] = new string('a', 40),
+        });
+        foreach (var identity in new[] { own, other }) store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(40), ["identity"] = identity }), "complete");
         var before = chat.Tools.Channel.Admissions;
         var page = chat.Tools.Channel.Participants(Id(1), null);
-        Assert.Equal([Id(1), Id(2)], ((List<object?>)page["participants"]!).Cast<Dictionary<string, object?>>().Select(item => item["taskId"]));
-        // The caller, its two project tasks and the legacy task; none of the twenty tasks bound to b.
-        Assert.Equal(4, chat.Tools.Channel.Admissions - before);
+        Assert.Equal([Id(1), Id(2), Id(40)], ((List<object?>)page["participants"]!).Cast<Dictionary<string, object?>>().Select(item => item["taskId"]));
+        // The caller, its three project tasks and the legacy task; none of the twenty tasks bound to b.
+        Assert.Equal(5, chat.Tools.Channel.Admissions - before);
         Assert.Equal(21, ((List<object?>)chat.Tools.Channel.Participants(Id(10), null)["participants"]!).Count);
         await Task.CompletedTask;
+    });
+
+    /// <summary>
+    /// Security L-1 and data L1 of P2.3e: a binding row the channel cannot read refuses only the tasks whose lookup reaches
+    /// it, with a fixed message, and the runtime keeps serving. SQLite reads JSON5 that the strict reader refuses (task 3's
+    /// own row); a row that is not JSON fails every lookup that scans past it (task 4's binding comes after one).
+    /// TypeScript leaves the same tasks out of a page and refuses them with the reader's own error.
+    /// </summary>
+    [Fact]
+    public Task AnUnreadableBindingRowRefusesOnlyTheTasksThatReachIt() => WithChannel(async (fixture, store, chat, loop) =>
+    {
+        Dictionary<string, object?> identity;
+        using (var admission = RepositoryAdmission.Open(loop, fixture.Local("a")))
+            identity = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
+        void Save(double number) => store.SaveTask(new()
+        {
+            ["id"] = Id(number), ["title"] = $"Task {number}", ["profileId"] = Store.FakeProfileId, ["status"] = "running", ["createdAt"] = "2026-01-01T00:00:00.000Z",
+            ["updatedAt"] = "2026-01-01T00:00:00.000Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("a"),
+            ["worktreePath"] = fixture.Local("a"), ["branch"] = "fixture", ["baseCommit"] = new string('a', 40),
+        });
+        List<object?> Listed(double caller) => [.. ((List<object?>)chat.Tools.Channel.Participants(Id(caller), null)["participants"]!).Cast<Dictionary<string, object?>>().Select(item => item["taskId"])];
+        async Task<string?> Refusal(double number) => (await Record.ExceptionAsync(() => chat.Dispatch("channel.get", new() { ["taskId"] = Id(number) })))?.Message;
+        Save(3);
+        store.Execute("INSERT INTO intents VALUES('json5','channel.identity',$p0,'complete')", "{taskId:\"" + Id(3) + "\",identity:{}}");
+        Assert.Equal([Id(1), Id(2)], Listed(1));
+        Assert.Equal("Project channel binding is unreadable.", await Refusal(3));
+        store.Execute("INSERT INTO intents VALUES('not-json','channel.identity','not json','complete')");
+        Save(4);
+        store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(4), ["identity"] = identity }), "complete");
+        Assert.Equal([Id(1), Id(2)], Listed(2));
+        Assert.Equal("Project channel binding is unreadable.", await Refusal(4));
+        Assert.Equal(2, ((List<object?>)((Dictionary<string, object?>)(await chat.Dispatch("channel.get", new() { ["taskId"] = Id(1) }))!)["participants"]!).Count);
+        Assert.False(chat.Failure.IsCompleted);
     });
 
     private static string ProjectKey(RepositoryFixture fixture, string name) =>

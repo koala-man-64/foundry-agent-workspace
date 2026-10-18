@@ -51,6 +51,8 @@ public sealed class GitChatTests
         using var fixture = RepositoryFixture.Create("foundry-p2-git-chat-");
         fixture.Write("work/repo/README.md", "hello\n"); fixture.Write("work/repo/src/a.ts", "export const a = 1;\n"); fixture.Write("work/repo/docs/b.md", "# b\n");
         await fixture.Git("-C", "work/repo", "init", "-q"); await fixture.Git("-C", "work/repo", "add", "-A"); await fixture.Git("-C", "work/repo", "commit", "-qm", "fixture");
+        // A repository with no commit yet, whose worktree is refused before any mutation.
+        fixture.Write("work/unborn/a.txt", "a\n"); await fixture.Git("-C", "work/unborn", "init", "-q");
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
         await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
         var notifications = new List<object?>(); var provider = new List<object?>(); var next = 1;
@@ -136,10 +138,14 @@ public sealed class GitChatTests
             var before = await loop.Invoke(() => Task.FromResult(Rows())); var seen = 0; var requested = 0;
             foreach (var (step, position) in ((List<object?>)item["steps"]!).Cast<Dictionary<string, object?>>().Select((step, position) => (step, position)))
             {
-                var method = (string)step["method"]!; var parameters = (Dictionary<string, object?>)Expand(step["params"])!;
+                var method = (string)step["method"]!;
+                // {next-task} is the id the next task will draw.
+                expanded["{next-task}"] = $"78787878-0000-4000-8000-{next:000000000000}";
+                var parameters = (Dictionary<string, object?>)Expand(step["params"])!;
                 // A budget of 0 is the first request's reservation and -1 the first two requests', as the oracle measured them.
                 if (parameters.GetValueOrDefault("tokenBudget") is double sentinel && sentinel is 0 or -1)
                     parameters["tokenBudget"] = budgets?.GetValueOrDefault(sentinel == 0 ? "0" : "-1") ?? 10_000_000d;
+                if (method == "git") await fixture.Git([.. ((List<object?>)parameters["args"]!).Cast<string>()]);
                 if (method == "wait")
                     while (await loop.Invoke(() => Task.FromResult(Equals(store!.ReadTask((string)parameters["taskId"]!)["status"], "running")))) await Task.Delay(1, TestContext.Current.CancellationToken);
                 var actual = await loop.Invoke(async () =>
@@ -149,7 +155,15 @@ public sealed class GitChatTests
                     {
                         switch (method)
                         {
-                            case "wait": break;
+                            case "wait" or "git": break;
+                            case "overlap":
+                                // Both sends in one step, so the second always meets the first's turn.
+                                var first = await chat!.Dispatch("task.send", new() { ["taskId"] = parameters["taskId"], ["content"] = parameters["first"] });
+                                string? second = null;
+                                try { await chat.Dispatch("task.send", new() { ["taskId"] = parameters["taskId"], ["content"] = parameters["second"] }); }
+                                catch (InvalidOperationException exception) { second = exception.Message; }
+                                value = new Dictionary<string, object?> { ["first"] = first, ["second"] = second };
+                                break;
                             case "seed-intent":
                                 store!.Execute("INSERT INTO intents VALUES($p0,$p1,$p2,$p3)", parameters["id"], parameters["kind"], JsJson.Stringify(parameters["data"]), parameters["state"]);
                                 break;

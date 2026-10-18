@@ -9,7 +9,7 @@ import Database from 'better-sqlite3';
 import { expect, it } from 'vitest';
 import { BrowserHostCallSchema, RpcResponseSchema } from '../../packages/protocol/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
-import { build, committed, isolatedGitEnvironment } from './repository-fixture';
+import { build, committed, file, git, isolatedGitEnvironment } from './repository-fixture';
 
 type ObjectValue = Record<string, unknown>;
 
@@ -154,7 +154,7 @@ const CODING = 'Coding turns need native approvals, which a later runtime slice 
 async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
   const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), `foundry-p2-entry-git-${kind}-`)));
   const home = join(scratch, 'home'); mkdirSync(home); const data = join(scratch, 'data'); mkdirSync(data);
-  build(scratch, home, committed());
+  build(scratch, home, [...committed(), { dir: 'unborn' }, file('unborn/a.txt', 'a\n'), git('-C', 'unborn', 'init', '-q')]);
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const name of Object.keys(env)) if (/^GIT_/i.test(name)) delete env[name];
   Object.assign(env, isolatedGitEnvironment(home), { FOUNDRY_WORKSPACE_DATA: data }, kind === 'dotnet' ? { FOUNDRY_RUNTIME_P2_CHAT: '1' } : {});
@@ -202,6 +202,9 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
     const messages = await request('messages', 'task.messages', { taskId: a, limit: 50 });
     const cancelled = await request('cancel', 'task.cancel', { taskId: a });
     const tasks = await request('tasks', 'workspace.tasks', { limit: 50 });
+    // A repository with no commit: its worktree is refused before any mutation, and the refusal's text reaches the client.
+    const unborn = await request('unborn', 'project.add', { path: join(scratch, 'unborn') });
+    const unbornStart = await request('unborn-start', 'task.start', { ...start('89898989-0000-4000-8000-000000000004', 'Unborn'), projectId: (unborn.result as ObjectValue).id });
     // The one approved difference: TypeScript runs a coding turn, which native refuses before any worktree or row.
     const coding = kind === 'dotnet' ? await request('coding', 'task.start', { ...start('89898989-0000-4000-8000-000000000003', 'Coding'), mode: 'coding' }) : undefined;
     child.stdin.end();
@@ -235,6 +238,7 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
       const starts = (db.prepare('SELECT * FROM task_starts ORDER BY rowid').all() as ObjectValue[]).map(row => ({ ...row, input_hash: typeof row.input_hash === 'string' && row.input_hash.length === 64 }));
       return normalize({ project: project.result, started: started.result, firstTurn: firstTurn.result, demo: demo.result, demoTurn: demoTurn.result,
         second: second.result, secondTurn: secondTurn.result, channel: { ...view, participants }, messages: messages.result, cancelled: cancelled.result, tasks: tasks.result, starts,
+        unborn: unborn.result, unbornStart: unbornStart.error,
         coding: coding ? (coding.error as ObjectValue).message : CODING,
         rows: Object.fromEntries(['tasks', 'messages', 'provider_requests', 'events', 'intents', 'projects'].map(table => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()])),
         notifications: events.filter(item => item.sequence !== 0) });
