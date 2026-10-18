@@ -169,7 +169,9 @@ public sealed class ProviderTransportNativeTests
     }
 
     /// <summary>The review's endpoint spellings (P2.4a F1, F2): what WHATWG refuses is refused before any request, a host
-    /// .NET's Uri cannot hold fails as name resolution would, and a right-to-left host is refused (a named difference).</summary>
+    /// .NET's Uri cannot hold fails as name resolution would, and a right-to-left host is refused (a named difference). The
+    /// invalid-Punycode labels are refused too, a named fail-closed difference: Electron's Node 24.21 (ada 4.0.0) accepts and
+    /// sends them, where Node 24.14 (ada 3.4.2) refused them, so the oracle leaves them out.</summary>
     [Theory]
     [InlineData("https://::@x.openai.azure.com", "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment.")]
     [InlineData("https://xn--.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]

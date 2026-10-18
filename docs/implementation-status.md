@@ -2023,10 +2023,17 @@ What each slice adds:
 - **Endpoints, after the security review (F1, F2):**
   - A host with a right-to-left character is refused, with the first message. WHATWG applies the IDNA Bidi rule to such hosts and refuses those that break it; .NET's `IdnMapping` applies no Bidi rule, so the provider endpoint rule refuses them all. Azure resource names are ASCII.
   - A host WHATWG accepts but .NET's `Uri` cannot hold (a sub-delimiter such as `!`, `(` or `~`) gets no request and fails as "fetch failed". TypeScript sends that request and fails at name resolution with the same message.
+  - **An ASCII `xn--` label that is not valid Punycode** (`xn--`, `xn--zz`, `xn--a`, `xn--abc-`) is refused natively, with the first message. This is fail-closed: the host is still under an Azure suffix.
+    - **Found by PR #47's CI.** The URL parser of Electron 44.4.1's Node 24.21 (ada 4.0.0) accepts these hosts, so TypeScript sends the request. The Node 24.14 (ada 3.4.2) that first generated the oracle refuses them.
+    - **Their outcome depends on the Node version,** so the oracle leaves them out, as it leaves out asctime. `ProviderTransportNativeTests` pins native's refusal.
+    - **The security reviewer reran both endpoint differentials** (1,613 spellings) on Electron's Node:
+      - Native accepts nothing that TypeScript refuses, under either the adapter rule or the save rule. Where both accept, the targets are identical.
+      - Every difference is native refusing: 230 adapter spellings and 38 save spellings. They are this class, the sub-delimiter hosts, the hyphen-edge labels and the empty labels, all named.
+      - One class now agrees: Arabic-Indic digit hosts (`١٢`), which Node 24.14 accepted, are refused by both runtimes.
 
 **Native corrections from the review (F1).** These were defects in the shared URL reader, where TypeScript already refuses the spellings; they apply to the `http-url` contract too.
 - **Userinfo:** `https://::@host` now counts as credentials. WHATWG reads it as an empty username and the password ":"; the reader used to see empty userinfo.
-- **Punycode:** an ASCII `xn--` label that is not valid Punycode (`xn--`, `xn--zz`, `xn--a`, `xn--abc-`) is refused. `IdnMapping` used to check only the labels it encoded itself.
+- **Punycode:** an ASCII `xn--` label that is not valid Punycode (`xn--`, `xn--zz`, `xn--a`, `xn--abc-`) is refused. `IdnMapping` used to check only the labels it encoded itself. Node 24.14 refuses these labels too, but Electron's Node 24.21 accepts them, so on the shipping parser this is a named difference (above).
 - **Not changed:** the `http-url` contract still applies no Bidi rule, so the browser contract accepts some hosts WHATWG refuses. This is carried to P3.
 
 **TypeScript findings, not fixed under the freeze** (neither is a security or data-loss defect):
@@ -2040,11 +2047,11 @@ What each slice adds:
   - **Native** never echoes the value.
 
 **Evidence.**
-- **The oracle.** `tests/p2/provider-transport.test.ts` drives the shipping `createProvider(kind, { fetch })` through `tests/p2/provider-fetch.ts`, whose response streams return exactly the listed chunks, one per read. It runs 399 cases (389 before the review); the vectors are bound to `index.ts`, `limits.ts` and `tool-definitions.ts`, and regenerating them requires `P2_WRITE_PROVIDER_TRANSPORT=1`. The cases:
+- **The oracle.** `tests/p2/provider-transport.test.ts` drives the shipping `createProvider(kind, { fetch })` through `tests/p2/provider-fetch.ts`, whose response streams return exactly the listed chunks, one per read. It runs 397 cases: 389 before the review, the review's 10 spellings, and the re-review's 2 (P2.4b N3), less the 4 invalid-Punycode spellings whose outcome depends on the Node version (above); the vectors are bound to `index.ts`, `limits.ts` and `tool-definitions.ts`, and regenerating them requires `P2_WRITE_PROVIDER_TRANSPORT=1`. The cases:
   - **Requests:** each kind's body, with system, assistant and user messages, a lone surrogate, the runtime's tool schemas and fixture tools; every effort for each kind; output limits.
   - **Checks before any request:** missing, empty, whitespace-only and JavaScript-whitespace credentials; abort before sending; a mismatched kind.
   - **Continuations** for each kind: results in the request's order, a missing, duplicated, misnamed or foreign result, calls that are absent, invalid or not an array, invalid state, and data that is not an object.
-  - **Endpoints:** 43 spellings, and 10 more after the review. Accepted ones include case, `:443`, a dot path, `%2e`, an empty userinfo, backslashes, tabs and spaces, `%2E` in the host, IDN, and the four suffixes. Refused ones include `http:`, userinfo, a query or fragment, other ports, paths, `//`, look-alike suffixes, a trailing dot, a bare suffix, IP addresses and `ftp:`.
+  - **Endpoints:** 43 spellings, 6 more from the review and 2 from the re-review. Accepted ones include case, `:443`, a dot path, `%2e`, an empty userinfo, backslashes, tabs and spaces, `%2E` in the host, IDN, and the four suffixes. Refused ones include `http:`, userinfo, a query or fragment, other ports, paths, `//`, look-alike suffixes, a trailing dot, a bare suffix, IP addresses and `ftp:`.
   - **Statuses:** 14 failures, 2xx variants, 204 and 205, and 26 `Retry-After` headers on a fixed clock (one absent, one repeated).
   - **Framing:** CR, CRLF and a CRLF split between reads (also before an event name), the byte order mark at the start, split across reads and after the start, invalid and split UTF-8, `data:` spacing and Unicode whitespace, multi-line data, comments and other fields, event names, `[DONE]` spellings, an abort with frames still buffered, a stalled stream, a lost connection, and each cap at and over its limit.
   - **The Chat Completions parser:** content and empty content, several choices, finish reasons and the terminal checks, `[DONE]` order, refusals, legacy function calls and errors (each with its usage), malformed JSON, duplicate keys, metadata bounds, usage reports (JSON `null` subsets among them), and tool-call assembly.
@@ -2058,7 +2065,9 @@ What each slice adds:
   - the credential absent from every failure message and from `ProviderRequest`'s text.
 - **Mutations** (`foundry-evidence\p2.4-a\mutations-run1` and `run1b`): 25, all caught. They removed the byte order mark drop, the lone-CR normalization, the abort check's placement, the `data:` trim, call validation, the usage on a reported error, the terminal checks, JSON `null` subsets, the `Retry-After` cap, TypeScript's Anthropic merge, `store: false`, the redirect refusal, the credential header's trim and Latin-1 check, the depth bound, the headers and body bounds (both tests then hit the run's 300-second cap), the empty query marker, repeated-key order and infinite numbers; and moved each cap by one and the credential check to .NET whitespace. The first run skipped two whose patterns did not match the source, which held the literal characters instead of their escapes; the escapes are restored and `run1b` caught both.
 
-- **The review's spellings** joined the oracle (399 cases). Six of them TypeScript refuses before any request, and so does native. The other four reach TypeScript's recording fetch and are the replay's named endpoint differences above: the Hebrew host and three sub-delimiter hosts.
+- **The review's spellings** joined the oracle. Its four invalid-Punycode spellings later left it, after PR #47's CI (above).
+  - Of the six that remain, TypeScript refuses two before any request, and so does native.
+  - The other four reach TypeScript's recording fetch and are the replay's named endpoint differences above: the Hebrew host and three sub-delimiter hosts.
 - **Hardening from the review,** pinned by tests:
   - the production handler propagates no `traceparent` or `baggage` from an ambient `Activity` (F3);
   - `ProviderRequest`'s wire form, which `JsJson` writes, leaves out the credential (F4);
@@ -2086,7 +2095,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - every refusal and transport failure has a fixed message;
   - the depth bound keeps every recursive walk within about 262 levels;
   - tool calls are emitted only after every check, and usage handling matches `usageFrom`.
-- **F1 (medium), fixed:** the endpoint rule disagreed with WHATWG for `::@` userinfo, invalid Punycode and Bidi-rule violations. Native sent a request TypeScript refuses, though always to an Azure host.
+- **F1 (medium), fixed:** the endpoint rule disagreed with WHATWG for `::@` userinfo, invalid Punycode and Bidi-rule violations. Native sent a request TypeScript refuses, though always to an Azure host. On Electron's Node 24.21, TypeScript does send the invalid-Punycode requests, so native's refusal of them is a named fail-closed difference.
 - **F2 (low), fixed:** `UriFormatException` escaped for hosts both URL readers accept.
 - **F3 (low, latent), fixed:** ambient `Activity` headers on the credentialed request.
 - **F4 (low, no caller), fixed:** `JsJson` would have written a request's credential.
