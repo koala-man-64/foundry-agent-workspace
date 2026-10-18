@@ -22,6 +22,28 @@ public static class Compatibility
         }
         return Hash(fields);
     }
+    /// <summary>
+    /// normalizeEndpoint of packages/providers: the WHATWG serialization of an HTTPS Azure resource endpoint with no path,
+    /// credentials, query or fragment, or an <see cref="ArgumentException"/> with TypeScript's message. An input WHATWG parses
+    /// under another scheme gets the second message, as TypeScript gives it; for a non-special scheme this assumes that
+    /// WHATWG parses it, which it does except for an authority it cannot read (the message is the only difference).
+    /// </summary>
+    public static string AzureEndpoint(string endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        if (EcmaUrl.TryParse(endpoint, out var url)) return url!.AzureEndpoint();
+        throw new ArgumentException(OtherScheme(endpoint) ? "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment." : "Endpoint must be a valid HTTPS Azure URL.");
+    }
+    private static bool OtherScheme(string endpoint)
+    {
+        var text = endpoint.Trim([.. Enumerable.Range(0, 33).Select(value => (char)value)]).Replace("\t", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal);
+        var colon = text.IndexOf(':', StringComparison.Ordinal);
+        if (colon < 1 || !char.IsAsciiLetter(text[0]) || !text[..colon].All(c => char.IsAsciiLetterOrDigit(c) || c is '+' or '-' or '.')) return false;
+        var scheme = text[..colon].ToLowerInvariant();
+        if (scheme is "http" or "https") return false;
+        // The other special schemes with a host parse as http does; file and non-special schemes parse.
+        return scheme is not ("ftp" or "ws" or "wss") || EcmaUrl.TryParse("http" + text[colon..], out _);
+    }
     public static List<object?> SortManifest(List<object?> entries) => entries.OrderBy(entry => (string)((Dictionary<string, object?>)entry!)["path"]!, Utf8Order.Instance).ToList();
     private sealed class Utf8Order : IComparer<string>
     {

@@ -10,10 +10,20 @@ public sealed record ProviderContinuation(string ApiKind, object? Data) : IWireM
 }
 /// <summary>A tool's result as the next request returns it to the model.</summary>
 public sealed record ProviderToolResult(string Id, string Name, string Content, bool IsError);
-/// <summary>What a provider reads of a request: the messages, the native continuation, the advertised tool names and the
-/// results of the previous response's tool calls. Budgeting reads the full request, never this record.</summary>
+/// <summary>What a provider reads of a request: the messages, the native continuation, the advertised tools and the
+/// results of the previous response's tool calls, and for an external profile the stored profile and its credential.
+/// Budgeting reads the full request, never this record.</summary>
 public sealed record ProviderRequest(IReadOnlyList<ProviderMessage> Messages, ProviderContinuation? Continuation = null,
-    IReadOnlyList<string>? Tools = null, IReadOnlyList<ProviderToolResult>? ToolResults = null);
+    IReadOnlyList<ProviderTool>? Tools = null, IReadOnlyList<ProviderToolResult>? ToolResults = null)
+{
+    /// <summary>The profile as the runtime stored it. The offline provider reads none of it.</summary>
+    public IReadOnlyDictionary<string, object?>? Profile { get; init; }
+    /// <summary>The profile's credential, from the runtime's memory only.</summary>
+    public string? Credential { get; init; }
+    /// <summary>Never prints the credential, as a record's generated text would.</summary>
+    public override string ToString() => nameof(ProviderRequest);
+    internal bool Advertises(string name) => Tools?.Any(tool => tool.Name == name) == true;
+}
 public abstract record ProviderChatEvent : IWireModel
 {
     public abstract Dictionary<string, object?> ToWire();
@@ -68,7 +78,7 @@ public sealed class FakeChatProvider
         }
         var state = State(request.Continuation);
         CheckCancellation(cancellationToken);
-        if (request.Tools?.Contains("send_agent_message", StringComparer.Ordinal) == true && (last ?? "").StartsWith(ChannelDemo, StringComparison.Ordinal))
+        if (request.Advertises("send_agent_message") && (last ?? "").StartsWith(ChannelDemo, StringComparison.Ordinal))
         {
             var content = JsJson.Trim(last![ChannelDemo.Length..]);
             var call = new ProviderToolCall(id().ToString(), "send_agent_message",
@@ -87,9 +97,9 @@ public sealed class FakeChatProvider
             yield break;
         }
         // The coding demo, on a task's first turn: read the README, propose appending a line, then propose a command.
-        if (state is null && request.Tools?.Contains("read_file", StringComparer.Ordinal) == true && (last ?? "").StartsWith("/demo", StringComparison.Ordinal))
+        if (state is null && request.Advertises("read_file") && (last ?? "").StartsWith("/demo", StringComparison.Ordinal))
         {
-            RequireTools(request.Tools, ["read_file", "replace_text", "run_command"]);
+            RequireTools(request, ["read_file", "replace_text", "run_command"]);
             var call = new ProviderToolCall("fake-read-1", "read_file", new Dictionary<string, object?> { ["path"] = "README.md" });
             yield return call;
             yield return Done("read", [call.Call()]);
@@ -155,10 +165,10 @@ public sealed class FakeChatProvider
     }
 
     /// <summary>requireTools: every named tool was advertised.</summary>
-    private static void RequireTools(IReadOnlyList<string> tools, string[] names)
+    private static void RequireTools(ProviderRequest request, string[] names)
     {
         foreach (var name in names)
-            if (!tools.Contains(name, StringComparer.Ordinal)) throw new InvalidOperationException($"Tool {name} was not advertised.");
+            if (!request.Advertises(name)) throw new InvalidOperationException($"Tool {name} was not advertised.");
     }
 
     /// <summary>requiredResults: one result for each pending call, matched by id and name, in the order the request gives

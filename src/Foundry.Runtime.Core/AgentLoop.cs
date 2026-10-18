@@ -200,7 +200,7 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
         return new(
             [.. Items(request["messages"]).Select(message => new ProviderMessage((string)message["role"]!, (string)message["content"]!))],
             continuation is null ? null : new ProviderContinuation((string)continuation["apiKind"]!, continuation["data"]),
-            request.TryGetValue("tools", out var tools) ? [.. Items(tools).Select(tool => (string)tool["name"]!)] : null,
+            request.TryGetValue("tools", out var tools) ? [.. Items(tools).Select(tool => new ProviderTool((string)tool["name"]!, (string)tool["description"]!, tool.GetValueOrDefault("inputSchema")))] : null,
             request.TryGetValue("toolResults", out var results) ? [.. Items(results).Select(result => new ProviderToolResult((string)result["id"]!, (string)result["name"]!, (string)result["content"]!, (bool)result["isError"]!))] : null);
     }
 
