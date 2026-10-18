@@ -194,7 +194,8 @@ function nativeRequest(kind: Exclude<ApiKind, "fake">, request: ProviderRequest)
             const nextMessages = request.messages.filter(message => message.role !== "system");
             const results = anthropicResults(request, calls);
             if (results.length && nextMessages.length === 1 && nextMessages[0]?.role === "user") {
-                const toolResultContent = (results[0] as { content: unknown[] }).content;
+                // Every pending call's result, in the request's order, then the text: Anthropic refuses a tool_use left unanswered.
+                const toolResultContent = results.flatMap(result => (result as { content: unknown[] }).content);
                 messages.push({ role: "user", content: [...toolResultContent, { type: "text", text: nextMessages[0].content }] });
             }
             else messages.push(...results, ...nextMessages.map(message => ({ role: message.role, content: message.content })));

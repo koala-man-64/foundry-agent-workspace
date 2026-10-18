@@ -200,6 +200,8 @@ function anthropicCases(): StreamCase[] {
       messages: [], continuation: { apiKind: 'anthropic', data: { messages: [{ role: 'user', content: 'first' }, { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden', signature: 'sig' }, { type: 'tool_use', id: 'toolu_1', name: 'read_file', input: {} }] }], system: 'Kept system.', calls: [{ id: 'toolu_1', name: 'read_file', arguments: {} }] } },
       toolResults: [{ id: 'toolu_1', name: 'read_file', content: 'denied', isError: true }],
     }),
+    // T-1: three pending calls and one user message. The next request answers all three, the second as rejected.
+    anthropic([...tool(0, 'toolu_1', 'read_file'), ...tool(1, 'toolu_2', 'fixture_tool', '{}'), ...tool(2, 'toolu_3', 'read_file'), stopReason('tool_use'), end], { followUp: { messages: [user('go on')], errors: true } }),
   ];
 }
 
