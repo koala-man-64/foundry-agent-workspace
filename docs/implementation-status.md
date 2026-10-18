@@ -939,7 +939,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
 **Messages now aligned with TypeScript.** A projectless chat in coding or coordinated mode is refused with TypeScript's "Coding and coordination require a Git project.", and coordination settings on a chat with its message; both were a native "not supported" before.
 
 **Differences:**
-- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan.
+- **Git-project chats.** `task.start` on a Git project is refused before any reservation. Every Git task's turn advertises project-channel tools, and coding adds approval-bound tools; both need the native tool loop of a later slice. This was left out of P2.2 in the approved plan. Git-project chats are served since P2.3e.
 - **External profiles.** These remain refused for any turn, as before.
 
 **Evidence.**
@@ -950,7 +950,7 @@ A folder chat turns exactly as a projectless one: `prepareRequest` gives it no t
   - a Git-project chat.
 
   After every step it pins the value or refusal, and the task, message, request, start, event and project rows and notifications, in `folder-chat-vectors.json`.
-- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it requires the refusal and an unchanged snapshot.
+- `FolderChatTests` replays every step through `DevelopmentChat` with the same identities and clock. It reproduces each snapshot exactly. For the Git-project chat, the named difference, it required the refusal and an unchanged snapshot; since P2.3e it serves that chat and reproduces its snapshots.
 
 **Finding outside this slice: the native Store pinned every ancestor of its data folder with read-only sharing. Fixed after P2.2, on Rudy's instruction (17 October 2026).**
 - P1's Store admission pinned the data folder's whole chain through `DirectoryLease.Acquire`, which shares reads only.
@@ -1361,7 +1361,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 
 **Open, for later slices.**
 - **Worktree confinement (security I5 of P2.3b) is not added here.** Tool calls use the task's stored worktree path, as TypeScript does. Confining them to the runtime's worktree folder would refuse any task whose worktree lives elsewhere, and where older versions placed worktrees has not been established. Rudy decides this at P2.3f, before tools are wired. The worktree paths stored in the six fixture eras, and where TypeScript has computed worktree paths over its history, would give that decision its evidence (review I-4).
-- **Rethrown failures, for P2.3e (review I-2).** Once turns are wired, an unexpected failure before any proposal, such as a stored task of the wrong shape, ends the development runtime, where TypeScript gives the model "Tool failed." That is fail-closed, but the agent loop must not leave a reservation or a running task behind.
+- **Rethrown failures (review I-2), resolved in P2.3e.** An unexpected failure now stops the turn as failed. No reservation is open while tools run, the task is not left running, and the runtime keeps serving. TypeScript hands the model the failure's message instead; see the P2.3e entry.
 - **Commands too long to launch (review I-3).** A `run_command` longer than about 12,200 characters can be proposed and approved, then fails at launch as "none", because its `-EncodedCommand` line exceeds the 32,767-character command line. TypeScript's helper has the same limit. A preparation-time length check would spare the user an approval that cannot run.
 
 ### Project channel (P2.3d)
@@ -1451,12 +1451,104 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - The first read of 200,000 rows now takes 3.96 s.
 
 **Open, for later slices.**
-- **Wiring.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them. With M1 fixed, the index never takes a row from that transaction before it commits.
-- **Participants cost, before P2.3e makes it model-driven** (security I-1, data L2).
+- **Wiring, done in P2.3e.** `Enrich` and `Acknowledge` are wired by the native tool loop, `Acknowledge` in the response transaction as TypeScript wires it. With M1 fixed, the index never takes a row from that transaction before it commits.
+- **Participants cost** (security I-1, data L2). The prefilter below landed in P2.3e, for tasks bound to other projects; see that entry for what remains.
   - **The cost:** each participants page reads every task and admits each one's folder and Git identity on the loop, as TypeScript does. The data review measured 151 ms for 100 tasks and 4.7 s for 2,000.
   - **Fix:** load the first binding of every task once, and admit only the candidates whose bound or stored common directory can equal the caller's.
 - **A lowercased key is a shared limit (security I-2).** Two repositories whose paths differ only in case, inside a case-sensitive folder, share one project key in both runtimes. Changing the key would hide messages written before adoption.
 - **Refusal text (security I-4).** Refusals tell a missing task from one in another project, as TypeScript's do. The texts are fixed strings, and ids come only from the caller's own participants.
+
+### Agent loop and Git-project chats (P2.3e)
+
+**What it is.** The development runtime's `task.start`, `task.send` and `task.cancel` now serve chats in Git projects. The method count is unchanged at 40. `AgentLoop` ports `agent-loop.ts`'s `prepareRequest` and `run` for the chats native serves:
+- **Requests.** A projectless or folder chat advertises nothing, as before. A Git chat advertises the project channel's three tools and leads a fresh history with the chat instruction and `CHANNEL_SYSTEM`. Every request it makes carries its unacknowledged channel messages (`Enrich`). A stored conversation resumes with its continuation and its calls' results; an interrupted call gets the explicit "not replayed" error.
+- **Iterations.** Up to 51 provider responses, each with at most 16 calls with distinct, non-empty ids, and at most 50 tool calls in the turn.
+  - **Responses.** A tooling response must carry its provider's continuation, within 512 KiB. The continuation and the calls must be free of secret-like data. No call may reuse an id the task has used, and the task keeps at most 1,000.
+  - **Persistence.** The provider state, the channel acknowledgment (`Acknowledge`), the answer and the request's settlement commit together. The state is saved again after each tool result, with a `task.tool-result` event, now also a notification.
+  - **Further requests.** An unknown mutation outcome after a tool stops the turn. Each further request is enriched and admitted against the task's budget. The context warning is published once per turn and the budget warning on each admission.
+- **Git starts** follow `startTask`:
+  1. The project is checked and classified as before. For a Git project, the channel identity is resolved, and that admission is held until the binding commits.
+  2. Coordination settings, the coordinated mode, the profile and any unknown worktree creation are checked; then coding is refused (below).
+  3. The start is reserved, and a `worktree.create` intent, with the request id, is written before any Git mutation. The task, its channel binding and the completed intent commit together, and the first turn starts.
+  4. A failure leaves the intent complete, and forgets the start, only when the repository reported that nothing started. A first turn that could not start leaves the start failed. A retry re-checks the project and re-admits the channel.
+
+  `task.create` now binds through the same `AgentChannel.Admit`.
+- **Turns.** A Git chat's turn is refused while a commit, push or reconciliation runs ("Wait for the Git operation to finish before starting a response."), and as retired while its worktree retires, as `startTurn` refuses them.
+- **The offline provider** gains three stages, with call ids from the runtime's id source:
+  - the channel demo: `/channel-demo` makes one `send_agent_message` call;
+  - its result stage;
+  - the stopped browser demo: `/browser-demo` without browser tools.
+- **Participants** (security I-1 and data L2 of P2.3d). Every task's first binding is loaded once, and a task bound to another project is passed over without admitting its folder. Unbound Git tasks and tasks bound to the same project are still admitted one by one, so the page is unchanged.
+
+**Differences, all fail-closed or invisible on success:**
+- **Coding and coordinated tasks.**
+  - **Coding mode.** `task.start` refuses it ("Coding turns need native approvals, which a later runtime slice wires.") after TypeScript's checks and before any reservation or worktree.
+  - **Coordinated mode.** `task.start` refuses it ("Coordinated tasks are not available in this build.") where TypeScript checks it.
+  - **Turns.** `task.send` refuses a coding task's turn, and both methods refuse coordinated roles, before any reservation.
+
+  P2.3f serves coding turns.
+- **Stored continuations.** A turn is refused before any reservation unless its stored continuation is in a stage the offline provider serves natively: `chat`, `complete` or `channel-send`. The coding, MCP, browser and orchestration demos' stages need their slices.
+- **Unclassified tool failures** (P2.3c review I-2). A failure the tool runtime does not classify as a refusal stops the turn as failed, with its redacted message. TypeScript hands the model the message and continues. No reservation is open while tools run, and the runtime keeps serving.
+- **No browser host.** No turn has attached tabs, and the browser demo always stops. TypeScript asks its host before each `task.send`.
+- **Iteration limit.** As in TypeScript, the 51-response limit cannot be reached: 51 responses with calls exceed the 50-call limit first.
+
+**A correction the provider port makes.** TypeScript's offline provider answers `/browser-demo` (after trimming) in every chat, projectless and folder chats included: "Offline browser demo stopped…" instead of "Fake response: /browser-demo". The native provider gave the latter until this slice; no earlier vector sent that text.
+
+**Evidence.**
+- **The provider oracle.** `tests/p2/fake-tools.test.ts` streams 33 inputs through the shipping offline provider. `FakeToolTests` replays each one. The vectors are bound to the provider sources. The inputs cover:
+  - the channel demo with and without tools;
+  - JavaScript trimming: U+3000 and U+FEFF trimmed, U+0085 kept;
+  - later and earlier user messages, and stored and invalid continuations;
+  - result stages with matching, mismatched, missing and erroring results;
+  - cancellation and the browser demo.
+- **The Git-chat oracle.** `tests/p2/git-chat.test.ts` drives the shipping `RuntimeService` over a disposable repository, with deterministic identities and a fixed clock, through four cases (92 steps):
+  - **the channel:**
+    - two Git chats and the channel demo;
+    - the second chat's first request carrying the broadcast and acknowledging it;
+    - an oversized message refused, and the browser demo;
+    - cancel of an idle chat;
+    - retirement and the refused turn after it;
+    - an overlapping send and a missing task;
+  - **failed starts:**
+    - a start refused by its budget after its worktree is made, and two retries;
+    - a hidden project, coordination settings and a missing profile;
+    - an unknown worktree creation;
+  - **coding**, the named difference;
+  - **the loop's limits**, with a scripted provider:
+    - two and three iterations;
+    - duplicate, seventeen, reused and empty call ids;
+    - a missing and a foreign continuation, secret-bearing continuations and calls, and a continuation over 512 KiB;
+    - data after completion, and no completion;
+    - six tool refusals the model sees;
+    - the output and transcript limits, and the context warning;
+    - the 50-tool limit, and the recovery of its unfinished call;
+    - the 1,000-id history;
+    - a refused second admission, and the budget warning on a continuation;
+    - an unknown mutation outcome.
+
+  Each step records its value or refusal, the rows it added, changed or removed in seven tables, its notifications, and every request a provider received. Paths and the fixture's project key are placeholders. The vectors are bound to twelve runtime and provider sources; regenerating them requires `P2_WRITE_GIT_CHAT=1`.
+- **The replay.** `GitChatTests` replays every step through `DevelopmentChat` with the same identities, clock, offline provider and scripts, and reproduces every record byte for byte. The coding step must be refused with nothing changed.
+- **Folder chats.** The P2.2f oracle's Git-project step is now served. Its named difference is removed, a wait is added, and `FolderChatTests` reproduces both steps.
+- **Native-only tests** (`GitChatNativeTests`):
+  - a cancellation between iterations;
+  - an unclassified tool failure (I-2);
+  - a coordinated start refused before any intent;
+  - turns refused during a commit and during a retirement;
+  - stored continuations: a coding stage refused, and an interrupted channel demo resumed with the "not replayed" result.
+
+  `AgentChannelTests` pins the participants prefilter by counting admissions.
+- **Process differential.** The stdio differential now also runs a Git-project chat through both entry points, with an isolated Git configuration: a worktree-backed start, the channel demo, a second chat reached by its broadcast, the channel page, and native's coding refusal.
+- **Mutations.** Recorded once they complete.
+
+**Validation.**
+- **`db4a117`** (run1, from a `git archive` export): native 7,284 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
+
+**Independent reviews.** Recorded once they complete.
+
+**Open, for later slices.**
+- **P2.3f:** coding turns with approvals, and `approval.decide`. Rudy's worktree-confinement decision (P2.3c, I5) comes first.
+- **Participants cost, remaining.** A page still admits every unbound Git task and every task of the caller's own project, one by one, as TypeScript does.
+- **External profiles** still refuse every turn. The loop reads no usage or metadata events, which only external providers produce.
 
 ## Personal workspace expansion — local implementation
 
