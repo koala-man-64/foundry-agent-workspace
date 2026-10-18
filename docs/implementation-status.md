@@ -2003,6 +2003,14 @@ What each slice adds:
 - **Transport failures.** Before a response they are "fetch failed", and while reading one "terminated", whatever .NET reports. The cause is kept only as the inner exception, which the runtime never reports.
 - **`Retry-After`.** Delta-seconds (JavaScript's `Number`) and the three HTTP-date forms are read, in UTC and ignoring the weekday. Other spellings that `Date.parse` accepts give no value natively: the vectors' "-1" and "5, 6" (two headers, joined), both of which TypeScript reads as past dates (0 seconds). asctime is left out of the vectors because V8 reads it in local time. Only the orchestrator reads the value.
 - **Headers the transport adds,** certificate trust, and chunking, as named in the plan above.
+- **Endpoints, after the security review (F1, F2):**
+  - A host with a right-to-left character is refused, with the first message. WHATWG applies the IDNA Bidi rule to such hosts and refuses those that break it; .NET's `IdnMapping` applies no Bidi rule, so the provider endpoint rule refuses them all. Azure resource names are ASCII.
+  - A host WHATWG accepts but .NET's `Uri` cannot hold (a sub-delimiter such as `!`, `(` or `~`) gets no request and fails as "fetch failed". TypeScript sends that request and fails at name resolution with the same message.
+
+**Native corrections from the review (F1).** These were defects in the shared URL reader, where TypeScript already refuses the spellings; they apply to the `http-url` contract too.
+- **Userinfo:** `https://::@host` now counts as credentials. WHATWG reads it as an empty username and the password ":"; the reader used to see empty userinfo.
+- **Punycode:** an ASCII `xn--` label that is not valid Punycode (`xn--`, `xn--zz`, `xn--a`, `xn--abc-`) is refused. `IdnMapping` used to check only the labels it encoded itself.
+- **Not changed:** the `http-url` contract still applies no Bidi rule, so the browser contract accepts some hosts WHATWG refuses. This is carried to P3.
 
 **TypeScript findings, not fixed under the freeze** (neither is a security or data-loss defect):
 - **T-1, Anthropic resumption sends one tool result.**
@@ -2015,11 +2023,11 @@ What each slice adds:
   - **Native** never echoes the value.
 
 **Evidence.**
-- **The oracle.** `tests/p2/provider-transport.test.ts` drives the shipping `createProvider(kind, { fetch })` through `tests/p2/provider-fetch.ts`, whose response streams return exactly the listed chunks, one per read. It runs 389 cases; the vectors are bound to `index.ts`, `limits.ts` and `tool-definitions.ts`, and regenerating them requires `P2_WRITE_PROVIDER_TRANSPORT=1`. The cases:
+- **The oracle.** `tests/p2/provider-transport.test.ts` drives the shipping `createProvider(kind, { fetch })` through `tests/p2/provider-fetch.ts`, whose response streams return exactly the listed chunks, one per read. It runs 399 cases (389 before the review); the vectors are bound to `index.ts`, `limits.ts` and `tool-definitions.ts`, and regenerating them requires `P2_WRITE_PROVIDER_TRANSPORT=1`. The cases:
   - **Requests:** each kind's body, with system, assistant and user messages, a lone surrogate, the runtime's tool schemas and fixture tools; every effort for each kind; output limits.
   - **Checks before any request:** missing, empty, whitespace-only and JavaScript-whitespace credentials; abort before sending; a mismatched kind.
   - **Continuations** for each kind: results in the request's order, a missing, duplicated, misnamed or foreign result, calls that are absent, invalid or not an array, invalid state, and data that is not an object.
-  - **Endpoints:** 43 spellings. Accepted ones include case, `:443`, a dot path, `%2e`, an empty userinfo, backslashes, tabs and spaces, `%2E` in the host, IDN, and the four suffixes. Refused ones include `http:`, userinfo, a query or fragment, other ports, paths, `//`, look-alike suffixes, a trailing dot, a bare suffix, IP addresses and `ftp:`.
+  - **Endpoints:** 43 spellings, and 10 more after the review. Accepted ones include case, `:443`, a dot path, `%2e`, an empty userinfo, backslashes, tabs and spaces, `%2E` in the host, IDN, and the four suffixes. Refused ones include `http:`, userinfo, a query or fragment, other ports, paths, `//`, look-alike suffixes, a trailing dot, a bare suffix, IP addresses and `ftp:`.
   - **Statuses:** 14 failures, 2xx variants, 204 and 205, and 26 `Retry-After` headers on a fixed clock (one absent, one repeated).
   - **Framing:** CR, CRLF and a CRLF split between reads (also before an event name), the byte order mark at the start, split across reads and after the start, invalid and split UTF-8, `data:` spacing and Unicode whitespace, multi-line data, comments and other fields, event names, `[DONE]` spellings, an abort with frames still buffered, a stalled stream, a lost connection, and each cap at and over its limit.
   - **The Chat Completions parser:** content and empty content, several choices, finish reasons and the terminal checks, `[DONE]` order, refusals, legacy function calls and errors (each with its usage), malformed JSON, duplicate keys, metadata bounds, usage reports (JSON `null` subsets among them), and tool-call assembly.
@@ -2032,6 +2040,70 @@ What each slice adds:
   - the depth bound at 256, 257 and 500,000 levels;
   - the credential absent from every failure message and from `ProviderRequest`'s text.
 - **Mutations** (`foundry-evidence\p2.4-a\mutations-run1` and `run1b`): 25, all caught. They removed the byte order mark drop, the lone-CR normalization, the abort check's placement, the `data:` trim, call validation, the usage on a reported error, the terminal checks, JSON `null` subsets, the `Retry-After` cap, TypeScript's Anthropic merge, `store: false`, the redirect refusal, the credential header's trim and Latin-1 check, the depth bound, the headers and body bounds (both tests then hit the run's 300-second cap), the empty query marker, repeated-key order and infinite numbers; and moved each cap by one and the credential check to .NET whitespace. The first run skipped two whose patterns did not match the source, which held the literal characters instead of their escapes; the escapes are restored and `run1b` caught both.
+
+- **The review's spellings** joined the oracle (399 cases). Six of them TypeScript refuses before any request, and so does native. The other four reach TypeScript's recording fetch and are the replay's named endpoint differences above: the Hebrew host and three sub-delimiter hosts.
+- **Hardening from the review,** pinned by tests:
+  - the production handler propagates no `traceparent` or `baggage` from an ambient `Activity` (F3);
+  - `ProviderRequest`'s wire form, which `JsJson` writes, leaves out the credential (F4);
+  - the handler-injecting `AzureTransport` constructor is internal, so product code can construct only the production transport (F6).
+
+**Validation (local, from `git archive` exports).** Evidence, seals and mutation logs are in `foundry-evidence\p2.4-a`.
+- **`c02bd98`** (`run2`; `run1` failed to export, because PowerShell 5.1 corrupted the piped tar stream; the script now pipes through `cmd`):
+  - Release build with warnings as errors: clean.
+  - Native suite: 7,747 tests, 7,745 passed, 0 failed, 2 expected skips.
+  - `pnpm check`: 588 passed across 93 files.
+  - The stdio differential: 2 of 2.
+  - `git diff --check`: clean.
+- **The review fixes:** see the re-review below.
+
+No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+
+**Independent review of `87cbcd6..c02bd98`.** Security (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical or high finding.
+- **What it ran:**
+  - It verified the seal, built an export, and ran four classes (487 passed) and the oracle.
+  - It ran an endpoint differential of 1,613 hostile spellings against a verbatim copy of `normalizeEndpoint` and `buildTarget` on Node's WHATWG URL.
+  - It sent through the production handler to a raw loopback server only.
+- **Confirmed:**
+  - no accepted endpoint resolves outside the four suffixes, and both runtimes build the same target wherever both accept;
+  - the production handler went direct with proxy variables set, did not follow a real 302, sent the credential as Latin-1 bytes, and did no decompression, cookies or authentication;
+  - every refusal and transport failure has a fixed message;
+  - the depth bound keeps every recursive walk within about 262 levels;
+  - tool calls are emitted only after every check, and usage handling matches `usageFrom`.
+- **F1 (medium), fixed:** the endpoint rule disagreed with WHATWG for `::@` userinfo, invalid Punycode and Bidi-rule violations. Native sent a request TypeScript refuses, though always to an Azure host.
+- **F2 (low), fixed:** `UriFormatException` escaped for hosts both URL readers accept.
+- **F3 (low, latent), fixed:** ambient `Activity` headers on the credentialed request.
+- **F4 (low, no caller), fixed:** `JsJson` would have written a request's credential.
+- **F5 (informational), not changed:** the reader's per-read work over the buffered text is quadratic under a slow drip, as in TypeScript, bounded by the 8 MiB cap and the turn limit.
+- **F6 (informational), fixed:** the public handler seam.
+- **T-1 and T-2** were confirmed from source, and their classification stands. On T-2, the reviewer noted that main checks only the credential's length, so the guard rests on the password input. It suggested that slice c also register the trimmed credential with the redactor.
+
+### Responses and Anthropic parsers (P2.4b)
+
+**What it is.** `ResponsesStream` and `AnthropicStream` port `streamResponses` and `streamAnthropic`, and `AzureProvider` now reads all three kinds. The adapter is still unwired, so the development runtime stays at 41 of the 89 methods.
+- **Responses:**
+  - **Events:** text deltas are emitted as they arrive. Output items are refused if a refusal or computer call appears anywhere in them.
+  - **One completion:** its status must be `completed` with no incomplete details. Its output, when present, must be an array of objects that contains every streamed item. Items match by type and id and, for a function call, by call id, name and argument text, all with JavaScript's `===`; otherwise by serialized content.
+  - **Failure events:** failed, incomplete, error and refusal events report their metadata and usage, then fail the response.
+  - **Calls and continuation:** calls come from the authoritative output, after every check. The continuation is the request's input with that output appended.
+- **Anthropic:**
+  - **Content blocks** are assembled by index with JavaScript's `Map` semantics, so a raw `-0` names block 0. Text, thinking, the signature (replaced, not appended) and tool-use JSON are collected; an empty text delta is kept but not emitted.
+  - **Usage** is the message's input with both cache buckets added once, plus the output.
+  - **Stop reasons:** any stop reason other than `end_turn` or `tool_use` fails the response, even when a valid one comes before or after it.
+  - **Order and completion:** only pings may follow `message_stop`. Every block must have stopped, and the stop reason must agree with the calls.
+  - **Continuation:** the messages with the assistant's blocks appended, the system text and the calls.
+
+**Differences.** None beyond the depth bound named in P2.4a, which `ProviderStreamNativeTests` exercises: payloads exactly at the bound pass the recursive checks and their continuation's serialization, and a refusal at the deepest level is still found.
+
+**Evidence.**
+- **The oracle.** `tests/p2/provider-streams.test.ts` streams 145 inputs through the shipping adapter: 70 Responses, 74 Anthropic and one Chat Completions case for a `-0` index. 91 of them end in a refusal or failure. The vectors are bound to `index.ts` and `limits.ts`; regenerating them requires `P2_WRITE_PROVIDER_STREAMS=1`.
+  - **Follow-ups.** Seven cases continue: the stored continuation, with a result for each of its calls, becomes the next request. That pins the exact next body, including Anthropic's thinking signature, Responses' encrypted reasoning, and T-1's single-result merge (two pending calls and one user message send one `tool_result`).
+  - **Responses cases:** the event order, item and completion cross-checks (ids, call fields, content key order, object-typed fields), unsupported content at any depth, incomplete and failed completions with their usage, malformed calls and arguments, and cancellation and transport failure.
+  - **Anthropic cases:** usage with cache buckets and invalid values, block and delta errors, stop reasons in every order, pings, errors, `__proto__` and `1e400` in tool input, and the resumed turn.
+- **The replay.** `ProviderStreamTests` replays every case through P2.4a's recording handler. It builds each follow-up from native's own continuation, and the next body matches TypeScript's byte for byte.
+- **Mutations** (`foundry-evidence\p2.4-b\mutations-run1` and `run1b`): 22, all caught.
+  - **They removed:** the after-completion check, item screening, computer calls, each cross-check field, incomplete details, the omitted-output rule, refusal event types, the output in the continuation, duplicate-block and stop checks, the cache sums, the null-cache fallback, tool JSON parsing, signature replacement, `-0` keys and the system text.
+  - **They also changed:** `===` to value comparison, empty text to emitted, and which stop reason wins.
+  - **First run:** two survived, value comparison and an earlier `end_turn` forgiving a later failure. Both are now pinned and caught. One mutation did not build until it was rewritten.
 
 **Validation.** Pending: the export run of this slice's final commit.
 

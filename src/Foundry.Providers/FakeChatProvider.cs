@@ -14,7 +14,7 @@ public sealed record ProviderToolResult(string Id, string Name, string Content, 
 /// results of the previous response's tool calls, and for an external profile the stored profile and its credential.
 /// Budgeting reads the full request, never this record.</summary>
 public sealed record ProviderRequest(IReadOnlyList<ProviderMessage> Messages, ProviderContinuation? Continuation = null,
-    IReadOnlyList<ProviderTool>? Tools = null, IReadOnlyList<ProviderToolResult>? ToolResults = null)
+    IReadOnlyList<ProviderTool>? Tools = null, IReadOnlyList<ProviderToolResult>? ToolResults = null) : IWireModel
 {
     /// <summary>The profile as the runtime stored it. The offline provider reads none of it.</summary>
     public IReadOnlyDictionary<string, object?>? Profile { get; init; }
@@ -22,6 +22,15 @@ public sealed record ProviderRequest(IReadOnlyList<ProviderMessage> Messages, Pr
     public string? Credential { get; init; }
     /// <summary>Never prints the credential, as a record's generated text would.</summary>
     public override string ToString() => nameof(ProviderRequest);
+    /// <summary>What JsJson writes for the request: never the credential, which a property walk would include (P2.4a
+    /// review F4).</summary>
+    public Dictionary<string, object?> ToWire() => new()
+    {
+        ["messages"] = Messages.Select(message => (object?)new Dictionary<string, object?> { ["role"] = message.Role, ["content"] = message.Content }).ToList(),
+        ["continuation"] = Continuation is null ? Undefined.Value : Continuation,
+        ["tools"] = Tools is null ? Undefined.Value : Tools.Select(tool => (object?)new Dictionary<string, object?> { ["name"] = tool.Name, ["description"] = tool.Description, ["inputSchema"] = tool.InputSchema }).ToList(),
+        ["toolResults"] = ToolResults is null ? Undefined.Value : ToolResults.Select(result => (object?)new Dictionary<string, object?> { ["id"] = result.Id, ["name"] = result.Name, ["content"] = result.Content, ["isError"] = result.IsError }).ToList(),
+    };
     internal bool Advertises(string name) => Tools?.Any(tool => tool.Name == name) == true;
 }
 public abstract record ProviderChatEvent : IWireModel

@@ -32,6 +32,7 @@ public sealed class ProviderTransportNativeTests
         Assert.Null(handler.SslOptions.ClientCertificates);
         Assert.Equal(TimeSpan.FromSeconds(10), handler.ConnectTimeout);
         Assert.Same(Encoding.Latin1, handler.RequestHeaderEncodingSelector!("api-key", null!));
+        Assert.Null(handler.ActivityHeadersPropagator);
         Assert.Equal((TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(300)), (TransportLimits.Undici.Connect, TransportLimits.Undici.Headers, TransportLimits.Undici.BodyIdle));
     }
 
@@ -165,6 +166,37 @@ public sealed class ProviderTransportNativeTests
             if (error.Message.StartsWith("Chat completion ended with", StringComparison.Ordinal)) continue;
             Assert.DoesNotContain(Credential, error.Message, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>The review's endpoint spellings (P2.4a F1, F2): what WHATWG refuses is refused before any request, a host
+    /// .NET's Uri cannot hold fails as name resolution would, and a right-to-left host is refused (a named difference).</summary>
+    [Theory]
+    [InlineData("https://::@x.openai.azure.com", "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment.")]
+    [InlineData("https://xn--.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://xn--zz.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://xn--a.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://xn--abc-.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://a\u0640b.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://\u05e2\u05d1\u05e8\u05d9\u05ea.openai.azure.com", "Endpoint must be a valid HTTPS Azure URL.")]
+    [InlineData("https://a!b.openai.azure.com", "fetch failed")]
+    [InlineData("https://a(b).openai.azure.com", "fetch failed")]
+    [InlineData("https://a~b.openai.azure.com", "fetch failed")]
+    public async Task EndpointsTypeScriptRefusesOrCannotReachSendNothing(string endpoint, string message)
+    {
+        var handler = new ScriptedHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Done) });
+        var request = Request();
+        request = request with { Profile = new Dictionary<string, object?>(request.Profile!) { ["endpoint"] = endpoint } };
+        Assert.Equal(message, (await Assert.ThrowsAnyAsync<InvalidOperationException>(() => Collect(handler, request))).Message);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public void ARequestSerializesWithoutItsCredential()
+    {
+        var request = Request() with { Tools = [new ProviderTool("read_file", "Read.", new Dictionary<string, object?>())] };
+        var wire = JsJson.Stringify(request)!;
+        Assert.DoesNotContain(Credential, wire, StringComparison.Ordinal);
+        Assert.Equal("{\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"tools\":[{\"name\":\"read_file\",\"description\":\"Read.\",\"inputSchema\":{}}]}", wire);
     }
 
     private static ProviderRequest Request(string? credential = null) => new([new ProviderMessage("user", "hello")])

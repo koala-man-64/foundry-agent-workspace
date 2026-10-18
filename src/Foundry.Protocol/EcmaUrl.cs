@@ -20,8 +20,16 @@ internal sealed record EcmaUrl(string Scheme, string Host, string Port, string T
         var authority = boundary < 0 ? remainder : remainder[..boundary];
         var tail = boundary < 0 ? "" : remainder[boundary..];
         var at = authority.LastIndexOf('@');
-        var credentials = at >= 0 && authority[..at].Trim(':').Length != 0;
-        if (at >= 0) authority = authority[(at + 1)..];
+        // WHATWG splits userinfo at its first ':' into a username and a password: "::" is an empty username and the
+        // password ":", which counts as credentials (P2.4a review F1).
+        var credentials = false;
+        if (at >= 0)
+        {
+            var userinfo = authority[..at];
+            var split = userinfo.IndexOf(':', StringComparison.Ordinal);
+            credentials = (split < 0 ? userinfo : userinfo[..split]).Length > 0 || split >= 0 && split + 1 < userinfo.Length;
+            authority = authority[(at + 1)..];
+        }
         string host, port;
         if (authority.StartsWith('['))
         {
@@ -37,7 +45,14 @@ internal sealed record EcmaUrl(string Scheme, string Host, string Port, string T
             var separator = authority.LastIndexOf(':');
             host = separator < 0 ? authority : authority[..separator];
             port = separator < 0 ? "" : authority[(separator + 1)..];
-            try { host = DecodeHost(host); if (host.Any(c => c > 127)) host = new IdnMapping { UseStd3AsciiRules = false }.GetAscii(host); host = host.ToLowerInvariant(); }
+            try
+            {
+                host = DecodeHost(host); if (host.Any(c => c > 127)) host = Idn.GetAscii(host); host = host.ToLowerInvariant();
+                // WHATWG decodes every xn-- label and refuses one that is not valid Punycode, ASCII input included
+                // (P2.4a review F1); IdnMapping only checks the labels it encodes itself.
+                foreach (var label in host.Split('.'))
+                    if (label.StartsWith("xn--", StringComparison.Ordinal)) Idn.GetUnicode(label);
+            }
             catch (ArgumentException) { return false; }
             if (host.Length == 0 || host.Any(c => c <= ' ' || "#/:<>?@[\\]^|%".Contains(c))) return false;
             var segments = (host.EndsWith('.') ? host[..^1] : host).Split('.');
@@ -118,5 +133,23 @@ internal sealed record EcmaUrl(string Scheme, string Host, string Port, string T
         return "https://" + Host + "/" + Tail[end..];
     }
     private static readonly string[] AzureSuffixes = [".openai.azure.com", ".services.ai.azure.com", ".cognitiveservices.azure.com", ".inference.ai.azure.com"];
+    // A new mapping per use: IdnMapping does not document its instances as thread-safe.
+    private static IdnMapping Idn => new() { UseStd3AsciiRules = false };
+
+    /// <summary>
+    /// Whether the host holds a right-to-left character once its xn-- labels are decoded: Hebrew, Arabic and the other
+    /// right-to-left blocks. WHATWG applies the IDNA Bidi rule to such hosts, which .NET's IdnMapping does not, so the
+    /// provider endpoint rule refuses them all (P2.4a review F1, a named difference).
+    /// </summary>
+    internal bool HasRightToLeftHost()
+    {
+        foreach (var label in Host.Split('.'))
+        {
+            var text = label.StartsWith("xn--", StringComparison.Ordinal) ? Idn.GetUnicode(label) : label;
+            foreach (var rune in text.EnumerateRunes())
+                if (rune.Value is >= 0x0590 and <= 0x08FF or >= 0xFB1D and <= 0xFDFF or >= 0xFE70 and <= 0xFEFF or >= 0x10800 and <= 0x10FFF or >= 0x1E800 and <= 0x1EFFF) return true;
+        }
+        return false;
+    }
     private static ArgumentException InvalidEndpoint() => new("Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment.");
 }

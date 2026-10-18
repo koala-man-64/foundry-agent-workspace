@@ -158,15 +158,17 @@ internal static partial class AzureRequests
     /// <summary>
     /// buildTarget(normalizeEndpoint(endpoint), kind) as String(url) gives it, and the URI the request is sent to. The endpoint
     /// rule is the WHATWG reading the provider fingerprint already uses. An empty query or fragment marker stays in the
-    /// target's text; undici sends neither (measured), and neither does the URI.
+    /// target's text; undici sends neither (measured), and neither does the URI. A host WHATWG accepts but .NET's Uri cannot
+    /// hold (a sub-delimiter such as "!" or "(") has no URI: TypeScript sends that request and fails at name resolution with
+    /// "fetch failed", and native fails the same way without sending it (P2.4a review F2).
     /// </summary>
-    internal static (string Target, Uri Uri) Target(string endpoint, string kind)
+    internal static (string Target, Uri? Uri) Target(string endpoint, string kind)
     {
         var normalized = Compatibility.AzureEndpoint(endpoint);
         var slash = normalized.IndexOf('/', "https://".Length);
         var path = kind == Responses ? "/openai/v1/responses" : kind == ChatCompletions ? "/openai/v1/chat/completions" : "/anthropic/v1/messages";
         var origin = normalized[..slash];
-        return (origin + path + normalized[(slash + 1)..], new Uri(origin + path, UriKind.Absolute));
+        return (origin + path + normalized[(slash + 1)..], Uri.TryCreate(origin + path, UriKind.Absolute, out var uri) ? uri : null);
     }
 
     /// <summary>headersFor(), in its order.</summary>

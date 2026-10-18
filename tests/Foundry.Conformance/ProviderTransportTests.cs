@@ -22,6 +22,18 @@ public sealed class ProviderTransportTests
     /// </summary>
     private static readonly HashSet<string> DateParseOnly = new(["-1", "5, 6"], StringComparer.Ordinal);
 
+    /// <summary>
+    /// Endpoints TypeScript's recording fetch receives and native never sends (P2.4a review): a right-to-left host, which the
+    /// provider endpoint rule refuses because .NET applies no IDNA Bidi rule, and hosts with sub-delimiters that .NET's Uri
+    /// cannot hold, which fail as TypeScript's name resolution would ("fetch failed"), without a request.
+    /// </summary>
+    private static readonly Dictionary<string, (string Name, string Message)> NativeEndpoints = new(StringComparer.Ordinal)
+    {
+        ["https://\u05e2\u05d1\u05e8\u05d9\u05ea.openai.azure.com"] = ("Error", "Endpoint must be a valid HTTPS Azure URL."),
+        ["https://a!b.openai.azure.com"] = ("TypeError", "fetch failed"),
+        ["https://a(b).openai.azure.com"] = ("TypeError", "fetch failed"),
+        ["https://a~b.openai.azure.com"] = ("TypeError", "fetch failed"),
+    };
     public static IEnumerable<object[]> Cases()
     {
         var corpus = (Dictionary<string, object?>)PersistedJson.Parse(File.ReadAllText(Path.Combine(RepositoryFixture.Root, Corpus)))!;
@@ -47,6 +59,11 @@ public sealed class ProviderTransportTests
             error["retryAfterSeconds"] = ((Dictionary<string, object?>)expected["error"]!)["retryAfterSeconds"];
         }
         var actual = new Dictionary<string, object?> { ["requests"] = outcome.Requests, ["events"] = outcome.Events, ["error"] = error };
+        if ((input.GetValueOrDefault("profile") as Dictionary<string, object?>)?.GetValueOrDefault("endpoint") is string endpoint && NativeEndpoints.TryGetValue(endpoint, out var native))
+        {
+            Assert.Single((List<object?>)expected["requests"]!);
+            expected = new() { ["requests"] = new List<object?>(), ["events"] = new List<object?>(), ["error"] = new Dictionary<string, object?> { ["name"] = native.Name, ["message"] = native.Message } };
+        }
         Assert.Equal(JsJson.Stringify(expected), JsJson.Stringify(actual));
     }
 
@@ -85,7 +102,7 @@ public sealed class ProviderTransportTests
             if (caught is ProviderHttpException http) { error["status"] = (double)http.Status; error["retryAfterSeconds"] = http.RetryAfterSeconds; }
         }
         if (handler.Failure is not null) throw handler.Failure;
-        if (error is not null && Equals(error["message"], "fetch failed") && handler.Requests.Count == 0 && !Equals(input.GetValueOrDefault("fetchRejects"), true))
+        if (error is not null && cause is not null && Equals(error["message"], "fetch failed") && handler.Requests.Count == 0 && !Equals(input.GetValueOrDefault("fetchRejects"), true))
             throw new Xunit.Sdk.XunitException("Transport failed before the handler: " + cause);
         return (handler.Requests, events, error);
     }

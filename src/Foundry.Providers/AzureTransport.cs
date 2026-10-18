@@ -23,7 +23,12 @@ public sealed class AzureTransport : IDisposable
     private readonly HttpMessageInvoker invoker;
     internal TransportLimits Limits { get; }
 
-    public AzureTransport(HttpMessageHandler? handler = null, TransportLimits? limits = null)
+    /// <summary>The production transport: the handler below, with undici's bounds.</summary>
+    public AzureTransport() : this(null, null) { }
+
+    /// <summary>Tests inject a handler and bounds. Internal, so no product code can route provider traffic elsewhere
+    /// (P2.4a review F6).</summary>
+    internal AzureTransport(HttpMessageHandler? handler, TransportLimits? limits = null)
     {
         Limits = limits ?? TransportLimits.Undici;
         invoker = new HttpMessageInvoker(handler ?? CreateHandler(Limits), disposeHandler: true);
@@ -42,6 +47,8 @@ public sealed class AzureTransport : IDisposable
         AutomaticDecompression = DecompressionMethods.None,
         ConnectTimeout = limits.Connect,
         RequestHeaderEncodingSelector = (_, _) => Encoding.Latin1,
+        // No traceparent or baggage from an ambient Activity on the credentialed request (P2.4a review F3).
+        ActivityHeadersPropagator = null,
     };
 
     /// <summary>
@@ -51,13 +58,16 @@ public sealed class AzureTransport : IDisposable
     /// no NUL, CR or LF, and no other control character (measured). Its messages never include the value, where fetch's
     /// name the character or echo the trimmed value (named in P2.4a).
     /// </summary>
-    internal async Task<HttpResponseMessage> Send(Uri uri, IReadOnlyList<KeyValuePair<string, string>> headers, byte[] body, CancellationToken token)
+    internal async Task<HttpResponseMessage> Send(Uri? uri, IReadOnlyList<KeyValuePair<string, string>> headers, byte[] body, CancellationToken token)
     {
+        // fetch checks its headers before it resolves the host; a host .NET cannot hold fails as that resolution would.
+        var values = headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Key == "api-key" ? HeaderValue(header.Value) : header.Value)).ToList();
+        if (uri is null) throw new ProviderTransportException("fetch failed");
         using var request = new HttpRequestMessage(HttpMethod.Post, uri) { Version = HttpVersion.Version11, VersionPolicy = HttpVersionPolicy.RequestVersionExact, Content = new ByteArrayContent(body) };
-        foreach (var (name, value) in headers)
+        foreach (var (name, value) in values)
         {
-            if (name == "content-type") { request.Content.Headers.TryAddWithoutValidation(name, value); continue; }
-            request.Headers.TryAddWithoutValidation(name, name == "api-key" ? HeaderValue(value) : value);
+            if (name == "content-type") request.Content.Headers.TryAddWithoutValidation(name, value);
+            else request.Headers.TryAddWithoutValidation(name, value);
         }
         using var bound = CancellationTokenSource.CreateLinkedTokenSource(token);
         bound.CancelAfter(Limits.Headers);

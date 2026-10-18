@@ -33,7 +33,7 @@ public sealed class AzureProvider
         if (request.Credential is null || JsJson.Trim(request.Credential).Length == 0) throw new InvalidOperationException("A credential is required for this provider.");
         ProviderAbort.ThrowIfAborted(cancellationToken);
         var prepared = AzureRequests.Prepare(kind, request);
-        Uri uri;
+        Uri? uri;
         try { uri = AzureRequests.Target(profile.GetValueOrDefault("endpoint") as string ?? "", kind).Uri; }
         catch (ArgumentException error) { throw new InvalidOperationException(error.Message); }
         var body = Encoding.UTF8.GetBytes(JsJson.Stringify(prepared.Body)!);

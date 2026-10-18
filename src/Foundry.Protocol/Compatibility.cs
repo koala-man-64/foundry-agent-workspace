@@ -26,12 +26,15 @@ public static class Compatibility
     /// normalizeEndpoint of packages/providers: the WHATWG serialization of an HTTPS Azure resource endpoint with no path,
     /// credentials, query or fragment, or an <see cref="ArgumentException"/> with TypeScript's message. An input WHATWG parses
     /// under another scheme gets the second message, as TypeScript gives it; for a non-special scheme this assumes that
-    /// WHATWG parses it, which it does except for an authority it cannot read (the message is the only difference).
+    /// WHATWG parses it, which it does except for an authority it cannot read (the message is the only difference). A host
+    /// with a right-to-left character is refused with the first message: WHATWG refuses those that break the IDNA Bidi
+    /// rule, which this reader does not apply, so native refuses them all (P2.4a review F1, a named difference).
     /// </summary>
     public static string AzureEndpoint(string endpoint)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
-        if (EcmaUrl.TryParse(endpoint, out var url)) return url!.AzureEndpoint();
+        if (EcmaUrl.TryParse(endpoint, out var url))
+            return url!.HasRightToLeftHost() ? throw new ArgumentException("Endpoint must be a valid HTTPS Azure URL.") : url.AzureEndpoint();
         throw new ArgumentException(OtherScheme(endpoint) ? "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment." : "Endpoint must be a valid HTTPS Azure URL.");
     }
     private static bool OtherScheme(string endpoint)
