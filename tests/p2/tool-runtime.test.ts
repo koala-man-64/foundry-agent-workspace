@@ -24,6 +24,19 @@ import { build, committed, file, sha256File, type Step, withIsolatedGit } from '
 // SHA-256. Node's raw filesystem errors are recorded as { systemError }: native refuses with its own fixed message.
 const stamp = '2026-01-02T03:04:05.678Z';
 const id = (n: number) => `14141414-0000-4000-8000-${String(n).padStart(12, '0')}`;
+// Each task's worktree is where the product puts it, <data>\wt\<task id>, as native requires (Rudy's decision I5, P2.3f).
+// An execution case's tree is task 1's worktree and, built again, task 5's; its outside folder sits beside them.
+const worktree = (n: number) => `data/wt/${id(n)}`;
+const placeStep = (step: Step, at: string): Step => {
+  const moved = (name: string) => name === 'repo' ? at : name.startsWith('repo/') ? at + name.slice('repo'.length)
+    : name === 'outside' || name.startsWith('outside/') ? `data/wt/${name}` : name;
+  if ('dir' in step) return { ...step, dir: moved(step.dir) };
+  if ('file' in step) return { ...step, file: moved(step.file) };
+  if ('junction' in step) return { ...step, junction: moved(step.junction), target: moved(step.target) };
+  if ('hardlink' in step) return { ...step, hardlink: moved(step.hardlink), target: moved(step.target) };
+  if ('remove' in step) return { ...step, remove: moved(step.remove) };
+  return { git: step.git.map(argument => argument === 'repo' ? at : argument) };
+};
 const rep = (text: string, count: number) => ({ $repeat: [text, count] });
 const systemError = (message: string) => /^(E[A-Z]+): /.exec(message)?.[1];
 const expand = (value: unknown): unknown => {
@@ -108,7 +121,8 @@ const searchTrees: { name: string; tree: Step[]; fills?: Fill[]; queries: { quer
 type Decision = { decide: 'approve' | 'reject'; nonce?: 'wrong'; taskId?: number; approvalId?: 'missing' } | { cancel: true } | { revoke: number };
 type Call = { task: number; name: string; arguments: unknown; abort?: 'before'; whileWaiting?: (Step | Decision)[]; after?: Decision[]; read?: string };
 const git = (n: number, extra: Partial<Task> = {}): Task => ({ id: id(n), title: `Task ${n}`, profileId: FAKE_PROFILE_ID, status: 'idle', createdAt: stamp, updatedAt: stamp, tokenBudget: 100000, usedTokens: 0,
-  mode: 'coding', workspaceKind: 'git', projectPath: '{scratch}\\repo', worktreePath: '{scratch}\\repo', branch: 'codex/tools', baseCommit: '0'.repeat(40), ...extra } as Task);
+  mode: 'coding', workspaceKind: 'git', projectPath: `{scratch}\\${worktree(n).replaceAll('/', '\\')}`, worktreePath: `{scratch}\\${worktree(n).replaceAll('/', '\\')}`, branch: 'codex/tools',
+  baseCommit: '0'.repeat(40), ...extra } as Task);
 const tasks: Task[] = [git(1), git(2, { mode: 'chat' }), { ...git(3), workspaceKind: 'folder' } as Task, { ...git(4), workspaceKind: 'none' } as Task, (({ workspaceKind: _, ...rest }) => rest as Task)(git(5)), git(6)];
 const fileHash = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 const call = (name: string, args: unknown, extra: Partial<Call> = {}): Call => ({ task: 1, name, arguments: args, ...extra });
@@ -205,7 +219,11 @@ it('pins the coding tools: definitions, arguments, search and executions through
     }
 
     const executionVectors = [];
-    for (const item of executions) {
+    for (const unplaced of executions) {
+      const item = {
+        ...unplaced, tree: [...unplaced.tree.map(step => placeStep(step, worktree(1))), ...unplaced.tree.map(step => placeStep(step, worktree(5)))],
+        calls: unplaced.calls.map(step => step.whileWaiting ? { ...step, whileWaiting: step.whileWaiting.map(change => 'decide' in change || 'cancel' in change || 'revoke' in change ? change : placeStep(change, worktree(step.task))) } : step),
+      };
       const scratch = fs.realpathSync.native(fs.mkdtempSync(path.join(tmpdir(), 'foundry-p2-tools-')));
       const home = path.join(scratch, 'home');
       const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, USERPROFILE: process.env.USERPROFILE };
@@ -278,7 +296,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
             remember();
             const row = rows().find(entry => !known.has(entry.id as string)) ?? null;
             const events = store.db.prepare('SELECT * FROM events WHERE sequence > ? ORDER BY sequence').all(sequence);
-            const read = step.read ? fs.readFileSync(path.join(scratch, 'repo', step.read), 'utf8') : undefined;
+            const read = step.read ? fs.readFileSync(path.join(scratch, worktree(step.task), step.read), 'utf8') : undefined;
             steps.push(clean({ call: { ...step, id: callId }, result, ...(proposal ? { proposal } : {}), decisions, after, row, events, ...(read !== undefined ? { read } : {}) }));
           }
         });

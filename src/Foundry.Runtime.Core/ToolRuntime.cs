@@ -25,6 +25,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     private const string Unavailable = "Tool is not available.";
     private const string SecretContent = "This action contains secret-like content and cannot be persisted or executed.";
     private const string Aborted = "This operation was aborted";
+    private const string ForeignWorktree = "This task's worktree is not its app-owned worktree, so coding tools are refused.";
     private const int ResultBytes = 192 * 1024;
     private static readonly string[] BrowserTools = ["browser_tabs", "browser_snapshot", "browser_action"];
     private static readonly string[] OrchestrationTools = ["delegate_assignments", "await_children", "integrate_result", "complete_task", "commit_handoff", "submit_handoff"];
@@ -54,6 +55,8 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             return new(call.Id, call.Name, clean, isError);
         }
         Dictionary<string, object?>? approval = null;
+        // The approval's state as last saved, which every later save of this copy requires (not in TypeScript).
+        string? stored = null;
         PreparedCommand? command = null;
         try
         {
@@ -72,6 +75,8 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             if (Equals(task.GetValueOrDefault("role"), "child") && Present(task, "parentTaskId") || Equals(task.GetValueOrDefault("mode"), "coordinated")) throw new WorkspaceReadException(Unavailable);
             if (OrchestrationTools.Contains(call.Name, StringComparer.Ordinal) || call.Name.StartsWith("mcp__", StringComparison.Ordinal) || !ToolDefinitions.IsTool(call.Name))
                 throw new WorkspaceReadException(Unavailable);
+            // Rudy's decision I5 (P2.3f): the coding tools act only in the task's own app-owned worktree.
+            if (!repositories.IsOwnWorktree((string)task["id"]!, task.GetValueOrDefault("worktreePath") as string)) throw new WorkspaceReadException(ForeignWorktree);
             AssertNoSecrets(JsJson.Stringify(call.Arguments)!);
             var worktree = (string)task["worktreePath"]!;
             var arguments = ToolDefinitions.Parse(call.Name, call.Arguments);
@@ -118,14 +123,17 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                     ["resultingHash"] = edit.ResultingHash, ["fingerprint"] = edit.Fingerprint,
                 };
             }
-            if (!await RequestApproval(approval, token))
+            var decided = await RequestApproval(approval, token);
+            // Decide saved the approval; a revoked or rejected wait was saved before it returned.
+            if (decided) stored = "approved";
+            if (!decided)
                 return Result(token.IsCancellationRequested ? "Action cancelled before execution." : "User rejected this action. Do not repeat this proposal without new user instructions.", true);
             token.ThrowIfCancellationRequested();
             var approved = approval;
             await slots.Use(async () =>
             {
                 // The executing intent is durable before any repository or process mutation.
-                approved["state"] = "executing"; Save(approved);
+                approved["state"] = "executing"; Save(approved, stored); stored = "executing";
                 if (edit is not null)
                 {
                     repositories.ApplyEdit(edit);
@@ -142,7 +150,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                     approved["result"] = result;
                 }
             }, token);
-            Save(approval);
+            Save(approval, stored); stored = (string)approval["state"]!;
             var outcome = (Dictionary<string, object?>)approval["result"]!;
             return Result((string)outcome["content"]!, (bool)outcome["isError"]!);
         }
@@ -167,7 +175,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                 var result = new Dictionary<string, object?> { ["content"] = content, ["isError"] = true };
                 if (Present(approval, "command")) result["cleanupVerified"] = false;
                 approval["result"] = result;
-                Save(approval);
+                Save(approval, stored);
             }
             if (message is null) throw;
             return Result(content, true);
@@ -197,7 +205,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             await Task.WhenAny(decision.Task, cancelled.Task);
         loop.AssertCurrent();
         if (decision.Task.IsCompleted) return await decision.Task;
-        if (waiting.Remove(approvalId)) { approval["state"] = "revoked"; Save(approval); }
+        if (waiting.Remove(approvalId)) { approval["state"] = "revoked"; Save(approval, "awaiting-approval"); }
         return false;
     }
 
@@ -310,12 +318,13 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
     /// none, so a save that changed nothing still leaves the task one such event. Native commits all of it together.
     /// Every approval write goes through here.
     /// </summary>
-    internal void Save(Dictionary<string, object?> approval)
+    /// <param name="expected">The stored state this copy last saw, required before it is overwritten (not in TypeScript).</param>
+    internal void Save(Dictionary<string, object?> approval, string? expected = null)
     {
         loop.AssertCurrent();
         store.Transaction(() =>
         {
-            var recorded = store.SaveApproval(approval);
+            var recorded = store.SaveApproval(approval, expected);
             var taskId = approval.GetValueOrDefault("taskId") as string;
             if (store.SchemaVersion < 5 || !recorded && !store.HasTaskEvent("approval.changed", taskId))
                 store.Event("approval.changed", new Dictionary<string, object?> { ["approvalId"] = approval["id"], ["state"] = approval["state"] }, taskId);

@@ -52,7 +52,45 @@ const inputs: Input[] = [
   { messages: [user('/browser-demo x')] },
   { messages: [user('/browser-demo\u0085')] },
   { messages: [user('/browser-demo'), { role: 'assistant', content: 'x' }] },
+  // The coding demo (P2.3f): a read on a task's first turn, an edit of what it read, then a command.
+  ...demo(),
 ];
+function demo(): Input[] {
+  const coding = ['read_file', 'replace_text', 'run_command', ...channel];
+  const read = { id: 'fake-read-1', name: 'read_file', arguments: { path: 'README.md' } };
+  const replace = { id: 'fake-replace-1', name: 'replace_text', arguments: {} };
+  const command = { id: 'fake-command-1', name: 'run_command', arguments: {} };
+  const at = (stage: string, calls: unknown[]) => sent({ stage, calls });
+  const answer = (call: { id: string; name: string }, content: string, isError = false): ProviderToolResult => ({ id: call.id, name: call.name, content, isError });
+  const file = JSON.stringify({ path: 'README.md', content: 'hello\n', hash: 'a'.repeat(64) });
+  return [
+    { messages: [user('/demo')], tools: coding }, { messages: [user('/demox')], tools: coding }, { messages: [user(' /demo')], tools: coding },
+    { messages: [user('/demo')], tools: ['read_file'] }, { messages: [user('/demo')], tools: ['read_file', 'replace_text'] }, { messages: [user('/demo')], tools: channel },
+    { messages: [user('/demo')], tools: coding, continuation: at('complete', []) }, { messages: [user('/demo')], tools: coding, abortBefore: true },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, JSON.stringify({ path: 'a.txt', content: '', hash: 'b'.repeat(64), extra: 1 }))] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, file, true)] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, 'not json')] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, JSON.stringify({ path: 'README.md', content: 'x' }))] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, JSON.stringify(['README.md']))] },
+    { messages: [], tools: coding, continuation: at('read', [read]) },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer({ id: 'other', name: 'read_file' }, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer({ id: read.id, name: 'list_directory' }, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, file), answer(read, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read, replace]), toolResults: [answer(read, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read, replace]), toolResults: [answer(replace, '{}'), answer(read, file)] },
+    { messages: [], tools: coding, continuation: at('read', []), toolResults: [answer(read, file)] },
+    { messages: [], tools: coding, continuation: at('read', []) },
+    { messages: [], tools: coding, continuation: at('read', [{ id: 'r', name: 'x' }]), toolResults: [answer({ id: 'r', name: 'x' }, file)] },
+    { messages: [], tools: coding, continuation: at('read', [read]), toolResults: [answer(read, file)], abortBefore: true },
+    { messages: [], tools: coding, continuation: at('replace', [replace]), toolResults: [answer(replace, '{"applied":true}')] },
+    { messages: [], tools: coding, continuation: at('replace', [replace]), toolResults: [answer(replace, 'User rejected this action.', true)] },
+    { messages: [], tools: coding, continuation: at('replace', []) },
+    { messages: [], tools: coding, continuation: at('command', [command]), toolResults: [answer(command, '{}')] },
+    { messages: [], tools: coding, continuation: at('command', [command]), toolResults: [answer(command, '{}', true)], cancelAfterTexts: 1 },
+    { messages: [], tools: coding, continuation: at('command', [command]), toolResults: [answer(command, '{}', true)] },
+  ];
+}
 const profile: ModelProfile = { id: FAKE_PROFILE_ID, name: 'Offline fixture', apiKind: 'fake', endpoint: '', deployment: 'fixture', contextLimit: 32000, outputLimit: 2048 };
 const sources = ['packages/providers/src/index.ts', 'packages/providers/src/browser-fixture.ts', 'packages/providers/src/orchestration-fixture.ts'];
 

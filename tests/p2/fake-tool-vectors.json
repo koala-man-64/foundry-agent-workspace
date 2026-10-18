@@ -1575,6 +1575,1497 @@
         ],
         "error": null
       }
+    },
+    {
+      "name": "fake-tools:33",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-read-1",
+              "name": "read_file",
+              "arguments": {
+                "path": "README.md"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "read",
+                "calls": [
+                  {
+                    "id": "fake-read-1",
+                    "name": "read_file",
+                    "arguments": {
+                      "path": "README.md"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:34",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demox"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-read-1",
+              "name": "read_file",
+              "arguments": {
+                "path": "README.md"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "read",
+                "calls": [
+                  {
+                    "id": "fake-read-1",
+                    "name": "read_file",
+                    "arguments": {
+                      "path": "README.md"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:35",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": " /demo"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e:  /demo"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:36",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "read_file"
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool replace_text was not advertised."
+      }
+    },
+    {
+      "name": "fake-tools:37",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text"
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool run_command was not advertised."
+      }
+    },
+    {
+      "name": "fake-tools:38",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /demo"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:39",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "complete",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /demo"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:40",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/demo"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:41",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-replace-1",
+              "name": "replace_text",
+              "arguments": {
+                "path": "README.md",
+                "expectedHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "oldText": "hello\n",
+                "newText": "hello\n\nFoundry offline demo completed.\n"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "replace",
+                "calls": [
+                  {
+                    "id": "fake-replace-1",
+                    "name": "replace_text",
+                    "arguments": {
+                      "path": "README.md",
+                      "expectedHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                      "oldText": "hello\n",
+                      "newText": "hello\n\nFoundry offline demo completed.\n"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:42",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"a.txt\",\"content\":\"\",\"hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"extra\":1}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-replace-1",
+              "name": "replace_text",
+              "arguments": {
+                "path": "a.txt",
+                "expectedHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "oldText": "",
+                "newText": "\nFoundry offline demo completed.\n"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "replace",
+                "calls": [
+                  {
+                    "id": "fake-replace-1",
+                    "name": "replace_text",
+                    "arguments": {
+                      "path": "a.txt",
+                      "expectedHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                      "oldText": "",
+                      "newText": "\nFoundry offline demo completed.\n"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:43",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " stopped: re"
+          },
+          {
+            "type": "text",
+            "text": "ad_file fail"
+          },
+          {
+            "type": "text",
+            "text": "ed or return"
+          },
+          {
+            "type": "text",
+            "text": "ed invalid c"
+          },
+          {
+            "type": "text",
+            "text": "ontent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:44",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "not json",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " stopped: re"
+          },
+          {
+            "type": "text",
+            "text": "ad_file fail"
+          },
+          {
+            "type": "text",
+            "text": "ed or return"
+          },
+          {
+            "type": "text",
+            "text": "ed invalid c"
+          },
+          {
+            "type": "text",
+            "text": "ontent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:45",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"x\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " stopped: re"
+          },
+          {
+            "type": "text",
+            "text": "ad_file fail"
+          },
+          {
+            "type": "text",
+            "text": "ed or return"
+          },
+          {
+            "type": "text",
+            "text": "ed invalid c"
+          },
+          {
+            "type": "text",
+            "text": "ontent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:46",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "[\"README.md\"]",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " stopped: re"
+          },
+          {
+            "type": "text",
+            "text": "ad_file fail"
+          },
+          {
+            "type": "text",
+            "text": "ed or return"
+          },
+          {
+            "type": "text",
+            "text": "ed invalid c"
+          },
+          {
+            "type": "text",
+            "text": "ontent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:47",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Pending tool calls require matching results."
+      }
+    },
+    {
+      "name": "fake-tools:48",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "other",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool result does not match a pending call."
+      }
+    },
+    {
+      "name": "fake-tools:49",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "list_directory",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool result does not match a pending call."
+      }
+    },
+    {
+      "name": "fake-tools:50",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          },
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool result does not match a pending call."
+      }
+    },
+    {
+      "name": "fake-tools:51",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              },
+              {
+                "id": "fake-replace-1",
+                "name": "replace_text",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Missing tool result for a pending call."
+      }
+    },
+    {
+      "name": "fake-tools:52",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              },
+              {
+                "id": "fake-replace-1",
+                "name": "replace_text",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-replace-1",
+            "name": "replace_text",
+            "content": "{}",
+            "isError": false
+          },
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool result name mismatch."
+      }
+    },
+    {
+      "name": "fake-tools:53",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": []
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool results were supplied without pending calls."
+      }
+    },
+    {
+      "name": "fake-tools:54",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Cannot read properties of undefined (reading 'name')"
+      }
+    },
+    {
+      "name": "fake-tools:55",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "r",
+                "name": "x"
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "r",
+            "name": "x",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [],
+        "error": "Tool result name mismatch."
+      }
+    },
+    {
+      "name": "fake-tools:56",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": [
+              {
+                "id": "fake-read-1",
+                "name": "read_file",
+                "arguments": {
+                  "path": "README.md"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-read-1",
+            "name": "read_file",
+            "content": "{\"path\":\"README.md\",\"content\":\"hello\\n\",\"hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+            "isError": false
+          }
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:57",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "replace",
+            "calls": [
+              {
+                "id": "fake-replace-1",
+                "name": "replace_text",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-replace-1",
+            "name": "replace_text",
+            "content": "{\"applied\":true}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-command-1",
+              "name": "run_command",
+              "arguments": {
+                "command": "Write-Output 'Foundry command demo completed'",
+                "cwd": "",
+                "environment": {},
+                "timeoutMs": 10000
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "command",
+                "calls": [
+                  {
+                    "id": "fake-command-1",
+                    "name": "run_command",
+                    "arguments": {
+                      "command": "Write-Output 'Foundry command demo completed'",
+                      "cwd": "",
+                      "environment": {},
+                      "timeoutMs": 10000
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:58",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "replace",
+            "calls": [
+              {
+                "id": "fake-replace-1",
+                "name": "replace_text",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-replace-1",
+            "name": "replace_text",
+            "content": "User rejected this action.",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " stopped: re"
+          },
+          {
+            "type": "text",
+            "text": "place_text w"
+          },
+          {
+            "type": "text",
+            "text": "as rejected "
+          },
+          {
+            "type": "text",
+            "text": "or failed."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:59",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "replace",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Cannot read properties of undefined (reading 'isError')"
+      }
+    },
+    {
+      "name": "fake-tools:60",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "command",
+            "calls": [
+              {
+                "id": "fake-command-1",
+                "name": "run_command",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-command-1",
+            "name": "run_command",
+            "content": "{}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Foundry offl"
+          },
+          {
+            "type": "text",
+            "text": "ine demo com"
+          },
+          {
+            "type": "text",
+            "text": "pleted."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:61",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "command",
+            "calls": [
+              {
+                "id": "fake-command-1",
+                "name": "run_command",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-command-1",
+            "name": "run_command",
+            "content": "{}",
+            "isError": true
+          }
+        ],
+        "cancelAfterTexts": 1
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          }
+        ],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:62",
+      "input": {
+        "messages": [],
+        "tools": [
+          "read_file",
+          "replace_text",
+          "run_command",
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "command",
+            "calls": [
+              {
+                "id": "fake-command-1",
+                "name": "run_command",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-command-1",
+            "name": "run_command",
+            "content": "{}",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline demo"
+          },
+          {
+            "type": "text",
+            "text": " completed w"
+          },
+          {
+            "type": "text",
+            "text": "ith a comman"
+          },
+          {
+            "type": "text",
+            "text": "d error."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
     }
   ]
 }

@@ -150,14 +150,16 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
 // agent whose first request carries the broadcast, and the channel page. Both runtimes run Git with the same isolated
 // configuration. Scratch paths, generated identities (in order of appearance), wall-clock timestamps and the project key
 // are normalized; nothing else is.
-const CODING = 'Coding turns need native approvals, which a later runtime slice wires.';
 async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
   const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), `foundry-p2-entry-git-${kind}-`)));
   const home = join(scratch, 'home'); mkdirSync(home); const data = join(scratch, 'data'); mkdirSync(data);
   build(scratch, home, [...committed(), { dir: 'unborn' }, file('unborn/a.txt', 'a\n'), git('-C', 'unborn', 'init', '-q')]);
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const name of Object.keys(env)) if (/^GIT_/i.test(name)) delete env[name];
-  Object.assign(env, isolatedGitEnvironment(home), { FOUNDRY_WORKSPACE_DATA: data }, kind === 'dotnet' ? { FOUNDRY_RUNTIME_P2_CHAT: '1' } : {});
+  // Commands inherit a fresh temporary folder and profile, so both runtimes start PowerShell alike.
+  for (const folder of ['tmp', 'profile']) mkdirSync(join(scratch, folder));
+  Object.assign(env, isolatedGitEnvironment(home), { FOUNDRY_WORKSPACE_DATA: data, TEMP: join(scratch, 'tmp'), TMP: join(scratch, 'tmp'), USERPROFILE: join(scratch, 'profile') },
+    kind === 'dotnet' ? { FOUNDRY_RUNTIME_P2_CHAT: '1' } : {});
   const child = kind === 'node'
     ? spawn(process.execPath, [resolve('out/main/runtime.js')], { env, stdio: 'pipe' })
     : spawn(resolve('src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe'), [], { env, stdio: 'pipe' });
@@ -205,8 +207,26 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
     // A repository with no commit: its worktree is refused before any mutation, and the refusal's text reaches the client.
     const unborn = await request('unborn', 'project.add', { path: join(scratch, 'unborn') });
     const unbornStart = await request('unborn-start', 'task.start', { ...start('89898989-0000-4000-8000-000000000004', 'Unborn'), projectId: (unborn.result as ObjectValue).id });
-    // The one approved difference: TypeScript runs a coding turn, which native refuses before any worktree or row.
-    const coding = kind === 'dotnet' ? await request('coding', 'task.start', { ...start('89898989-0000-4000-8000-000000000003', 'Coding'), mode: 'coding' }) : undefined;
+    // The coding demo through approval.decide: a read, the approved edit and the approved command.
+    const coding = await request('coding', 'task.start', { ...start('89898989-0000-4000-8000-000000000003', '/demo'), mode: 'coding' }); const c = (coding.result as ObjectValue).id;
+    const proposal = async (label: string, tool: string): Promise<ObjectValue> => {
+      for (let n = 0; n < 2000; n++) {
+        const page = await request(`${label}-${n}`, 'task.approvals', { taskId: c, limit: 50 });
+        const waiting = ((page.result as ObjectValue).approvals as ObjectValue[]).find(item => item.state === 'awaiting-approval' && item.tool === tool);
+        // A page omits the nonce; the approval itself carries it.
+        if (waiting) return ((await request(`${label}-get`, 'approval.get', { taskId: c, approvalId: waiting.id })).result as ObjectValue).approval as ObjectValue;
+        await new Promise(resolve => setTimeout(resolve, 5));
+      }
+      throw new Error(`No ${tool} proposal.`);
+    };
+    const edit = await proposal('edit', 'replace_text');
+    const editDecided = await request('decide-edit', 'approval.decide', { taskId: c, approvalId: edit.id, nonce: edit.nonce, decision: 'approve' });
+    const command = await proposal('command', 'run_command');
+    const stale = await request('decide-stale', 'approval.decide', { taskId: c, approvalId: command.id, nonce: 'stale-nonce-0000000000', decision: 'approve' });
+    const commandDecided = await request('decide-command', 'approval.decide', { taskId: c, approvalId: command.id, nonce: command.nonce, decision: 'approve' });
+    const codingTurn = await idle('read-coding', c);
+    const approvalsPage = await request('approvals-coding', 'task.approvals', { taskId: c, limit: 50 });
+    const diff = await request('diff-coding', 'task.diff', { taskId: c });
     child.stdin.end();
     for await (const line of lines) {
       const frame = JSON.parse(line) as ObjectValue;
@@ -228,7 +248,8 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
             });
         }
         if (Array.isArray(value)) return value.map(normalize);
-        if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([name, field]) => [name, normalize(field)]));
+        // An approval fingerprint covers the edit's absolute root, and a command's is session-scoped; both differ by run.
+        if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([name, field]) => [name, name === 'fingerprint' && typeof field === 'string' ? 'FINGERPRINT' : normalize(field)]));
         return value;
       };
       // Participants sort by task id and start hashes cover the project id, both random here; the in-process vectors pin
@@ -239,7 +260,8 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
       return normalize({ project: project.result, started: started.result, firstTurn: firstTurn.result, demo: demo.result, demoTurn: demoTurn.result,
         second: second.result, secondTurn: secondTurn.result, channel: { ...view, participants }, messages: messages.result, cancelled: cancelled.result, tasks: tasks.result, starts,
         unborn: unborn.result, unbornStart: unbornStart.error,
-        coding: coding ? (coding.error as ObjectValue).message : CODING,
+        coding: coding.result, editDecided: editDecided.result, stale: stale.error, commandDecided: commandDecided.result, codingTurn: codingTurn.result,
+        approvalsPage: approvalsPage.result, diff: diff.result,
         rows: Object.fromEntries(['tasks', 'messages', 'provider_requests', 'events', 'intents', 'projects'].map(table => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()])),
         notifications: events.filter(item => item.sequence !== 0) });
     } finally { db.close(); }

@@ -7,8 +7,9 @@ using Foundry.Providers;
 namespace Foundry.Runtime;
 
 /// <summary>
-/// Development-only chats with the offline provider: projectless, in saved folders, and in Git projects, where turns use
-/// the project channel's tools. No coding turn, command execution, browser, orchestration or external-provider authority.
+/// Development-only tasks with the offline provider: chats projectless, in saved folders and in Git projects, and coding
+/// tasks in Git projects, whose edits and commands run only after the user's one-shot decision. No browser, orchestration,
+/// external-tool or external-provider authority.
 /// </summary>
 public sealed class DevelopmentChat
 {
@@ -43,7 +44,7 @@ public sealed class DevelopmentChat
     public DevelopmentChat(RuntimeLoop loop, Store store, Func<DateTimeOffset>? now = null, Func<Guid>? id = null)
         : this(loop, store, null, now, id) { }
 
-    /// <summary>Tests supply the environment Git inherits, so fixtures never read the machine's Git configuration.</summary>
+    /// <summary>Tests supply the environment Git and commands inherit, so fixtures never read the machine's Git configuration or profile.</summary>
     internal DevelopmentChat(RuntimeLoop loop, Store store, Func<IReadOnlyDictionary<string, string>> gitEnvironment)
         : this(loop, store, null, gitEnvironment: gitEnvironment) { }
 
@@ -57,7 +58,7 @@ public sealed class DevelopmentChat
         var provider = new FakeChatProvider(id: this.id);
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
         var slots = new ExecutionSlots(loop);
-        tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories), redactor, slots, this.now, this.id);
+        tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories, gitEnvironment), redactor, slots, this.now, this.id);
         agent = new AgentLoop(loop, store, tools, slots, redactor, stream ?? provider.StreamTurn, this.now);
     }
 
@@ -121,6 +122,8 @@ public sealed class DevelopmentChat
             case "approval.get": return store.ApprovalRead((string)parameters["taskId"]!, (string)parameters["approvalId"]!, redactor);
             case "approval.content":
                 return store.ApprovalContent((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["field"]!, Ordinal(parameters, "offset") ?? 0, Integer(parameters, "maxBytes", 32 * 1024), redactor);
+            case "approval.decide":
+                return tools.Decide((string)parameters["taskId"]!, (string)parameters["approvalId"]!, (string)parameters["nonce"]!, (string)parameters["decision"]!);
             case "approval.reconcile": return tools.Reconcile((string)parameters["taskId"]!, (string)parameters["approvalId"]!);
             case "channel.get": return tools.Channel.View((string)parameters["taskId"]!, Ordinal(parameters, "before"), parameters.GetValueOrDefault("afterTaskId") as string);
             case "channel.send":
@@ -507,7 +510,9 @@ public sealed class DevelopmentChat
     }
 
     private const string ProjectUnavailable = "Project folder is unavailable or resolves to a different location.";
-    private const string CodingTurn = "Coding turns need native approvals, which a later runtime slice wires.";
+    // Decision 2 of P2.3: until the MCP slice, a coding turn is refused before any reservation while it would advertise
+    // external tools.
+    private const string ExternalTools = "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn.";
 
     /// <summary>
     /// service.ts startTask, for chats: projectless, in saved folders, and in Git projects. Its order is kept: an earlier
@@ -570,7 +575,7 @@ public sealed class DevelopmentChat
             if (mode == "coordinated") throw new NotSupportedException("Coordinated tasks are not available in this build.");
             var profile = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile."); RequireFake(profile);
             if (kind == "git" && store.UnknownWorktreeIntents() > 0) throw new WorkspaceReadException("An earlier worktree creation has an unknown outcome. Inspect it before creating another task.");
-            if (mode != "chat") throw new NotSupportedException(CodingTurn);
+            if (mode == "coding" && store.HasExternalTools()) throw new NotSupportedException(ExternalTools);
             var taskId = id().ToString(); var content = (string)parameters["content"]!;
             var lineEnd = content.IndexOf('\n'); var title = lineEnd < 0 ? content : content[..(lineEnd > 0 && content[lineEnd - 1] == '\r' ? lineEnd - 1 : lineEnd)];
             title = redactor.Text(parameters.TryGetValue("title", out var supplied) ? (string)supplied! : title[..Math.Min(80, title.Length)]);
@@ -591,7 +596,7 @@ public sealed class DevelopmentChat
                 var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = title };
                 if (project is not null) task["projectId"] = project["id"];
                 task["profileId"] = parameters["profileId"]; task["status"] = "idle"; task["createdAt"] = stamp; task["updatedAt"] = stamp;
-                task["tokenBudget"] = parameters["tokenBudget"]; task["usedTokens"] = 0; task["mode"] = "chat"; task["workspaceKind"] = kind;
+                task["tokenBudget"] = parameters["tokenBudget"]; task["usedTokens"] = 0; task["mode"] = mode; task["workspaceKind"] = kind;
                 if (project is not null) task["projectPath"] = project["path"];
                 if (worktree is not null) { task["worktreePath"] = worktree.WorktreePath; task["branch"] = worktree.Branch; task["baseCommit"] = worktree.BaseCommit; }
                 store.Transaction(() =>
@@ -667,7 +672,7 @@ public sealed class DevelopmentChat
         if (closing) throw new InvalidOperationException("Runtime is shutting down.");
         if (running.ContainsKey(taskId)) throw new InvalidOperationException("This task already has an active response.");
         if (running.Count >= 16) throw new InvalidOperationException("Too many active tasks. Finish or cancel a task first.");
-        var task = store.ReadTask(taskId); RequireChat(task);
+        var task = store.ReadTask(taskId); RequireTurn(task);
         if (Equals(task["status"], "retired") || retiring.Contains(taskId)) throw new InvalidOperationException("This task worktree is retired. Create a new task to continue the work.");
         store.AssertNoChatExecutionIntents(taskId);
         if (publishing.Contains(taskId)) throw new InvalidOperationException("Wait for the Git operation to finish before starting a response.");
@@ -675,7 +680,7 @@ public sealed class DevelopmentChat
         var clean = redactor.Text(content); var fingerprint = Compatibility.ProfileFingerprint(profile);
         var request = agent.Prepare(task, profile, fingerprint, clean);
         if (request.GetValueOrDefault("continuation") is Dictionary<string, object?> native
-            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send")))
+            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send" or "read" or "replace" or "command")))
             throw new NotSupportedException("This native continuation requires a later runtime feature slice.");
         var stamp = Clock.Iso(now()); var answer = new Dictionary<string, object?> { ["id"] = id().ToString(), ["taskId"] = taskId, ["role"] = "assistant", ["content"] = "", ["createdAt"] = stamp, ["status"] = "streaming" };
         TaskReservation? reservation = null;
@@ -722,14 +727,19 @@ public sealed class DevelopmentChat
         if (Equals(task.GetValueOrDefault("mode"), "coordinated") || task.ContainsKey("parentTaskId") || task.ContainsKey("rootTaskId") || task.ContainsKey("role"))
             throw new NotSupportedException("The development chat runtime supports standalone tasks only.");
     }
-    /// <summary>A chat turn native can run: projectless or in a saved folder, with no tools, or in a Git project (no
-    /// workspace kind, as legacy tasks have, or Git), with the project channel's tools. Coding turns need native approvals.</summary>
-    private static void RequireChat(Dictionary<string, object?> task)
+    /// <summary>A turn native can run: a chat projectless or in a saved folder, with no tools, or in a Git project (no
+    /// workspace kind, as legacy tasks have, or Git), with the project channel's tools; or a coding task in a Git project,
+    /// with the repository tools as well, while no external tool would be advertised (decision 2).</summary>
+    private void RequireTurn(Dictionary<string, object?> task)
     {
         RequireStandalone(task);
-        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat")) throw new NotSupportedException(CodingTurn);
+        if (task.TryGetValue("mode", out var mode) && mode is not ("chat" or "coding"))
+            throw new NotSupportedException("The development chat runtime supports chat and coding tasks only.");
         if (task.GetValueOrDefault("workspaceKind") is not (null or "none" or "folder" or "git"))
             throw new NotSupportedException("The development chat runtime supports projectless, folder and Git chats only.");
+        if (!Equals(mode, "coding")) return;
+        if (!Store.IsGitDocument(task)) throw new NotSupportedException("Coding turns need a Git worktree.");
+        if (store.HasExternalTools()) throw new NotSupportedException(ExternalTools);
     }
     private static double Number(object? value) => Convert.ToDouble(value, CultureInfo.InvariantCulture);
     private static long? Ordinal(Dictionary<string, object?> value, string key) => value.TryGetValue(key, out var field) ? checked((long)Number(field)) : null;

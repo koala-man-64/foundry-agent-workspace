@@ -9,9 +9,12 @@ namespace Foundry.Conformance;
 /// <summary>The native tool runtime's named differences and the outcomes the Node oracle cannot reach.</summary>
 public sealed class ToolRuntimeNativeTests
 {
+    // Task 1's worktree is where the product puts it, as the coding tools require (Rudy's decision I5, P2.3f).
+    private const string Worktree = "data/wt/14141414-0000-4000-8000-000000000001";
     private const string Tree = """
-        [{ "dir": "repo" }, { "file": "repo/README.md", "text": "hello\n" }, { "git": ["-C", "repo", "init", "-q"] }, { "git": ["-C", "repo", "add", "-A"] },
-         { "git": ["-C", "repo", "commit", "-qm", "fixture"] }]
+        [{ "dir": "data/wt/14141414-0000-4000-8000-000000000001" }, { "file": "data/wt/14141414-0000-4000-8000-000000000001/README.md", "text": "hello\n" },
+         { "git": ["-C", "data/wt/14141414-0000-4000-8000-000000000001", "init", "-q"] }, { "git": ["-C", "data/wt/14141414-0000-4000-8000-000000000001", "add", "-A"] },
+         { "git": ["-C", "data/wt/14141414-0000-4000-8000-000000000001", "commit", "-qm", "fixture"] }]
         """;
     private static readonly string Readme = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("hello\n"u8));
 
@@ -78,7 +81,54 @@ public sealed class ToolRuntimeNativeTests
         tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve");
         Assert.Equal(new ToolResult("call", "write_file", "Verification read failed.", true), await pending);
         Assert.Equal("unknown", store.Approval((string)approval["id"]!)["state"]);
-        Assert.Equal("after\n", File.ReadAllText(fixture.Local("repo/README.md")));
+        Assert.Equal("after\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
+    });
+
+    /// <summary>
+    /// Rudy's decision I5 (P2.3f): the coding tools act only in the task's own app-owned worktree, the folder
+    /// createTaskWorktree makes for it. Any other stored worktree is refused before any read, proposal or execution; a
+    /// spelling that differs only in case is the same folder. Not in TypeScript, which uses the stored path.
+    /// </summary>
+    [Fact]
+    public Task ACodingToolOutsideTheTasksOwnWorktreeIsRefused() => Run(async (fixture, store, _, tools) =>
+    {
+        const string Foreign = "This task's worktree is not its app-owned worktree, so coding tools are refused.";
+        var own = SeedTask(store, fixture, 1);
+        Directory.CreateDirectory(fixture.Local("project")); File.WriteAllText(fixture.Local("project/README.md"), "hello\n");
+        foreach (var (number, worktree) in new[] { (2, fixture.Local("project")), (3, fixture.Local(Worktree)), (4, fixture.Local("data/wt/elsewhere")), (5, fixture.Local("data/wt")) })
+        {
+            var task = SeedTask(store, fixture, number, new() { ["worktreePath"] = worktree });
+            foreach (var (name, arguments) in new (string, Dictionary<string, object?>)[]
+            {
+                ("read_file", new() { ["path"] = "README.md" }), ("list_directory", new()), ("search_text", new() { ["query"] = "hello" }),
+                ("write_file", new() { ["path"] = "README.md", ["expectedHash"] = Readme, ["content"] = "after\n" }), ("run_command", new() { ["command"] = "[Console]::Out.Write('x')" }),
+            })
+                Assert.Equal(new ToolResult("call", name, Foreign, true), await tools.Execute(task, new ToolCall("call", name, arguments), CancellationToken.None));
+        }
+        Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind='tool.approval'"));
+        Assert.Equal("hello\n", File.ReadAllText(fixture.Local("project/README.md")));
+        var spelled = SeedTask(store, fixture, 6, new() { ["worktreePath"] = fixture.Local(Worktree).ToUpperInvariant().Replace("14141414-0000-4000-8000-000000000001", "14141414-0000-4000-8000-000000000006", StringComparison.OrdinalIgnoreCase) });
+        Directory.CreateDirectory(fixture.Local("data/wt/14141414-0000-4000-8000-000000000006")); File.WriteAllText(fixture.Local("data/wt/14141414-0000-4000-8000-000000000006/README.md"), "six\n");
+        Assert.Contains("six", (await tools.Execute(spelled, new ToolCall("call", "read_file", new Dictionary<string, object?> { ["path"] = "README.md" }), CancellationToken.None)).Content, StringComparison.Ordinal);
+        Assert.Contains("hello", (await tools.Execute(own, new ToolCall("call", "read_file", new Dictionary<string, object?> { ["path"] = "README.md" }), CancellationToken.None)).Content, StringComparison.Ordinal);
+    });
+
+    /// <summary>
+    /// The compare-and-set on approval saves (P2.3b's carried item): a copy that finds its stored approval changed under it
+    /// overwrites nothing and executes nothing. Here the row is revoked between the decision and the resumed call.
+    /// </summary>
+    [Fact]
+    public Task AnApprovalChangedUnderItsCallIsNeitherOverwrittenNorExecuted() => Run(async (fixture, store, _, tools) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        var pending = tools.Execute(task, new ToolCall("call", "write_file", new Dictionary<string, object?> { ["path"] = "README.md", ["expectedHash"] = Readme, ["content"] = "after\n" }), CancellationToken.None);
+        var approval = await Proposal(store, pending);
+        tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve");
+        // The call resumes after this callback, so the row changes first.
+        store.Execute("UPDATE intents SET state='revoked' WHERE id=$p0", approval["id"]);
+        Assert.Equal("The approval changed while it was in use; it was not overwritten.", (await Assert.ThrowsAsync<InvalidOperationException>(() => pending)).Message);
+        Assert.Equal("revoked", store.Approval((string)approval["id"]!)["state"]);
+        Assert.Equal("hello\n", File.ReadAllText(fixture.Local(Worktree + "/README.md")));
     });
 
     /// <summary>
@@ -101,7 +151,7 @@ public sealed class ToolRuntimeNativeTests
         var approval = await Proposal(store, pending);
         tools.Decide((string)task["id"]!, (string)approval["id"]!, (string)approval["nonce"]!, "approve");
         var result = await pending.WaitAsync(TimeSpan.FromMinutes(2));
-        var handle = nint.Parse(File.ReadAllText(fixture.Local("repo/handle.txt")), System.Globalization.CultureInfo.InvariantCulture);
+        var handle = nint.Parse(File.ReadAllText(fixture.Local(Worktree + "/handle.txt")), System.Globalization.CultureInfo.InvariantCulture);
         Assert.True(handle != 0, "The command did not hand its output to this process, so the test proves nothing.");
         CloseHandle(handle);
         Assert.True(result.IsError, result.Content);
@@ -164,8 +214,8 @@ public sealed class ToolRuntimeNativeTests
         var task = new Dictionary<string, object?>
         {
             ["id"] = $"14141414-0000-4000-8000-{number:D12}", ["title"] = $"Task {number}", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = "2026-01-02T03:04:05.678Z",
-            ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("repo"),
-            ["worktreePath"] = fixture.Local("repo"), ["branch"] = "codex/tools", ["baseCommit"] = new string('0', 40),
+            ["updatedAt"] = "2026-01-02T03:04:05.678Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local($"data/wt/14141414-0000-4000-8000-{number:D12}"),
+            ["worktreePath"] = fixture.Local($"data/wt/14141414-0000-4000-8000-{number:D12}"), ["branch"] = "codex/tools", ["baseCommit"] = new string('0', 40),
         };
         foreach (var (key, value) in extra ?? []) task[key] = value;
         store.SaveTask(task);

@@ -654,6 +654,19 @@ internal sealed partial class RepositoryService
     }
 
     /// <summary>
+    /// Rudy's decision I5 (P2.3f): whether a task's stored worktree is the folder createTaskWorktree makes for it, the final
+    /// path of the app-owned worktree folder joined with its lowercased id, compared ignoring case. Every task TypeScript
+    /// has created qualifies; a hand-edited row, a copied data folder or an alias does not. Not in TypeScript.
+    /// </summary>
+    internal bool IsOwnWorktree(string taskId, string? worktreePath)
+    {
+        if (worktreePath is null || NetworkPathPolicy.IsNetworkOrDevicePath(worktreePath) || !TaskId().IsMatch(taskId)) return false;
+        var requested = FinalPath.Resolve(WorktreeBase);
+        if (!DataClassifier.IsLocal(requested) || !FinalPath.TryResolve(requested, out var worktreeBase)) return false;
+        return EcmaScriptCase.ToLower(worktreePath) == EcmaScriptCase.ToLower(Path.Join(worktreeBase, taskId.ToLowerInvariant()));
+    }
+
+    /// <summary>
     /// removeWorktree: `git worktree remove` without --force, so Git itself refuses untracked or modified files; the
     /// branch is kept. Only a worktree inside the app-owned base qualifies. A failed removal that left the worktree in
     /// place is "none"; one that removed it is "unknown".

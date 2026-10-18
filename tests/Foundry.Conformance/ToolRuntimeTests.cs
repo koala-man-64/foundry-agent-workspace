@@ -188,7 +188,7 @@ public sealed partial class ToolRuntimeTests
                 record["decisions"] = decisions; record["after"] = after;
                 record["row"] = Rows().FirstOrDefault(row => !known.Contains((string)row["id"]!));
                 record["events"] = store.Rows("SELECT * FROM events WHERE sequence>$p0 ORDER BY sequence", sequence);
-                if (step.GetValueOrDefault("read") is string read) record["read"] = Encoding.UTF8.GetString(File.ReadAllBytes(fixture.Local("repo/" + read)));
+                if (step.GetValueOrDefault("read") is string read) record["read"] = Encoding.UTF8.GetString(File.ReadAllBytes(fixture.Local($"data/wt/{taskId}/" + read)));
                 var actual = JsJson.Stringify(cleaner.Clean(record));
                 Assert.True(JsJson.Stringify(expected) == actual, $"{label}: expected {JsJson.Stringify(expected)}\nactual   {actual}");
             }

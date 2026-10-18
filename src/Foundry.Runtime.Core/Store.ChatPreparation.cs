@@ -11,8 +11,9 @@ public sealed partial class Store
     {
         loop.AssertCurrent();
         var task = ReadTask(taskId);
-        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat") || Truthy(task.GetValueOrDefault("parentTaskId")))
-            throw new NotSupportedException("This request preparation supports ordinary chat tasks only.");
+        // A coding task is prepared only with the tools its turn advertises.
+        if (task.TryGetValue("mode", out var mode) && !Equals(mode, "chat") && !(Equals(mode, "coding") && tools is not null) || Truthy(task.GetValueOrDefault("parentTaskId")))
+            throw new NotSupportedException("This request preparation supports ordinary chat and coding tasks only.");
         var state = ReadProviderState(taskId);
         if (state is not null && !Equals(state.GetValueOrDefault("fingerprint"), fingerprint))
             throw new InvalidOperationException("This task has native conversation state for an earlier profile configuration. Create a new task for this configuration.");
@@ -40,6 +41,28 @@ public sealed partial class Store
         var request = new Dictionary<string, object?> { ["profile"] = profile, ["messages"] = messages };
         if (tools is not null) request["tools"] = tools;
         return request;
+    }
+
+    /// <summary>
+    /// Decision 2 of P2.3: whether an enabled MCP server has stored tools, which a coding turn would advertise. A row whose
+    /// configuration or tool list does not parse counts as one, as TypeScript's tool listing would fail on it.
+    /// </summary>
+    internal bool HasExternalTools()
+    {
+        loop.AssertCurrent();
+        // Databases from before external tools have no such table, and so no stored tools.
+        if (Scalar("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mcp_servers'") is null) return false;
+        foreach (var row in Rows("SELECT data,tools FROM mcp_servers"))
+        {
+            try
+            {
+                if (Foundry.Protocol.PersistedJson.Parse((string)row["data"]!) is not Dictionary<string, object?> config) return true;
+                if (!Truthy(config.GetValueOrDefault("enabled"))) continue;
+                if (Foundry.Protocol.PersistedJson.Parse((string)row["tools"]!) is not List<object?> listed || listed.Count > 0) return true;
+            }
+            catch (Exception error) when (error is System.Text.Json.JsonException or InvalidCastException) { return true; }
+        }
+        return false;
     }
 
     /// <summary>saveProviderState: the task's native conversation, replaced whole.</summary>

@@ -35,10 +35,10 @@ public sealed record ProviderDone(ProviderContinuation? Continuation) : Provider
 }
 
 /// <summary>
-/// The offline provider of packages/providers (FakeProvider): text, continuation, the project-channel demo and the stopped
-/// browser demo. The coding, MCP, browser and orchestration demos need tools native does not advertise yet; a continuation
-/// in one of their stages is refused as invalid, and the runtime refuses such a stored continuation before any request.
-/// No profile verification, credentials or provider fallback.
+/// The offline provider of packages/providers (FakeProvider): text, continuation, the project-channel demo, the coding demo
+/// (read, an approved edit, an approved command) and the stopped browser demo. The MCP, browser and orchestration demos
+/// need tools native does not advertise yet; a continuation in one of their stages is refused as invalid, and the runtime
+/// refuses such a stored continuation before any request. No profile verification, credentials or provider fallback.
 /// </summary>
 public sealed class FakeChatProvider
 {
@@ -86,6 +86,54 @@ public sealed class FakeChatProvider
             yield return Done("complete", []);
             yield break;
         }
+        // The coding demo, on a task's first turn: read the README, propose appending a line, then propose a command.
+        if (state is null && request.Tools?.Contains("read_file", StringComparer.Ordinal) == true && (last ?? "").StartsWith("/demo", StringComparison.Ordinal))
+        {
+            RequireTools(request.Tools, ["read_file", "replace_text", "run_command"]);
+            var call = new ProviderToolCall("fake-read-1", "read_file", new Dictionary<string, object?> { ["path"] = "README.md" });
+            yield return call;
+            yield return Done("read", [call.Call()]);
+            yield break;
+        }
+        if (state?.Stage == "read")
+        {
+            var result = First(RequiredResults(request, state.Calls), "name");
+            var read = Content(result, "read_file") as IReadOnlyDictionary<string, object?>;
+            if (result.IsError || read?.GetValueOrDefault("path") is not string path || read.GetValueOrDefault("content") is not string content || read.GetValueOrDefault("hash") is not string hash)
+            {
+                await foreach (var text in Text("Offline demo stopped: read_file failed or returned invalid content.", cancellationToken)) yield return text;
+                yield return Done("complete", []);
+                yield break;
+            }
+            var call = new ProviderToolCall("fake-replace-1", "replace_text",
+                new Dictionary<string, object?> { ["path"] = path, ["expectedHash"] = hash, ["oldText"] = content, ["newText"] = content + "\nFoundry offline demo completed.\n" });
+            yield return call;
+            yield return Done("replace", [call.Call()]);
+            yield break;
+        }
+        if (state?.Stage == "replace")
+        {
+            if (First(RequiredResults(request, state.Calls), "isError").IsError)
+            {
+                await foreach (var text in Text("Offline demo stopped: replace_text was rejected or failed.", cancellationToken)) yield return text;
+                yield return Done("complete", []);
+                yield break;
+            }
+            var call = new ProviderToolCall("fake-command-1", "run_command", new Dictionary<string, object?>
+            {
+                ["command"] = "Write-Output 'Foundry command demo completed'", ["cwd"] = "", ["environment"] = new Dictionary<string, object?>(), ["timeoutMs"] = 10000d,
+            });
+            yield return call;
+            yield return Done("command", [call.Call()]);
+            yield break;
+        }
+        if (state?.Stage == "command")
+        {
+            var result = First(RequiredResults(request, state.Calls), "isError");
+            await foreach (var text in Text(result.IsError ? "Offline demo completed with a command error." : "Foundry offline demo completed.", cancellationToken)) yield return text;
+            yield return Done("complete", []);
+            yield break;
+        }
         if (state is not null && state.Stage is not ("chat" or "complete")) throw new InvalidOperationException("Invalid fake continuation.");
         await foreach (var text in Text("Fake response: " + (string.IsNullOrEmpty(last) ? "No user message." : last), cancellationToken)) yield return text;
         yield return Done("chat", []);
@@ -104,6 +152,46 @@ public sealed class FakeChatProvider
             try { await pause(pauseToken); }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw Aborted(cancellationToken); }
         }
+    }
+
+    /// <summary>requireTools: every named tool was advertised.</summary>
+    private static void RequireTools(IReadOnlyList<string> tools, string[] names)
+    {
+        foreach (var name in names)
+            if (!tools.Contains(name, StringComparer.Ordinal)) throw new InvalidOperationException($"Tool {name} was not advertised.");
+    }
+
+    /// <summary>requiredResults: one result for each pending call, matched by id and name, in the order the request gives
+    /// them; none when nothing is pending.</summary>
+    private static IReadOnlyList<ProviderToolResult> RequiredResults(ProviderRequest request, List<IReadOnlyDictionary<string, object?>> calls)
+    {
+        if (calls.Count == 0)
+        {
+            if (request.ToolResults is { Count: > 0 }) throw new InvalidOperationException("Tool results were supplied without pending calls.");
+            return [];
+        }
+        if (request.ToolResults is not { Count: > 0 } results) throw new InvalidOperationException("Pending tool calls require matching results.");
+        var expected = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var call in calls) expected[(string)call["id"]!] = (string)call["name"]!;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var result in results)
+        {
+            if (!expected.TryGetValue(result.Id, out var name) || !seen.Add(result.Id) || result.Name != name) throw new InvalidOperationException("Tool result does not match a pending call.");
+        }
+        if (seen.Count != expected.Count) throw new InvalidOperationException("Missing tool result for a pending call.");
+        return results;
+    }
+
+    /// <summary>results[0], whose first property read fails as JavaScript's does when there is none.</summary>
+    private static ProviderToolResult First(IReadOnlyList<ProviderToolResult> results, string member) =>
+        results.Count > 0 ? results[0] : throw new InvalidOperationException($"Cannot read properties of undefined (reading '{member}')");
+
+    /// <summary>parseToolContent: the result of the named tool, parsed, or nothing when its text is not JSON.</summary>
+    private static object? Content(ProviderToolResult result, string name)
+    {
+        if (result.Name != name) throw new InvalidOperationException("Tool result name mismatch.");
+        try { return PersistedJson.Parse(result.Content); }
+        catch (System.Text.Json.JsonException) { return null; }
     }
 
     private static ProviderDone Done(string stage, List<object?> calls) => new(new("fake", new Dictionary<string, object?> { ["stage"] = stage, ["calls"] = calls }));

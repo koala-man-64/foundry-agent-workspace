@@ -54,6 +54,17 @@ public sealed class GitChatTests
         // A repository with no commit yet, whose worktree is refused before any mutation.
         fixture.Write("work/unborn/a.txt", "a\n"); await fixture.Git("-C", "work/unborn", "init", "-q");
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        // Commands inherit these, as the oracle sets them; a case on the real clock records timestamps as {time}.
+        foreach (var folder in new[] { "tmp", "profile" }) Directory.CreateDirectory(fixture.Local(folder));
+        var environment = new Dictionary<string, string>(fixture.Environment(), StringComparer.OrdinalIgnoreCase)
+        {
+            ["TEMP"] = fixture.Local("tmp"), ["TMP"] = fixture.Local("tmp"), ["USERPROFILE"] = fixture.Local("profile"),
+        };
+        var real = Equals(item.GetValueOrDefault("clock"), "real");
+        Func<DateTimeOffset> clock = real ? () => DateTimeOffset.UtcNow : () => timestamp;
+        var systemRoot = System.Environment.GetEnvironmentVariable("SystemRoot")!;
+        var shell = Foundry.Platform.FinalPath.Resolve(Path.Combine(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe"));
+        var fingerprints = new Dictionary<string, string>(StringComparer.Ordinal);
         await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
         var notifications = new List<object?>(); var provider = new List<object?>(); var next = 1;
         Guid NewId() => Guid.Parse($"78787878-0000-4000-8000-{next++:000000000000}");
@@ -114,12 +125,12 @@ public sealed class GitChatTests
 
         await loop.Invoke(() =>
         {
-            store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"), () => timestamp, NewId, item =>
+            store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"), clock, NewId, item =>
             {
                 if (!DevelopmentChat.SendsNotification(item)) return;
                 notifications.Add(item.Sequence == 0 ? new Dictionary<string, object?> { ["sequence"] = 0, ["type"] = item.Type, ["data"] = item.Data, ["taskId"] = item.TaskId, ["createdAt"] = item.CreatedAt } : item.ToWire());
             });
-            chat = new DevelopmentChat(loop, store, Stream, () => timestamp, NewId, fixture.Environment);
+            chat = new DevelopmentChat(loop, store, Stream, clock, NewId, () => environment);
             return Task.FromResult(0);
         });
         var expanded = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -133,6 +144,31 @@ public sealed class GitChatTests
         // The project key TypeScript's formula gives the fixture's common directory; the oracle replaces it the same way.
         var key = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(Path.Join(fixture.Scratch, "work", "repo", ".git")))));
         Dictionary<string, List<Dictionary<string, object?>>> Rows() => Tables.ToDictionary(table => table.Table, table => store!.Rows(table.Sql));
+        List<Dictionary<string, object?>> Approvals() => store!.Rows("SELECT id,data,state FROM intents WHERE kind='tool.approval' ORDER BY rowid");
+        // Each approval fingerprint becomes {fingerprint:N}, in order of first appearance, as the oracle numbers them.
+        void Remember()
+        {
+            foreach (var row in Approvals())
+                if (((Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!).GetValueOrDefault("fingerprint") is string fingerprint && !fingerprints.ContainsKey(fingerprint))
+                    fingerprints[fingerprint] = $"{{fingerprint:{fingerprints.Count + 1}}}";
+        }
+        Dictionary<string, object?>? Awaiting(string taskId) => Approvals().LastOrDefault(row => Equals(row["state"], "awaiting-approval")
+            && Equals(((Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!).GetValueOrDefault("taskId"), taskId));
+        object? Clean(object? value) => value switch
+        {
+            string text => Cleaned(text),
+            IDictionary<string, object?> map => map.ToDictionary(pair => pair.Key, pair => Clean(pair.Value)),
+            System.Collections.IEnumerable items => items.Cast<object?>().Select(Clean).ToList(),
+            IWireModel model => Clean(model.ToWire()),
+            _ => value,
+        };
+        string Cleaned(string text)
+        {
+            foreach (var (raw, label) in new[] { (shell, "shell"), (systemRoot, "SystemRoot") })
+                text = text.Replace(raw.Replace("\\", "\\\\", StringComparison.Ordinal), $"{{{label}-json}}", StringComparison.Ordinal).Replace(raw, $"{{{label}}}", StringComparison.Ordinal);
+            foreach (var (raw, label) in fingerprints) text = text.Replace(raw, label, StringComparison.Ordinal);
+            return real ? System.Text.RegularExpressions.Regex.Replace(text, @"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", "{time}") : text;
+        }
         try
         {
             var before = await loop.Invoke(() => Task.FromResult(Rows())); var seen = 0; var requested = 0;
@@ -148,9 +184,24 @@ public sealed class GitChatTests
                 if (method == "git") await fixture.Git([.. ((List<object?>)parameters["args"]!).Cast<string>()]);
                 if (method == "wait")
                     while (await loop.Invoke(() => Task.FromResult(Equals(store!.ReadTask((string)parameters["taskId"]!)["status"], "running")))) await Task.Delay(1, TestContext.Current.CancellationToken);
+                var settle = Equals(step.GetValueOrDefault("settle"), true);
+                object? value = null; string? error = null; HashSet<string> known = [];
+                // The step's record: the rows changed since the last one, its notifications and the provider's requests.
+                Dictionary<string, object?> Snapshot()
+                {
+                    var after = Rows(); Remember();
+                    var record = (Dictionary<string, object?>)fixture.Normalize(Clean(new Dictionary<string, object?>
+                    {
+                        ["value"] = value, ["error"] = error, ["delta"] = Delta(before, after),
+                        ["notifications"] = notifications.Skip(seen).Where(entry => !real || entry is not Dictionary<string, object?> { } wire || !Equals(wire.GetValueOrDefault("sequence"), 0)).ToList(),
+                        ["provider"] = provider.Skip(requested).ToList(),
+                    }))!;
+                    before = after; seen = notifications.Count; requested = provider.Count;
+                    return record;
+                }
                 var actual = await loop.Invoke(async () =>
                 {
-                    object? value = null; string? error = null;
+                    known = [.. Approvals().Select(row => (string)row["id"]!)];
                     try
                     {
                         switch (method)
@@ -177,6 +228,16 @@ public sealed class GitChatTests
                                     ["seenToolCallIds"] = Enumerable.Range(0, (int)(double)parameters["count"]!).Select(number => (object?)$"seen-{number}").ToList(),
                                 });
                                 break;
+                            case "decide":
+                                var waiting = Awaiting((string)(parameters.GetValueOrDefault("of") ?? parameters["taskId"])!);
+                                var decision = new Dictionary<string, object?>
+                                {
+                                    ["taskId"] = parameters["taskId"], ["approvalId"] = parameters.GetValueOrDefault("approvalId") ?? waiting?["id"],
+                                    ["nonce"] = parameters.GetValueOrDefault("nonce") ?? (waiting is null ? null : ((Dictionary<string, object?>)PersistedJson.Parse((string)waiting["data"]!)!)["nonce"]),
+                                    ["decision"] = parameters["decision"],
+                                };
+                                value = await chat!.Dispatch("approval.decide", (Dictionary<string, object?>)Contracts.Validate("rpc approval.decide", decision)!);
+                                break;
                             default:
                                 value = await chat!.Dispatch(method, (Dictionary<string, object?>)Contracts.Validate("rpc " + method, parameters)!);
                                 break;
@@ -185,15 +246,19 @@ public sealed class GitChatTests
                         if (method == "task.start" && step.GetValueOrDefault("as") is string label && value is Dictionary<string, object?> task) expanded[$"{{task:{label}}}"] = (string)task["id"]!;
                     }
                     catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException) { error = exception.Message; }
-                    var after = Rows();
-                    var record = fixture.Normalize(new Dictionary<string, object?>
-                    {
-                        ["value"] = value, ["error"] = error, ["delta"] = Delta(before, after),
-                        ["notifications"] = notifications.Skip(seen).ToList(), ["provider"] = provider.Skip(requested).ToList(),
-                    });
-                    before = after; seen = notifications.Count; requested = provider.Count;
-                    return record;
+                    return settle ? null : Snapshot();
                 });
+                if (settle)
+                {
+                    // As the oracle: once the task stops running or proposes a new approval.
+                    var target = (string)(parameters.GetValueOrDefault("taskId") ?? ((Dictionary<string, object?>)value!)["id"])!;
+                    for (var n = 0; await loop.Invoke(() => Task.FromResult(Equals(store!.ReadTask(target)["status"], "running") && (Awaiting(target) is not { } row || known.Contains((string)row["id"]!)))); n++)
+                    {
+                        Assert.True(n < 6000, "The step did not settle.");
+                        await Task.Delay(5, TestContext.Current.CancellationToken);
+                    }
+                    actual = await loop.Invoke(() => Task.FromResult(Snapshot()));
+                }
                 if (step.GetValueOrDefault("native") is Dictionary<string, object?> native)
                 {
                     var unchanged = new Dictionary<string, object?> { ["value"] = null, ["error"] = native["error"], ["delta"] = new Dictionary<string, object?>(), ["notifications"] = new List<object?>(), ["provider"] = new List<object?>() };

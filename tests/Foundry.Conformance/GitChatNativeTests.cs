@@ -11,6 +11,8 @@ namespace Foundry.Conformance;
 public sealed class GitChatNativeTests
 {
     private static readonly Dictionary<string, object?> Complete = new() { ["stage"] = "complete", ["calls"] = new List<object?>() };
+    private static readonly string[] Counted = ["tasks", "task_starts", "intents", "provider_requests", "messages"];
+    private static readonly string[] ServerData = ["{\"enabled\":true}", "not json"];
 
     private static Dictionary<string, object?> Start(string projectId, string content, string mode = "chat", int request = 1) => new()
     {
@@ -151,6 +153,40 @@ public sealed class GitChatNativeTests
         });
     }
 
+    /// <summary>
+    /// Decision 2 of P2.3: until the MCP slice, a coding start or turn is refused before any reservation while an enabled MCP
+    /// server has stored tools, which TypeScript would advertise. A disabled server, or one with no tools, does not count; a
+    /// row that does not parse does. Chat turns advertise no external tools and are unaffected.
+    /// </summary>
+    [Fact]
+    public Task CodingIsRefusedWhileExternalToolsAreStored() => WithGitProject(null, async (fixture, loop, store, chat, projectId) =>
+    {
+        const string Refused = "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn.";
+        void Server(string key, string data, string listed) =>
+            store.Execute("INSERT OR REPLACE INTO mcp_servers(id,key,data,tools,updated_at) VALUES($p0,$p0,$p1,$p2,'2026-01-01T00:00:00.000Z')", key, data, listed);
+        long Count(string table) => (long)store.Scalar($"SELECT COUNT(*) FROM {table}")!;
+        await loop.Invoke(() => { Server("disabled", "{\"enabled\":false}", "[{\"name\":\"echo\"}]"); Server("empty", "{\"enabled\":true}", "[]"); return Task.FromResult(0); });
+        var taskId = await loop.Invoke(async () => (string)((Dictionary<string, object?>)(await chat.Dispatch("task.start", Start(projectId, "Hello", "coding")))!)["id"]!);
+        await Idle(loop, store, taskId);
+        foreach (var data in ServerData)
+        {
+            await loop.Invoke(async () =>
+            {
+                Server("listed", data, "[{\"name\":\"echo\"}]");
+                var counts = Counted.Select(Count).ToArray();
+                var started = await Record.ExceptionAsync(() => chat.Dispatch("task.start", Start(projectId, "Second", "coding", 2)));
+                Assert.Equal(Refused, Assert.IsType<NotSupportedException>(started).Message);
+                var sent = await Record.ExceptionAsync(() => chat.Dispatch("task.send", new() { ["taskId"] = taskId, ["content"] = "Again" }));
+                Assert.Equal(Refused, Assert.IsType<NotSupportedException>(sent).Message);
+                Assert.Equal(counts, Counted.Select(Count).ToArray());
+                return 0;
+            });
+        }
+        var chatId = await loop.Invoke(async () => (string)((Dictionary<string, object?>)(await chat.Dispatch("task.start", Start(projectId, "A chat", "chat", 3)))!)["id"]!);
+        await Idle(loop, store, chatId);
+        await loop.Invoke(() => { Assert.Equal("idle", store.ReadTask(chatId)["status"]); return Task.FromResult(0); });
+    });
+
     /// <summary>A coordinated start in a Git project needs the orchestrator; it is refused before any reservation,
     /// intent or worktree.</summary>
     [Fact]
@@ -192,7 +228,8 @@ public sealed class GitChatNativeTests
     });
 
     /// <summary>A stored continuation must be in a stage the offline provider serves natively. A channel demo interrupted
-    /// before its tool ran resumes with the interrupted-call result; a coding demo's stage is refused before any reservation.</summary>
+    /// before its tool ran resumes with the interrupted-call result; the MCP demo's stage, whose tools have no native slice
+    /// yet, is refused before any reservation.</summary>
     [Fact]
     public Task StoredContinuationsAreServedOnlyInNativeStages() => WithGitProject(null, async (fixture, loop, store, chat, projectId) =>
     {
@@ -207,8 +244,8 @@ public sealed class GitChatNativeTests
         };
         await loop.Invoke(async () =>
         {
-            store.SaveProviderState(taskId, State("read"));
-            var refused = await Record.ExceptionAsync(() => chat.Dispatch("task.send", new() { ["taskId"] = taskId, ["content"] = "Coding stage" }));
+            store.SaveProviderState(taskId, State("mcp-echo"));
+            var refused = await Record.ExceptionAsync(() => chat.Dispatch("task.send", new() { ["taskId"] = taskId, ["content"] = "MCP stage" }));
             Assert.Equal("This native continuation requires a later runtime feature slice.", Assert.IsType<NotSupportedException>(refused).Message);
             Assert.Single(store.Rows("SELECT * FROM provider_requests"));
             store.SaveProviderState(taskId, State("channel-send"));
