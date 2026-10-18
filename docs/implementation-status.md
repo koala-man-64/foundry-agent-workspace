@@ -309,6 +309,12 @@ Dual-landed fixes:
       - The stdio differential: 3 of 3. `git diff --check`: clean.
       - Under Electron's Node 24.21.0, the fake-tool, stream and transport oracles and `providers.test.ts` pass in check mode, 19 of 19.
       - No renderer, IPC or user-path source changed, so no Electron E2E run was required.
+    - **Validation of `6457ca1`**, the T-1 branch merged with P2.4's `255868e` (main with #48), from a `git archive` export (`foundry-evidence\t1-anthropic-results\run2`, seal `seal-6457ca1.txt`):
+      - No source an oracle pins changed between `1972de7` and `255868e`, so the regenerated vectors still hold.
+      - Release build with warnings as errors: clean. Native suite: 7,948 tests, 7,946 passed, 0 failed, 2 expected skips.
+      - `pnpm check`: the first run passed 593 of 594. `publish.test.ts`'s push test hit its 30-second Git timeout while another of the owner's processes loaded the machine. That file then passed alone (18 of 18), and a second full run passed 594 of 594 (`rerun-publish.log`, `rerun-pnpm-check.log`).
+      - Under Electron's Node 24.21.0, as the portable job runs them: every P2 oracle passed, 38 files and 65 tests, and the git-metadata oracle passed 698 vectors.
+      - The stdio differential: 3 of 3. `git diff --check`: clean.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
