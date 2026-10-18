@@ -189,7 +189,7 @@ public sealed class ProviderTransportTests
         private string Scrub(string value) => value.Replace(credential, "{credential}", StringComparison.Ordinal);
     }
 
-    private static List<byte[]> Chunks(List<object?> body)
+    internal static List<byte[]> Chunks(List<object?> body)
     {
         static byte[] One(object? chunk) => chunk switch
         {

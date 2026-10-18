@@ -46,6 +46,17 @@ public sealed class ProviderHttpException(int status, double? retryAfterSeconds)
 /// cause is kept only as the inner exception, which the runtime never reports.</summary>
 public sealed class ProviderTransportException(string message, Exception? cause = null) : InvalidOperationException(message, cause);
 
+/// <summary>What a probe found, as ProbeResult reports it before the runtime adds its own fingerprint.</summary>
+public sealed record ProbeResult(bool Ok, bool Streaming, bool Tools, bool Continuation, bool Cancellation, bool Usage, string Detail)
+{
+    /// <summary>The capabilities object, in the protocol's order.</summary>
+    public Dictionary<string, object?> Capabilities() => new() { ["streaming"] = Streaming, ["tools"] = Tools, ["continuation"] = Continuation, ["cancellation"] = Cancellation, ["usage"] = Usage };
+}
+
+/// <summary>The runtime's observation of each probe request (ProbeObserver): it receives the request, the adapter's stream
+/// and the request's cancellation, and returns the stream the probe reads. Adapters never persist anything themselves.</summary>
+public delegate IAsyncEnumerable<ProviderChatEvent> ProbeObserver(ProviderRequest request, Func<IAsyncEnumerable<ProviderChatEvent>> stream, CancellationToken cancellationToken);
+
 internal static class ProviderAbort
 {
     /// <summary>The AbortError fetch and the adapters raise when the caller's signal is aborted.</summary>

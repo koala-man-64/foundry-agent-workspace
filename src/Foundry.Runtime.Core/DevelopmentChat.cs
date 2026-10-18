@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Foundry.Platform;
 using Foundry.Protocol;
@@ -35,6 +36,14 @@ public sealed class DevelopmentChat
     private readonly TaskCompletionSource failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Exception? backgroundFailure;
     private bool closing;
+    // The credentials the host sent, by profile id, in memory only (P2.4c, decision 1), and each profile's save generation.
+    private readonly Dictionary<string, string> credentials = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> generations = new(StringComparer.Ordinal);
+    private readonly HashSet<string> probing = new(StringComparer.Ordinal);
+    private readonly List<Task> probes = [];
+    private readonly AzureTransport? injectedTransport;
+    private AzureTransport? transport;
+    private readonly TimeSpan? probeDeadline;
     public Task Failure => failure.Task;
     /// <summary>The repository service, for tests that observe or interrupt its Git launches.</summary>
     internal RepositoryService Repositories => repositories;
@@ -51,10 +60,12 @@ public sealed class DevelopmentChat
     /// <summary>Without a stream, turns use the offline provider, which draws its tool-call ids from <paramref name="id"/>.</summary>
     internal DevelopmentChat(RuntimeLoop loop, Store store,
         Func<ProviderRequest, CancellationToken, IAsyncEnumerable<ProviderChatEvent>>? stream,
-        Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Func<IReadOnlyDictionary<string, string>>? gitEnvironment = null)
+        Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Func<IReadOnlyDictionary<string, string>>? gitEnvironment = null,
+        AzureTransport? transport = null, TimeSpan? probeDeadline = null)
     {
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
+        injectedTransport = transport; this.probeDeadline = probeDeadline;
         var provider = new FakeChatProvider(id: this.id);
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
         var slots = new ExecutionSlots(loop);
@@ -68,7 +79,7 @@ public sealed class DevelopmentChat
     // TypeScript keeps silent, and the explicit event workspace-operations publishes with its removed-worktree count.
     public static bool SendsNotification(WorkspaceEvent item) => item.Type is "tasks.changed" or "task.started" or "task.completed" or "task.stopped"
         or "usage.changed" or "features.changed" or "projects.changed" or "preferences.changed" or "task.progress" or "task.context-warning" or "task.budget-warning"
-        or "task.committed" or "task.pushed" or "approval.changed" or "channel.changed" or "task.tool-result"
+        or "task.committed" or "task.pushed" or "approval.changed" or "channel.changed" or "task.tool-result" or "profiles.changed"
         || item.Type == "task.retired" && item.Data is IDictionary<string, object?> data && data.ContainsKey("removedWorktrees");
 
     public async Task<object?> Dispatch(string method, Dictionary<string, object?> parameters)
@@ -86,6 +97,12 @@ public sealed class DevelopmentChat
             case "workspace.profiles": return store.ProfilePage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
             case "workspace.projects": return store.ProjectPage((string?)parameters.GetValueOrDefault("after"), Integer(parameters, "limit", 50));
             case "profile.read": return store.ProfileRead((string)parameters["profileId"]!);
+            case "profile.save": return SaveProfile(parameters);
+            case "profile.probe":
+                var probe = Probe((string)parameters["profileId"]!);
+                probes.Add(probe);
+                try { return await probe; }
+                finally { probes.Remove(probe); }
             case "workspace.tasks": return store.TaskPage(parameters);
             case "workspace.events": return store.EventPage(Ordinal(parameters, "after") ?? 0, Integer(parameters, "limit", 50), (string?)parameters.GetValueOrDefault("taskId"), redactor);
             case "workspace.actions": return store.ActionPage(parameters, redactor);
@@ -488,6 +505,155 @@ public sealed class DevelopmentChat
         catch { folder.Dispose(); throw; }
     }
 
+    private const string OfflineProfile = "00000000-0000-4000-8000-000000000001";
+    // ModelProfileSchema's keys, in the order zod returns them; anything the runtime adds later goes after them.
+    private static readonly string[] ProfileOrder = ["id", "name", "apiKind", "endpoint", "deployment", "credentialRef", "contextLimit", "outputLimit", "effort", "verifiedAt", "verificationFingerprint", "capabilities"];
+    private static readonly string[] Verification = ["verifiedAt", "verificationFingerprint", "capabilities"];
+    // Decision 2 of P2.4: TypeScript repairs saved MCP configurations against every new credential. Until the MCP slice
+    // ports that repair, a credential is refused, with nothing written, while any MCP server is saved.
+    internal const string McpRepair = "Credentials cannot be saved while MCP servers are configured: this build does not yet repair saved MCP server configurations.";
+
+    /// <summary>
+    /// service.ts profile.save, in its order: effort before schema v4, the reserved offline profile, a profile an active
+    /// response uses, the output budget, then the endpoint rule for a profile that is not offline. A changed binding drops
+    /// the credential; every save starts a new generation, so a probe that runs across it is discarded. Verification comes
+    /// only from a probe: it is kept only when the runtime fingerprint is unchanged. The save and profiles.changed follow.
+    /// </summary>
+    private Dictionary<string, object?> SaveProfile(Dictionary<string, object?> parameters)
+    {
+        loop.AssertCurrent();
+        var profile = ProfileOrder.Where(parameters.ContainsKey).ToDictionary(key => key, key => parameters[key], StringComparer.Ordinal);
+        var profileId = (string)profile["id"]!; var apiKind = (string)profile["apiKind"]!;
+        if (Truthy(profile.GetValueOrDefault("effort")) && store.SchemaVersion < 4) throw new WorkspaceReadException("Upgrade the database before configuring effort presets.");
+        if (profileId == OfflineProfile && apiKind != "fake") throw new WorkspaceReadException("Create a new profile to configure Foundry; the offline profile is reserved.");
+        if (running.Keys.Any(taskId => Equals(store.ReadTask(taskId)["profileId"], profileId))) throw new WorkspaceReadException("Cancel active responses before editing this profile.");
+        if (Number(profile["outputLimit"]) >= Number(profile["contextLimit"])) throw new WorkspaceReadException("Output budget must be below the context limit.");
+        if (apiKind != "fake" && Compatibility.ProfileEndpointError((string)profile["endpoint"]!) is { } refused) throw new WorkspaceReadException(refused);
+        var previous = store.Profile(profileId);
+        if (previous is not null && Binding(previous) != Binding(profile)) credentials.Remove(profileId);
+        generations[profileId] = generations.GetValueOrDefault(profileId) + 1;
+        profile = Without(profile, Verification);
+        if (apiKind != "fake") profile["credentialRef"] = profileId;
+        if (previous is not null && Compatibility.ProfileFingerprint(previous) == Compatibility.ProfileFingerprint(profile))
+            foreach (var field in Verification) profile[field] = previous.GetValueOrDefault(field, Undefined.Value);
+        store.SaveProfile(profile);
+        store.Event("profiles.changed", new Dictionary<string, object?>());
+        return profile;
+    }
+
+    /// <summary>
+    /// The runtime.credential frame (service.ts setCredential; decision 1 of P2.4). The binding must name the stored profile's
+    /// API kind, endpoint and deployment. The same secret again changes nothing. Otherwise no response may be running, and
+    /// (decision 2) no MCP server may be saved. The secret is held in memory and registered with the redactor, as fetch trims
+    /// it too (a native addition); the profile's generation advances and its verification is cleared without an event.
+    /// </summary>
+    public void SetCredential(string profileId, string secret, string binding)
+    {
+        loop.AssertCurrent();
+        ArgumentNullException.ThrowIfNull(secret);
+        if (closing) throw new InvalidOperationException("Runtime is shutting down.");
+        var target = store.Profile(profileId);
+        if (target is null || Binding(target) != binding) throw new WorkspaceReadException("Profile changed while saving the credential; retry from model settings.");
+        if (credentials.TryGetValue(profileId, out var known) && known == secret) return;
+        if (running.Count > 0) throw new WorkspaceReadException("Wait for active responses before changing credentials.");
+        if (store.HasMcpServers()) throw new WorkspaceReadException(McpRepair);
+        credentials[profileId] = secret; redactor.Add(secret);
+        var trimmed = secret.Trim('\t', '\n', '\r', ' ');
+        if (trimmed != secret) redactor.Add(trimmed);
+        generations[profileId] = generations.GetValueOrDefault(profileId) + 1;
+        if (store.Profile(profileId) is { } profile) store.SaveProfile(Without(profile, Verification));
+    }
+
+    /// <summary>
+    /// service.ts profile.probe: one probe per profile at a time. The adapter's result is accepted only if it found streaming
+    /// and cancellation, and only if neither the profile nor its credential changed while it ran; then the profile records
+    /// this fingerprint and its capabilities. A failed probe clears verification if nothing changed. The detail is redacted
+    /// and the fingerprint is the runtime's.
+    /// </summary>
+    private async Task<object?> Probe(string profileId)
+    {
+        loop.AssertCurrent();
+        var profile = store.Profile(profileId) ?? throw new WorkspaceReadException("Profile not found.");
+        if (!probing.Add(profileId)) throw new WorkspaceReadException("A probe for this profile is already running.");
+        try
+        {
+            var fingerprint = Compatibility.ProfileFingerprint(profile);
+            var generation = generations.GetValueOrDefault(profileId);
+            var apiKind = (string)profile["apiKind"]!;
+            var result = apiKind == "fake" ? FakeChatProvider.Probe(profile) : await Azure(apiKind).Probe(profile, credentials.GetValueOrDefault(profileId), Observe);
+            loop.AssertCurrent();
+            if (closing) throw new InvalidOperationException("Runtime is shutting down.");
+            var current = store.Profile(profileId);
+            var unchanged = current is not null && Compatibility.ProfileFingerprint(current) == fingerprint && generation == generations.GetValueOrDefault(profileId);
+            if (result.Ok && result.Streaming && result.Cancellation)
+            {
+                if (!unchanged) throw new WorkspaceReadException("Profile or credential changed during probe; probe it again.");
+                store.SaveProfile(new Dictionary<string, object?>(profile) { ["verifiedAt"] = Clock.Iso(now()), ["verificationFingerprint"] = fingerprint, ["capabilities"] = result.Capabilities() });
+                store.Event("profiles.changed", new Dictionary<string, object?>());
+            }
+            else if (unchanged)
+            {
+                store.SaveProfile(Without(current!, Verification));
+                store.Event("profiles.changed", new Dictionary<string, object?>());
+            }
+            return new Dictionary<string, object?> { ["ok"] = result.Ok, ["capabilities"] = result.Capabilities(), ["detail"] = redactor.Text(result.Detail), ["fingerprint"] = fingerprint };
+        }
+        finally { probing.Remove(profileId); }
+    }
+
+    /// <summary>service.ts observeProbe: from schema v4, each probe request is a probe usage request with no reservation,
+    /// settled with its measured usage and metadata, and a usage.changed notification.</summary>
+    private async IAsyncEnumerable<ProviderChatEvent> Observe(ProviderRequest request, Func<IAsyncEnumerable<ProviderChatEvent>> stream, [EnumeratorCancellation] CancellationToken token)
+    {
+        loop.AssertCurrent();
+        if (store.SchemaVersion < 4)
+        {
+            await foreach (var item in stream()) yield return item;
+            yield break;
+        }
+        var requestId = id().ToString();
+        store.BeginUsage(requestId, null, request.Profile!, 0, "probe");
+        store.AttemptUsage(requestId);
+        IReadOnlyDictionary<string, object?>? usage = null; var metadata = new Dictionary<string, object?>();
+        var complete = false; var ended = false;
+        try
+        {
+            await foreach (var item in stream())
+            {
+                loop.AssertCurrent();
+                if (item is ProviderUsage measured) usage = RequestAccounting.MeasuredUsage(measured.ToWire()) ?? usage;
+                if (item is ProviderMetadata reported)
+                {
+                    if (reported.ReportedModel is { Length: <= 200 } model) metadata["reportedModel"] = redactor.Text(model);
+                    if (reported.ResponseId is { Length: <= 200 } response) metadata["responseId"] = redactor.Text(response);
+                }
+                if (item is ProviderDone) complete = true;
+                yield return item;
+            }
+            ended = true;
+        }
+        finally
+        {
+            loop.AssertCurrent();
+            var outcome = token.IsCancellationRequested ? "cancelled" : complete && ended ? "completed" : "failed";
+            store.FinishUsage(requestId, usage, outcome, usage is null ? "Profile check ended without final usage." : null, metadata);
+            store.Event("usage.changed", new Dictionary<string, object?> { ["requestId"] = requestId });
+        }
+    }
+
+    /// <summary>The adapter for an external kind, over the production transport unless a test injected one.</summary>
+    private AzureProvider Azure(string apiKind)
+    {
+        transport ??= injectedTransport ?? new AzureTransport();
+        return new AzureProvider(apiKind, transport, () => now().ToUnixTimeMilliseconds(), id, probeDeadline);
+    }
+
+    private static string Binding(IReadOnlyDictionary<string, object?> profile) =>
+        JsJson.Stringify(new List<object?> { profile.GetValueOrDefault("apiKind"), profile.GetValueOrDefault("endpoint"), profile.GetValueOrDefault("deployment") })!;
+
+    /// <summary>The profile without the named fields, in its order: JavaScript's delete, where a later assignment appends.</summary>
+    private static Dictionary<string, object?> Without(Dictionary<string, object?> profile, string[] fields) =>
+        profile.Where(entry => !fields.Contains(entry.Key)).ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
     private void Fail(Exception error)
     {
         loop.AssertCurrent(); backgroundFailure ??= error; CloseAdmission();
@@ -714,6 +880,13 @@ public sealed class DevelopmentChat
     {
         CloseAdmission();
         await Task.WhenAll(running.Values.Select(entry => entry.Done).ToArray());
+        // A probe is not a model loop: like TypeScript's shutdown, let it reach its result before the Store closes. Its own
+        // failure is its caller's reply, not the shutdown's.
+        foreach (var pending in probes.ToArray())
+        {
+            try { await pending; }
+            catch (Exception error) when (error is InvalidOperationException or WorkspaceReadException) { }
+        }
         loop.AssertCurrent();
         if (backgroundFailure is not null) throw new InvalidOperationException("Development chat execution failed.", backgroundFailure);
     }

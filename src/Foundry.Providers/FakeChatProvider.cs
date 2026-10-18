@@ -158,6 +158,14 @@ public sealed class FakeChatProvider
         yield return Done("chat", []);
     }
 
+    /// <summary>FakeProvider.probe: the offline profile's fixed capabilities, without any request.</summary>
+    public static ProbeResult Probe(IReadOnlyDictionary<string, object?> profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        var offline = Equals(profile.GetValueOrDefault("apiKind"), "fake");
+        return new(offline, true, true, true, true, false, offline ? "Offline deterministic text, tools, and continuation are available." : "Profile API kind does not match this provider.");
+    }
+
     private async IAsyncEnumerable<ProviderChatEvent> Text(string value, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         for (var index = 0; index < value.Length; index += 12)

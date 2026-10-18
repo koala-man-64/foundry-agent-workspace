@@ -13119,6 +13119,50 @@
       "name": "provider-transport:224",
       "input": {
         "kind": "responses",
+        "profile": {
+          "endpoint": "https://ab.openai.azure.com"
+        },
+        "response": {
+          "status": 400,
+          "body": []
+        },
+        "credential": "{credential}"
+      },
+      "expected": {
+        "requests": [],
+        "events": [],
+        "error": {
+          "name": "Error",
+          "message": "Endpoint must be a valid HTTPS Azure URL."
+        }
+      }
+    },
+    {
+      "name": "provider-transport:225",
+      "input": {
+        "kind": "responses",
+        "profile": {
+          "endpoint": "https://a%7fb.openai.azure.com"
+        },
+        "response": {
+          "status": 400,
+          "body": []
+        },
+        "credential": "{credential}"
+      },
+      "expected": {
+        "requests": [],
+        "events": [],
+        "error": {
+          "name": "Error",
+          "message": "Endpoint must be a valid HTTPS Azure URL."
+        }
+      }
+    },
+    {
+      "name": "provider-transport:226",
+      "input": {
+        "kind": "responses",
         "response": {
           "status": 400,
           "headers": [
@@ -13155,7 +13199,7 @@
       }
     },
     {
-      "name": "provider-transport:225",
+      "name": "provider-transport:227",
       "input": {
         "kind": "responses",
         "response": {
@@ -13194,7 +13238,7 @@
       }
     },
     {
-      "name": "provider-transport:226",
+      "name": "provider-transport:228",
       "input": {
         "kind": "responses",
         "response": {
@@ -13233,7 +13277,7 @@
       }
     },
     {
-      "name": "provider-transport:227",
+      "name": "provider-transport:229",
       "input": {
         "kind": "responses",
         "response": {
@@ -13272,7 +13316,7 @@
       }
     },
     {
-      "name": "provider-transport:228",
+      "name": "provider-transport:230",
       "input": {
         "kind": "responses",
         "response": {
@@ -13311,7 +13355,7 @@
       }
     },
     {
-      "name": "provider-transport:229",
+      "name": "provider-transport:231",
       "input": {
         "kind": "responses",
         "response": {
@@ -13350,7 +13394,7 @@
       }
     },
     {
-      "name": "provider-transport:230",
+      "name": "provider-transport:232",
       "input": {
         "kind": "responses",
         "response": {
@@ -13389,7 +13433,7 @@
       }
     },
     {
-      "name": "provider-transport:231",
+      "name": "provider-transport:233",
       "input": {
         "kind": "responses",
         "response": {
@@ -13428,7 +13472,7 @@
       }
     },
     {
-      "name": "provider-transport:232",
+      "name": "provider-transport:234",
       "input": {
         "kind": "responses",
         "response": {
@@ -13467,7 +13511,7 @@
       }
     },
     {
-      "name": "provider-transport:233",
+      "name": "provider-transport:235",
       "input": {
         "kind": "responses",
         "response": {
@@ -13506,7 +13550,7 @@
       }
     },
     {
-      "name": "provider-transport:234",
+      "name": "provider-transport:236",
       "input": {
         "kind": "responses",
         "response": {
@@ -13545,7 +13589,7 @@
       }
     },
     {
-      "name": "provider-transport:235",
+      "name": "provider-transport:237",
       "input": {
         "kind": "responses",
         "response": {
@@ -13584,7 +13628,7 @@
       }
     },
     {
-      "name": "provider-transport:236",
+      "name": "provider-transport:238",
       "input": {
         "kind": "responses",
         "response": {
@@ -13623,7 +13667,7 @@
       }
     },
     {
-      "name": "provider-transport:237",
+      "name": "provider-transport:239",
       "input": {
         "kind": "responses",
         "response": {
@@ -13662,7 +13706,7 @@
       }
     },
     {
-      "name": "provider-transport:238",
+      "name": "provider-transport:240",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13702,7 +13746,7 @@
       }
     },
     {
-      "name": "provider-transport:239",
+      "name": "provider-transport:241",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13742,7 +13786,7 @@
       }
     },
     {
-      "name": "provider-transport:240",
+      "name": "provider-transport:242",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13782,7 +13826,7 @@
       }
     },
     {
-      "name": "provider-transport:241",
+      "name": "provider-transport:243",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13822,7 +13866,7 @@
       }
     },
     {
-      "name": "provider-transport:242",
+      "name": "provider-transport:244",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13862,7 +13906,7 @@
       }
     },
     {
-      "name": "provider-transport:243",
+      "name": "provider-transport:245",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13902,7 +13946,7 @@
       }
     },
     {
-      "name": "provider-transport:244",
+      "name": "provider-transport:246",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13942,7 +13986,7 @@
       }
     },
     {
-      "name": "provider-transport:245",
+      "name": "provider-transport:247",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -13982,7 +14026,7 @@
       }
     },
     {
-      "name": "provider-transport:246",
+      "name": "provider-transport:248",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14022,7 +14066,7 @@
       }
     },
     {
-      "name": "provider-transport:247",
+      "name": "provider-transport:249",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14062,7 +14106,7 @@
       }
     },
     {
-      "name": "provider-transport:248",
+      "name": "provider-transport:250",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14102,7 +14146,7 @@
       }
     },
     {
-      "name": "provider-transport:249",
+      "name": "provider-transport:251",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14142,7 +14186,7 @@
       }
     },
     {
-      "name": "provider-transport:250",
+      "name": "provider-transport:252",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14182,7 +14226,7 @@
       }
     },
     {
-      "name": "provider-transport:251",
+      "name": "provider-transport:253",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14222,7 +14266,7 @@
       }
     },
     {
-      "name": "provider-transport:252",
+      "name": "provider-transport:254",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14262,7 +14306,7 @@
       }
     },
     {
-      "name": "provider-transport:253",
+      "name": "provider-transport:255",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14302,7 +14346,7 @@
       }
     },
     {
-      "name": "provider-transport:254",
+      "name": "provider-transport:256",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14342,7 +14386,7 @@
       }
     },
     {
-      "name": "provider-transport:255",
+      "name": "provider-transport:257",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14382,7 +14426,7 @@
       }
     },
     {
-      "name": "provider-transport:256",
+      "name": "provider-transport:258",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14422,7 +14466,7 @@
       }
     },
     {
-      "name": "provider-transport:257",
+      "name": "provider-transport:259",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14462,7 +14506,7 @@
       }
     },
     {
-      "name": "provider-transport:258",
+      "name": "provider-transport:260",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14502,7 +14546,7 @@
       }
     },
     {
-      "name": "provider-transport:259",
+      "name": "provider-transport:261",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14542,7 +14586,7 @@
       }
     },
     {
-      "name": "provider-transport:260",
+      "name": "provider-transport:262",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14582,7 +14626,7 @@
       }
     },
     {
-      "name": "provider-transport:261",
+      "name": "provider-transport:263",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14622,7 +14666,7 @@
       }
     },
     {
-      "name": "provider-transport:262",
+      "name": "provider-transport:264",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14656,7 +14700,7 @@
       }
     },
     {
-      "name": "provider-transport:263",
+      "name": "provider-transport:265",
       "input": {
         "kind": "responses",
         "now": 1792324800000,
@@ -14700,7 +14744,7 @@
       }
     },
     {
-      "name": "provider-transport:264",
+      "name": "provider-transport:266",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -14756,7 +14800,7 @@
       }
     },
     {
-      "name": "provider-transport:265",
+      "name": "provider-transport:267",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -14812,7 +14856,7 @@
       }
     },
     {
-      "name": "provider-transport:266",
+      "name": "provider-transport:268",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -14865,7 +14909,7 @@
       }
     },
     {
-      "name": "provider-transport:267",
+      "name": "provider-transport:269",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -14918,7 +14962,7 @@
       }
     },
     {
-      "name": "provider-transport:268",
+      "name": "provider-transport:270",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -14971,7 +15015,7 @@
       }
     },
     {
-      "name": "provider-transport:269",
+      "name": "provider-transport:271",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15028,7 +15072,7 @@
       }
     },
     {
-      "name": "provider-transport:270",
+      "name": "provider-transport:272",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15082,7 +15126,7 @@
       }
     },
     {
-      "name": "provider-transport:271",
+      "name": "provider-transport:273",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15138,7 +15182,7 @@
       }
     },
     {
-      "name": "provider-transport:272",
+      "name": "provider-transport:274",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15194,7 +15238,7 @@
       }
     },
     {
-      "name": "provider-transport:273",
+      "name": "provider-transport:275",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15228,7 +15272,7 @@
       }
     },
     {
-      "name": "provider-transport:274",
+      "name": "provider-transport:276",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15406,7 +15450,7 @@
       }
     },
     {
-      "name": "provider-transport:275",
+      "name": "provider-transport:277",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15588,7 +15632,7 @@
       }
     },
     {
-      "name": "provider-transport:276",
+      "name": "provider-transport:278",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15697,7 +15741,7 @@
       }
     },
     {
-      "name": "provider-transport:277",
+      "name": "provider-transport:279",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15812,7 +15856,7 @@
       }
     },
     {
-      "name": "provider-transport:278",
+      "name": "provider-transport:280",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -15925,7 +15969,7 @@
       }
     },
     {
-      "name": "provider-transport:279",
+      "name": "provider-transport:281",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16041,7 +16085,7 @@
       }
     },
     {
-      "name": "provider-transport:280",
+      "name": "provider-transport:282",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16102,7 +16146,7 @@
       }
     },
     {
-      "name": "provider-transport:281",
+      "name": "provider-transport:283",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16157,7 +16201,7 @@
       }
     },
     {
-      "name": "provider-transport:282",
+      "name": "provider-transport:284",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16212,7 +16256,7 @@
       }
     },
     {
-      "name": "provider-transport:283",
+      "name": "provider-transport:285",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16267,7 +16311,7 @@
       }
     },
     {
-      "name": "provider-transport:284",
+      "name": "provider-transport:286",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16322,7 +16366,7 @@
       }
     },
     {
-      "name": "provider-transport:285",
+      "name": "provider-transport:287",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16380,7 +16424,7 @@
       }
     },
     {
-      "name": "provider-transport:286",
+      "name": "provider-transport:288",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16435,7 +16479,7 @@
       }
     },
     {
-      "name": "provider-transport:287",
+      "name": "provider-transport:289",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16468,7 +16512,7 @@
       }
     },
     {
-      "name": "provider-transport:288",
+      "name": "provider-transport:290",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16522,7 +16566,7 @@
       }
     },
     {
-      "name": "provider-transport:289",
+      "name": "provider-transport:291",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16572,7 +16616,7 @@
       }
     },
     {
-      "name": "provider-transport:290",
+      "name": "provider-transport:292",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16611,7 +16655,7 @@
       }
     },
     {
-      "name": "provider-transport:291",
+      "name": "provider-transport:293",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16650,7 +16694,7 @@
       }
     },
     {
-      "name": "provider-transport:292",
+      "name": "provider-transport:294",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16689,7 +16733,7 @@
       }
     },
     {
-      "name": "provider-transport:293",
+      "name": "provider-transport:295",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16744,7 +16788,7 @@
       }
     },
     {
-      "name": "provider-transport:294",
+      "name": "provider-transport:296",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16792,7 +16836,7 @@
       }
     },
     {
-      "name": "provider-transport:295",
+      "name": "provider-transport:297",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16832,7 +16876,7 @@
       }
     },
     {
-      "name": "provider-transport:296",
+      "name": "provider-transport:298",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16871,7 +16915,7 @@
       }
     },
     {
-      "name": "provider-transport:297",
+      "name": "provider-transport:299",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16909,7 +16953,7 @@
       }
     },
     {
-      "name": "provider-transport:298",
+      "name": "provider-transport:300",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16940,7 +16984,7 @@
       }
     },
     {
-      "name": "provider-transport:299",
+      "name": "provider-transport:301",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -16970,7 +17014,7 @@
       }
     },
     {
-      "name": "provider-transport:300",
+      "name": "provider-transport:302",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17002,7 +17046,7 @@
       }
     },
     {
-      "name": "provider-transport:301",
+      "name": "provider-transport:303",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17034,7 +17078,7 @@
       }
     },
     {
-      "name": "provider-transport:302",
+      "name": "provider-transport:304",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17098,7 +17142,7 @@
       }
     },
     {
-      "name": "provider-transport:303",
+      "name": "provider-transport:305",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17141,7 +17185,7 @@
       }
     },
     {
-      "name": "provider-transport:304",
+      "name": "provider-transport:306",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17180,7 +17224,7 @@
       }
     },
     {
-      "name": "provider-transport:305",
+      "name": "provider-transport:307",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17242,7 +17286,7 @@
       }
     },
     {
-      "name": "provider-transport:306",
+      "name": "provider-transport:308",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17302,7 +17346,7 @@
       }
     },
     {
-      "name": "provider-transport:307",
+      "name": "provider-transport:309",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17347,7 +17391,7 @@
       }
     },
     {
-      "name": "provider-transport:308",
+      "name": "provider-transport:310",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17388,7 +17432,7 @@
       }
     },
     {
-      "name": "provider-transport:309",
+      "name": "provider-transport:311",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17447,7 +17491,7 @@
       }
     },
     {
-      "name": "provider-transport:310",
+      "name": "provider-transport:312",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17490,7 +17534,7 @@
       }
     },
     {
-      "name": "provider-transport:311",
+      "name": "provider-transport:313",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17525,7 +17569,7 @@
       }
     },
     {
-      "name": "provider-transport:312",
+      "name": "provider-transport:314",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17580,7 +17624,7 @@
       }
     },
     {
-      "name": "provider-transport:313",
+      "name": "provider-transport:315",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17630,7 +17674,7 @@
       }
     },
     {
-      "name": "provider-transport:314",
+      "name": "provider-transport:316",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17688,7 +17732,7 @@
       }
     },
     {
-      "name": "provider-transport:315",
+      "name": "provider-transport:317",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17738,7 +17782,7 @@
       }
     },
     {
-      "name": "provider-transport:316",
+      "name": "provider-transport:318",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17794,7 +17838,7 @@
       }
     },
     {
-      "name": "provider-transport:317",
+      "name": "provider-transport:319",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17849,7 +17893,7 @@
       }
     },
     {
-      "name": "provider-transport:318",
+      "name": "provider-transport:320",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17894,7 +17938,7 @@
       }
     },
     {
-      "name": "provider-transport:319",
+      "name": "provider-transport:321",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17933,7 +17977,7 @@
       }
     },
     {
-      "name": "provider-transport:320",
+      "name": "provider-transport:322",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -17973,7 +18017,7 @@
       }
     },
     {
-      "name": "provider-transport:321",
+      "name": "provider-transport:323",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18012,7 +18056,7 @@
       }
     },
     {
-      "name": "provider-transport:322",
+      "name": "provider-transport:324",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18050,7 +18094,7 @@
       }
     },
     {
-      "name": "provider-transport:323",
+      "name": "provider-transport:325",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18088,7 +18132,7 @@
       }
     },
     {
-      "name": "provider-transport:324",
+      "name": "provider-transport:326",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18128,7 +18172,7 @@
       }
     },
     {
-      "name": "provider-transport:325",
+      "name": "provider-transport:327",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18168,7 +18212,7 @@
       }
     },
     {
-      "name": "provider-transport:326",
+      "name": "provider-transport:328",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18208,7 +18252,7 @@
       }
     },
     {
-      "name": "provider-transport:327",
+      "name": "provider-transport:329",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18248,7 +18292,7 @@
       }
     },
     {
-      "name": "provider-transport:328",
+      "name": "provider-transport:330",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18310,7 +18354,7 @@
       }
     },
     {
-      "name": "provider-transport:329",
+      "name": "provider-transport:331",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18350,7 +18394,7 @@
       }
     },
     {
-      "name": "provider-transport:330",
+      "name": "provider-transport:332",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18389,7 +18433,7 @@
       }
     },
     {
-      "name": "provider-transport:331",
+      "name": "provider-transport:333",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18428,7 +18472,7 @@
       }
     },
     {
-      "name": "provider-transport:332",
+      "name": "provider-transport:334",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18479,7 +18523,7 @@
       }
     },
     {
-      "name": "provider-transport:333",
+      "name": "provider-transport:335",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18518,7 +18562,7 @@
       }
     },
     {
-      "name": "provider-transport:334",
+      "name": "provider-transport:336",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18569,7 +18613,7 @@
       }
     },
     {
-      "name": "provider-transport:335",
+      "name": "provider-transport:337",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18601,7 +18645,7 @@
       }
     },
     {
-      "name": "provider-transport:336",
+      "name": "provider-transport:338",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18633,7 +18677,7 @@
       }
     },
     {
-      "name": "provider-transport:337",
+      "name": "provider-transport:339",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18665,7 +18709,7 @@
       }
     },
     {
-      "name": "provider-transport:338",
+      "name": "provider-transport:340",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18697,7 +18741,7 @@
       }
     },
     {
-      "name": "provider-transport:339",
+      "name": "provider-transport:341",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18729,7 +18773,7 @@
       }
     },
     {
-      "name": "provider-transport:340",
+      "name": "provider-transport:342",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18783,7 +18827,7 @@
       }
     },
     {
-      "name": "provider-transport:341",
+      "name": "provider-transport:343",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18853,7 +18897,7 @@
       }
     },
     {
-      "name": "provider-transport:342",
+      "name": "provider-transport:344",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18917,7 +18961,7 @@
       }
     },
     {
-      "name": "provider-transport:343",
+      "name": "provider-transport:345",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -18955,7 +18999,7 @@
       }
     },
     {
-      "name": "provider-transport:344",
+      "name": "provider-transport:346",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19018,7 +19062,7 @@
       }
     },
     {
-      "name": "provider-transport:345",
+      "name": "provider-transport:347",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19080,7 +19124,7 @@
       }
     },
     {
-      "name": "provider-transport:346",
+      "name": "provider-transport:348",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19142,7 +19186,7 @@
       }
     },
     {
-      "name": "provider-transport:347",
+      "name": "provider-transport:349",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19198,7 +19242,7 @@
       }
     },
     {
-      "name": "provider-transport:348",
+      "name": "provider-transport:350",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19254,7 +19298,7 @@
       }
     },
     {
-      "name": "provider-transport:349",
+      "name": "provider-transport:351",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19310,7 +19354,7 @@
       }
     },
     {
-      "name": "provider-transport:350",
+      "name": "provider-transport:352",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19371,7 +19415,7 @@
       }
     },
     {
-      "name": "provider-transport:351",
+      "name": "provider-transport:353",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19427,7 +19471,7 @@
       }
     },
     {
-      "name": "provider-transport:352",
+      "name": "provider-transport:354",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19483,7 +19527,7 @@
       }
     },
     {
-      "name": "provider-transport:353",
+      "name": "provider-transport:355",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19539,7 +19583,7 @@
       }
     },
     {
-      "name": "provider-transport:354",
+      "name": "provider-transport:356",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19595,7 +19639,7 @@
       }
     },
     {
-      "name": "provider-transport:355",
+      "name": "provider-transport:357",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19658,7 +19702,7 @@
       }
     },
     {
-      "name": "provider-transport:356",
+      "name": "provider-transport:358",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19721,7 +19765,7 @@
       }
     },
     {
-      "name": "provider-transport:357",
+      "name": "provider-transport:359",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19782,7 +19826,7 @@
       }
     },
     {
-      "name": "provider-transport:358",
+      "name": "provider-transport:360",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19843,7 +19887,7 @@
       }
     },
     {
-      "name": "provider-transport:359",
+      "name": "provider-transport:361",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19899,7 +19943,7 @@
       }
     },
     {
-      "name": "provider-transport:360",
+      "name": "provider-transport:362",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -19961,7 +20005,7 @@
       }
     },
     {
-      "name": "provider-transport:361",
+      "name": "provider-transport:363",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20022,7 +20066,7 @@
       }
     },
     {
-      "name": "provider-transport:362",
+      "name": "provider-transport:364",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20078,7 +20122,7 @@
       }
     },
     {
-      "name": "provider-transport:363",
+      "name": "provider-transport:365",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20139,7 +20183,7 @@
       }
     },
     {
-      "name": "provider-transport:364",
+      "name": "provider-transport:366",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20195,7 +20239,7 @@
       }
     },
     {
-      "name": "provider-transport:365",
+      "name": "provider-transport:367",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20256,7 +20300,7 @@
       }
     },
     {
-      "name": "provider-transport:366",
+      "name": "provider-transport:368",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20363,7 +20407,7 @@
       }
     },
     {
-      "name": "provider-transport:367",
+      "name": "provider-transport:369",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20491,7 +20535,7 @@
       }
     },
     {
-      "name": "provider-transport:368",
+      "name": "provider-transport:370",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20615,7 +20659,7 @@
       }
     },
     {
-      "name": "provider-transport:369",
+      "name": "provider-transport:371",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20740,7 +20784,7 @@
       }
     },
     {
-      "name": "provider-transport:370",
+      "name": "provider-transport:372",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20801,7 +20845,7 @@
       }
     },
     {
-      "name": "provider-transport:371",
+      "name": "provider-transport:373",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20862,7 +20906,7 @@
       }
     },
     {
-      "name": "provider-transport:372",
+      "name": "provider-transport:374",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -20923,7 +20967,7 @@
       }
     },
     {
-      "name": "provider-transport:373",
+      "name": "provider-transport:375",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21025,7 +21069,7 @@
       }
     },
     {
-      "name": "provider-transport:374",
+      "name": "provider-transport:376",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21127,7 +21171,7 @@
       }
     },
     {
-      "name": "provider-transport:375",
+      "name": "provider-transport:377",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21229,7 +21273,7 @@
       }
     },
     {
-      "name": "provider-transport:376",
+      "name": "provider-transport:378",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21337,7 +21381,7 @@
       }
     },
     {
-      "name": "provider-transport:377",
+      "name": "provider-transport:379",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21443,7 +21487,7 @@
       }
     },
     {
-      "name": "provider-transport:378",
+      "name": "provider-transport:380",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21549,7 +21593,7 @@
       }
     },
     {
-      "name": "provider-transport:379",
+      "name": "provider-transport:381",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21610,7 +21654,7 @@
       }
     },
     {
-      "name": "provider-transport:380",
+      "name": "provider-transport:382",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21671,7 +21715,7 @@
       }
     },
     {
-      "name": "provider-transport:381",
+      "name": "provider-transport:383",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21705,7 +21749,7 @@
       }
     },
     {
-      "name": "provider-transport:382",
+      "name": "provider-transport:384",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21767,7 +21811,7 @@
       }
     },
     {
-      "name": "provider-transport:383",
+      "name": "provider-transport:385",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21828,7 +21872,7 @@
       }
     },
     {
-      "name": "provider-transport:384",
+      "name": "provider-transport:386",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21889,7 +21933,7 @@
       }
     },
     {
-      "name": "provider-transport:385",
+      "name": "provider-transport:387",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -21950,7 +21994,7 @@
       }
     },
     {
-      "name": "provider-transport:386",
+      "name": "provider-transport:388",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22053,7 +22097,7 @@
       }
     },
     {
-      "name": "provider-transport:387",
+      "name": "provider-transport:389",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22114,7 +22158,7 @@
       }
     },
     {
-      "name": "provider-transport:388",
+      "name": "provider-transport:390",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22175,7 +22219,7 @@
       }
     },
     {
-      "name": "provider-transport:389",
+      "name": "provider-transport:391",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22236,7 +22280,7 @@
       }
     },
     {
-      "name": "provider-transport:390",
+      "name": "provider-transport:392",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22297,7 +22341,7 @@
       }
     },
     {
-      "name": "provider-transport:391",
+      "name": "provider-transport:393",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22358,7 +22402,7 @@
       }
     },
     {
-      "name": "provider-transport:392",
+      "name": "provider-transport:394",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22436,7 +22480,7 @@
       }
     },
     {
-      "name": "provider-transport:393",
+      "name": "provider-transport:395",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22497,7 +22541,7 @@
       }
     },
     {
-      "name": "provider-transport:394",
+      "name": "provider-transport:396",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22563,7 +22607,7 @@
       }
     },
     {
-      "name": "provider-transport:395",
+      "name": "provider-transport:397",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22671,7 +22715,7 @@
       }
     },
     {
-      "name": "provider-transport:396",
+      "name": "provider-transport:398",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22774,7 +22818,7 @@
       }
     },
     {
-      "name": "provider-transport:397",
+      "name": "provider-transport:399",
       "input": {
         "kind": "chat-completions",
         "response": {
@@ -22879,7 +22923,7 @@
       }
     },
     {
-      "name": "provider-transport:398",
+      "name": "provider-transport:400",
       "input": {
         "kind": "chat-completions",
         "response": {

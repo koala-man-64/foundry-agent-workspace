@@ -273,6 +273,72 @@ async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
   }
 }
 
+// P2.4c's provider paths that reach no network, through both entry points: profile saves and their refusals, the
+// runtime.credential frame (accepted, a stale binding, and frames that are not valid credential frames), the offline
+// profile's probe, and an external probe before any credential, which fails without a request. No external profile is
+// ever probed with a credential here: that would reach Azure. Timestamps and request ids are normalized.
+async function exerciseProfiles(kind: 'node' | 'dotnet'): Promise<unknown> {
+  const scratch = mkdtempSync(join(tmpdir(), `foundry-p2-entry-profiles-${kind}-`));
+  const child = kind === 'node'
+    ? spawn(process.execPath, [resolve('out/main/runtime.js')], { env: { ...process.env, FOUNDRY_WORKSPACE_DATA: scratch }, stdio: 'pipe' })
+    : spawn(resolve('src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe'), [], { env: { ...process.env, FOUNDRY_WORKSPACE_DATA: scratch, FOUNDRY_RUNTIME_P2_CHAT: '1' }, stdio: 'pipe' });
+  const exited = once(child, 'exit');
+  let stderr = ''; child.stderr.setEncoding('utf8'); child.stderr.on('data', text => { stderr += String(text); });
+  const reader = createInterface({ input: child.stdout }); const lines = reader[Symbol.asyncIterator]();
+  const events: ObjectValue[] = [];
+  const send = async (frame: unknown, id: string): Promise<ObjectValue> => {
+    child.stdin.write(JSON.stringify(frame) + '\n');
+    for (let n = 0; n < 1000; n++) {
+      const next = await lines.next(); if (next.done) throw new Error(`Entry exited before reply: ${stderr}`);
+      const value = JSON.parse(next.value) as ObjectValue;
+      if (value.method === 'workspace.event') { events.push(value.params as ObjectValue); continue; }
+      RpcResponseSchema.parse(value); expect(value.id).toBe(id); return value;
+    }
+    throw new Error('Missing bounded reply.');
+  };
+  const request = (id: string, method: string, params: unknown): Promise<ObjectValue> => send({ jsonrpc: '2.0', id, method, params }, id);
+  const credential = (id: string, params: unknown): Promise<ObjectValue> => send({ jsonrpc: '2.0', id, method: 'runtime.credential', params }, id);
+  const profileId = '0c46787b-9dce-4a8d-a8aa-6fe7f8a44d53';
+  const profile = { id: profileId, name: 'Parity', apiKind: 'responses', endpoint: 'https://sample.openai.azure.com', deployment: 'parity-model', contextLimit: 8192, outputLimit: 1024 };
+  const binding = JSON.stringify(['responses', profile.endpoint, profile.deployment]);
+  // A value with no token shape; nothing sends it anywhere.
+  const value = ['parity', 'value', kind === 'node' ? 'n' : 'd'].join('-');
+  try {
+    const results: ObjectValue = {};
+    results.saved = (await request('save', 'profile.save', profile)).result;
+    results.invalidUrl = (await request('save-invalid', 'profile.save', { ...profile, endpoint: 'not a url' })).error;
+    results.refusedEndpoint = (await request('save-http', 'profile.save', { ...profile, endpoint: 'http://sample.openai.azure.com' })).error;
+    results.reserved = (await request('save-reserved', 'profile.save', { ...profile, id: FAKE_PROFILE_ID })).error;
+    results.budget = (await request('save-budget', 'profile.save', { ...profile, outputLimit: 8192 })).error;
+    results.externalProbe = (await request('probe-external', 'profile.probe', { profileId })).result;
+    results.staleBinding = (await credential('credential-stale', { id: profileId, value, binding: JSON.stringify(['responses', profile.endpoint, 'other']) })).error;
+    results.unknownProfile = (await credential('credential-unknown', { id: '1d57898c-aedf-4b9e-b9bb-7af0f9b55e64', value, binding })).error;
+    // Neither is a credential frame nor an RPC request: both runtimes answer "Invalid request." under the id "invalid".
+    results.shortValue = await send({ jsonrpc: '2.0', id: 'credential-short', method: 'runtime.credential', params: { id: profileId, value: 'abc', binding } }, 'invalid');
+    results.extraField = await send({ jsonrpc: '2.0', id: 'credential-extra', method: 'runtime.credential', params: { id: profileId, value, binding, other: 1 } }, 'invalid');
+    results.accepted = await credential('credential', { id: profileId, value, binding });
+    results.again = await credential('credential-again', { id: profileId, value, binding });
+    results.read = (await request('read', 'profile.read', { profileId })).result;
+    results.offlineProbe = (await request('probe-offline', 'profile.probe', { profileId: FAKE_PROFILE_ID })).result;
+    results.missingProbe = (await request('probe-missing', 'profile.probe', { profileId: '1d57898c-aedf-4b9e-b9bb-7af0f9b55e64' })).error;
+    results.rebound = (await request('save-rebound', 'profile.save', { ...profile, deployment: 'rebound-model' })).result;
+    results.page = (await request('profiles', 'workspace.profiles', { limit: 50 })).result;
+    child.stdin.end();
+    for await (const line of lines) { const frame = JSON.parse(line) as ObjectValue; expect(frame.method).toBe('workspace.event'); events.push(frame.params as ObjectValue); }
+    const [code] = await exited; expect(code).toBe(0); expect(stderr).toBe('');
+    const db = new Database(join(scratch, 'workspace.db'), { readonly: true });
+    try {
+      const rows = { profiles: db.prepare('SELECT * FROM profiles ORDER BY rowid').all(), requests: db.prepare('SELECT * FROM provider_requests ORDER BY rowid').all(), events: db.prepare('SELECT * FROM events ORDER BY sequence').all() };
+      const text = JSON.stringify({ ...results, rows, notifications: events.filter(item => item.sequence !== 0) });
+      // The value never reaches a reply, row or notification.
+      expect(text.includes(value)).toBe(false);
+      return JSON.parse(text.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/g, 'CLOCK'));
+    } finally { db.close(); }
+  } finally {
+    reader.close(); if (child.exitCode === null) { child.kill(); await exited; }
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
 beforeAll(() => { warmPowerShellModuleCache(); }, 600_000);
 
 it('matches Node and C# actual entry points for fake chat, retained rows and durable notifications', async () => {
@@ -282,3 +348,7 @@ it('matches Node and C# actual entry points for fake chat, retained rows and dur
 it('matches Node and C# actual entry points for a Git-project chat, its channel tool loop and the second agent it reaches', async () => {
   const expected = await exerciseGit('node'); const actual = await exerciseGit('dotnet'); expect(actual).toEqual(expected);
 }, 120_000);
+
+it('matches Node and C# actual entry points for profile saves, credential frames and probes that reach no network', async () => {
+  const expected = await exerciseProfiles('node'); const actual = await exerciseProfiles('dotnet'); expect(actual).toEqual(expected);
+});

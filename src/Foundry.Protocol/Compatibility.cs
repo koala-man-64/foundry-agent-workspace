@@ -37,6 +37,21 @@ public static class Compatibility
             return url!.HasRightToLeftHost() ? throw new ArgumentException("Endpoint must be a valid HTTPS Azure URL.") : url.AzureEndpoint();
         throw new ArgumentException(OtherScheme(endpoint) ? "Endpoint must be an HTTPS Azure resource URL without path, credentials, query, or fragment." : "Endpoint must be a valid HTTPS Azure URL.");
     }
+    /// <summary>
+    /// profile.save's endpoint check in service.ts, for a profile that is not offline: null when the endpoint may be saved,
+    /// else the message. An input <c>new URL</c> cannot read is "Invalid URL", its TypeError's text; anything else that fails
+    /// is TypeScript's single message. A host with a right-to-left character is refused as "Invalid URL", which is what
+    /// TypeScript reports for one that breaks the IDNA Bidi rule; valid right-to-left hosts are a named difference (P2.4c).
+    /// </summary>
+    public static string? ProfileEndpointError(string endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        const string Refused = "Use a credential-free HTTPS Azure resource endpoint without a path or query.";
+        if (!EcmaUrl.TryParse(endpoint, out var url)) return OtherScheme(endpoint) ? Refused : "Invalid URL";
+        if (url!.HasRightToLeftHost()) return "Invalid URL";
+        return url.SaveRuleHolds() ? null : Refused;
+    }
+
     private static bool OtherScheme(string endpoint)
     {
         var text = endpoint.Trim([.. Enumerable.Range(0, 33).Select(value => (char)value)]).Replace("\t", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal);

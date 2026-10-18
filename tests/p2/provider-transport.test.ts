@@ -115,7 +115,9 @@ function inputs(): Input[] {
     'https://.openai.azure.com', 'https://openai.azure.com', 'https://127.0.0.1', 'https://[::1]', 'https://0x7f.0.0.1', '', 'sample.openai.azure.com', 'https://', 'https://exa mple.openai.azure.com', 'ftp://sample.openai.azure.com', 'https://sample.openai.azure.com:99999',
     // The security review's spellings (P2.4a F1, F2).
     'https://::@x.openai.azure.com', 'https://xn--.openai.azure.com', 'https://xn--zz.openai.azure.com', 'https://xn--a.openai.azure.com', 'https://xn--abc-.openai.azure.com', 'https://a\u0640b.openai.azure.com',
-    'https://\u05e2\u05d1\u05e8\u05d9\u05ea.openai.azure.com', 'https://a!b.openai.azure.com', 'https://a(b).openai.azure.com', 'https://a~b.openai.azure.com'];
+    'https://\u05e2\u05d1\u05e8\u05d9\u05ea.openai.azure.com', 'https://a!b.openai.azure.com', 'https://a(b).openai.azure.com', 'https://a~b.openai.azure.com',
+    // The re-review's DELETE in a host (P2.4b N3).
+    'https://a\u007fb.openai.azure.com', 'https://a%7fb.openai.azure.com'];
   for (const endpoint of endpoints) list.push({ kind: 'responses', profile: { endpoint }, response: reject });
   // HTTP failures and Retry-After on a fixed clock.
   for (const status of [400, 401, 403, 404, 408, 413, 422, 300, 304, 418, 500, 502, 503, 504]) list.push({ kind: 'responses', response: { status, headers: [['retry-after', '5']], body: status === 304 ? null : [] } });

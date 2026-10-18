@@ -54,7 +54,8 @@ internal sealed record EcmaUrl(string Scheme, string Host, string Port, string T
                     if (label.StartsWith("xn--", StringComparison.Ordinal)) Idn.GetUnicode(label);
             }
             catch (ArgumentException) { return false; }
-            if (host.Length == 0 || host.Any(c => c <= ' ' || "#/:<>?@[\\]^|%".Contains(c))) return false;
+            // WHATWG's forbidden domain code points: C0 controls, space, the delimiters, '%' and DELETE (P2.4b review N3).
+            if (host.Length == 0 || host.Any(c => c <= ' ' || c == '\u007f' || "#/:<>?@[\\]^|%".Contains(c))) return false;
             var segments = (host.EndsWith('.') ? host[..^1] : host).Split('.');
             var last = segments[^1];
             if (last.Length > 0 && (last.All(char.IsAsciiDigit) || last.StartsWith("0x", StringComparison.OrdinalIgnoreCase)))
@@ -114,23 +115,35 @@ internal sealed record EcmaUrl(string Scheme, string Host, string Port, string T
         host = string.Join('.', Enumerable.Range(0, 4).Select(index => (address >> (8 * (3 - index)) & 255).ToString(CultureInfo.InvariantCulture))); return true;
     }
 
+    /// <summary>normalizeEndpoint's rule: HTTPS, no credentials, the default port, a host under one of the four suffixes and
+    /// longer than it, the root path and an empty query and fragment. Returns the WHATWG serialization.</summary>
     internal string AzureEndpoint()
     {
         if (Scheme != "https" || HasCredentials || Port.Length > 0 || !AzureSuffixes.Any(suffix => Host.EndsWith(suffix, StringComparison.Ordinal) && Host.Length > suffix.Length)) throw InvalidEndpoint();
+        if (!RootOnly(out var end)) throw InvalidEndpoint();
+        return "https://" + Host + "/" + Tail[end..];
+    }
+
+    /// <summary>profile.save's rule in service.ts: as <see cref="AzureEndpoint"/>, except that the host only has to end with a
+    /// suffix, so a bare ".openai.azure.com" host is saved and then refused at the first request, as in TypeScript.</summary>
+    internal bool SaveRuleHolds() =>
+        Scheme == "https" && !HasCredentials && Port.Length == 0 && AzureSuffixes.Any(suffix => Host.EndsWith(suffix, StringComparison.Ordinal)) && RootOnly(out _);
+
+    /// <summary>The path resolves to "/" and the query and fragment, if marked, are empty.</summary>
+    private bool RootOnly(out int end)
+    {
         var query = Tail.IndexOf('?'); var fragment = Tail.IndexOf('#');
-        var end = new[] { query, fragment }.Where(index => index >= 0).DefaultIfEmpty(Tail.Length).Min();
-        if (query >= 0 && Tail[(query + 1)..(fragment >= query ? fragment : Tail.Length)].Length > 0 || fragment >= 0 && fragment + 1 < Tail.Length) throw InvalidEndpoint();
-        var path = Tail[..end];
+        end = new[] { query, fragment }.Where(index => index >= 0).DefaultIfEmpty(Tail.Length).Min();
+        if (query >= 0 && Tail[(query + 1)..(fragment >= query ? fragment : Tail.Length)].Length > 0 || fragment >= 0 && fragment + 1 < Tail.Length) return false;
         var segments = new List<string>();
-        foreach (var part in path.Split('/').Skip(1))
+        foreach (var part in Tail[..end].Split('/').Skip(1))
         {
             var dotted = part.Replace("%2e", ".", StringComparison.OrdinalIgnoreCase);
             if (dotted == ".") continue;
             if (dotted == "..") { if (segments.Count > 0) segments.RemoveAt(segments.Count - 1); continue; }
             segments.Add(part);
         }
-        if (segments.Any(segment => segment.Length != 0) || segments.Count > 1) throw InvalidEndpoint();
-        return "https://" + Host + "/" + Tail[end..];
+        return !segments.Any(segment => segment.Length != 0) && segments.Count <= 1;
     }
     private static readonly string[] AzureSuffixes = [".openai.azure.com", ".services.ai.azure.com", ".cognitiveservices.azure.com", ".inference.ai.azure.com"];
     // A new mapping per use: IdnMapping does not document its instances as thread-safe.
