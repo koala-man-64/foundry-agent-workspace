@@ -1389,8 +1389,9 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **A missing recipient or task** is refused with TypeScript's "Task not found." rather than faulting the runtime.
 - **The index** (review M1, L1 and L2, fixed in `779b690`):
   - **Committed rows only.** It reads only committed rows: while a transaction is open it waits, so a message that an enclosing transaction later rolls back never enters it. TypeScript's index would keep that sequence and then fail on it.
-  - **Unreadable rows.** A row whose JSON or fields it cannot read is passed over, so one damaged row never stops the channel. TypeScript's index fails on malformed JSON, and files a message without a project under no project.
-  - **Batches.** It reads the history 2,000 rows at a time, where TypeScript streams it.
+  - **No sends inside a transaction.** Inside a transaction the index is therefore not current, so a send there would not enforce idempotency or the message limit. `Send` refuses to run inside one (re-review condition, `461c5c4`); no caller does.
+  - **Unreadable rows.** A row with malformed JSON or a mistyped field is passed over, so one damaged row never stops the channel. The checked fields include the request id, which must be absent or text, as TypeScript writes it; a nested one would overflow the stack when serialized into the index's key. TypeScript's index fails on malformed JSON, and files a message without a project under no project.
+  - **Batches.** It reads the history 2,000 rows at a time along the primary key's range, where TypeScript streams it.
 - **Alias-refused history.** A task refused as an alias keeps its stored messages, but cannot read them after adoption.
 
 **Evidence.**
@@ -1402,15 +1403,19 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **Binding.** The vectors are bound to the SHA-256 of `agent-channel.ts`, `channel-tools.ts`, the protocol's `agent-channel.ts` and `limits.ts`, `tool-runtime.ts`, `repository.ts`, `redaction.ts`, `store.ts` and `service.ts`. Regenerating them requires `P2_WRITE_AGENT_CHANNEL=1`.
 - **The replay.** `AgentChannelTests` replays every step through `DevelopmentChat`, its `ToolRuntime` and its channel, with the definitions and system text byte for byte. A native-only test pins the alias refusal.
 - **Process differential.** The real Node/C# stdio differential now also calls `channel.get` and `channel.send` across the RPC boundary: a projectless chat's refusals, an oversized message, and a missing task.
-- **Native tests for the review fixes.** These cover unreadable rows of eight kinds, a send rolled back with its enclosing transaction, and 4,500 retained messages indexed across batches (early and late replays and the limit count).
-- **Mutations.** 38 native mutations; 36 fail the replay. The four added for the review fixes all fail.
+- **Native tests for the review fixes.**
+  - **Unreadable rows:** twelve, nine messages (among them a request id nested 100,000 deep) and three receipts.
+  - **Transactions:** a channel read inside a transaction whose message then rolls back, and the refusal of a send there.
+  - **Batches:** 4,500 retained messages indexed across batches, with a read across the first batch boundary returning each message once, early and late replays, and the limit count.
+- **Mutations.** 40 native mutations; 38 fail the replay. The six added for the review fixes all fail; the unchecked nested request id fails by overflowing the test process's stack, as it would the runtime's.
   - **First run.** It found three gaps, now closed: the inbox leaving out an agent's own broadcast, pages redacting a stored sender title, and zod's uuid versions and variants. One more mutation did not build and was rewritten.
   - **Two survive by design.** The idle-agent check inside `send` is one: the tool path refuses an idle agent first, in TypeScript too. The other is counting the context cut in UTF-16 units: completing a surrogate pair always costs less than a lone half, so the cut lands in the same place here.
   - **Evidence** is in `foundry-evidence\p2.3-d\mutations`.
 
 **Validation.**
 - **`59b9f34`** (run1, from a `git archive` export): native 7,236 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed; `git diff --check` clean.
-- **After the review fixes:** recorded once it completes.
+- **`8afdb6f`** (run2, after the review fixes): native 7,239 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed.
+- **`461c5c4`** (run3, after the re-review fixes): native 7,239 passed, 0 failed, 2 expected skips; `pnpm check` 582 passed; the stdio differential passed; `git diff --check` clean.
 
 **Independent reviews of `c9ab458..f6f3d0d`.**
 - **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**, with no critical, high or medium finding.
@@ -1432,7 +1437,14 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - a restart rebuilds the same pages, replays and cursors.
   - **M1 (medium), L1 and L2 (low):** fixed in `779b690`, as the index entry under Differences describes. M1 was a condition before P2.3e.
   - **L3 (evidence gaps):** the rollback, corrupt-row and batch gaps are now pinned. A restart rescan and a coordinated child sender's `root_task_id` remain probe-verified only.
-  - **Re-review of the fixes:** recorded once it completes.
+  - **Re-review of `f6f3d0d..8afdb6f`: GO with conditions.**
+    - **Confirmed fixed:** M1, L1 and the memory half of L2.
+    - **Batch progress** is correct across 23 boundary layouts, among them exactly 2,000 rows, batches ending on other events, deleted rows and later appends.
+    - **Conditions, all closed in `461c5c4`:**
+      - validate the request id, since a tampered nested one overflowed the stack;
+      - refuse a send inside a transaction;
+      - correct these notes.
+    - **Optional, also applied:** the scan reads along the primary key instead of sorting each batch.
 
 **Open, for later slices.**
 - **Wiring.** `Enrich` and `Acknowledge` are wired by the native tool loop (P2.3e), in the response transaction as TypeScript wires them. With M1 fixed, the index never takes a row from that transaction before it commits.
