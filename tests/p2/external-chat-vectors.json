@@ -41,7 +41,7 @@
       },
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "668a91766c9368a02f6f20dc16f63b7e08ac42a53d3d60040578024e33bfacce"
+        "sha256": "ca6a9251b83b73e94485b69437acc824f0613dccecadb8e29c87b5276ea83159"
       },
       {
         "path": "packages/protocol/src/limits.ts",

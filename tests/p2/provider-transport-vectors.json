@@ -3,7 +3,7 @@
     "sources": [
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "668a91766c9368a02f6f20dc16f63b7e08ac42a53d3d60040578024e33bfacce"
+        "sha256": "ca6a9251b83b73e94485b69437acc824f0613dccecadb8e29c87b5276ea83159"
       },
       {
         "path": "packages/protocol/src/limits.ts",
@@ -9148,7 +9148,7 @@
               "api-key": "{credential}",
               "anthropic-version": "2023-06-01"
             },
-            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"first\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"hidden\",\"signature\":\"sig\"},{\"type\":\"tool_use\",\"id\":\"call-1\",\"name\":\"read_file\",\"input\":{}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"call-2\",\"content\":\"{\\\"ok\\\":true}\",\"is_error\":false},{\"type\":\"text\",\"text\":\"please continue\"}]}],\"stream\":true,\"max_tokens\":256,\"system\":\"Kept system.\",\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture “quoted”   text\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
+            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"first\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"hidden\",\"signature\":\"sig\"},{\"type\":\"tool_use\",\"id\":\"call-1\",\"name\":\"read_file\",\"input\":{}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"call-2\",\"content\":\"{\\\"ok\\\":true}\",\"is_error\":false},{\"type\":\"tool_result\",\"tool_use_id\":\"call-1\",\"content\":\"denied\",\"is_error\":true},{\"type\":\"text\",\"text\":\"please continue\"}]}],\"stream\":true,\"max_tokens\":256,\"system\":\"Kept system.\",\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture “quoted”   text\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
             "redirect": "error"
           }
         ],
@@ -9402,7 +9402,7 @@
               "api-key": "{credential}",
               "anthropic-version": "2023-06-01"
             },
-            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"first\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"hidden\",\"signature\":\"sig\"},{\"type\":\"tool_use\",\"id\":\"call-1\",\"name\":\"read_file\",\"input\":{}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"call-2\",\"content\":\"{\\\"ok\\\":true}\",\"is_error\":false},{\"type\":\"text\",\"text\":\"please continue\"}]}],\"stream\":true,\"max_tokens\":256,\"system\":\"Kept system.\",\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture “quoted”   text\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
+            "body": "{\"model\":\"test-model\",\"messages\":[{\"role\":\"user\",\"content\":\"first\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"hidden\",\"signature\":\"sig\"},{\"type\":\"tool_use\",\"id\":\"call-1\",\"name\":\"read_file\",\"input\":{}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"call-2\",\"content\":\"{\\\"ok\\\":true}\",\"is_error\":false},{\"type\":\"tool_result\",\"tool_use_id\":\"call-1\",\"content\":\"denied\",\"is_error\":true},{\"type\":\"text\",\"text\":\"please continue\"}]}],\"stream\":true,\"max_tokens\":256,\"system\":\"Kept system.\",\"tools\":[{\"name\":\"read_file\",\"description\":\"Read a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"fixture_tool\",\"description\":\"Fixture “quoted”   text\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}]}",
             "redirect": "error"
           }
         ],

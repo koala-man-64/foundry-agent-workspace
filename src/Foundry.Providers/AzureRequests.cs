@@ -93,9 +93,10 @@ internal static partial class AzureRequests
             {
                 ["role"] = "user", ["content"] = new List<object?> { new Dictionary<string, object?> { ["type"] = "tool_result", ["tool_use_id"] = result.Id, ["content"] = result.Content, ["is_error"] = result.IsError } },
             }).ToList();
-            // TypeScript merges only the first result's block with a single new user message (recorded in P2.4a).
+            // A single new user message joins every result's block, in the request's order: Anthropic refuses a tool_use left
+            // unanswered (T-1, dual-landed).
             if (results.Count > 0 && next.Count == 1 && next[0].Role == "user")
-                history.Add(new Dictionary<string, object?> { ["role"] = "user", ["content"] = new List<object?>([.. (List<object?>)results[0]["content"]!, new Dictionary<string, object?> { ["type"] = "text", ["text"] = next[0].Content }]) });
+                history.Add(new Dictionary<string, object?> { ["role"] = "user", ["content"] = new List<object?>([.. results.SelectMany(result => (List<object?>)result["content"]!), new Dictionary<string, object?> { ["type"] = "text", ["text"] = next[0].Content }]) });
             else { history.AddRange(results); history.AddRange(Messages(next)); }
         }
         var system = state.GetValueOrDefault("system", Undefined.Value);

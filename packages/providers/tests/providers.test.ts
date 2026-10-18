@@ -121,6 +121,24 @@ describe('native tool streams', () => {
     });
   });
 
+  // T-1: the merged user message carried only the first result, so Anthropic refused every later turn.
+  it.each([2, 3])('answers each of %i pending Anthropic calls when a new user message joins their results', async count => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 400 }));
+    const ids = Array.from({ length: count }, (_, index) => `toolu_${index + 1}`);
+    const assistant = { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden', signature: 'sig' }, ...ids.map(id => ({ type: 'tool_use', id, name: 'read_file', input: {} }))] };
+    const continuation = { apiKind: 'anthropic' as const, data: { messages: [{ role: 'user', content: 'first' }, assistant], system: 'Kept system.', calls: ids.map(id => ({ id, name: 'read_file', arguments: {} })) } };
+    // The results arrive in the reverse of the calls' order, and the request keeps the results' order, as it does without a new message.
+    const toolResults = ids.map((id, index) => ({ id, name: 'read_file', content: `result ${index + 1}`, isError: index === 1 })).reverse();
+    await expect(events(createProvider('anthropic', { fetch }), { ...request('anthropic'), messages: [{ role: 'system', content: 'dropped' }, { role: 'user', content: 'please continue' }], tools, continuation, toolResults })).rejects.toThrow();
+    const body = JSON.parse(String(fetch.mock.calls[0]![1]?.body));
+    expect(body.system).toBe('Kept system.');
+    expect(body.messages).toEqual([
+      { role: 'user', content: 'first' },
+      assistant,
+      { role: 'user', content: [...toolResults.map(result => ({ type: 'tool_result', tool_use_id: result.id, content: result.content, is_error: result.isError })), { type: 'text', text: 'please continue' }] }
+    ]);
+  });
+
   it('rejects unadvertised, malformed, and incomplete tool calls before emitting them', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(sse('event: response.output_item.done\ndata: {"item":{"type":"function_call","call_id":"c","name":"not_advertised","arguments":"{}"}}\n\n', 'event: response.completed\ndata: {"response":{"status":"completed","output":[{"type":"function_call","call_id":"c","name":"not_advertised","arguments":"{}"}],"usage":{"input_tokens":1,"output_tokens":1}}}\n\n')));
     await expect(events(createProvider('responses', { fetch }), { ...request('responses'), tools })).rejects.toThrow('unadvertised');
