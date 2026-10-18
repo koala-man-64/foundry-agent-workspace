@@ -1763,6 +1763,212 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Browser tools, coordinated orchestration and external profiles** remain refused.
 - **Confinement covers the coding tools only.** File views, `task.diff` and the Git actions follow TypeScript, as decided.
 
+### P2.4 Azure providers — authority and slices
+
+**Status: proposed 18 October 2026, awaiting Rudy's approval.** No P2.4 code exists. No slice starts before Rudy approves this plan and answers the decisions below.
+
+**Scope.** Port the Azure adapter in `packages/providers/src/index.ts` (`AzureProvider`) and the runtime paths that use it. The development runtime (`FOUNDRY_RUNTIME_P2_CHAT=1`) then serves external profiles as TypeScript does:
+- **API kinds:** Responses (`/openai/v1/responses`), Chat Completions (`/openai/v1/chat/completions`) and Anthropic (`/anthropic/v1/messages`).
+- **Capabilities:** streamed text, tool calls with native continuation, usage and response metadata, effort presets and cancellation.
+- **Methods:** `profile.save`, `profile.probe` and the `runtime.credential` frame, bringing the runtime from 41 to **43** of the 89 methods.
+- **Where:** external profiles in projectless, folder and Git chats and in coding tasks, behind TypeScript's verification gates.
+
+**What the runtime asks of a provider** (from the code at `33c2ca8`):
+- **`streamTurn(request)`.** The request carries the profile, the messages, the credential, an abort signal, the tool definitions (name, description and input schema), the native continuation and the tool results. The adapter yields `text`, `metadata`, `usage`, `tool_call` and `done` (with the continuation).
+- **`probe(profile, credential, observer)`.** Four requests, each with a 20-second deadline: text with usage, a cancellation check, a fixture tool call, and its continuation. On schema v4 and later, the runtime's observer records each request as a `probe` usage request.
+- **`ProviderHttpError`.** The status and a bounded `Retry-After`. Only the orchestrator reads either.
+- **Gates are the runtime's, not the adapter's.**
+  - Verification is the runtime fingerprint (`profile-fingerprint.ts`: the raw endpoint plus `credentialRef`). A save keeps it only when the fingerprint is unchanged; a new credential clears it.
+  - Tools, including channel tools, need a probe that found tools and continuation.
+  - The adapter's own `profileFingerprint` (WHATWG-normalized endpoint) appears only in a probe result, which the runtime overwrites.
+- **Native today.**
+  - `FakeChatProvider` takes messages, a continuation, tool names (not definitions) and results.
+  - `AgentLoop` throws on `usage` and `metadata` events, and settles with no measured usage.
+  - `DevelopmentChat.RequireFake` refuses every other profile, and `Program` answers the credential frame as an invalid request.
+  - Already in place from P1 and P2: the credential frame's schema, `Compatibility.ProviderProfileFingerprint`, `EcmaUrl.AzureEndpoint`, `Redactor.Add`, `RequestAccounting.MeasuredUsage`, and the Store's usage primitives (`BeginUsage`, `FinishUsage`, `SettleTaskRequest`), which take measured usage and metadata.
+
+**Left out of P2.4:**
+- **Coordinated orchestration.** 429 `profile-quota` waits, per-profile slots and `Retry-After` scheduling stay with the orchestrator slice; `ProviderHttpError` carries the fields it needs.
+- **MCP and browser tools,** and the orchestration and browser fixtures (their slices).
+- **Later slices:** `task.compact`, `task.usage` and `diagnostics.export`.
+- **`scripts/qualify-deployments.mjs`** stays a standalone development tool (plan, verification layer 9).
+- **The host side:** the DPAPI vault (`Host.DpapiVault`, P3) and any Electron change.
+
+**Slices**, each sealed, reviewed and recorded on its own:
+- **a: the adapter's requests and transport, unwired.**
+  - **Requests.** Endpoint normalization, and the URL, headers and body for all three kinds: tool and effort mapping, continuation input with its tool results, and Anthropic's merged tool-result block.
+  - **Transport.** The rules below; `ProviderHttpError` and `Retry-After`; cancellation before the request is sent and during reads.
+  - **The SSE reader.** Decoding, line endings, `event:` and `data:` lines, and the 1 MiB event, 8 MiB stream and 10,000-event caps.
+  - **The Chat Completions parser,** which carries the framing evidence.
+- **b: the Responses and Anthropic parsers, unwired.**
+  - **Responses.** Output items and their cross-check against the completion, refusals and unsupported content.
+  - **Anthropic.** Content blocks (text, thinking, signature, tool-use JSON) and stop reasons.
+  - **Both.** Usage (with Anthropic's cache buckets), metadata, call validation, and the continuation each kind stores.
+  - **Round trips.** A stored continuation and its tool results, fed to slice a's request builder, must give TypeScript's next body byte for byte.
+- **c: profiles, credentials and probes.**
+  - **`profile.save`:** TypeScript's checks in order, the endpoint rule at save time, verification kept only for an unchanged fingerprint, the credential dropped when the binding changes, and the save generations.
+  - **The `runtime.credential` frame:**
+    - its schema;
+    - the binding, `JSON.stringify([apiKind, endpoint, deployment])`, checked against the stored profile;
+    - refusal while any response runs;
+    - registration with the redactor;
+    - verification cleared, with no event (as in TypeScript);
+    - decision 2.
+  - **`profile.probe`:**
+    - the adapter's four requests, their deadlines and the cancellation check;
+    - the probe usage requests;
+    - verification saved only if neither the profile nor the credential changed during the probe;
+    - one probe per profile at a time;
+    - the offline profile's probe.
+- **d: external profiles in turns.** `RequireFake` goes.
+  - **Gates:** "Probe this model profile successfully before starting a response." and the tools gate, on starts and turns.
+  - **Requests:** the stored credential is passed to the adapter. Channel tools are advertised only to a profile verified for tools and continuation. Stored continuations of an external kind resume.
+  - **Accounting:** usage and metadata are read from the stream, and measured usage settles with its request (including "Provider reported final usage for an unsuccessful request.").
+  - **Failures** are recorded with their redacted messages.
+
+**Transport rules (slice a).** From the plan (section 2) and the Node behaviour measured below. One `SocketsHttpHandler`:
+- **Fixed settings:** `AllowAutoRedirect=false`, `UseCookies=false`, no certificate callback, no default credentials, `ResponseHeadersRead`, HTTP/1.1, no automatic decompression.
+- **`UseProxy=false`.** TypeScript's fetch ignores the Windows proxy settings and its runtime receives no proxy variables (`supervisor.ts:21-22`), so it connects directly. .NET would otherwise use the system proxy. This is parity, under the freeze.
+- **No client timeout.** `HttpClient.Timeout` otherwise defaults to 100 seconds and would cut long streams. As in TypeScript, the turn's 10-minute limit, the probe's 20-second deadlines and cancellation bound each request.
+- **Request bytes:** the UTF-8 bytes of `JsJson.Stringify`, sent with `content-type: application/json` exactly (no charset), `accept: text/event-stream` and `api-key`, plus `anthropic-version: 2023-06-01` for Anthropic.
+- **Measured.** Electron 44.4.1's Node (24.21.0) was run as Node against a loopback server. Native must give the same outcomes:
+  - a redirect status, with or without `Location`, rejects with `TypeError: fetch failed` before any body is read, and so does a refused connection;
+  - a 204 is `ok` with no body, so the adapter reports "Provider returned no response stream.";
+  - an empty query (`…/responses?`) is sent without its `?`.
+
+**Expected named differences.** Each is pinned by a test and recorded in its slice; all fail closed or are invisible on success.
+- **Headers the transport adds.** Node's fetch adds `user-agent: node`, `accept-language: *`, `sec-fetch-mode: cors`, `accept-encoding: gzip, deflate` and `connection: keep-alive`. Native sends the adapter's headers and the framing ones only. Without `accept-encoding`, a server sends the stream uncompressed; both runtimes' 8 MiB caps count decoded bytes.
+- **Certificate trust.** Measured: Electron's Node trusts its 121 bundled roots and the 105 roots in this machine's Windows store. Native trusts the Windows store, with Windows' automatic root update. The difference is a bundled root that the Windows store lacks.
+- **Transport failures.** Where the oracle or the measurement pins TypeScript's text ("fetch failed", "terminated"), native gives it. Any other transport exception becomes a fixed message, never the exception's own text, which can name the host.
+- **Depth.** Native refuses provider JSON nested beyond a fixed bound before any recursive walk.
+  - TypeScript fails such a payload when a recursive check or `JSON.stringify` exhausts its stack.
+  - .NET cannot recover from a stack overflow (P2.3a F2).
+  - Slice b sets the bound and records its evidence.
+- **Chunking.** TypeScript's reader normalizes line endings per decoded chunk, so a CRLF split across two reads adds a blank line. Its 1 MiB check measures the whole buffer, including events not yet split off.
+  - Native reproduces both for the same chunks, and the vectors drive both runtimes with identical chunks.
+  - On a live connection, undici and .NET split bytes differently, so these outcomes can differ there.
+- **`Retry-After`,** which only the orchestrator reads. Delta-seconds (with JavaScript's `Number`) and the three HTTP-date forms are ported, with vectors on a fixed clock. Any other spelling `Date.parse` accepts is recorded as a difference for the orchestrator slice.
+- **The credential is a .NET string** and cannot be zeroed; TypeScript also holds it as a string. The plan's zeroed `byte[]` rule is for the host vault (P3).
+
+**Decisions for Rudy.**
+1. **Credential source and binding before the cutover.** Recommended:
+   - Native accepts a credential only through the `runtime.credential` stdio frame, exactly as TypeScript does. That means its strict schema, the binding checked against the stored profile, memory only, registration with the redactor, verification cleared, and refusal while a response runs.
+   - During P2.4 the frame's only sender is the tests, with values generated at run time.
+   - No vault, file or environment source, and no Electron change. The DPAPI vault stays in P3.
+2. **The MCP repair a credential triggers.** In TypeScript, a new credential queues `repairMcpConfigurations`. Stored MCP configurations that the redactor would now change are rewritten after a verified, protected backup. MCP methods, starts, sends and probes wait for that repair. Native has no MCP slice yet.
+   - **(A)** Port the repair now: the stored-MCP sanitizer, the verified protected backup and the guarded rewrite, ahead of the MCP slice.
+   - **(B, recommended)** Fail closed until the MCP slice. While any MCP server row is stored, native refuses `runtime.credential` with a fixed message and writes nothing. P2.4's fixtures hold no MCP rows. The MCP slice ports the repair and lifts the refusal.
+3. **API kinds and capabilities.** Recommended: all three Azure kinds, with every capability and every task kind listed under Scope. Coordinated orchestration, MCP tools and browser tools stay refused. Alternative: Responses only in P2.4, and the other two kinds in a later slice.
+4. **Live providers and the test transport.** Recommended:
+   - **No live or paid request in P2.4,** from any test, tool or person. Every adapter test injects fetch (TypeScript) or an `HttpMessageHandler` (native). Tests inspect the production handler but never send through it.
+   - **No product code path, environment variable or build flag can point provider traffic at another host.** The stdio differential therefore covers only the provider paths that never reach the network:
+     - saves, credential frames and their refusals;
+     - the offline profile's probe, and an external probe without a credential;
+     - gated turns.
+
+     The oracles prove adapter, probe and turn behaviour in process.
+   - **Fixture credentials** are built at run time and recorded in vectors as a placeholder, in shapes that secret scanners don't match (the P2.3 GitGuardian lesson).
+   - **Live qualification** with the C# adapters (`profile.probe` against real deployments) stays the plan's operator gate: Rudy runs it, not before P4 unless he asks.
+   - **Alternative, not recommended:** a Debug-only loopback seam (connection redirection plus a test certificate) for a process-level differential of streamed turns. It would put traffic redirection for credentialed requests into runtime code.
+5. **Certificate trust.** Recommended: accept the Windows store, as the plan's "no certificate callback" implies, and record the measured difference above. The alternative, trusting only Node's bundled roots, needs a certificate callback and a shipped root list.
+
+**Standing holds, unchanged:**
+- no shipping build or runtime selector, and no Electron-side .NET enablement;
+- no schema v6 or adoption, and isolated fixtures only;
+- durable intent before any mutation, and unknown outcomes never retried;
+- new-file creation disabled, coordinated mode refused, and no cutover.
+
+Each slice is committed locally and sealed. The stack goes up as one draft pull request on Rudy's approval and merges on his approval.
+
+**Evidence, per slice.** The P2 pattern applies throughout:
+- TypeScript oracles pinned to their sources' SHA-256, regenerated only with their `P2_WRITE_*` flag, and native replays;
+- every difference named;
+- validation from a `git archive` export: locked restore, a Release build with warnings as errors, the full native suite, `pnpm check` and `git diff --check`;
+- a seal per reviewed range, mutation runs, and a docs entry.
+
+What each slice adds:
+- **a.** `tests/p2/provider-transport.test.ts` (`P2_WRITE_PROVIDER_TRANSPORT`) drives the shipping `createProvider(kind, { fetch })` with a recording fetch and chunk-exact streams.
+  - **Requests:** the URL, method, headers (the credential as a placeholder), body bytes and `redirect` of each one.
+  - **Framing:** BOM, invalid UTF-8, CR and CRLF, split multi-byte characters, `data:` without its space, multi-line data, comments, events without data, a trailing event without its blank line, and each cap at and over its limit.
+  - **Responses:** HTTP errors and `Retry-After` on a fixed clock, and statuses without a body.
+  - **Cancellation:** before the request is sent and during a read.
+  - **Hostile endpoints:** case, a trailing dot, userinfo, query and fragment, ports, IDN and percent-encoding, numeric IPv4, and look-alike suffixes.
+
+  `ProviderTransportTests` replays it through a recording `HttpMessageHandler` whose stream returns exactly one recorded chunk per read. Native-only tests:
+  - the handler's configuration;
+  - a redirect status: one request, never followed, and the credential sent nowhere else;
+  - mapped transport failures;
+  - a cancelled read disposing the response.
+- **b.** `tests/p2/provider-streams.test.ts` (`P2_WRITE_PROVIDER_STREAMS`) carries the cases of the four TypeScript provider suites and generated variants for each kind:
+  - order violations, duplicates, and truncation at every event;
+  - refusals in each position;
+  - unsafe and inconsistent usage, and metadata bounds;
+  - non-string ids and partial JSON;
+  - JavaScript's JSON semantics: duplicate keys, `__proto__`, large and non-finite numbers, lone surrogates;
+  - round trips, compared byte for byte, including Anthropic signatures and Responses' encrypted reasoning.
+
+  `ProviderStreamTests` replays it. Native-only tests:
+  - the depth bound;
+  - no event after a failure;
+  - no tool call emitted before the completion validates it.
+- **c.** `tests/p2/profiles.test.ts` (`P2_WRITE_PROFILES`) drives the shipping `RuntimeService` with `createProvider` over a recording fetch, through `dispatch` and `setCredential`, on disposable fixture eras.
+  - **Each step records** its value or refusal, the rows it changed in `profiles`, `usage_requests` and `events`, its notifications, and every request the provider received.
+  - **Saves:** validation and endpoint refusals, effort before v4, the reserved offline profile, verification kept and cleared, and binding changes.
+  - **Credentials:** refusals for the binding, a running response and shutdown.
+  - **Probes:**
+    - success for each kind, and each failure stage;
+    - the deadline, and a stream that continues after cancellation;
+    - a profile or credential change during a probe, and a second probe refused;
+    - the offline profile's probe.
+
+  `ProfileTests` replays it through `DevelopmentChat` with an injected handler, and the stdio differential adds the paths that never reach the network. Native-only tests:
+  - the credential canary appears in no output line, event, row, error or standard error;
+  - malformed credential frames are answered as TypeScript answers them (`id` "invalid", "Invalid request.");
+  - shutdown during a probe;
+  - decision 2.
+- **d.** The Git-chat oracle gains external-profile cases, or a sibling `tests/p2/external-chat.test.ts` (`P2_WRITE_EXTERNAL_CHAT`) does. Scripted streams for each kind run through `createProvider` over a recording fetch.
+  - **Cases:**
+    - projectless, folder and Git chats, and a coding turn;
+    - unverified and tools-unverified profiles, with channel tools only when verified;
+    - a missing credential, admitted and then failed, as in TypeScript;
+    - HTTP errors, failures before and after usage, and cancellation with usage;
+    - metadata attribution, and budget and context warnings on measured usage;
+    - a stored continuation after a profile edit.
+  - **Each step records** rows in the seven tables plus `usage_requests`, the notifications, and the requests received.
+
+  A `GitChatTests`-style replay runs natively, and the stdio differential adds the gated refusals. Cases ported from the integration suites:
+  - `security.test.ts`: a probe result captured before a credential change;
+  - `security-audit.test.ts`: canaries split across chunks and carried in exception messages;
+  - `runtime.test.ts`: a credential split across frames;
+  - `coding.test.ts`: a secret-bearing continuation.
+- **Reviews.**
+  - **Security** on every slice: `cloud-security-vulnerability-expert`, Opus at high effort, below the owner. Credentials, the network and the endpoint allowlist are its subject.
+  - **Data integrity** on c and d, which write profiles, usage requests and provider state: `db-steward`, Sonnet at high effort.
+- **Electron E2E** is not required: no renderer, IPC or user-path source changes.
+
+**Risks.**
+- **The credential reaching another host.**
+  - The endpoint rule runs twice: at save, and as `normalizeEndpoint` before each request.
+  - `EcmaUrl` must agree with WHATWG on every hostile spelling, or a key could reach a host TypeScript refuses.
+  - Mitigation: the shared hostile-endpoint vectors (a); redirects never followed; no proxy and no default credentials.
+- **Continuation fidelity.**
+  - Opaque provider items (Anthropic thinking signatures, Responses' encrypted reasoning) are parsed with JavaScript's semantics, stored and sent back.
+  - One changed byte breaks the provider's check of its own state, and only a live call would show it.
+  - Mitigation: byte-for-byte round-trip vectors (b). The live gate stays open until Rudy runs it.
+- **Stack depth.** A recursive walk of provider JSON can end the native process where TypeScript throws. Mitigation: the depth bound (b).
+- **Accounting.**
+  - Native settles measured usage for the first time. Unsafe integers, a double charge or usage lost on failure would misstate budgets.
+  - Mitigation: the existing settlement primitives, vectors for every outcome with and without usage, and the data review.
+- **Loop affinity.**
+  - HttpClient completions, the SSE reader and the probe's deadlines must resume on the runtime loop, without banned timers.
+  - Mitigation: `RuntimeLoop.Delay`, `AssertCurrent` in the reader, and the loop tests.
+- **Shutdown during a probe.**
+  - A probe can run four 20-second requests, and the process drains for at most 45 seconds.
+  - A probe cut off leaves its usage request pending; recovery marks it interrupted, as after a TypeScript kill.
+- **Chunk-dependent framing** (above) is pinned only for identical chunks.
+- **Not tested against Azure.** No P2.4 evidence shows the C# adapters against real deployments. The TypeScript adapters' live qualification is also an open release gate.
+- **Token-shaped fixtures** in tests and vectors (GitGuardian, P2.3): built at run time and recorded as placeholders.
+
 ## Personal workspace expansion — local implementation
 
 Recorded 27 September 2026. The [six-stage expansion contract](personal-workspace-expansion.md) extends the [product baseline](foundry-agent-workspace-plan.html). All six stages are implemented on `codex/personal-workspace-expansion`, integrated with main's saved projects, usage analytics, browser workflows and portable packaging. No installation or live-provider qualification is implied.
