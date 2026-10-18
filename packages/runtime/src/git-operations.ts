@@ -19,7 +19,7 @@ const CHILD_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9
 const DANGEROUS_MODES = new Set(['120000', '160000']);
 const PERMITTED_MERGE_ATTRIBUTE_VALUES = new Set(['unspecified', 'set', 'unset', 'text', 'binary', 'union']);
 
-type GitOutput = { stdout: string; truncated: boolean; exitCode: number };
+type GitOutput = { stdout: string; truncated: boolean; exitCode: number; stderr?: string };
 type GitCallOptions = { mutating?: boolean; permitTruncation?: boolean; allowNonZero?: boolean };
 
 type RawStatusRecord =
@@ -573,7 +573,7 @@ export class GitOperations {
       }
 
       markMutation();
-      await this.git(worktreePath, ['cherry-pick', '--no-edit', '-x', input.sha], { mutating: true, allowNonZero: true });
+      const picked = await this.git(worktreePath, ['cherry-pick', '--no-edit', '-x', input.sha], { mutating: true, allowNonZero: true });
 
       const after = await this.state(worktreePath);
 
@@ -594,8 +594,8 @@ export class GitOperations {
         return { kind: 'empty', cherryPickHead: after.cherryPickHead, detail: 'The cherry-pick produced no changes to commit.' };
       }
 
-      if (after.clean && after.stagedClean) return { kind: 'no-effect', detail: 'HEAD, index, and worktree are unchanged; no operation is in progress.' };
-      return { kind: 'unknown', detail: 'Unexpected repository state after the cherry-pick.' };
+      if (after.clean && after.stagedClean) return { kind: 'no-effect', detail: `HEAD, index, and worktree are unchanged; no operation is in progress.${this.reported(picked)}` };
+      return { kind: 'unknown', detail: `Unexpected repository state after the cherry-pick.${this.reported(picked)}` };
     });
   }
 
@@ -642,7 +642,7 @@ export class GitOperations {
       if (fresh.fingerprint !== input.prepared.fingerprint) throw new Error('The approved continuation is stale.');
 
       markMutation();
-      await this.git(worktreePath, ['cherry-pick', '--continue'], { mutating: true, allowNonZero: true });
+      const continued = await this.git(worktreePath, ['cherry-pick', '--continue'], { mutating: true, allowNonZero: true });
 
       const after = await this.state(worktreePath);
 
@@ -662,8 +662,8 @@ export class GitOperations {
         return { kind: 'empty', cherryPickHead: after.cherryPickHead, detail: 'The continuation produced no changes to commit.' };
       }
 
-      if (after.clean && after.stagedClean) return { kind: 'no-effect', detail: 'HEAD, index, and worktree are unchanged.' };
-      return { kind: 'unknown', detail: 'Unexpected repository state after continuing the cherry-pick.' };
+      if (after.clean && after.stagedClean) return { kind: 'no-effect', detail: `HEAD, index, and worktree are unchanged.${this.reported(continued)}` };
+      return { kind: 'unknown', detail: `Unexpected repository state after continuing the cherry-pick.${this.reported(continued)}` };
     });
   }
 
@@ -780,6 +780,14 @@ export class GitOperations {
     if (await this.gitPathIfExists(worktreePath, 'REVERT_HEAD')) return { kind: 'revert', cherryPickHead: null };
     if (await this.gitPathIfExists(worktreePath, 'BISECT_LOG')) return { kind: 'bisect', cherryPickHead: null };
     return { kind: 'none', cherryPickHead: null };
+  }
+
+  /** Git's own reason for a command that exited non-zero, so a refused operation names its cause (such as a held index.lock). */
+  private reported(output: GitOutput): string {
+    if (output.exitCode === 0) return '';
+    const lines = (output.stderr ?? '').split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean);
+    const line = lines.find((entry) => /^(fatal|error):/.test(entry)) ?? lines[0];
+    return ` Git exited ${output.exitCode}${line ? `: ${line.slice(0, 300)}` : ''}.`;
   }
 
   private async gitPathIfExists(worktreePath: string, relative: string): Promise<string | null> {
@@ -1069,7 +1077,10 @@ export class GitOperations {
       '-c', 'protocol.allow=never', '-c', 'merge.renames=false',
     ];
     const config = options.mutating ? [...baseConfig, ...mutatingConfig] : baseConfig;
-    const env = gitEnvironment(options.mutating ? { GIT_EDITOR: ':', GIT_SEQUENCE_EDITOR: ':', GIT_NO_LAZY_FETCH: '1', GIT_MERGE_AUTOEDIT: 'no' } : {});
+    // Reads of a worktree overlap approved mutations in it: the orchestration view reads the root worktree while a
+    // cherry-pick runs there. With optional locks, `git status` holds index.lock while it refreshes, and the mutation
+    // then fails on that lock. `git diff` against the worktree still refreshes the index regardless of this variable.
+    const env = gitEnvironment({ GIT_OPTIONAL_LOCKS: '0', ...(options.mutating ? { GIT_EDITOR: ':', GIT_SEQUENCE_EDITOR: ':', GIT_NO_LAZY_FETCH: '1', GIT_MERGE_AUTOEDIT: 'no' } : {}) });
     let launched = false;
     try {
       const executable = await this.getGitExecutable(cwd);
@@ -1089,7 +1100,7 @@ export class GitOperations {
         return { stdout: String(value.stdout ?? '').slice(0, GIT_MAX_OUTPUT_BYTES), truncated: true, exitCode: 0 };
       }
       if (options.allowNonZero && typeof value.code === 'number') {
-        return { stdout: String(value.stdout ?? ''), truncated: false, exitCode: value.code };
+        return { stdout: String(value.stdout ?? ''), truncated: false, exitCode: value.code, stderr: String(value.stderr ?? '') };
       }
       const detail = String(value.stderr ?? value.message ?? 'Git command failed.').trim();
       throw new Error(`Git command failed: ${detail.slice(0, 500)}`, { cause: error });

@@ -594,7 +594,7 @@ public sealed partial class TaskPublicationTests
         {
             var real = fixture.Local("remote.git").Replace('\\', '/');
             string[] urls = ["http://127.0.0.1:9/x.git", "git://127.0.0.1:9/x.git", "ext::git --version", "foo::bar", "https::https://127.0.0.1:9/x.git",
-                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}", "~/remote.git", $"{real[..2]}remote.git",
+                "HTTPS://127.0.0.1:9/x.git", "SSH://127.0.0.1:9/x.git", $"FILE:///{real}", $"file://localhost/{real}",
                 " ssh://127.0.0.1/x.git", "rsync:127.0.0.1/x", "ssh://-oProxyCommand=x/y"];
             await using var loop = new RuntimeLoop();
             await loop.Invoke(async () =>
@@ -618,6 +618,54 @@ public sealed partial class TaskPublicationTests
                 await chat.Shutdown(); return 0;
             });
             Assert.Contains("refs/heads/codex/task/", await fixture.GitText("--git-dir", fixture.Local("remote.git"), "for-each-ref"), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Rudy's decision on the destination's own layout (17 October 2026): a local-path remote that is not fully qualified is
+    /// refused before any transport, with its own message. Content that arrives with a project cannot know where it is
+    /// unpacked, so this is how it would name a destination the project ships, whose receive-pack hooks Git runs (the
+    /// control proves this one live) and whose layout can lead to a share. A fully qualified destination is the user's own
+    /// and still pushes.
+    /// </summary>
+    [Fact]
+    public async Task PushRefusesARelativeLocalRemote()
+    {
+        var (fixture, data) = await Project("foundry-p2-push-relative-");
+        using (fixture)
+        {
+            var marker = fixture.Local("hook-ran");
+            await fixture.Git("init", "-q", "--bare", "repo/vendor");
+            fixture.Write("repo/vendor/hooks/post-receive", $"#!/bin/sh\necho ran > \"{marker.Replace('\\', '/')}\"\n");
+            await fixture.Git("-C", "repo", "push", "-q", "./vendor", "HEAD:refs/heads/probe");
+            Assert.True(File.Exists(marker));
+            File.Delete(marker);
+            string[] relative = ["./vendor", "vendor", "../repo/vendor", ".\\vendor", "/vendor", "file:///vendor", "~/vendor", $"{fixture.Scratch[..2]}vendor"];
+            await using var loop = new RuntimeLoop();
+            await loop.Invoke(async () =>
+            {
+                using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
+                var chat = new DevelopmentChat(loop, store, fixture.Environment);
+                var task = (Dictionary<string, object?>)(await chat.Dispatch("task.create", CreateParameters(fixture)))!;
+                var taskId = (string)task["id"]!; var branch = (string)task["branch"]!;
+                File.WriteAllText(Path.Combine((string)task["worktreePath"]!, "README.md"), "changed\n");
+                await chat.Dispatch("task.commit", new() { ["taskId"] = taskId, ["message"] = "Change" });
+                var push = new Dictionary<string, object?> { ["taskId"] = taskId, ["remote"] = "origin", ["confirm"] = "push" };
+                foreach (var url in relative)
+                {
+                    await fixture.Git("-C", "repo", "remote", "set-url", "origin", url);
+                    Assert.Equal(RepositoryService.RelativeRemote("origin"), (await Assert.ThrowsAsync<WorkspaceReadException>(() => chat.Dispatch("task.push", push))).Message);
+                    Assert.Null(await chat.Repositories.VerifyPushOutcome(fixture.Local("repo"), (string)task["worktreePath"]!, null, "origin", branch, null));
+                }
+                Assert.Equal(relative.Length, store.Rows("SELECT state FROM intents WHERE kind='git.push'").Count);
+                Assert.All(store.Rows("SELECT state FROM intents WHERE kind='git.push'"), row => Assert.Equal("complete", row["state"]));
+                Assert.False(File.Exists(marker));
+                File.Delete(fixture.Local("repo/vendor/hooks/post-receive"));
+                await fixture.Git("-C", "repo", "remote", "set-url", "origin", fixture.Local("repo/vendor"));
+                await chat.Dispatch("task.push", push);
+                await chat.Shutdown(); return 0;
+            });
+            Assert.Contains("refs/heads/codex/task/", await fixture.GitText("--git-dir", fixture.Local("repo/vendor"), "for-each-ref"), StringComparison.Ordinal);
         }
     }
 

@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron, type Page, type ElectronApplication } from '@playwright/test';
+import { test, expect, _electron as electron, type Page, type ElectronApplication, type Locator } from '@playwright/test';
 import { mkdtemp, mkdir, rm, writeFile, readFile, stat, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -57,25 +57,58 @@ async function snapshotTaskByTitle(page: Page, title: string): Promise<{ id: str
   }, title);
 }
 
+/**
+ * Writes the orchestration state, every agent's approvals and transcript, the UI text and a screenshot into this test's
+ * output folder, which CI uploads on failure. Each part is saved as soon as it is read, with a time bound, so a hung
+ * renderer cannot take the rest with it.
+ */
+async function saveCoordinatorEvidence(page: Page, rootTaskId: string, name: string): Promise<void> {
+  const info = test.info();
+  const bounded = async (operation: Promise<unknown>): Promise<unknown> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: 'No answer within 10 s.' }), 10_000); });
+    try { return await Promise.race([operation.catch((error: unknown) => ({ unavailable: error instanceof Error ? error.message : String(error) })), late]); }
+    finally { clearTimeout(timer); }
+  };
+  const save = async (file: string, body: string): Promise<void> => { await writeFile(info.outputPath(file), body); await info.attach(file, { path: info.outputPath(file) }); };
+  await save(`${name}-state.json`, JSON.stringify(await bounded(page.evaluate(id => window.workspace.invoke('orchestration.get', { rootTaskId: id }), rootTaskId)), null, 2));
+  await save(`${name}-agents.json`, JSON.stringify(await bounded(page.evaluate(async id => {
+    const view = await window.workspace.invoke('orchestration.get', { rootTaskId: id });
+    const coordinator = {
+      approvals: (await window.workspace.invoke('task.approvals', { taskId: id, limit: 50 })).approvals,
+      transcript: (await window.workspace.invoke('task.messages', { taskId: id, limit: 8 })).items.map(item => ({ role: item.message.role, status: item.message.status, content: item.message.content }))
+    };
+    const children = await Promise.all(view.runs.filter(run => run.role === 'child').map(run => window.workspace.invoke('orchestration.child', { rootTaskId: id, childTaskId: run.taskId })
+      .catch((error: unknown) => ({ childTaskId: run.taskId, unavailable: error instanceof Error ? error.message : String(error) }))));
+    return { coordinator, children };
+  }, rootTaskId)), null, 2));
+  await save(`${name}-ui.txt`, await page.locator('body').innerText({ timeout: 5000 }).catch(() => '(The page text was unavailable.)'));
+  await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: true, timeout: 5000 }).catch(() => undefined);
+}
+
+async function coordinatorProgress(page: Page, rootTaskId: string, card: Locator): Promise<'approval' | 'terminal' | 'stopped' | 'working'> {
+  if (await card.isVisible()) return 'approval';
+  const coordinator = await page.evaluate(async id => (await window.workspace.invoke('orchestration.get', { rootTaskId: id })).runs.find(run => run.role === 'coordinator'), rootTaskId);
+  if (coordinator?.lifecycle === 'terminal') return 'terminal';
+  // The fixture coordinator ends its turn without completing only when a step failed, and nothing resumes it.
+  if (coordinator?.lifecycle === 'waiting' && coordinator.waitReason === 'user-continuation') return 'stopped';
+  return 'working';
+}
+
 async function approveUntilSettled(page: Page, rootTaskId: string, maxApprovals: number): Promise<void> {
   await page.getByRole('button', { name: /^Approvals/ }).click();
   for (let i = 0; i < maxApprovals; i++) {
     const card = page.locator('article.approval-card.awaiting-approval').first();
+    let progress = 'working';
     // A quiet interval during child provisioning/integration is not evidence of completion.
     try {
-      await expect.poll(async () => {
-        if (await card.isVisible()) return 'approval';
-        const terminal = await page.evaluate(async id => (await window.workspace.invoke('orchestration.get', { rootTaskId: id })).runs.some(run => run.role === 'coordinator' && run.lifecycle === 'terminal'), rootTaskId);
-        return terminal ? 'terminal' : 'working';
-      }, { timeout: 45000 }).not.toBe('working');
+      await expect.poll(async () => (progress = await coordinatorProgress(page, rootTaskId, card)), { timeout: 45000 }).not.toBe('working');
+      if (progress === 'stopped') throw new Error('The coordinator stopped before completing; see coordinator-wait-state.json and coordinator-wait-agents.json for its last message and the integrations.');
     } catch (error) {
-      const state = await page.evaluate(async id => window.workspace.invoke('orchestration.get', { rootTaskId: id }), rootTaskId);
-      await test.info().attach('coordinator-wait-state', { body: JSON.stringify(state, null, 2), contentType: 'application/json' });
-      await test.info().attach('coordinator-wait-ui', { body: await page.locator('body').innerText(), contentType: 'text/plain' });
-      await page.screenshot({ path: 'test-results/coordinator-wait.png' });
+      await saveCoordinatorEvidence(page, rootTaskId, 'coordinator-wait');
       throw error;
     }
-    if (!(await card.isVisible())) return;
+    if (progress !== 'approval') return;
     await expect(card.locator('.approval-target')).toBeVisible();
     const approvalId = await card.getAttribute('data-approval-id');
     expect(approvalId).toBeTruthy();
@@ -113,10 +146,7 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await approveUntilSettled(page, created.id, 40);
     try { await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 }); }
     catch (error) {
-      await test.info().attach('coordinated-failure-state', { body: JSON.stringify({
-        rendered: await page.locator('body').innerText(),
-        state: await page.evaluate(rootTaskId => window.workspace.invoke('orchestration.get', { rootTaskId }), created.id)
-      }, null, 2), contentType: 'application/json' });
+      await saveCoordinatorEvidence(page, created.id, 'coordinated-failure');
       throw error;
     }
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);

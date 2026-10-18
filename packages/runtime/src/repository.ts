@@ -35,6 +35,7 @@ const DRIVE_NETWORK = 4;
 const DRIVE_TYPE_QUERY = "$ErrorActionPreference = 'Stop'\n[int][System.IO.DriveInfo]::new($env:FOUNDRY_DRIVE).DriveType";
 
 export const unsupportedRemoteMessage = (remote: string): string => `Remote ${remote} points at a network share, through a link, or at a location push does not use.`;
+export const relativeRemoteMessage = (remote: string): string => `Remote ${remote} is not a full local path, such as C:\\repos\\name.git, which push requires for a local remote.`;
 
 /** The Windows drive type of a drive letter, as native's DriveInfo reports it. Node has no GetDriveType, so the fixed
  * system Windows PowerShell answers with no profile and no inherited environment; the letter is its only input. */
@@ -110,24 +111,26 @@ export async function isNetworkRemote(url: string, driveType: (letter: string) =
 
 /**
  * Every URL a push or remote check would use must be in a form Git uses under TRUSTED_PROTOCOLS, and must be a transport
- * or a local folder on a fixed local drive whose existing chain holds no link (checked from the drive root without
- * following one), so the named path is neither a share nor reached through a link to one. Relative paths resolve against
- * the folder the command runs in; Git's own `~` expansion and drive-relative paths (`C:repo`) are refused rather than
- * resolved. The check is not held across the push. Native RequireSupportedRemotes, with its message; its chain pin refuses
- * every reparse point, while Node's lstat recognizes symbolic links and junctions.
- * Not screened, in either runtime: Git also opens the destination's own layout (`<path>/.git`, `<path>.git`, a gitfile,
- * objects/info/alternates), which can lead elsewhere, a share included. The destination is trusted as its own receive-pack
- * hooks are (Rudy, 17 October 2026).
+ * or a fully qualified local folder (`C:\...`, `C:/...` or `file:///C:/...`) on a fixed local drive whose existing chain
+ * holds no link (checked from the drive root without following one), so the named path is neither a share nor reached
+ * through a link to one. The check is not held across the push. Native RequireSupportedRemotes, with its message; its chain
+ * pin refuses every reparse point, while Node's lstat recognizes symbolic links and junctions.
+ * A relative local path is refused, Git's `~` expansion and drive-relative paths (`C:repo`) with it, with its own message
+ * (Rudy, 17 October 2026). Content that arrives with a project cannot know where it is unpacked, so this is how it would
+ * name a destination the project ships, and Git opens a
+ * destination's own layout (`<path>/.git`, `<path>.git`, a gitfile, objects/info/alternates), which can lead elsewhere, a
+ * share included, and runs its receive-pack hooks. Neither is screened, in either runtime: a fully qualified destination is
+ * the user's own and is trusted.
  */
-export async function requireSupportedRemotes(cwd: string, remote: string, urls: string[], driveType: (letter: string) => Promise<number> = windowsDriveType): Promise<void> {
+export async function requireSupportedRemotes(remote: string, urls: string[], driveType: (letter: string) => Promise<number> = windowsDriveType): Promise<void> {
   const unsupported = () => new RepositoryError(unsupportedRemoteMessage(remote), 'none');
   for (const url of urls) {
     if (!isPermittedRemoteForm(url) || await isNetworkRemote(url, driveType)) throw unsupported();
     const local = localRemotePath(url);
     if (local === undefined) continue;
-    if (!local || local.includes('\0') || local.startsWith('~') || /^[A-Za-z]:(?![\\/])/.test(local)
-      || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
-    const resolved = path.win32.resolve(cwd, local);
+    if (!/^[A-Za-z]:[\\/]/.test(local)) throw new RepositoryError(relativeRemoteMessage(remote), 'none');
+    if (local.includes('\0') || local.split(/[\\/]/).some(segment => segment !== '.' && segment !== '..' && /[. ]$/.test(segment))) throw unsupported();
+    const resolved = path.win32.resolve(local);
     if (!/^[A-Za-z]:\\/.test(resolved) || resolved.slice(2).includes(':') || await driveType(resolved[0]!) !== DRIVE_FIXED) throw unsupported();
     let current = resolved.slice(0, 3);
     for (const component of ['', ...resolved.slice(3).split('\\').filter(Boolean)]) {
@@ -516,7 +519,7 @@ export class RepositoryService {
     try {
       await this.requireTrustedPushConfiguration(repositoryRoot, repository.identity);
       const pushUrls = (await this.git(repositoryRoot, ['remote', 'get-url', '--push', '--all', '--', remote], false, false, pinned)).stdout.split('\n').filter(Boolean);
-      await requireSupportedRemotes(repositoryRoot, remote, pushUrls);
+      await requireSupportedRemotes(remote, pushUrls);
     } catch (error) {
       if (error instanceof RepositoryError) throw error;
       throw new RepositoryError(error instanceof Error ? error.message : 'Push preflight failed.', 'none', { cause: error });
@@ -547,7 +550,7 @@ export class RepositoryService {
       const fetchUrls = await this.git(projectRoot, ['remote', 'get-url', '--all', '--', remote], false, true, pinned);
       const pushUrls = await this.git(projectRoot, ['remote', 'get-url', '--push', '--all', '--', remote], false, true, pinned);
       if (fetchUrls.exitCode !== 0 || pushUrls.exitCode !== 0 || fetchUrls.stdout !== pushUrls.stdout) return undefined;
-      await requireSupportedRemotes(projectRoot, remote, fetchUrls.stdout.split('\n').filter(Boolean));
+      await requireSupportedRemotes(remote, fetchUrls.stdout.split('\n').filter(Boolean));
       await this.requireTrustedPushConfiguration(projectRoot, project.identity);
       const result = await this.git(projectRoot, [...TRUSTED_PROTOCOLS, 'ls-remote', '--heads', remote, `refs/heads/${branch}`], false, true, { allowCredentialHelper: true, ...pinned });
       if (result.exitCode !== 0) return undefined;

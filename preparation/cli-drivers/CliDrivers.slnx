@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../../src/Foundry.Platform/Foundry.Platform.csproj" />
+  <Project Path="Foundry.CliDrivers/Foundry.CliDrivers.csproj" />
+  <Project Path="Foundry.CliDrivers.Fixture/Foundry.CliDrivers.Fixture.csproj" />
+  <Project Path="Foundry.CliDrivers.Tests/Foundry.CliDrivers.Tests.csproj" />
+</Solution>
