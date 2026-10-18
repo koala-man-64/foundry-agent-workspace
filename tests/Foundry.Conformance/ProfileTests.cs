@@ -1,8 +1,5 @@
-using System.Net;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Foundry.Protocol;
 using Foundry.Providers;
 using Foundry.Runtime;
@@ -18,7 +15,7 @@ namespace Foundry.Conformance;
 /// TypeScript leaves that request's stream open, so its usage record stays pending; native closes it, recording the
 /// request cancelled with its own usage.changed event.
 /// </summary>
-public sealed partial class ProfileTests
+public sealed class ProfileTests
 {
     private const string Corpus = "tests/p2/profile-vectors.json";
     private static readonly JsonElement Raw = RepositoryFixture.ReadCorpus(Corpus);
@@ -53,7 +50,7 @@ public sealed partial class ProfileTests
         string Scrub(string text) => text.Replace(second, "{credential:2}", StringComparison.Ordinal).Replace(credential, "{credential}", StringComparison.Ordinal);
         var next = 1;
         Guid NewId() => Guid.Parse($"56565656-0000-4000-8000-{next++:000000000000}");
-        var handler = new Provider(Scrub);
+        var handler = new RecordingProvider(Scrub);
         await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
         var notifications = new List<object?>();
         await loop.Invoke(() =>
@@ -175,49 +172,5 @@ public sealed partial class ProfileTests
             if (changed.Count > 0 || removed.Count > 0) output[table] = new Dictionary<string, object?> { ["changed"] = changed, ["removed"] = removed };
         }
         return output;
-    }
-
-    [GeneratedRegex("\\\\\"token\\\\\":\\\\\"([0-9a-f-]{36})\\\\\"")]
-    private static partial Regex Token();
-
-    /// <summary>The oracle's recording fetch: one queued answer per request, a held answer waits for its release, and
-    /// "{token}" stands for the token the request carries.</summary>
-    private sealed class Provider(Func<string, string> scrub) : HttpMessageHandler
-    {
-        private static readonly string[] Names = ["accept", "content-type", "api-key", "anthropic-version"];
-        private readonly List<Dictionary<string, object?>> answers = [];
-        private TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TaskCompletionSource held = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        internal List<object?> Requests { get; } = [];
-        internal Task Held => held.Task;
-
-        internal void Queue(List<Dictionary<string, object?>> items, bool first = false) { lock (answers) answers.InsertRange(first ? 0 : answers.Count, items); }
-        internal void Clear() { lock (answers) answers.Clear(); }
-        internal void Release() { gate.TrySetResult(); gate = new(TaskCreationOptions.RunContinuationsAsynchronously); held = new(TaskCreationOptions.RunContinuationsAsynchronously); }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var body = Encoding.UTF8.GetString(await request.Content!.ReadAsByteArrayAsync(cancellationToken));
-            var headers = new Dictionary<string, object?>();
-            foreach (var name in Names)
-            {
-                var source = name == "content-type" ? (System.Net.Http.Headers.HttpHeaders)request.Content.Headers : request.Headers;
-                if (source.NonValidated.TryGetValues(name, out var values)) headers[name] = scrub(string.Join(", ", values));
-            }
-            lock (Requests) Requests.Add(new Dictionary<string, object?> { ["url"] = request.RequestUri!.AbsoluteUri, ["headers"] = headers, ["body"] = scrub(body) });
-            Dictionary<string, object?> answer;
-            lock (answers)
-            {
-                if (answers.Count == 0) throw new HttpRequestException("Unscripted provider request.");
-                answer = answers[0]; answers.RemoveAt(0);
-            }
-            if (Equals(answer.GetValueOrDefault("hold"), true)) { var wait = gate.Task; held.TrySetResult(); await wait.WaitAsync(cancellationToken); }
-            var token = Token().Match(body) is { Success: true } match ? match.Groups[1].Value : null;
-            var listed = answer.GetValueOrDefault("body") as List<object?>;
-            var response = new HttpResponseMessage((HttpStatusCode)(answer.GetValueOrDefault("status") is double status ? (int)status : 200));
-            response.Content = listed is null && answer.ContainsKey("body") ? new ByteArrayContent([])
-                : new StreamContent(new ProviderTransportTests.ChunkStream(ProviderTransportTests.Chunks([.. (listed ?? []).Select(chunk => chunk is string text && token is not null ? text.Replace("{token}", token, StringComparison.Ordinal) : chunk)]), (string?)answer.GetValueOrDefault("end") ?? "close"));
-            return response;
-        }
     }
 }

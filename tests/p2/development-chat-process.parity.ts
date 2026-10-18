@@ -310,6 +310,8 @@ async function exerciseProfiles(kind: 'node' | 'dotnet'): Promise<unknown> {
     results.refusedEndpoint = (await request('save-http', 'profile.save', { ...profile, endpoint: 'http://sample.openai.azure.com' })).error;
     results.reserved = (await request('save-reserved', 'profile.save', { ...profile, id: FAKE_PROFILE_ID })).error;
     results.budget = (await request('save-budget', 'profile.save', { ...profile, outputLimit: 8192 })).error;
+    // P2.4d: an external profile without a probe of its configuration starts nothing.
+    results.unverifiedStart = (await request('start-unverified', 'task.start', { requestId: '6d1e7f6a-8b9c-4d0e-9f1a-2b3c4d5e6f70', projectId: null, content: 'Hello', profileId, mode: 'chat', tokenBudget: 100000 })).error;
     results.externalProbe = (await request('probe-external', 'profile.probe', { profileId })).result;
     results.staleBinding = (await credential('credential-stale', { id: profileId, value, binding: JSON.stringify(['responses', profile.endpoint, 'other']) })).error;
     results.unknownProfile = (await credential('credential-unknown', { id: '1d57898c-aedf-4b9e-b9bb-7af0f9b55e64', value, binding })).error;

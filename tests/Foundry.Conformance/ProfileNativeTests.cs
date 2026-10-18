@@ -27,11 +27,13 @@ public sealed class ProfileNativeTests
     {
         await using var harness = await Harness.Open("v3");
         await harness.Run(chat => chat.Dispatch("profile.save", Profile()));
-        var before = await harness.Rows("SELECT rowid AS _rowid,* FROM profiles ORDER BY rowid");
+        // Everything the refusal could have written on this v3 database: the profile, a usage record and an event.
+        const string Written = "SELECT 'profile' AS kind, rowid AS _rowid, data FROM profiles UNION ALL SELECT 'usage', rowid, id FROM usage_records UNION ALL SELECT 'event', sequence, type FROM events ORDER BY 1, 2";
+        var before = await harness.Rows(Written);
         Assert.NotEmpty(await harness.Rows("SELECT id FROM mcp_servers"));
         var refused = await Assert.ThrowsAsync<WorkspaceReadException>(() => harness.Run(chat => { chat.SetCredential(Azure, Credential, Binding(Profile())); return Task.FromResult<object?>(null); }));
         Assert.Equal(DevelopmentChat.McpRepair, refused.Message);
-        Assert.Equal(JsJson.Stringify(before), JsJson.Stringify(await harness.Rows("SELECT rowid AS _rowid,* FROM profiles ORDER BY rowid")));
+        Assert.Equal(JsJson.Stringify(before), JsJson.Stringify(await harness.Rows(Written)));
         // The credential was not kept: the probe has none.
         var probe = (Dictionary<string, object?>)(await harness.Run(chat => chat.Dispatch("profile.probe", new() { ["profileId"] = Azure })))!;
         Assert.Equal("A matching profile and credential are required to probe this provider.", probe["detail"]);

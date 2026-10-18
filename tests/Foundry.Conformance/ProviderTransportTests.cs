@@ -208,7 +208,9 @@ public sealed class ProviderTransportTests
     }
 
     /// <summary>One recorded chunk per read; then the end the oracle gives: close, a lost connection, or a wait.</summary>
-    internal sealed class ChunkStream(List<byte[]> chunks, string end) : Stream
+    /// <summary>The recorded chunks, one per read, then the recorded end. <paramref name="parked"/> runs when a hanging end is
+    /// reached: every chunk has been read and parsed.</summary>
+    internal sealed class ChunkStream(List<byte[]> chunks, string end, Action? parked = null) : Stream
     {
         private int next;
         internal bool Disposed { get; private set; }
@@ -222,7 +224,7 @@ public sealed class ProviderTransportTests
                 return chunk.Length;
             }
             if (end == "terminated") throw new IOException("The response ended prematurely.");
-            if (end == "hang") await Task.Delay(Timeout.Infinite, cancellationToken);
+            if (end == "hang") { parked?.Invoke(); await Task.Delay(Timeout.Infinite, cancellationToken); }
             return 0;
         }
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();

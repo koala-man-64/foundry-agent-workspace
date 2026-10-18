@@ -28,10 +28,11 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
     private const int ContextWarningPercent = 80;
 
     /// <summary>
-    /// prepareRequest for a chat or a coding task. A Git task's channel is available, and the offline profile can use its
-    /// tools, so the turn advertises them (a coding task's repository tools first), leads a fresh history with its
-    /// instruction and the channel's, and is enriched with the unacknowledged channel messages. Enrichment needs the
-    /// project channel to resolve, as in TypeScript.
+    /// prepareRequest for a chat or a coding task. A Git task's channel is available. A coding task advertises its
+    /// repository tools and the channel's; a chat advertises the channel's only to a profile that can use them (the offline
+    /// profile, or one verified for tools and continuation), and otherwise nothing, under no instruction. A turn with tools
+    /// leads a fresh history with its instruction and the channel's. Every Git turn is enriched with the unacknowledged
+    /// channel messages, which needs the project channel to resolve, as in TypeScript.
     /// </summary>
     internal Dictionary<string, object?> Prepare(Dictionary<string, object?> task, Dictionary<string, object?> profile, string fingerprint, string content)
     {
@@ -42,23 +43,29 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
         // (MCP) tools are never advertised: their slice has not landed, and the turn is refused while any are stored.
         var request = Equals(task.GetValueOrDefault("mode"), "coding")
             ? store.PrepareChatRequest(taskId, profile, fingerprint, content, [.. ToolDefinitions.All, .. ToolDefinitions.Channel], CodingSystem + "\n" + ToolDefinitions.ChannelSystem)
-            : store.PrepareChatRequest(taskId, profile, fingerprint, content, [.. ToolDefinitions.Channel], ChatSystem + "\n" + ToolDefinitions.ChannelSystem);
+            : DevelopmentChat.ProfileReady(profile)
+                ? store.PrepareChatRequest(taskId, profile, fingerprint, content, [.. ToolDefinitions.Channel], ChatSystem + "\n" + ToolDefinitions.ChannelSystem)
+                : store.PrepareChatRequest(taskId, profile, fingerprint, content);
         return tools.Channel.Enrich(task, request);
     }
 
-    /// <summary>AgentLoop.run: the admitted turn, from its first request to its terminal record.</summary>
-    internal async Task Run(string taskId, Dictionary<string, object?> request, Dictionary<string, object?> answer, TaskReservation initial, string fingerprint, CancellationTokenSource abort)
+    /// <summary>AgentLoop.run: the admitted turn, from its first request to its terminal record. The credential is the one
+    /// held when the turn started; credentials cannot change while a response runs.</summary>
+    internal async Task Run(string taskId, Dictionary<string, object?> request, Dictionary<string, object?> answer, TaskReservation initial, string fingerprint, CancellationTokenSource abort, string? credential = null)
     {
         loop.AssertCurrent();
         var token = abort.Token; var task = store.ReadTask(taskId); var profile = (Dictionary<string, object?>)request["profile"]!;
         TaskReservation? handle = initial; var raw = new StringBuilder(); var toolCount = 0; var contextWarned = false;
         var tooling = request.GetValueOrDefault("tools") is List<object?> { Count: > 0 } || store.ReadProviderState(taskId) is not null;
+        // The open request's measured usage and redacted metadata, which settle with it: a failed request can still have
+        // authoritative usage.
+        Dictionary<string, object?>? usage = null; var metadata = new Dictionary<string, object?>();
         void CheckCancellation() { if (token.IsCancellationRequested) throw new OperationCanceledException("This operation was aborted", token); }
         // A failed turn settles its open request with the terminal record, so neither cancellation nor restart charges twice.
         void Settle(string outcome, string? reason)
         {
             if (handle is null) return;
-            var current = handle; store.SettleTaskRequest(taskId, current, null, outcome, reason); handle = null;
+            var current = handle; store.SettleTaskRequest(taskId, current, usage, outcome, reason, metadata); handle = null;
             store.Event("usage.changed", new Dictionary<string, object?> { ["requestId"] = current.RequestId }, taskId);
         }
         void WarnContext(double reservation)
@@ -79,6 +86,7 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
             for (var iteration = 0; iteration < 51; iteration++)
             {
                 var finished = false; ProviderContinuation? continuation = null; var calls = new List<ProviderToolCall>();
+                usage = null; metadata = [];
                 raw.Clear(); var rawBytes = 0L; var lastProgress = 0L;
                 try
                 {
@@ -88,13 +96,21 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
                         using var lifetime = new CancellationTokenSource(); var expiry = Expire(lifetime.Token);
                         try
                         {
-                            await foreach (var item in stream(Provider(request), token))
+                            await foreach (var item in stream(Provider(request, credential), token))
                             {
                                 loop.AssertCurrent();
                                 if (finished) throw new InvalidOperationException("Provider emitted data after its completion event.");
+                                // Usage and metadata are kept even when the abort arrives with them, as in TypeScript.
+                                if (item is ProviderUsage measured) usage = RequestAccounting.MeasuredUsage(measured.ToWire()) ?? usage;
+                                if (item is ProviderMetadata reported)
+                                {
+                                    if (reported.ReportedModel is { Length: <= 200 } model) metadata["reportedModel"] = redactor.Text(model);
+                                    if (reported.ResponseId is { Length: <= 200 } response) metadata["responseId"] = redactor.Text(response);
+                                }
                                 CheckCancellation();
                                 switch (item)
                                 {
+                                    case ProviderUsage or ProviderMetadata: break;
                                     case ProviderText text:
                                         raw.Append(text.Text); rawBytes += Encoding.UTF8.GetByteCount(text.Text);
                                         if (rawBytes > 256 * 1024) throw new InvalidOperationException("Response exceeded the local output limit.");
@@ -116,7 +132,7 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
                 catch (EventDeliveryException) { throw; }
                 catch
                 {
-                    Settle(token.IsCancellationRequested ? "cancelled" : "failed", "Provider stream failed or was cancelled before usage was confirmed."); throw;
+                    Settle(token.IsCancellationRequested ? "cancelled" : "failed", usage is not null ? "Provider reported final usage for an unsuccessful request." : "Provider stream failed or was cancelled before usage was confirmed."); throw;
                 }
                 CheckCancellation();
                 if (!finished) throw new InvalidOperationException("Provider stream ended without a completion event.");
@@ -138,19 +154,22 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
                 answer["content"] = priorContent + (priorContent.Length > 0 && raw.Length > 0 ? "\n\n" : "") + redactor.Text(raw.ToString()); raw.Clear();
                 if (Encoding.UTF8.GetByteCount((string)answer["content"]!) > 512 * 1024) throw new InvalidOperationException("Turn transcript exceeded the local limit.");
                 var reserved = handle?.Amount;
+                double? charged = usage is null ? null : Number(usage["inputTokens"]) + Number(usage["outputTokens"]);
                 var cursor = request.GetValueOrDefault("channelCursor") is long sequence ? sequence : (long?)null;
                 store.Transaction(() =>
                 {
                     if (state is not null) store.SaveProviderState(taskId, state);
                     tools.Channel.Acknowledge(taskId, cursor);
                     store.SaveMessage(answer);
-                    Settle("completed", "Provider completed without reporting usage; the reservation is retained.");
+                    Settle("completed", charged is null ? "Provider completed without reporting usage; the reservation is retained." : null);
                     return 0;
                 });
                 if (calls.Count == 0)
                 {
                     answer["status"] = "complete"; store.SaveMessage(answer);
-                    var detail = new Dictionary<string, object?> { ["usageKnown"] = false, ["chargedTokens"] = reserved is double amount ? amount : Undefined.Value };
+                    // usage ?? reserved: the measured tokens, or the reservation that stays charged.
+                    object? chargedTokens = charged is double measuredTokens ? measuredTokens : reserved is double amount ? amount : Undefined.Value;
+                    var detail = new Dictionary<string, object?> { ["usageKnown"] = charged is not null, ["chargedTokens"] = chargedTokens };
                     store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = "idle", ["updatedAt"] = Clock.Iso(now()) }, detail);
                     if (store.SchemaVersion < 5) store.Event("task.completed", detail, taskId);
                     return;
@@ -167,6 +186,7 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
                     if (store.HasBlockingUnknown(taskId)) throw new InvalidOperationException("A mutation outcome is unknown. Check the outcome before continuing.");
                 }
                 CheckCancellation();
+                usage = null; metadata = [];
                 request = tools.Channel.Enrich(store.ReadTask(taskId), new(request)
                 {
                     ["channelCursor"] = Undefined.Value, ["messages"] = new List<object?>(), ["continuation"] = state["continuation"], ["toolResults"] = results,
@@ -192,8 +212,9 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
         }
     }
 
-    /// <summary>The request as the provider reads it: messages, continuation, tool names and results.</summary>
-    private static ProviderRequest Provider(Dictionary<string, object?> request)
+    /// <summary>The request as the provider reads it: the profile and credential, the messages, the continuation, the
+    /// tools and the results.</summary>
+    private static ProviderRequest Provider(Dictionary<string, object?> request, string? credential)
     {
         static IEnumerable<Dictionary<string, object?>> Items(object? value) => value is System.Collections.IEnumerable items and not string ? items.Cast<Dictionary<string, object?>>() : [];
         var continuation = request.GetValueOrDefault("continuation") as Dictionary<string, object?>;
@@ -201,7 +222,10 @@ internal sealed class AgentLoop(RuntimeLoop loop, Store store, ToolRuntime tools
             [.. Items(request["messages"]).Select(message => new ProviderMessage((string)message["role"]!, (string)message["content"]!))],
             continuation is null ? null : new ProviderContinuation((string)continuation["apiKind"]!, continuation["data"]),
             request.TryGetValue("tools", out var tools) ? [.. Items(tools).Select(tool => new ProviderTool((string)tool["name"]!, (string)tool["description"]!, tool.GetValueOrDefault("inputSchema")))] : null,
-            request.TryGetValue("toolResults", out var results) ? [.. Items(results).Select(result => new ProviderToolResult((string)result["id"]!, (string)result["name"]!, (string)result["content"]!, (bool)result["isError"]!))] : null);
+            request.TryGetValue("toolResults", out var results) ? [.. Items(results).Select(result => new ProviderToolResult((string)result["id"]!, (string)result["name"]!, (string)result["content"]!, (bool)result["isError"]!))] : null)
+        {
+            Profile = (IReadOnlyDictionary<string, object?>)request["profile"]!, Credential = credential,
+        };
     }
 
     /// <summary>The ids the task's provider state has seen, in order: a JavaScript Set of seenToolCallIds, or of the pending

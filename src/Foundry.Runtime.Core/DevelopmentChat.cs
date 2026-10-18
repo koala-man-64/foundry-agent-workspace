@@ -57,7 +57,8 @@ public sealed class DevelopmentChat
     internal DevelopmentChat(RuntimeLoop loop, Store store, Func<IReadOnlyDictionary<string, string>> gitEnvironment)
         : this(loop, store, null, gitEnvironment: gitEnvironment) { }
 
-    /// <summary>Without a stream, turns use the offline provider, which draws its tool-call ids from <paramref name="id"/>.</summary>
+    /// <summary>Without a stream, a turn uses its profile's provider: the offline provider, which draws its tool-call ids
+    /// from <paramref name="id"/>, or the Azure adapter for its kind over <paramref name="transport"/>.</summary>
     internal DevelopmentChat(RuntimeLoop loop, Store store,
         Func<ProviderRequest, CancellationToken, IAsyncEnumerable<ProviderChatEvent>>? stream,
         Func<DateTimeOffset>? now = null, Func<Guid>? id = null, Func<IReadOnlyDictionary<string, string>>? gitEnvironment = null,
@@ -66,11 +67,12 @@ public sealed class DevelopmentChat
         loop.AssertCurrent();
         this.loop = loop; this.store = store; this.now = now ?? (() => DateTimeOffset.UtcNow); this.id = id ?? Guid.NewGuid;
         injectedTransport = transport; this.probeDeadline = probeDeadline;
-        var provider = new FakeChatProvider(id: this.id);
+        var fake = new FakeChatProvider(id: this.id);
         repositories = new RepositoryService(loop, Path.Join(store.DataDirectory, "wt"), gitEnvironment);
         var slots = new ExecutionSlots(loop);
         tools = new ToolRuntime(loop, store, repositories, new CommandRunner(loop, repositories, gitEnvironment), redactor, slots, this.now, this.id);
-        agent = new AgentLoop(loop, store, tools, slots, redactor, stream ?? provider.StreamTurn, this.now);
+        agent = new AgentLoop(loop, store, tools, slots, redactor, stream ?? ((request, token) =>
+            request.Profile?.GetValueOrDefault("apiKind") is string kind && kind != "fake" ? Azure(kind).StreamTurn(request, token) : fake.StreamTurn(request, token)), this.now);
     }
 
     // Only notifications selected by the shipping ordinary-chat service are sent.
@@ -474,7 +476,7 @@ public sealed class DevelopmentChat
     private static bool Truthy(object? value) => value is not (null or false or "" or 0 or 0L or 0d);
 
     /// <summary>service.ts profileReady: the fake profile, or a probe of this exact configuration that found tools and continuation.</summary>
-    private static bool ProfileReady(Dictionary<string, object?> profile) =>
+    internal static bool ProfileReady(Dictionary<string, object?> profile) =>
         Equals(profile.GetValueOrDefault("apiKind"), "fake")
         || Equals(profile.GetValueOrDefault("verificationFingerprint"), Compatibility.ProfileFingerprint(profile))
             && profile.GetValueOrDefault("capabilities") is Dictionary<string, object?> capabilities
@@ -739,7 +741,8 @@ public sealed class DevelopmentChat
             if (kind != "git" && mode != "chat") throw new WorkspaceReadException("Coding and coordination require a Git project.");
             if (mode != "coordinated" && parameters.ContainsKey("coordination")) throw new WorkspaceReadException("Coordination settings apply only to coordinated tasks.");
             if (mode == "coordinated") throw new NotSupportedException("Coordinated tasks are not available in this build.");
-            var profile = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile."); RequireFake(profile);
+            var profile = store.Profile((string)parameters["profileId"]!) ?? throw new InvalidOperationException("Select an existing model profile."); RequireVerified(profile);
+            if (mode == "coding" && !ProfileReady(profile)) throw new WorkspaceReadException("Probe tool and continuation capabilities before starting a coding task.");
             if (kind == "git" && store.UnknownWorktreeIntents() > 0) throw new WorkspaceReadException("An earlier worktree creation has an unknown outcome. Inspect it before creating another task.");
             if (mode == "coding" && store.HasExternalTools()) throw new NotSupportedException(ExternalTools);
             var taskId = id().ToString(); var content = (string)parameters["content"]!;
@@ -828,9 +831,11 @@ public sealed class DevelopmentChat
     }
 
     /// <summary>
-    /// service.ts startTurn, for chats. A Git chat's turn is refused while its worktree retires or a Git operation runs, and
-    /// a stored continuation must be in a stage the offline provider serves natively. The request is prepared and enriched
-    /// before the reservation, the user message, the streaming answer and the running status commit together.
+    /// service.ts startTurn, for chats. A Git chat's turn is refused while its worktree retires or a Git operation runs. An
+    /// external profile must be verified for this configuration, and for tools and continuation when the turn has tools or
+    /// native state; an offline continuation must be in a stage the offline provider serves natively. The request is
+    /// prepared and enriched before the reservation, the user message, the streaming answer and the running status commit
+    /// together. The turn reads the credential held now.
     /// </summary>
     private Running StartTurn(string taskId, string content)
     {
@@ -842,13 +847,16 @@ public sealed class DevelopmentChat
         if (Equals(task["status"], "retired") || retiring.Contains(taskId)) throw new InvalidOperationException("This task worktree is retired. Create a new task to continue the work.");
         store.AssertNoChatExecutionIntents(taskId);
         if (publishing.Contains(taskId)) throw new InvalidOperationException("Wait for the Git operation to finish before starting a response.");
-        var profile = store.Profile((string)task["profileId"]!) ?? throw new InvalidOperationException("Profile not found."); RequireFake(profile);
+        var profile = store.Profile((string)task["profileId"]!) ?? throw new InvalidOperationException("Profile not found."); RequireVerified(profile);
+        if ((Equals(task.GetValueOrDefault("mode"), "coding") || store.ReadProviderState(taskId) is not null) && !ProfileReady(profile))
+            throw new WorkspaceReadException("Probe tool and continuation capabilities before starting a response with tools.");
         var clean = redactor.Text(content); var fingerprint = Compatibility.ProfileFingerprint(profile);
         var request = agent.Prepare(task, profile, fingerprint, clean);
-        if (request.GetValueOrDefault("continuation") is Dictionary<string, object?> native
+        if (request.GetValueOrDefault("continuation") is Dictionary<string, object?> native && Equals(native.GetValueOrDefault("apiKind"), "fake")
             && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send" or "read" or "replace" or "command")))
             throw new NotSupportedException("This native continuation requires a later runtime feature slice.");
         var stamp = Clock.Iso(now()); var answer = new Dictionary<string, object?> { ["id"] = id().ToString(), ["taskId"] = taskId, ["role"] = "assistant", ["content"] = "", ["createdAt"] = stamp, ["status"] = "streaming" };
+        var credential = credentials.GetValueOrDefault((string)profile["id"]!);
         TaskReservation? reservation = null;
         store.Transaction(() =>
         {
@@ -864,7 +872,7 @@ public sealed class DevelopmentChat
             entry.Started.TrySetResult();
             try
             {
-                await agent.Run(taskId, request, answer, reservation!, fingerprint, entry.Abort);
+                await agent.Run(taskId, request, answer, reservation!, fingerprint, entry.Abort, credential);
             }
             catch (Exception error) { Fail(error); }
             finally { loop.AssertCurrent(); running.Remove(taskId); entry.Dispose(); }
@@ -887,12 +895,16 @@ public sealed class DevelopmentChat
             try { await pending; }
             catch (Exception error) when (error is InvalidOperationException or WorkspaceReadException) { }
         }
+        // Nothing sends once the turns and probes are done; the production transport is this runtime's own (review I2).
+        if (injectedTransport is null) transport?.Dispose();
         loop.AssertCurrent();
         if (backgroundFailure is not null) throw new InvalidOperationException("Development chat execution failed.", backgroundFailure);
     }
-    private static void RequireFake(Dictionary<string, object?> profile)
+    /// <summary>service.ts: an external profile must have a probe of this exact configuration.</summary>
+    private static void RequireVerified(Dictionary<string, object?> profile)
     {
-        if (!Equals(profile.GetValueOrDefault("apiKind"), "fake")) throw new NotSupportedException("External providers are not supported by the development chat runtime.");
+        if (!Equals(profile.GetValueOrDefault("apiKind"), "fake") && !Equals(profile.GetValueOrDefault("verificationFingerprint"), Compatibility.ProfileFingerprint(profile)))
+            throw new WorkspaceReadException("Probe this model profile successfully before starting a response.");
     }
     /// <summary>A standalone task: no coordinated mode, role, parent or root, all of which need the orchestrator.</summary>
     private static void RequireStandalone(Dictionary<string, object?> task)
