@@ -20,7 +20,6 @@ vi.mock('node:crypto', async original => ({ ...await original<typeof import('nod
 const timestamp = '2026-01-02T03:04:05.678Z';
 const project = '77777777-0000-4000-8000-000000000001';
 const start = (requestId: number, extra: Record<string, unknown> = {}) => ({ requestId: `77777777-0000-4000-8000-9999999999${String(requestId).padStart(2, '0')}`, projectId: project, content: 'Hello folder', profileId: FAKE_PROFILE_ID, mode: 'chat', tokenBudget: 100000, ...extra });
-const GIT_CHAT = 'Chats in Git projects need the native tool loop, which a later runtime slice ports.';
 
 type Step = { method: RpcMethod | 'wait' | 'rename'; params: Record<string, unknown>; native?: { error: string; difference: string } };
 const steps: Step[] = [
@@ -44,7 +43,8 @@ const steps: Step[] = [
   { method: 'task.start', params: start(7, { content: 'Back again' }) },
   { method: 'wait', params: { taskId: '{task}' } },
   { method: 'project.add', params: { path: '{scratch}\\work\\repo' } },
-  { method: 'task.start', params: start(8, { projectId: '{git-project}' }), native: { error: GIT_CHAT, difference: 'Chats in Git projects advertise project-channel tools, which need the native tool loop of a later slice; native refuses them before any reservation.' } },
+  { method: 'task.start', params: start(8, { projectId: '{git-project}' }) },
+  { method: 'wait', params: { taskId: '{task}' } },
 ];
 
 it('pins project-backed folder chats through the shipping Node authority without ordinary regeneration', async () => {

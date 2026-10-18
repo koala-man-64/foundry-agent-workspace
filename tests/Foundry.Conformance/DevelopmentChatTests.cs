@@ -84,7 +84,7 @@ public sealed class DevelopmentChatTests
         {
             await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
             var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            async IAsyncEnumerable<ProviderChatEvent> Stream(IReadOnlyList<ProviderMessage> _, ProviderContinuation? __, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest _, [EnumeratorCancellation] CancellationToken token)
             {
                 loop.AssertCurrent(); yield return new ProviderText("partial"); arrived.TrySetResult(); await release.Task; loop.AssertCurrent();
                 yield return new ProviderDone(new("fake", new Dictionary<string, object?> { ["stage"] = "chat", ["calls"] = new List<object?>() }));
@@ -121,7 +121,7 @@ public sealed class DevelopmentChatTests
         try
         {
             await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
-            async IAsyncEnumerable<ProviderChatEvent> Stream(IReadOnlyList<ProviderMessage> _, ProviderContinuation? __, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest _, [EnumeratorCancellation] CancellationToken token)
             {
                 await Task.CompletedTask; loop.AssertCurrent();
                 yield return new ProviderText(scenario == "output-limit" ? new string('a', 256 * 1024 + 1) : "partial");
@@ -158,7 +158,7 @@ public sealed class DevelopmentChatTests
         {
             await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
             var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var visits = 0;
-            async IAsyncEnumerable<ProviderChatEvent> Stream(IReadOnlyList<ProviderMessage> _, ProviderContinuation? __, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest _, [EnumeratorCancellation] CancellationToken token)
             {
                 loop.AssertCurrent(); if (++visits == 3) entered.TrySetResult();
                 yield return new ProviderText("partial"); await Task.Delay(Timeout.InfiniteTimeSpan, token);
@@ -212,7 +212,7 @@ public sealed class DevelopmentChatTests
             await loop.Invoke(() =>
             {
                 store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
-                chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider(_ => Task.CompletedTask).StreamTurn(messages, continuation, token));
+                chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider(_ => Task.CompletedTask).StreamTurn(request, token));
                 return Task.FromResult(0);
             });
             try
@@ -253,7 +253,7 @@ public sealed class DevelopmentChatTests
             await loop.Invoke(async () =>
             {
                 store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"), publish: item => { if (item.Type == "task.completed") throw new IOException("injected delivery failure"); });
-                chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider(_ => Task.CompletedTask).StreamTurn(messages, continuation, token));
+                chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider(_ => Task.CompletedTask).StreamTurn(request, token));
                 await chat.Dispatch("task.start", Parameters()); return 0;
             });
             try
@@ -283,7 +283,7 @@ public sealed class DevelopmentChatTests
             await loop.Invoke(() =>
             {
                 store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"), publish: item => { if (item.Type == "task.started") throw new IOException("injected start delivery failure"); });
-                chat = new DevelopmentChat(loop, store, (messages, continuation, token) => { visits++; return new FakeChatProvider().StreamTurn(messages, continuation, token); });
+                chat = new DevelopmentChat(loop, store, (request, token) => { visits++; return new FakeChatProvider().StreamTurn(request, token); });
                 return Task.FromResult(0);
             });
             try
@@ -328,7 +328,7 @@ public sealed class DevelopmentChatTests
                 await loop.Invoke(async () =>
                 {
                     store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"), publish: item => { if (item.Type == "task.started") throw new IOException("injected delivery failure"); });
-                    chat = new DevelopmentChat(loop, store, (messages, continuation, token) => { visits++; return new FakeChatProvider().StreamTurn(messages, continuation, token); });
+                    chat = new DevelopmentChat(loop, store, (request, token) => { visits++; return new FakeChatProvider().StreamTurn(request, token); });
                     var first = chat.Dispatch("task.start", Parameters());
                     var second = chat.Dispatch("task.start", new(Parameters()) { ["requestId"] = "77777777-0000-4000-8000-999999999998" });
                     await Assert.ThrowsAsync<EventDeliveryException>(() => first);
@@ -388,8 +388,8 @@ public sealed class DevelopmentChatTests
                     store = new Store(loop, scratch, Path.Combine(scratch, "injected-root"));
                     var taskId = "77777777-0000-4000-8000-000000000999"; var stamp = "2026-01-02T03:04:05.678Z";
                     var task = new Dictionary<string, object?> { ["id"] = taskId, ["title"] = "guard", ["profileId"] = Store.FakeProfileId, ["status"] = "idle", ["createdAt"] = stamp, ["updatedAt"] = stamp, ["tokenBudget"] = 100000, ["usedTokens"] = 0, ["mode"] = "chat", ["workspaceKind"] = "none" };
-                    // A Git task's turn advertises channel tools, which need the native tool loop; folder chats run (P2.2f).
-                    if (scenario == "git") task["workspaceKind"] = "git";
+                    // A Git chat's turn is enriched with its project channel, which must resolve: this project folder is gone.
+                    if (scenario == "git") { task["workspaceKind"] = "git"; task["projectPath"] = Path.Combine(scratch, "missing-project"); task["worktreePath"] = Path.Combine(scratch, "missing-worktree"); }
                     if (scenario == "coding") task["mode"] = "coding";
                     if (scenario == "child") task["parentTaskId"] = "77777777-0000-4000-8000-000000000998";
                     store.SaveTask(task);
@@ -408,7 +408,7 @@ public sealed class DevelopmentChatTests
                         store.Execute("INSERT INTO intents VALUES($p0,'provider.context',$p1,'complete')", taskId, JsJson.Stringify(state));
                     }
                     var before = JsJson.Stringify(store.Rows("SELECT * FROM tasks")); var eventCount = store.Scalar("SELECT COUNT(*) FROM events");
-                    chat = new DevelopmentChat(loop, store, (messages, continuation, token) => { visits++; return new FakeChatProvider().StreamTurn(messages, continuation, token); });
+                    chat = new DevelopmentChat(loop, store, (request, token) => { visits++; return new FakeChatProvider().StreamTurn(request, token); });
                     var error = await Record.ExceptionAsync(() => chat.Dispatch("task.send", new() { ["taskId"] = taskId, ["content"] = "must not dispatch" }));
                     Assert.True(error is InvalidOperationException or NotSupportedException);
                     Assert.Equal(0, visits); Assert.Equal(before, JsJson.Stringify(store.Rows("SELECT * FROM tasks")));

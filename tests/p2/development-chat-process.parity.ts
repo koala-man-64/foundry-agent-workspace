@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -8,6 +9,7 @@ import Database from 'better-sqlite3';
 import { expect, it } from 'vitest';
 import { BrowserHostCallSchema, RpcResponseSchema } from '../../packages/protocol/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
+import { build, committed, isolatedGitEnvironment } from './repository-fixture';
 
 type ObjectValue = Record<string, unknown>;
 
@@ -144,6 +146,109 @@ async function exercise(kind: 'node' | 'dotnet'): Promise<unknown> {
   }
 }
 
+// A Git-project chat through both entry points: a worktree-backed start, the offline channel demo's tool loop, a second
+// agent whose first request carries the broadcast, and the channel page. Both runtimes run Git with the same isolated
+// configuration. Scratch paths, generated identities (in order of appearance), wall-clock timestamps and the project key
+// are normalized; nothing else is.
+const CODING = 'Coding turns need native approvals, which a later runtime slice wires.';
+async function exerciseGit(kind: 'node' | 'dotnet'): Promise<unknown> {
+  const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), `foundry-p2-entry-git-${kind}-`)));
+  const home = join(scratch, 'home'); mkdirSync(home); const data = join(scratch, 'data'); mkdirSync(data);
+  build(scratch, home, committed());
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const name of Object.keys(env)) if (/^GIT_/i.test(name)) delete env[name];
+  Object.assign(env, isolatedGitEnvironment(home), { FOUNDRY_WORKSPACE_DATA: data }, kind === 'dotnet' ? { FOUNDRY_RUNTIME_P2_CHAT: '1' } : {});
+  const child = kind === 'node'
+    ? spawn(process.execPath, [resolve('out/main/runtime.js')], { env, stdio: 'pipe' })
+    : spawn(resolve('src/Foundry.Runtime/bin/Release/net10.0-windows/Foundry.Runtime.exe'), [], { env, stdio: 'pipe' });
+  const exited = once(child, 'exit');
+  let stderr = ''; child.stderr.setEncoding('utf8'); child.stderr.on('data', text => { stderr += String(text); });
+  const reader = createInterface({ input: child.stdout }); const lines = reader[Symbol.asyncIterator]();
+  const events: ObjectValue[] = [];
+  const request = async (id: string, method: string, params: unknown): Promise<ObjectValue> => {
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+    for (let n = 0; n < 1000; n++) {
+      const next = await lines.next(); if (next.done) throw new Error(`Entry exited before reply: ${stderr}`);
+      const value = JSON.parse(next.value) as ObjectValue;
+      if (value.method === 'workspace.event') { events.push(value.params as ObjectValue); continue; }
+      if (value.method === 'browser.host') {
+        // Node's turns ask which browser tabs are attached; none are. Native has no browser host.
+        const call = BrowserHostCallSchema.parse(value); expect(['revoke', 'tabs']).toContain(call.params.kind);
+        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: call.id, method: 'browser.host.result', result: call.params.kind === 'tabs' ? [] : null }) + '\n'); continue;
+      }
+      RpcResponseSchema.parse(value); expect(value.id).toBe(id); return value;
+    }
+    throw new Error('Missing bounded reply.');
+  };
+  const idle = async (label: string, taskId: unknown): Promise<ObjectValue> => {
+    for (let n = 0; n < 500; n++) {
+      const read = await request(`${label}-${n}`, 'task.read', { taskId });
+      if (((read.result as ObjectValue).task as ObjectValue).status !== 'running') return read;
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
+    throw new Error('The turn did not finish.');
+  };
+  try {
+    const project = await request('project', 'project.add', { path: join(scratch, 'repo') });
+    const projectId = (project.result as ObjectValue).id;
+    const start = (requestId: string, content: string) => ({ requestId, projectId, content, profileId: FAKE_PROFILE_ID, mode: 'chat' });
+    const started = await request('start-a', 'task.start', start('89898989-0000-4000-8000-000000000001', 'Hello repo')); const a = (started.result as ObjectValue).id;
+    const firstTurn = await idle('read-a', a);
+    const demo = await request('demo', 'task.send', { taskId: a, content: '/channel-demo Hello team' });
+    const demoTurn = await idle('read-demo', a);
+    const second = await request('start-b', 'task.start', start('89898989-0000-4000-8000-000000000002', 'Hello from B')); const b = (second.result as ObjectValue).id;
+    const secondTurn = await idle('read-b', b);
+    const channel = await request('channel', 'channel.get', { taskId: b });
+    const messages = await request('messages', 'task.messages', { taskId: a, limit: 50 });
+    const cancelled = await request('cancel', 'task.cancel', { taskId: a });
+    const tasks = await request('tasks', 'workspace.tasks', { limit: 50 });
+    // The one approved difference: TypeScript runs a coding turn, which native refuses before any worktree or row.
+    const coding = kind === 'dotnet' ? await request('coding', 'task.start', { ...start('89898989-0000-4000-8000-000000000003', 'Coding'), mode: 'coding' }) : undefined;
+    child.stdin.end();
+    for await (const line of lines) {
+      const frame = JSON.parse(line) as ObjectValue;
+      expect(frame.method).toBe('workspace.event'); events.push(frame.params as ObjectValue);
+    }
+    const [code] = await exited; expect(code).toBe(0); expect(stderr).toBe('');
+    const db = new Database(join(data, 'workspace.db'), { readonly: true });
+    try {
+      const key = createHash('sha256').update(join(scratch, 'repo', '.git').toLowerCase(), 'utf8').digest('hex');
+      const identities = new Map<string, string>();
+      const normalize = (value: unknown): unknown => {
+        if (typeof value === 'string') {
+          if (/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value)) return 'CLOCK';
+          if (value.startsWith('{') || value.startsWith('[')) return normalize(JSON.parse(value));
+          return value.replaceAll(scratch, 'SCRATCH').replaceAll(scratch.toLowerCase(), 'SCRATCH-LOWER').replaceAll(key, 'PROJECT-KEY')
+            .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, match => {
+              if (!identities.has(match)) identities.set(match, `ID-${identities.size + 1}`);
+              return identities.get(match)!;
+            });
+        }
+        if (Array.isArray(value)) return value.map(normalize);
+        if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([name, field]) => [name, normalize(field)]));
+        return value;
+      };
+      // Participants sort by task id and start hashes cover the project id, both random here; the in-process vectors pin
+      // both with fixed identities. The participants are ordered by title instead, and each hash is checked for its shape.
+      const view = channel.result as ObjectValue;
+      const participants = [...(view.participants as ObjectValue[])].sort((left, right) => String(left.title).localeCompare(String(right.title)));
+      const starts = (db.prepare('SELECT * FROM task_starts ORDER BY rowid').all() as ObjectValue[]).map(row => ({ ...row, input_hash: typeof row.input_hash === 'string' && row.input_hash.length === 64 }));
+      return normalize({ project: project.result, started: started.result, firstTurn: firstTurn.result, demo: demo.result, demoTurn: demoTurn.result,
+        second: second.result, secondTurn: secondTurn.result, channel: { ...view, participants }, messages: messages.result, cancelled: cancelled.result, tasks: tasks.result, starts,
+        coding: coding ? (coding.error as ObjectValue).message : CODING,
+        rows: Object.fromEntries(['tasks', 'messages', 'provider_requests', 'events', 'intents', 'projects'].map(table => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()])),
+        notifications: events.filter(item => item.sequence !== 0) });
+    } finally { db.close(); }
+  } finally {
+    reader.close(); if (child.exitCode === null) { child.kill(); await exited; }
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 it('matches Node and C# actual entry points for fake chat, retained rows and durable notifications', async () => {
   const expected = await exercise('node'); const actual = await exercise('dotnet'); expect(actual).toEqual(expected);
 });
+
+it('matches Node and C# actual entry points for a Git-project chat, its channel tool loop and the second agent it reaches', async () => {
+  const expected = await exerciseGit('node'); const actual = await exerciseGit('dotnet'); expect(actual).toEqual(expected);
+}, 120_000);

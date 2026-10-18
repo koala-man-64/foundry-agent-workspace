@@ -74,7 +74,7 @@ public sealed class ApprovalTests
         await loop.Invoke(async () =>
         {
             using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"), () => stamp);
-            var chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), () => stamp, null, fixture.Environment);
+            var chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider().StreamTurn(request, token), () => stamp, null, fixture.Environment);
             Assert.Equal(scenario["schema"], (double)store.SchemaVersion);
             foreach (var task in ((List<object?>)Corpus["tasks"]!).Cast<Dictionary<string, object?>>()) store.SaveTask((Dictionary<string, object?>)Expand(task)!);
             foreach (var item in ((List<object?>)Corpus["approvals"]!).Cast<Dictionary<string, object?>>())

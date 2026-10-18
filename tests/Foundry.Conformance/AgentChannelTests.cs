@@ -54,7 +54,7 @@ public sealed partial class AgentChannelTests
         await loop.Invoke(async () =>
         {
             using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
-            var chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), null, null, fixture.Environment);
+            var chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider().StreamTurn(request, token), null, null, fixture.Environment);
             foreach (var seed in ((List<object?>)item["seeds"]!).Cast<Dictionary<string, object?>>())
             {
                 var projectPath = fixture.Local((string)seed["at"]!);
@@ -169,7 +169,7 @@ public sealed partial class AgentChannelTests
         await loop.Invoke(async () =>
         {
             using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
-            var chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), null, null, fixture.Environment);
+            var chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider().StreamTurn(request, token), null, null, fixture.Environment);
             Dictionary<string, object?> identity;
             using (var admission = RepositoryAdmission.Open(loop, fixture.Local("a")))
                 identity = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
@@ -273,11 +273,46 @@ public sealed partial class AgentChannelTests
         Assert.Equal("Task channel-message limit reached.", Assert.Throws<WorkspaceReadException>(() => chat.Tools.Channel.Send(Id(1), "new", new Dictionary<string, object?> { ["content"] = "New" }, "user")).Message);
     });
 
+    /// <summary>
+    /// Security I-1 and data L2 of P2.3d: a participants page passes over a task bound to another project without
+    /// admitting its folder, since it could only resolve to its binding's project. Tasks bound to this project, and
+    /// unbound Git tasks anywhere, are admitted as TypeScript admits every task, so the page is unchanged.
+    /// </summary>
+    [Fact]
+    public Task AParticipantsPageAdmitsOnlyTasksThatCanShareItsProject() => WithChannel(async (fixture, store, chat, loop) =>
+    {
+        Directory.CreateDirectory(fixture.Local("b/.git"));
+        Dictionary<string, object?> other;
+        using (var admission = RepositoryAdmission.Open(loop, fixture.Local("b")))
+            other = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
+        for (var number = 10; number <= 30; number++)
+        {
+            store.SaveTask(new()
+            {
+                ["id"] = Id(number), ["title"] = $"Task {number}", ["profileId"] = Store.FakeProfileId, ["status"] = "running", ["createdAt"] = "2026-01-01T00:00:00.000Z",
+                ["updatedAt"] = "2026-01-01T00:00:00.000Z", ["tokenBudget"] = 100000d, ["usedTokens"] = 0d, ["mode"] = "coding", ["workspaceKind"] = "git", ["projectPath"] = fixture.Local("b"),
+                ["worktreePath"] = fixture.Local("b"), ["branch"] = "fixture", ["baseCommit"] = new string('a', 40),
+            });
+            // Task 30 is a legacy task: no binding, so only its folder can say which project it belongs to.
+            if (number < 30) store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(number), ["identity"] = other }), "complete");
+        }
+        var before = chat.Tools.Channel.Admissions;
+        var page = chat.Tools.Channel.Participants(Id(1), null);
+        Assert.Equal([Id(1), Id(2)], ((List<object?>)page["participants"]!).Cast<Dictionary<string, object?>>().Select(item => item["taskId"]));
+        // The caller, its two project tasks and the legacy task; none of the twenty tasks bound to b.
+        Assert.Equal(4, chat.Tools.Channel.Admissions - before);
+        Assert.Equal(21, ((List<object?>)chat.Tools.Channel.Participants(Id(10), null)["participants"]!).Count);
+        await Task.CompletedTask;
+    });
+
     private static string ProjectKey(RepositoryFixture fixture, string name) =>
         Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(Path.Join(fixture.Scratch, name, ".git")))));
 
     /// <summary>A store and chat over project a, with two running tasks bound to it.</summary>
-    private static async Task WithChannel(Func<RepositoryFixture, Store, DevelopmentChat, Task> body)
+    private static async Task WithChannel(Func<RepositoryFixture, Store, DevelopmentChat, Task> body) => await WithChannel((fixture, store, chat, _) => body(fixture, store, chat));
+
+    /// <summary>As above, with the loop the store and chat run on.</summary>
+    private static async Task WithChannel(Func<RepositoryFixture, Store, DevelopmentChat, RuntimeLoop, Task> body)
     {
         using var fixture = RepositoryFixture.Create("foundry-p2-channel-native-");
         Directory.CreateDirectory(fixture.Local("a/.git"));
@@ -286,7 +321,7 @@ public sealed partial class AgentChannelTests
         await loop.Invoke(async () =>
         {
             using var store = new Store(loop, data, Path.Combine(fixture.Scratch, "injected-root"));
-            var chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), null, null, fixture.Environment);
+            var chat = new DevelopmentChat(loop, store, (request, token) => new FakeChatProvider().StreamTurn(request, token), null, null, fixture.Environment);
             Dictionary<string, object?> identity;
             using (var admission = RepositoryAdmission.Open(loop, fixture.Local("a")))
                 identity = new() { ["path"] = admission.Identity!.Path, ["root"] = admission.Identity.Root, ["gitDirectory"] = admission.Identity.GitDirectory, ["common"] = admission.Identity.Common };
@@ -300,7 +335,7 @@ public sealed partial class AgentChannelTests
                 });
                 store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = Id(number), ["identity"] = identity }), "complete");
             }
-            await body(fixture, store, chat);
+            await body(fixture, store, chat, loop);
             return 0;
         });
     }

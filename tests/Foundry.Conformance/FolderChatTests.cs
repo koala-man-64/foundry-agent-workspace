@@ -5,11 +5,12 @@ using Xunit;
 
 namespace Foundry.Conformance;
 
-/// <summary>Project-backed folder chats through DevelopmentChat against the committed Node steps (tests/p2/folder-chat.test.ts).</summary>
+/// <summary>Project-backed chats, in folders and a Git project, through DevelopmentChat against the committed Node steps
+/// (tests/p2/folder-chat.test.ts).</summary>
 public sealed class FolderChatTests
 {
     [Fact]
-    public async Task FolderChatsMatchCommittedNodeStepsAndRefuseGitProjects()
+    public async Task ProjectChatsMatchCommittedNodeSteps()
     {
         var corpus = (Dictionary<string, object?>)PersistedJson.Parse(File.ReadAllText(Path.Combine(RepositoryFixture.Root, "tests/p2/folder-chat-vectors.json")))!;
         RepositoryFixture.AssertOracleSources(RepositoryFixture.ReadCorpus("tests/p2/folder-chat-vectors.json"));
@@ -30,7 +31,7 @@ public sealed class FolderChatTests
                 if (!DevelopmentChat.SendsNotification(item)) return;
                 events.Add(item.Sequence == 0 ? new Dictionary<string, object?> { ["sequence"] = 0, ["type"] = item.Type, ["data"] = item.Data, ["taskId"] = item.TaskId, ["createdAt"] = item.CreatedAt } : item.ToWire());
             });
-            chat = new DevelopmentChat(loop, store, (messages, continuation, token) => new FakeChatProvider().StreamTurn(messages, continuation, token), () => timestamp, NewId, fixture.Environment);
+            chat = new DevelopmentChat(loop, store, null, () => timestamp, NewId, fixture.Environment);
             return Task.FromResult(0);
         });
         var expanded = new Dictionary<string, string>(StringComparer.Ordinal);

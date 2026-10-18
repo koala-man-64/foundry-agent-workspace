@@ -30,6 +30,8 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
     private sealed record Indexed(long Sequence, string Sender, string? Recipient, string Actor, string CreatedAt);
 
     private long indexedThrough;
+    /// <summary>How many task folders the channel has admitted, for tests that pin which candidates a page admits.</summary>
+    internal int Admissions { get; private set; }
     private readonly Dictionary<string, List<Indexed>> projects = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> requests = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> counts = new(StringComparer.Ordinal);
@@ -98,8 +100,41 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         return data is null ? null : ((Dictionary<string, object?>)PersistedJson.Parse(data)!).GetValueOrDefault("identity") as Dictionary<string, object?>;
     }
 
+    /// <summary>Every task's first complete binding, as <see cref="Binding"/> reads it one task at a time: the first row's
+    /// identity, or null when that row's identity is not an object.</summary>
+    private Dictionary<string, Dictionary<string, object?>?> Bindings()
+    {
+        var bindings = new Dictionary<string, Dictionary<string, object?>?>(StringComparer.Ordinal);
+        foreach (var row in store.Rows("SELECT json_extract(data,'$.taskId') AS task,data FROM intents WHERE kind='channel.identity' AND state='complete' ORDER BY rowid"))
+            if (row["task"] is string id && !bindings.ContainsKey(id))
+                bindings[id] = ((Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!).GetValueOrDefault("identity") as Dictionary<string, object?>;
+        return bindings;
+    }
+
+    /// <summary>The project key of a common directory.</summary>
+    private static string Key(string common) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(common))));
+
     /// <summary>assertAdmission: the task's project channel still resolves.</summary>
     internal void AssertAdmission(Dictionary<string, object?> task) => Project(task);
+
+    /// <summary>
+    /// admit: binds a new Git task, inside the transaction that saves it, to the identity admitted before its worktree was
+    /// made. The project must still resolve to that identity through the admission held since, and a binding the task
+    /// already has must be the same one.
+    /// </summary>
+    internal void Admit(Dictionary<string, object?> task, RepositoryAdmission admission, GitAdmissionIdentity identity)
+    {
+        loop.AssertCurrent();
+        if (!IsGit(task)) return;
+        admission.Revalidate(identity);
+        var expected = Identity(identity);
+        if (Binding((string)task["id"]!) is { } existing)
+        {
+            if (JsJson.Stringify(existing) != JsJson.Stringify(expected)) throw new WorkspaceReadException("Project channel identity changed during admission.");
+            return;
+        }
+        store.FinishIntent(store.Intent("channel.identity", new Dictionary<string, object?> { ["taskId"] = task["id"], ["identity"] = expected }), "complete");
+    }
 
     /// <summary>
     /// The task's project key: SHA-256 of its lowercased Git common directory, as TypeScript persists it in every message.
@@ -116,6 +151,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         var binding = Binding((string)task["id"]!) ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") ? Binding((string)task["rootTaskId"]!) : null);
         var saved = Present(task, "projectId") && store.SchemaVersion >= 3 ? store.Project((string)task["projectId"]!) : null;
         var approved = binding?.GetValueOrDefault("path") as string ?? saved?.GetValueOrDefault("path") as string ?? projectPath;
+        Admissions++;
         using var admission = RepositoryAdmission.Open(loop, projectPath);
         // resolveLocalPath(projectPath, approved): an 8.3 or case spelling of the approved folder is the same folder.
         if (approved.Length > 0 && EcmaScriptCase.ToLower(FinalPath.Resolve(admission.Path)) != EcmaScriptCase.ToLower(FinalPath.Resolve(approved)) && !RepositoryPaths.SameFolder(approved, admission.Path))
@@ -131,7 +167,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
             if (!RepositoryPaths.SameFolder(current.Common, physical) || !RepositoryPaths.SameFolder(current.GitDirectory, physical))
                 throw new WorkspaceReadException("Project channel requires an approved local identity.");
         }
-        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(EcmaScriptCase.ToLower(current.Common))));
+        return Key(current.Common);
     }
 
     private static Dictionary<string, object?> Identity(GitAdmissionIdentity identity) => new()
@@ -156,16 +192,27 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         return true;
     }
 
-    /// <summary>participants: the project's tasks after the cursor, in localeCompare order of their ids, 50 at a time. A task
-    /// whose channel cannot be resolved is not listed, whatever stops it, as TypeScript's catch-all leaves it out.</summary>
+    /// <summary>
+    /// participants: the project's tasks after the cursor, in localeCompare order of their ids, 50 at a time. A task whose
+    /// channel cannot be resolved is not listed, whatever stops it, as TypeScript's catch-all leaves it out.
+    /// <para>
+    /// Every task's first binding is loaded once. A bound task resolves only to its binding's common directory, so one
+    /// bound elsewhere is passed over without admitting its folder: Project would refuse it or key it to another project.
+    /// Unbound Git tasks and those bound to this project are admitted, as TypeScript admits every task.
+    /// </para>
+    /// </summary>
     internal Dictionary<string, object?> Participants(string taskId, string? afterTaskId)
     {
         loop.AssertCurrent();
         var project = Project(Task(taskId));
+        var bindings = Bindings();
         var tasks = new List<Dictionary<string, object?>>();
         foreach (var task in store.AllTasks())
         {
             if (afterTaskId is not null && string.CompareOrdinal((string)task["id"]!, afterTaskId) <= 0) continue;
+            var binding = bindings.GetValueOrDefault((string)task["id"]!)
+                ?? (Present(task, "parentTaskId") && Present(task, "rootTaskId") && task["rootTaskId"] is string root ? bindings.GetValueOrDefault(root) : null);
+            if (binding is not null && (binding.GetValueOrDefault("common") is not string common || Key(common) != project)) continue;
             try { if (Project(task) == project) tasks.Add(task); }
             catch (Exception error) when (error is not OperationCanceledException) { }
         }

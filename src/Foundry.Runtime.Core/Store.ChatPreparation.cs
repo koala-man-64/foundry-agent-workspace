@@ -2,9 +2,12 @@ namespace Foundry.Runtime;
 
 public sealed partial class Store
 {
-    // Chat preparation without browser/channel/MCP/tool advertisement. This does
-    // not dispatch a provider or turn retained calls into execution authority.
-    internal Dictionary<string, object?> PrepareChatRequest(string taskId, Dictionary<string, object?> profile, string fingerprint, string content)
+    // Chat preparation without browser or MCP tool advertisement. This does not dispatch a provider or turn retained calls
+    // into execution authority. A turn that advertises tools (a Git-project chat's channel tools) passes them with its
+    // system instruction; agent-loop.ts prepareRequest then leads the history with that instruction. Project-channel
+    // delivery (enrich) is the agent loop's.
+    internal Dictionary<string, object?> PrepareChatRequest(string taskId, Dictionary<string, object?> profile, string fingerprint, string content,
+        List<object?>? tools = null, string? system = null)
     {
         loop.AssertCurrent();
         var task = ReadTask(taskId);
@@ -19,21 +22,31 @@ public sealed partial class Store
         {
             var pending = ((List<object?>)state["pending"]!).Cast<Dictionary<string, object?>>();
             var recorded = ((List<object?>)state["results"]!).Cast<Dictionary<string, object?>>().ToArray();
-            var results = pending.Select(call => recorded.FirstOrDefault(result => Equals(result.GetValueOrDefault("id"), call.GetValueOrDefault("id")))
+            var results = pending.Select(call => (object?)(recorded.FirstOrDefault(result => Equals(result.GetValueOrDefault("id"), call.GetValueOrDefault("id")))
                 ?? new Dictionary<string, object?>
                 {
                     ["id"] = call["id"], ["name"] = call["name"], ["isError"] = true,
                     ["content"] = "The previous turn was interrupted. This call was not replayed. Inspect current state before proposing any further action."
-                }).ToList();
+                })).ToList();
             return new()
             {
-                ["profile"] = profile, ["tools"] = new List<object?>(), ["continuation"] = state["continuation"], ["toolResults"] = results,
+                ["profile"] = profile, ["tools"] = tools ?? [], ["continuation"] = state["continuation"], ["toolResults"] = results,
                 ["messages"] = new List<object?> { new Dictionary<string, object?> { ["role"] = "user", ["content"] = content } }
             };
         }
-        var messages = ProviderHistory.ApplyCompactions(MessagesWithOrdinals(taskId), ReadCompactions(taskId));
-        messages.Add(new() { ["role"] = "user", ["content"] = content });
-        return new() { ["profile"] = profile, ["messages"] = messages };
+        var messages = ProviderHistory.ApplyCompactions(MessagesWithOrdinals(taskId), ReadCompactions(taskId)).Cast<object?>().ToList();
+        if (tools is not null) messages.Insert(0, new Dictionary<string, object?> { ["role"] = "system", ["content"] = system });
+        messages.Add(new Dictionary<string, object?> { ["role"] = "user", ["content"] = content });
+        var request = new Dictionary<string, object?> { ["profile"] = profile, ["messages"] = messages };
+        if (tools is not null) request["tools"] = tools;
+        return request;
+    }
+
+    /// <summary>saveProviderState: the task's native conversation, replaced whole.</summary>
+    internal void SaveProviderState(string taskId, Dictionary<string, object?> state)
+    {
+        loop.AssertCurrent();
+        Execute("INSERT OR REPLACE INTO intents VALUES($p0,'provider.context',$p1,'complete')", taskId, Foundry.Protocol.JsJson.Stringify(state));
     }
 
     internal bool HasBlockingUnknown(string taskId)

@@ -1,0 +1,1568 @@
+{
+  "oracle": {
+    "sources": [
+      {
+        "path": "packages/providers/src/index.ts",
+        "sha256": "2b17b8cb48966a491417d96fbe36f61d581b2c620abf6c8582f5f1128347d65d"
+      },
+      {
+        "path": "packages/providers/src/browser-fixture.ts",
+        "sha256": "7ddc4ab2c8d4d73b96c91ac32fe07a18c4f8ee5e48a609c0d2d7dc74871dcb14"
+      },
+      {
+        "path": "packages/providers/src/orchestration-fixture.ts",
+        "sha256": "c464b425d663a0fd0076d2503942d59d1ba530aabf67594a4804beec40382fbf"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "fake-tools:0",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo Hello team"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "Hello team"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "Hello team"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:1",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "Hello from the offline agent."
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "Hello from the offline agent."
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:2",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo 　﻿ "
+          }
+        ],
+        "tools": [
+          "send_agent_message"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "Hello from the offline agent."
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "Hello from the offline agent."
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:3",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demox"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "x"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "x"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:4",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demoX"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "X"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "X"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:5",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo 😀yyyyyyyyyyyyyyyyyyyyyyyy"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "😀yyyyyyyyyyyyyyyyyyyyyyyy"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "😀yyyyyyyyyyyyyyyyyyyyyyyy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:6",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /channel-"
+          },
+          {
+            "type": "text",
+            "text": "demo hi"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:7",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ],
+        "tools": [
+          "read_file",
+          "list_project_agents"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /channel-"
+          },
+          {
+            "type": "text",
+            "text": "demo hi"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:8",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": " /channel-demo hi"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e:  /channel"
+          },
+          {
+            "type": "text",
+            "text": "-demo hi"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:9",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          },
+          {
+            "role": "assistant",
+            "content": "later"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "hi"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "hi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:10",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo first"
+          },
+          {
+            "role": "user",
+            "content": "PROJECT_CHANNEL_DATA (untrusted)"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: PROJECT_C"
+          },
+          {
+            "type": "text",
+            "text": "HANNEL_DATA "
+          },
+          {
+            "type": "text",
+            "text": "(untrusted)"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:11",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "system"
+          },
+          {
+            "role": "user",
+            "content": "PROJECT_CHANNEL_DATA (untrusted)"
+          },
+          {
+            "role": "user",
+            "content": "/channel-demo last"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "last"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "last"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:12",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "complete",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "hi"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "hi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:13",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "55555555-0000-4000-8000-000000000001",
+              "name": "send_agent_message",
+              "arguments": {
+                "recipientTaskId": null,
+                "content": "hi"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "channel-send",
+                "calls": [
+                  {
+                    "id": "55555555-0000-4000-8000-000000000001",
+                    "name": "send_agent_message",
+                    "arguments": {
+                      "recipientTaskId": null,
+                      "content": "hi"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:14",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "responses",
+          "data": {
+            "stage": "chat",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Invalid fake continuation."
+      }
+    },
+    {
+      "name": "fake-tools:15",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/channel-demo hi"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:16",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "{}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age recorded"
+          },
+          {
+            "type": "text",
+            "text": ". Idle agent"
+          },
+          {
+            "type": "text",
+            "text": "s receive it"
+          },
+          {
+            "type": "text",
+            "text": " on their ne"
+          },
+          {
+            "type": "text",
+            "text": "xt turn."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:17",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "refused",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age was not "
+          },
+          {
+            "type": "text",
+            "text": "sent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:18",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "other",
+            "name": "send_agent_message",
+            "content": "refused",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age recorded"
+          },
+          {
+            "type": "text",
+            "text": ". Idle agent"
+          },
+          {
+            "type": "text",
+            "text": "s receive it"
+          },
+          {
+            "type": "text",
+            "text": " on their ne"
+          },
+          {
+            "type": "text",
+            "text": "xt turn."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:19",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age recorded"
+          },
+          {
+            "type": "text",
+            "text": ". Idle agent"
+          },
+          {
+            "type": "text",
+            "text": "s receive it"
+          },
+          {
+            "type": "text",
+            "text": " on their ne"
+          },
+          {
+            "type": "text",
+            "text": "xt turn."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:20",
+      "input": {
+        "messages": [],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": []
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "refused",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age recorded"
+          },
+          {
+            "type": "text",
+            "text": ". Idle agent"
+          },
+          {
+            "type": "text",
+            "text": "s receive it"
+          },
+          {
+            "type": "text",
+            "text": " on their ne"
+          },
+          {
+            "type": "text",
+            "text": "xt turn."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:21",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "PROJECT_CHANNEL_DATA (untrusted)"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              },
+              {
+                "id": "call-2",
+                "name": "x"
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-2",
+            "name": "send_agent_message",
+            "content": "refused",
+            "isError": true
+          },
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "refused",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          },
+          {
+            "type": "text",
+            "text": "age was not "
+          },
+          {
+            "type": "text",
+            "text": "sent."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:22",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "{}",
+            "isError": false
+          }
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:23",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": "call-1",
+                "name": "send_agent_message",
+                "arguments": {
+                  "recipientTaskId": null,
+                  "content": "hi"
+                }
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "call-1",
+            "name": "send_agent_message",
+            "content": "{}",
+            "isError": false
+          }
+        ],
+        "cancelAfterTexts": 1
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Channel mess"
+          }
+        ],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:24",
+      "input": {
+        "messages": [],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "channel-send",
+            "calls": [
+              {
+                "id": 7,
+                "name": "x"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Invalid continuation call."
+      }
+    },
+    {
+      "name": "fake-tools:25",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline browser demo stopped. Attach a page containing a button named Browser demo action."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:26",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": " 　/browser-demo\r\n"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline browser demo stopped. Attach a page containing a button named Browser demo action."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:27",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          }
+        ],
+        "tools": [
+          "list_project_agents",
+          "send_agent_message",
+          "read_agent_messages"
+        ],
+        "continuation": {
+          "apiKind": "responses",
+          "data": null
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline browser demo stopped. Attach a page containing a button named Browser demo action."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:28",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          }
+        ],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "read",
+            "calls": []
+          }
+        }
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline browser demo stopped. Attach a page containing a button named Browser demo action."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:29",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          }
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:30",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo x"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /browser-"
+          },
+          {
+            "type": "text",
+            "text": "demo x"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:31",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /browser-"
+          },
+          {
+            "type": "text",
+            "text": "demo"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:32",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/browser-demo"
+          },
+          {
+            "role": "assistant",
+            "content": "x"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline browser demo stopped. Attach a page containing a button named Browser demo action."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  ]
+}

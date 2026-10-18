@@ -104,7 +104,7 @@ public sealed class VisibilityTests
             var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            async IAsyncEnumerable<ProviderChatEvent> Stream(IReadOnlyList<ProviderMessage> _, ProviderContinuation? __, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest _, [EnumeratorCancellation] CancellationToken token)
             {
                 entered.SetResult(); await release.Task.WaitAsync(token);
                 yield return new ProviderText("retained response");
