@@ -302,6 +302,13 @@ Dual-landed fixes:
       - **Oracles:** it compared all six files case by case. Exactly the four cases above changed, none was renumbered, and nothing from #48 came across.
       - **Low:** this document still called T-1 unfixed. Corrected here.
       - **Informational, pre-existing:** the stored assistant turn of transport cases 144 and 146 has no `tool_use` for `call-2`, so Anthropic would refuse their bodies before and after the fix. Real state cannot produce this, because the calls come from that turn's content, and neither runtime checks it. No Anthropic refusal case uses one user message, so only the order of the code protects the merged path. A single empty user message would still become an empty text block.
+    - **Validation of `590e0b4`** (from a `git archive` export, `foundry-evidence\t1-anthropic-results\run1`, seal `seal-590e0b4.txt`):
+      - Release build with warnings as errors: clean.
+      - Native suite: 7,948 tests, 7,946 passed, 0 failed, 2 expected skips.
+      - `pnpm check`: 594 of 594 passed across 96 files.
+      - The stdio differential: 3 of 3. `git diff --check`: clean.
+      - Under Electron's Node 24.21.0, the fake-tool, stream and transport oracles and `providers.test.ts` pass in check mode, 19 of 19.
+      - No renderer, IPC or user-path source changed, so no Electron E2E run was required.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
