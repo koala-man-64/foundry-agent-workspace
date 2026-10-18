@@ -1614,7 +1614,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 **Differences, all fail-closed or invisible on success:**
 - **Confinement (decision I5).** Before any argument check, read, proposal or execution, a coding tool requires the stored worktree to be the task's own app-owned folder, compared by identity as above. Otherwise the model is told "This task's worktree is not its app-owned worktree, so coding tools are refused." TypeScript uses the stored path.
 - **External tools (decision 2).** A coding start or turn is refused before any reservation while an enabled MCP server has stored tools, or a server row that does not parse: "Coding turns cannot use external MCP tools yet. Disable the MCP servers that list tools before starting a coding turn." TypeScript advertises those tools.
-- **Compare-and-set (P2.3b's carried item).** Each save the tool runtime makes from its own copy of an approval requires the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome. `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
+- **Compare-and-set (P2.3b's carried item).** The saves the tool runtime makes from its own copy of an approval require the stored state that copy last saw: revoked while waiting, executing, the final state, and a failure's outcome once a decision is known. The one exception is a failure's outcome while the proposal still waits, which only a failure other than a conflict can reach. `Decide`, `RevokeWaiting` and `Reconcile` read the row afresh. On one loop no such change can interleave today; the check keeps a later writer from silently undoing a decision.
   - **Before the executing state** nothing has run: a changed row stands, and the stale copy writes nothing more ("The approval changed while it was in use; it was not overwritten.").
   - **After it** the action may have run: the outcome is recorded unknown over the change ("The approval changed while its action ran, so its outcome is unknown."), so the next turn waits for reconciliation.
   - **The first version** let the failure path save the stale copy after a conflict, and left an executed action unrecorded (security L-2, data L1 and L2); both are fixed in `7512036`.
@@ -1643,11 +1643,11 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **Mutations,** in `foundry-evidence\p2.3-f\mutations`:
   - **First run (`ddc6636`):** 29 mutations. 26 were caught, 2 survived and 1 did not build.
   - **The two survivors were test gaps:** the final save without its expected state, and the refusal of a coding task outside Git (a later layer refused it with another message). Both are pinned since `7512036`. The one that did not build is rewritten.
-  - **Second run:** recorded once it completes.
+  - **Second run (`7512036`):** 13 mutations, for the review fixes and the earlier gaps. 11 were caught and 2 did not build; both were rewritten, and a third run caught both.
 
 **Validation.**
 - **`ddc6636`** (run1, from a `git archive` export): native 7,323 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The stdio differential passed in the worktree.
-- **After the review fixes:** recorded once it completes.
+- **`7512036`** (run2, from a `git archive` export, after the review fixes): native 7,329 passed, 0 failed, 2 expected skips; `pnpm check` 584 passed; `git diff --check` clean. The data reviewer's export of `6245bb0` ran the stdio differential after the fixes; it passed.
 
 **Independent reviews of `7d01f30..ddc6636` and `ddc6636..4466b4f`.**
 - **Security** (`cloud-security-vulnerability-expert`, Opus at high effort): **GO with conditions**, with no critical, high or medium finding.
@@ -1679,7 +1679,14 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - `HasBlockingUnknown` scans every task's approvals, as TypeScript does;
     - decision 2's reading of disabled servers with unreadable tools, and of tools whose names cannot be composed, differs from TypeScript's listing, fail-closed;
     - the real-clock cases check timestamps' format, not their values or order.
-- **Re-reviews of `4466b4f..7512036`:** recorded once they complete.
+- **Re-reviews of `4466b4f..7512036` and `7512036..6245bb0`: both GO, with no conditions remaining.**
+  - **Security:** it confirmed L-1, L-2 and I-1 fixed and found nothing new. It verified both seals, built an export and ran five classes (49 passed).
+  - **Data integrity:** it confirmed its four conditions met and found nothing above informational. It verified both seals, ran five classes (49 passed), two oracles and the stdio differential, and re-ran its cross-runtime probes; they again gave identical rows.
+    - **Its own mutations:** of the two earlier survivors, both now fail.
+    - **The I-1 check, probed:** proposals holding line and paragraph separators, a lone surrogate, control characters, emoji, backslashes and quotes still round-trip and are decided normally.
+  - **Informational, recorded:**
+    - **`SameFolder`** catches only I/O errors, so a folder it may not open fails the turn rather than returning the confinement refusal; fail-closed.
+    - **A conflict on the failure path's own save** surfaces the conflict instead of the original error; the stored outcome is correct.
 
 **Open, for later slices.**
 - **External tools:** decision 2's refusal lifts with the MCP slice.
