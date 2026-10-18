@@ -1558,7 +1558,7 @@
       },
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "2b17b8cb48966a491417d96fbe36f61d581b2c620abf6c8582f5f1128347d65d"
+        "sha256": "668a91766c9368a02f6f20dc16f63b7e08ac42a53d3d60040578024e33bfacce"
       },
       {
         "path": "packages/providers/src/browser-fixture.ts",

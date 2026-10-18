@@ -126,6 +126,24 @@ describe('native tool streams', () => {
     await expect(events(createProvider('responses', { fetch }), { ...request('responses'), tools })).rejects.toThrow('unadvertised');
   });
 
+  it('matches streamed Responses items to the completion without comparing every pair', async () => {
+    // 200 messages without ids, completed in reverse order. Comparing every streamed item with every completed one
+    // serializes about 40,000 contents; the index serializes each item twice, once for its content and once for its key.
+    const items = Array.from({ length: 200 }, (_, i) => JSON.stringify({ type: 'message', content: [{ type: 'output_text', text: `${String(i).padStart(6, '0')}${'x'.repeat(200)}` }] }));
+    const body = (streamed: string[]) => new Response(sse(...streamed.map(item => `event: response.output_item.done\ndata: {"item":${item}}\n\n`), `event: response.completed\ndata: {"response":{"status":"completed","output":[${[...items].reverse().join(',')}]}}\n\n`));
+    const stringify = vi.spyOn(JSON, 'stringify');
+    try {
+      const output = await events(createProvider('responses', { fetch: vi.fn<typeof globalThis.fetch>().mockResolvedValue(body(items)) }), request('responses'));
+      expect(output.at(-1)).toMatchObject({ type: 'done' });
+      expect(stringify.mock.calls.length).toBeLessThan(4 * items.length + 50);
+    }
+    finally {
+      stringify.mockRestore();
+    }
+    const unmatched = [...items.slice(0, 100), JSON.stringify({ type: 'message', content: [] }), ...items.slice(100)];
+    await expect(events(createProvider('responses', { fetch: vi.fn<typeof globalThis.fetch>().mockResolvedValue(body(unmatched)) }), request('responses'))).rejects.toThrow('did not match an output item event');
+  });
+
   it('rejects mixed refused Responses completion output before emitting a tool call', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(sse(
       'event: response.output_item.done\ndata: {"item":{"type":"function_call","id":"item-1","call_id":"call-1","name":"read_file","arguments":"{}"}}\n\n',

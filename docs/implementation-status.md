@@ -255,6 +255,22 @@ Dual-landed fixes:
     - `git-operations.test.ts`: a held `index.lock` makes `cherryPick` return no effect with Git's reason.
     - The e2e now fails as soon as the coordinator stops, and writes the orchestration state, transcript, UI text and screenshot to its output folder.
     - The Portable Windows workflow uploads `test-results/` when the e2e step fails.
+- **A linear Responses completion check** (18 October 2026, review finding N2 of P2.4b).
+  - **The defect.** `validateResponseCompletion` compared every streamed output item with every completed one, and serialized both contents for each comparison.
+    - A hostile or compromised endpoint can stay within every cap: 10,000 events, a 1 MiB completion and 8 MiB per stream.
+    - The P2.4b security review extrapolated about 3 minutes for TypeScript at those caps, and about 25 minutes for the native port, which had the same algorithm.
+    - The check runs synchronously. The runtime answered nothing meanwhile, and the turn limit could not stop it.
+  - **The fix.** Each item has one key, which is equal exactly when the old comparison matched:
+    - the type, and either the string id or the absence of one;
+    - for a function call, its call id, name and arguments;
+    - otherwise, the serialized content, or the absence of content.
+    - Those comparisons use `===`. An item whose compared value is an object or an array can therefore match nothing from another parse, and its key is none.
+    - The completed items are indexed once, so the work is linear. Results and messages are unchanged.
+  - **Evidence.**
+    - The five oracles bound to `index.ts` were regenerated: fake tools, Git chat, profiles, provider transport and provider streams. Each vector file changed only in that source's SHA-256.
+    - `providers.test.ts` counts the serializations for 200 streamed items. There were 40,202 before the fix, against a bound of 850.
+    - The native half is `49cbbad`, where `ProviderStreamNativeTests` bounds the parsers' allocations.
+  - **Not dual-landed: N1.** Its quadratic string building was native-only, because V8 builds appended strings as ropes.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
@@ -2105,9 +2121,37 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
   - **They also changed:** `===` to value comparison, empty text to emitted, and which stop reason wins.
   - **First run:** two survived, value comparison and an earlier `end_turn` forgiving a later failure. Both are now pinned and caught. One mutation did not build until it was rewritten.
 
-**Validation.** Pending: the export run of this slice's final commit.
+**Review fixes (`49cbbad`, and the TypeScript half after it).**
+- **N1: append in linear work.** Anthropic text, thinking and tool JSON, and Chat Completions argument text, were rebuilt by concatenation on every delta.
+  - The review measured 20 s and 75 GB for 10,000 deltas; TypeScript took 0.1 s.
+  - They now append to builders. A field's position is fixed at its first delta, as JavaScript's assignment fixes it, and the signature still replaces.
+- **N2: index the completion.** See the dual-landed entry "A linear Responses completion check".
+- **Tests.** `ProviderStreamNativeTests` reads each parser on one thread and bounds what it allocates at 512 MB.
+  - With the fixes: 73 to 161 MB, in 0.6 s.
+  - Against the previous parsers, all three tests fail: 18 to 36 GB, in 20 s.
 
-**Independent review.** Pending: security, on the sealed range.
+**Validation.** `b610736` (`foundry-evidence\p2.4-b\run2`):
+- Release build with warnings as errors: clean.
+- Native suite: 7,916 tests, 7,914 passed, 0 failed, 2 expected skips.
+- The stdio differential, and `git diff --check`: clean.
+- `pnpm check`: 585 of 589 passed. The four failures were Git-heavy integration tests in `publish.test.ts` and `continuity.test.ts`, which hit their 20- and 30-second timeouts under machine load. Both files then passed alone, 30 of 30 (`rerun-continuity-publish.log`).
+- The review fixes are validated with P2.4c's final commit; see there.
+
+**Independent review of `c02bd98..92a67b8`.** Security (`cloud-security-vulnerability-expert`, Opus at high effort): **the P2.4a fixes are GO; P2.4b is GO with conditions.**
+- **What it ran:**
+  - It verified the seal and built an export.
+  - It ran the five provider and contract classes (4,770 passed) and both oracles.
+  - It probed the native and TypeScript cost of hostile streams on identical bytes, the continuation's persistence round trip, and stack headroom.
+- **Confirmed:**
+  - F1 to F6 are fixed: the 1,613-spelling differential now shows no spelling accepted only natively.
+  - The parsers match `streamResponses` and `streamAnthropic` line by line, with no gap that weakens a check.
+  - Tool calls are emitted only after every check.
+  - The continuation survives `JsJson`, `PersistedJson` and `JsJson` again unchanged, lone surrogates included.
+- **N1 and N2 (medium), the conditions:** fixed, as above.
+- **N3 (low):** U+007F in a host, and three unnamed fail-closed endpoint differences. Fixed and named in P2.4c.
+- **N4 and N5 (slice d):**
+  - N4: give the runtime loop's thread an explicit stack size, or run a depth case on the loop.
+  - N5: replay the follow-ups through `SaveProviderState` and `ReadProviderState`.
 
 ## Personal workspace expansion — local implementation
 
