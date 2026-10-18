@@ -108,7 +108,7 @@ function responsesCases(): StreamCase[] {
 // ---- Anthropic ----------------------------------------------------------------------------------------------------
 const a = (type: string, payload: Record<string, unknown> = {}): string => sse(type, { type, ...payload });
 const start = (usage: Record<string, unknown> = { input_tokens: 6 }, extra: Record<string, unknown> = {}): string => a('message_start', { message: { id: 'msg-1', model: 'returned-claude', usage, ...extra } });
-const block = (index: number, value: unknown): string => a('content_block_start', { index, content_block: value });
+const block = (index: unknown, value: unknown): string => a('content_block_start', { index, content_block: value });
 const blockDelta = (index: unknown, value: unknown): string => a('content_block_delta', { index, delta: value });
 const text = (index: number, value: string): string => blockDelta(index, { type: 'text_delta', text: value });
 const stop = (index: unknown): string => a('content_block_stop', { index });
