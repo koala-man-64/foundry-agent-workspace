@@ -1,3 +1,4 @@
+using System.Text;
 using Foundry.Protocol;
 using static Foundry.Providers.ProviderJson;
 using static Foundry.Providers.ProviderPayloads;
@@ -18,6 +19,9 @@ internal static class AnthropicStream
         // JavaScript Map and Set keyed by the integer index; -0 and 0 are one key.
         var blocks = new Dictionary<double, Dictionary<string, object?>>();
         var stopped = new HashSet<double>();
+        // Appended text, thinking and tool JSON, per block and field: TypeScript's string += is linear in V8, where a .NET
+        // string concatenation copies (P2.4b review N1). The builders are written back before the blocks are finalized.
+        var appended = new Dictionary<(double Index, string Field), StringBuilder>();
         object? input = Undefined.Value, cacheCreation = Undefined.Value, cacheRead = Undefined.Value;
         ProviderUsage? usage = null;
         var done = false;
@@ -45,7 +49,7 @@ internal static class AnthropicStream
             }
             else if (type == "content_block_delta")
             {
-                if (Apply(blocks, payload) is { Length: > 0 } text) yield return new ProviderText(text);
+                if (Apply(blocks, appended, payload) is { Length: > 0 } text) yield return new ProviderText(text);
             }
             else if (type == "message_delta")
             {
@@ -81,6 +85,7 @@ internal static class AnthropicStream
         if (!done) throw new InvalidOperationException("Provider stream ended before message_stop.");
         if (stopReason is null) throw new InvalidOperationException("Anthropic completion ended without a stop reason.");
         if (stopped.Count != blocks.Count) throw new InvalidOperationException("Anthropic completion ended before all content blocks stopped.");
+        foreach (var ((index, field), builder) in appended) blocks[index][field] = builder.ToString();
         var content = blocks.OrderBy(entry => entry.Key).Select(entry => Finalize(entry.Value)).ToList();
         var calls = content.Where(item => Equals(item.GetValueOrDefault("type"), "tool_use"))
             .Select(item => new ProviderToolCall((string)item["id"]!, (string)item["name"]!, item.GetValueOrDefault("input", Undefined.Value))).ToList();
@@ -101,22 +106,34 @@ internal static class AnthropicStream
 
     /// <summary>applyAnthropicDelta(): appends text, thinking or tool JSON to its block, or replaces the signature; only text is
     /// returned. The index is looked up as a JavaScript Map looks it up: a string "0" names no block.</summary>
-    private static string? Apply(Dictionary<double, Dictionary<string, object?>> blocks, Dictionary<string, object?> payload)
+    private static string? Apply(Dictionary<double, Dictionary<string, object?>> blocks, Dictionary<(double, string), StringBuilder> appended, Dictionary<string, object?> payload)
     {
-        var block = payload.GetValueOrDefault("index") is double index && blocks.TryGetValue(index + 0d, out var found) ? found : null;
+        var index = payload.GetValueOrDefault("index") is double number ? number + 0d : double.NaN;
+        var block = blocks.TryGetValue(index, out var found) ? found : null;
         var delta = payload.GetValueOrDefault("delta") as Dictionary<string, object?>;
         if (block is null || delta is null) throw new InvalidOperationException("Invalid Anthropic content delta.");
-        string Prior(string key) => block.GetValueOrDefault(key) as string ?? "";
+        // block[field] = (typeof block[field] === "string" ? block[field] : "") + part: the first append fixes the field's
+        // position, as JavaScript's assignment does; the text is kept in a builder until the block is finalized.
+        void Append(string field, string part)
+        {
+            if (!appended.TryGetValue((index, field), out var builder))
+            {
+                builder = new StringBuilder(block.GetValueOrDefault(field) as string ?? "");
+                appended[(index, field)] = builder;
+                block[field] = "";
+            }
+            builder.Append(part);
+        }
         switch (delta.GetValueOrDefault("type"))
         {
             case "text_delta" when delta.GetValueOrDefault("text") is string text:
-                block["text"] = Prior("text") + text; return text;
+                Append("text", text); return text;
             case "thinking_delta" when delta.GetValueOrDefault("thinking") is string thinking:
-                block["thinking"] = Prior("thinking") + thinking; return null;
+                Append("thinking", thinking); return null;
             case "signature_delta" when delta.GetValueOrDefault("signature") is string signature:
                 block["signature"] = signature; return null;
             case "input_json_delta" when delta.GetValueOrDefault("partial_json") is string partial:
-                block["__json"] = Prior("__json") + partial; return null;
+                Append("__json", partial); return null;
             default: throw new InvalidOperationException("Invalid Anthropic content delta.");
         }
     }

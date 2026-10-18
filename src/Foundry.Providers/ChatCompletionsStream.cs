@@ -12,7 +12,9 @@ namespace Foundry.Providers;
 /// </summary>
 internal static class ChatCompletionsStream
 {
-    private sealed class Part { internal string? Id; internal string? Name; internal string Arguments = ""; }
+    // Argument text is appended to a builder: TypeScript's += is linear in V8, where a .NET concatenation copies (P2.4b
+    // review N1).
+    private sealed class Part { internal string? Id; internal string? Name; internal readonly StringBuilder Arguments = new(); }
 
     internal static async IAsyncEnumerable<ProviderChatEvent> Read(IAsyncEnumerable<SseFrame> frames, PreparedRequest prepared)
     {
@@ -99,10 +101,10 @@ internal static class ChatCompletionsStream
         if (record.GetValueOrDefault("id") is string id) part.Id = id;
         var function = record.GetValueOrDefault("function") as Dictionary<string, object?> ?? [];
         if (function.GetValueOrDefault("name") is string name) part.Name = name;
-        if (function.GetValueOrDefault("arguments") is string arguments) part.Arguments += arguments;
+        if (function.GetValueOrDefault("arguments") is string arguments) part.Arguments.Append(arguments);
     }
 
     /// <summary>chatCall(): an id and a name, both non-empty, and complete JSON arguments.</summary>
     private static ProviderToolCall Call(Part part) =>
-        string.IsNullOrEmpty(part.Id) || string.IsNullOrEmpty(part.Name) ? throw new InvalidOperationException("Incomplete chat tool call.") : new(part.Id, part.Name, ParseArguments(part.Arguments));
+        string.IsNullOrEmpty(part.Id) || string.IsNullOrEmpty(part.Name) ? throw new InvalidOperationException("Incomplete chat tool call.") : new(part.Id, part.Name, ParseArguments(part.Arguments.ToString()));
 }

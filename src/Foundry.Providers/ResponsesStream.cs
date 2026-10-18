@@ -47,8 +47,12 @@ internal static class ResponsesStream
                 {
                     if (listed is not List<object?> items || !items.All(IsRecord)) throw new InvalidOperationException("Responses completion output was invalid.");
                     output = [.. items.Cast<Dictionary<string, object?>>()];
-                    foreach (var candidate in streamed)
-                        if (!output.Any(item => Matches(candidate, item))) throw new InvalidOperationException("Responses completion output did not match an output item event.");
+                    if (streamed.Count > 0)
+                    {
+                        var index = output.Select(MatchKey).OfType<ItemKey>().ToHashSet();
+                        foreach (var candidate in streamed)
+                            if (MatchKey(candidate) is not { } key || !index.Contains(key)) throw new InvalidOperationException("Responses completion output did not match an output item event.");
+                    }
                 }
                 // TypeScript's two conditions reduce to this: without output, streamed items alone stand for it, text never does.
                 else if (sawText) throw new InvalidOperationException("Responses completion omitted authoritative output items.");
@@ -86,18 +90,36 @@ internal static class ResponsesStream
             ? new(id, name, ParseArguments(arguments))
             : throw new InvalidOperationException("Invalid Responses function call.");
 
-    /// <summary>matchingResponseItem(): the same type and id, the same call for a function call, and otherwise the same
-    /// serialized content when either has content.</summary>
-    private static bool Matches(Dictionary<string, object?> streamed, Dictionary<string, object?> completed)
+    /// <summary>What matchingResponseItem() compares, as one key: two items match exactly when their keys are equal. The type,
+    /// and for a function call its call id, name and arguments, are compared with ===; the id only when either is a string;
+    /// otherwise the serialized content when either has content. An item whose compared value is an object or array matches
+    /// nothing, as === compares those by identity and the streamed and completed items come from different parses. The
+    /// completion's items are indexed once, so the check is linear rather than streamed × output × content (P2.4b review N2).</summary>
+    private readonly record struct ItemKey(string Type, string? Id, string? CallId, string? Name, string? Arguments, string? Content);
+
+    private static ItemKey? MatchKey(Dictionary<string, object?> item)
     {
-        if (!StrictEquals(Member(streamed, "type"), Member(completed, "type"))) return false;
-        if ((Member(streamed, "id") is string || Member(completed, "id") is string) && !StrictEquals(Member(streamed, "id"), Member(completed, "id"))) return false;
-        if (Equals(Member(streamed, "type"), "function_call"))
-            return StrictEquals(Member(streamed, "call_id"), Member(completed, "call_id")) && StrictEquals(Member(streamed, "name"), Member(completed, "name")) && StrictEquals(Member(streamed, "arguments"), Member(completed, "arguments"));
-        if (streamed.ContainsKey("content") || completed.ContainsKey("content"))
-            return JsJson.Stringify(Member(streamed, "content")) == JsJson.Stringify(Member(completed, "content"));
-        return true;
+        if (Strict(Member(item, "type")) is not { } type) return null;
+        var id = Member(item, "id") as string;
+        if (Equals(Member(item, "type"), "function_call"))
+            return Strict(Member(item, "call_id")) is { } call && Strict(Member(item, "name")) is { } name && Strict(Member(item, "arguments")) is { } arguments
+                ? new ItemKey(type, id, call, name, arguments, null)
+                : null;
+        // JSON.stringify of a parsed value is always a string, which never equals the undefined of a missing content.
+        return new ItemKey(type, id, null, null, null, item.TryGetValue("content", out var content) ? "c" + JsJson.Stringify(content) : "-");
     }
+
+    /// <summary>A primitive as === compares it (-0 and 0 are equal), or null for an object, an array or NaN, which equal nothing
+    /// from another parse.</summary>
+    private static string? Strict(object? value) => value switch
+    {
+        null => "l",
+        Undefined => "u",
+        bool flag => flag ? "t" : "f",
+        string text => "s" + text,
+        double number when !double.IsNaN(number) => "n" + BitConverter.DoubleToInt64Bits(number + 0d).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        _ => null,
+    };
 
     /// <summary>containsUnsupported(): a refusal or computer call at any depth.</summary>
     internal static bool ContainsUnsupported(object? value) => value switch
@@ -108,14 +130,4 @@ internal static class ResponsesStream
         _ => false,
     };
 
-    /// <summary>JavaScript's === over JSON.parse values: primitives by value, objects and arrays by identity.</summary>
-    private static bool StrictEquals(object? left, object? right) => (left, right) switch
-    {
-        (null, null) or (Undefined, Undefined) => true,
-        (string a, string b) => a == b,
-        (double a, double b) => a == b,
-        (bool a, bool b) => a == b,
-        (Dictionary<string, object?> or List<object?>, _) => ReferenceEquals(left, right),
-        _ => false,
-    };
 }
