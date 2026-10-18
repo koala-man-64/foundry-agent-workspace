@@ -116,6 +116,11 @@ These program rules hold until the P5 cutover:
 - Security and data-loss fixes land in both implementations and are listed below.
 - The .NET runtime never opens the real data directory before adoption.
 
+P5 cutover readiness. These stay open until the cutover decides them or a later slice closes them (Rudy, 18 October 2026, chose to keep the list here):
+- **External profiles and saved MCP servers** (P2.4c, security review I3). Under decision 2, main loads credentials before `profile.probe` and `task.start`, so anyone with saved MCP servers cannot use an external profile. This holds until the MCP slice lifts it.
+- **A send before the credential returns** (P2.4d, data review L1). Credentials live in memory, but verification persists. After a restart, a send made before the host sends the credential again is admitted, then fails with its reservation charged. TypeScript behaves the same, and the native port keeps it.
+- **Live qualification of `profile.probe`** against real deployments. This is Rudy's operator gate; no routine suite makes a live or paid call.
+
 Dual-landed fixes:
 - **Saved-project/preference transition atomicity and failed-delivery admission** (13 October 2026). Independent P2 data review found that TypeScript saved these records and inserted their events in separate commits. Both implementations now commit each mutation and event together and notify afterward. Event insertion failure rolls back the state; notification failure retains the authoritative commit and closes admission to retries. Security re-review additionally required stopping independent orchestration and automation on delivery failure: TypeScript closes both synchronously and rechecks closing after awaited Git-state/pin validation before a new child or script launch. C# has no orchestration/script execution handler yet and denies these operations before mutation; those future ports must retain these guards. Never-launched scripts remain queued for safe recovery, and already-admitted work keeps conservative intent recovery. This is a data-integrity/lifecycle correction under the dual-landed-fix rule, not a feature expansion.
 - **Fractional usage-trend date bounds** (13 October 2026). Rudy explicitly authorized correcting both runtimes after independent security review found that lexical UTC timestamp comparisons rejected `.1Z`–`.12Z` and excluded equivalent `.100Z` records. Both local implementations now compare exact instant keys, preserving arbitrary fractional precision and inclusive endpoints; SQL retains an indexable whole-second candidate window. No stored rows, keys, schema or API were rewritten. The original failing observations are retained in `test-results/p2-usage-trend-fraction-before.json`. Final validation and independent review are recorded below; external publication remains held.
@@ -271,6 +276,32 @@ Dual-landed fixes:
     - `providers.test.ts` counts the serializations for 200 streamed items. There were 40,202 before the fix, against a bound of 850.
     - The native half is `49cbbad`, where `ProviderStreamNativeTests` bounds the parsers' allocations.
   - **Not dual-landed: N1.** Its quadratic string building was native-only, because V8 builds appended strings as ropes.
+  - **Kept by Rudy, 18 October 2026.** He accepted the security classification, so `bbfa5d5` stays.
+- **Answering every pending Anthropic call on resumption** (18 October 2026, finding T-1 of P2.4a).
+  - **Why it lands under the freeze.** It is neither a security nor a data-loss defect. Rudy approved fixing it in both runtimes on 18 October 2026.
+  - **The defect.** A stored Anthropic continuation could have more than one pending call while the next request carried exactly one user message. `nativeRequest` then merged that message with the first result's `tool_result` block only.
+    - That is the path `prepareRequest` takes after an interrupted turn, such as a cancellation while two tool calls ran.
+    - The other `tool_use` blocks reached Anthropic unanswered, which its API refuses. Every later turn of that task failed the same way. The retained state stayed intact.
+  - **The fix.** The merged user message carries every result's block, then the text.
+    - The results keep the request's order. `requiredResults` returns them in that order, and the unmerged path already sends them so.
+    - `requiredResults` still refuses a missing, duplicated, misnamed or foreign result before the merge.
+    - With no new message, or more than one, each result is still its own user message.
+  - **Native side.** `AzureRequests.Prepare` had ported the defect on purpose (P2.4a). It now builds the same body.
+  - **Evidence.**
+    - **Oracles.** The six bound to `index.ts` were regenerated under Electron 44.4.1's Node 24.21.0, on a throwaway branch that merged #48's write guard. Only the vector files were kept.
+      - `provider-transport` cases 144 and 146 now carry both results. These are Anthropic resumptions with two pending calls, results in the reverse of the calls' order, and one user message, the second case after a system message.
+      - `provider-streams` case 86 (two calls) carries both. Case 145, appended so no case is renumbered, has three calls with the second rejected.
+      - The other four oracles (external chat, fake tools, Git chat, profiles) changed only in that source's SHA-256.
+    - **Tests.** `providers.test.ts` and `AnthropicResumptionTests` send two and three pending calls, with the results in the reverse of the calls' order and one user message after a system message. Each fails without the fix.
+    - **Mutations** (`foundry-evidence\t1-anthropic-results\mutations-run1`): six per runtime, all caught. They sent the first result only, reversed the order, put the text first, skipped the merge, sent the last result only, and sent the first two only.
+      - Every vector pins the source's SHA-256, so the TypeScript mutations were judged by regenerating the two provider oracles and comparing them case by case.
+      - The new tests and the four cases above catch each mutation. "First two only" is caught by the three-call tests and case 145 alone.
+    - **Review of `1972de7..e621627`.** Security (`cloud-security-vulnerability-expert`, Opus at high effort): **GO**.
+      - **What it verified:** both runtimes build the same blocks in the same order, under an unchanged condition, and store the history they send. Result validation still runs before the merge. No new kind of data leaves: these results were already sent unchanged on the other paths.
+      - **Budget:** the context estimate already counted every result, so it no longer over-counts.
+      - **Oracles:** it compared all six files case by case. Exactly the four cases above changed, none was renumbered, and nothing from #48 came across.
+      - **Low:** this document still called T-1 unfixed. Corrected here.
+      - **Informational, pre-existing:** the stored assistant turn of transport cases 144 and 146 has no `tool_use` for `call-2`, so Anthropic would refuse their bodies before and after the fix. Real state cannot produce this, because the calls come from that turn's content, and neither runtime checks it. No Anthropic refusal case uses one user message, so only the order of the code protects the merged path. A single empty user message would still become an empty text block.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
@@ -2038,12 +2069,12 @@ What each slice adds:
 - **Punycode:** an ASCII `xn--` label that is not valid Punycode (`xn--`, `xn--zz`, `xn--a`, `xn--abc-`) is refused. `IdnMapping` used to check only the labels it encoded itself. Node 24.14 refuses these labels too, but Electron's Node 24.21 accepts them, so on the shipping parser this is a named difference (above).
 - **Not changed:** the `http-url` contract still applies no Bidi rule, so the browser contract accepts some hosts WHATWG refuses. This is carried to P3.
 
-**TypeScript findings, not fixed under the freeze** (neither is a security or data-loss defect):
+**TypeScript findings, not fixed under the freeze** (neither is a security or data-loss defect). T-1 was later fixed by Rudy's decision:
 - **T-1, Anthropic resumption sends one tool result.**
   - **Mechanism:** when a stored Anthropic continuation has more than one pending call and the next request carries exactly one user message, `nativeRequest` merges that message with the first result's block only. That is the path `prepareRequest` takes after an interrupted turn, such as a cancellation while two tool calls ran.
   - **Effect:** the other `tool_use` blocks reach Anthropic with no `tool_result`, which its API refuses. The task cannot continue under that profile, and every later turn fails the same way; the retained state is intact.
-  - **Native:** it ports the behaviour, and the P2.4b vectors pin it.
-  - **Decision:** whether to fix it in both runtimes is Rudy's call.
+  - **Native:** it ported the behaviour, and the P2.4b vectors pinned it.
+  - **Decided by Rudy, 18 October 2026: fix it in both runtimes.** Both now send every result. See the dual-landed entry "Answering every pending Anthropic call on resumption".
 - **T-2, an invalid credential header echoes the credential.** undici's invalid-header message holds the trimmed header value. The redactor knows only the untrimmed secret and its JSON escapes, so a credential with surrounding whitespace and an inner CR, LF or NUL would reach a task's failure reason or a probe's detail.
   - **Not reachable through the shipping UI:** the credential field is an `<input type="password">`, which strips CR and LF, and a NUL cannot be typed into it.
   - **Native** never echoes the value.
@@ -2125,6 +2156,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 **Evidence.**
 - **The oracle.** `tests/p2/provider-streams.test.ts` streams 145 inputs through the shipping adapter: 70 Responses, 74 Anthropic and one Chat Completions case for a `-0` index. 91 of them end in a refusal or failure. The vectors are bound to `index.ts` and `limits.ts`; regenerating them requires `P2_WRITE_PROVIDER_STREAMS=1`.
   - **Follow-ups.** Seven cases continue: the stored continuation, with a result for each of its calls, becomes the next request. That pins the exact next body, including Anthropic's thinking signature, Responses' encrypted reasoning, and T-1's single-result merge (two pending calls and one user message send one `tool_result`).
+  - **Since the T-1 fix** (dual-landed entry): there are 146 inputs, 75 of them Anthropic, and eight follow-ups. Case 86 sends both results, and the appended case 145 continues three calls with one user message.
   - **Responses cases:** the event order, item and completion cross-checks (ids, call fields, content key order, object-typed fields), unsupported content at any depth, incomplete and failed completions with their usage, malformed calls and arguments, and cancellation and transport failure.
   - **Anthropic cases:** usage with cache buckets and invalid values, block and delta errors, stop reasons in every order, pings, errors, `__proto__` and `1e400` in tool input, and the resumed turn.
 - **The replay.** `ProviderStreamTests` replays every case through P2.4a's recording handler. It builds each follow-up from native's own continuation, and the next body matches TypeScript's byte for byte.
@@ -2420,12 +2452,10 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
     - **L3. No step refused for the context limit.** The budget case now has one, and it writes nothing.
   - **Informational:** the settling rule cannot observe a shutdown during a turn or two concurrent turns. The reviewer's own checks covered the first.
 
-**P2.4 status.** Slices a–d are implemented, validated from exports and reviewed GO, on the local branch only. Open for Rudy:
-- **T-1 (TypeScript, P2.4a):** an Anthropic resumption with more than one pending call and one user message sends only the first `tool_result`, and the task gets stuck. Native reproduces it faithfully. Whether to fix it in both runtimes is his decision.
-- **The TypeScript N2 fix (`bbfa5d5`)** landed as a security fix under the program rule. He may drop that commit if he does not accept the classification.
-- **For the P5 readiness list:**
-  - Decision 2 blocks external profiles for anyone with saved MCP servers until the MCP slice (security I3).
-  - After a restart, a send before the host re-sends the credential is admitted and fails with its reservation charged, as in TypeScript (data L1).
+**P2.4 status.** Slices a–d are implemented, validated from exports and reviewed GO, on the local branch only. Rudy decided the open items on 18 October 2026:
+- **T-1 (TypeScript, P2.4a):** fix it in both runtimes. Done, as the dual-landed entry "Answering every pending Anthropic call on resumption".
+- **The TypeScript N2 fix (`bbfa5d5`):** keep it. He accepted the security classification.
+- **The P5 items** (security I3, data L1 and the live qualification of `profile.probe`) are on the P5 cutover readiness list under the program rules.
 - **Still held:**
   - Live qualification (`profile.probe` against real deployments) stays his operator gate.
   - The draft PR, main integration and any publication need his approval.
