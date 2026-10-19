@@ -177,6 +177,52 @@ describe.runIf(process.platform === 'win32')('CommandRunner', () => {
     await expect(fs.access(path.join(root, 'background-orphan.txt'))).rejects.toThrow();
   });
 
+  // Runs PowerShell with the helper's own compiled types, so a test can call its descendant decision directly.
+  async function withHelperTypes(lines: string[]): Promise<string> {
+    const source = await fs.readFile(path.join(process.cwd(), 'packages', 'runtime', 'src', 'job-runner.ps1'), 'utf8');
+    const definition = /Add-Type -TypeDefinition @'\r?\n([\s\S]*?)\r?\n'@/.exec(source)?.[1];
+    expect(definition).toBeDefined();
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-running-'));
+    directories.push(control);
+    const types = path.join(control, 'job-run.cs');
+    await fs.writeFile(types, definition!);
+    const shell = path.join(process.env.SystemRoot!, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const script = [`Add-Type -TypeDefinition ([IO.File]::ReadAllText('${types.replace(/'/g, "''")}')) -ErrorAction Stop`, ...lines].join('; ');
+    const { stdout } = await execFile(shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 60_000 });
+    return stdout;
+  }
+
+  // The job can still list and count the root for a moment after its wait returns, which reported a plain command's exit
+  // as "[background job descendants terminated]" (6 runs in 1,470 under load). That window cannot be held open, so this pins
+  // the decision on its exact state: a process that has exited while its handle is still held is not running.
+  it('counts only a process that is still running as a background descendant', async () => {
+    const stdout = await withHelperTypes([
+      `$info = [Diagnostics.ProcessStartInfo]::new("$env:SystemRoot\\System32\\cmd.exe", '/d /c exit 3'); $info.UseShellExecute = $false; $info.CreateNoWindow = $true`,
+      // The Process object keeps its handle, so the id cannot be reused: the root's state once its wait returns.
+      '$exited = [Diagnostics.Process]::Start($info); $exited.WaitForExit()',
+      // Process 0, the idle process, never opens.
+      "[Console]::Out.Write(($exited.ExitCode, [JobRun]::Running($exited.Id), [JobRun]::Running($PID), [JobRun]::Running(0)) -join ',')",
+    ]);
+    expect(stdout).toBe('3,False,True,False');
+  }, 90_000);
+
+  // More members than the first 16-entry buffer holds, so the list is read only after it grows.
+  it('reads a job list longer than its first buffer and finds the members still running', async () => {
+    const stdout = await withHelperTypes([
+      "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class JobProbe { [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern IntPtr CreateJobObject(IntPtr sa, string name); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process); [DllImport(\"kernel32.dll\", SetLastError=true)] public static extern bool TerminateJobObject(IntPtr job, uint code); }' -ErrorAction Stop",
+      '$job = [JobProbe]::CreateJobObject([IntPtr]::Zero, $null); if ($job -eq [IntPtr]::Zero) { throw "CreateJobObject failed" }',
+      // Sharing this console keeps a console host out of the job; the redirected output is never read.
+      `$info = [Diagnostics.ProcessStartInfo]::new("$env:SystemRoot\\System32\\PING.EXE", '-n 60 127.0.0.1'); $info.UseShellExecute = $false; $info.RedirectStandardOutput = $true`,
+      '$members = [Collections.Generic.List[Diagnostics.Process]]::new(); for ($i = 0; $i -lt 20; $i++) { $member = [Diagnostics.Process]::Start($info); $members.Add($member); if (-not [JobProbe]::AssignProcessToJobObject($job, $member.Handle)) { throw "AssignProcessToJobObject failed" } }',
+      '$running = [JobRun]::RunningDescendant($job)',
+      '[void][JobProbe]::TerminateJobObject($job, 1); foreach ($member in $members) { $member.WaitForExit() }',
+      // The job may still list the members for a moment; once they have exited, none is running.
+      '$deadline = [DateTime]::UtcNow.AddSeconds(10); do { $after = [JobRun]::RunningDescendant($job) } while ($after -and [DateTime]::UtcNow -lt $deadline)',
+      "[Console]::Out.Write(($running, $after) -join ',')",
+    ]);
+    expect(stdout).toBe('True,False');
+  }, 90_000);
+
   it('rejects stale fingerprints and tampered shell or cwd values before execution', async () => {
     const { root, runner } = await fixture();
     const stale = await prepare(runner, root, "Write-Output 'never'");

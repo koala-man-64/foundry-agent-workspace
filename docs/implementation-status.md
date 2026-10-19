@@ -315,6 +315,58 @@ Dual-landed fixes:
       - `pnpm check`: the first run passed 593 of 594. `publish.test.ts`'s push test hit its 30-second Git timeout while another of the owner's processes loaded the machine. That file then passed alone (18 of 18), and a second full run passed 594 of 594 (`rerun-publish.log`, `rerun-pnpm-check.log`).
       - Under Electron's Node 24.21.0, as the portable job runs them: every P2 oracle passed, 38 files and 65 tests, and the git-metadata oracle passed 698 vectors.
       - The stdio differential: 3 of 3. `git diff --check`: clean.
+- **Reporting a background descendant only while one is still running** (18 October 2026).
+  - **The defect.** After a command's root exited normally, `job-runner.ps1` reported "[background job descendants terminated]" whenever the job's process count was not yet zero. Windows can still count and list the root for a moment after its exit is signalled. A plain command could therefore report a descendant it never had.
+  - **How it showed up.** The P2 command-runner oracle failed once on #50's portable run 39172855866 (attempt 1), under Electron's Node, on a runner about twice as slow as usual.
+    - The step was "consumes each prepared command once" #1, a plain `[Console]::Out.WriteLine('once')`. It reported the marker, and its vector records none.
+    - The same oracle had passed under Node minutes earlier on that runner.
+  - **Reproduced.** An instrumented copy of the helper ran the same command under CPU load: 16 runs at a time, beside 48 busy processes, on 24 logical processors.
+    - 6 of 1,470 runs reported the marker, 3 under Electron's Node and 3 under Node. Unloaded, 0 of 40 did.
+    - In every one, only the root had ever joined the job (`TotalProcesses` 1). The job listed the root with its exit code already set, or listed nothing, and was empty within 3.5 ms.
+    - No console host or descendant was involved.
+  - **The fix.**
+    - After a normal exit, anything left in the job is still terminated.
+    - The marker is reported only when a listed process is still running. An id that no longer opens has gone, and a process whose exit code is set has exited. A live process that cannot be read counts as running.
+    - The command has run by then, so the decision never throws. If the job counts more members than it lists, it waits for the two to agree. A list that cannot be read, or does not settle within a second, counts as a descendant, as before.
+    - Natively, `JobProcess.ProcessImages` applies the same exited-or-running rule. The native runner also ignores the system console host, which this job never holds, because the command shares its helper's console.
+  - **After the fix.** Load runs cannot show it: the window did not open again.
+    - 2,300 runs of the fixed helper reported no marker. Interleaved with 700 of them, the unfixed helper saw no race either, even with more load and process churn.
+    - The fix rests on the recorded states instead. Each of the 6 was the root with its exit code set, or an empty list. `Running` classifies the root as not running. An empty list has nothing to report once its count agrees.
+  - **Native side.** Not affected: the native runner asks `ProcessImages`, which leaves out an exited process. No native behaviour changes. That rule had no deterministic test until this change.
+  - **Tests.**
+    - `packages/runtime/tests/command-runner.test.ts` compiles the helper's own types.
+      - It pins `Running` on the window's exact state: a process that has exited while its handle is held is not running, the test's own process is, and process 0 never opens. Ignoring the exit code fails it.
+      - A job of 20 processes, more than the first 16-entry buffer, reports a running member, then none once all have exited. Reading the ids at the wrong offset fails it, and so does treating a full buffer as an empty job.
+    - Native `AnExitedRootIsNotLiveWhileItsHandleIsHeld` pins `JobProcess.ImagePath`, now internal, on the same state. Ignoring the exit code fails it.
+    - The window itself cannot be held open, so no deterministic test covers the decision on a lagging count. The load runs above are its evidence.
+    - A real background grandchild still reports the marker: the oracle's "ends the whole tree on timeout, cancellation and a normal exit" #7 and `security-audit.test.ts`.
+  - **Vectors.** `command-runner-vectors.json` and `tool-runtime-vectors.json` were regenerated under Electron's Node. Only the `job-runner.ps1` hash changed; no recorded outcome did.
+  - **Independent review** (`cloud-security-vulnerability-expert`, Sonnet at high effort, from its definition): **GO with conditions** for `44c767d..27fa99f`. No path lets a running descendant survive, and none newly reports success or verified cleanup.
+    - **F1 (medium), fixed.** The first version grew its buffer on any count mismatch, then threw "did not settle". A throw after the command ran records it as unknown and loses its output, which is worse than the phantom marker. The decision now waits for the list to settle and never throws.
+    - **F2 (low), accepted.** A root that exits with code 259 (`STILL_ACTIVE`) during the window still reports the marker. That is the conservative direction, and native does the same.
+    - **F3 (low), fixed.** The combination of the list and `Running` was untested; the 20-process test covers the list parsing and buffer growth.
+    - **F4 (low), fixed.** This entry overstated equivalence with native and how the empty-list state is classified.
+    - **Open, native only, not changed here.** `ProcessImages` throws on a list that does not settle, before the job is terminated. Kill-on-close still reclaims the tree, and the run fails rather than reporting success. It predates this change.
+    - **Re-review of `721ea12`: GO.** F1 is closed. Not blocking: if a lagging count never settles, a genuine descendant can run up to a second longer before the job is terminated.
+  - **Codex review of #51 (P2), fixed.** A listed member could start a child and exit between the list and its check. The scan then saw only the exited parent, so the marker was left out, though the new child was still running when the job was terminated.
+    - A list with none running is now read again. The decision settles only when no new member appears.
+    - Members are named by id and creation time, so a reused id counts as new. Churn that does not settle within the second counts as a descendant.
+    - The window cannot be held open, so no deterministic test covers the second read.
+    - **Independent re-review of `cbcd234`: GO.** The reviewer checked the argument that nothing can start once a second read adds no new member. Not changed, all low: an id that never opened is named by 0 alone, which matters only in an unrealistic reuse case; the churn loop spins without sleeping until the one-second bound.
+  - **Validation of `cbcd234`** (main merged, with #47).
+    - `pnpm check`: 596 passed.
+    - `pnpm oracle` under Electron's Node: 65 passed across 38 files.
+    - Native: 7,949 tests, 7,947 passed, 0 failed, 2 expected skips.
+    - `pnpm test:e2e`: 21 passed.
+    - `pnpm package:dir` and `pnpm smoke:package`: passed.
+    - `git diff --check`: clean.
+  - **Validation of `721ea12`.**
+    - `pnpm check`: 589 passed.
+    - `pnpm oracle` under Electron's Node: 61 passed across 34 files.
+    - Native: 7,333 tests, 7,331 passed, 0 failed, 2 expected skips.
+    - `pnpm test:e2e`: 21 passed.
+    - `pnpm package:dir` and `pnpm smoke:package`: passed.
+    - `git diff --check`: clean.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |

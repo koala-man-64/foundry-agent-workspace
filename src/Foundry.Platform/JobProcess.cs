@@ -83,7 +83,7 @@ public sealed class JobProcess : IDisposable
         }
     }
 
-    private static unsafe (bool Live, string? Image) ImagePath(uint processId)
+    internal static unsafe (bool Live, string? Image) ImagePath(uint processId)
     {
         using var process = Native.OpenProcess(Native.ProcessQueryLimitedInformation, false, processId);
         // ERROR_INVALID_PARAMETER: no process has this id any more. Any other failure leaves a live process unread.
