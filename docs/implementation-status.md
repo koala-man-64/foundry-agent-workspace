@@ -348,6 +348,10 @@ Dual-landed fixes:
     - **F4 (low), fixed.** This entry overstated equivalence with native and how the empty-list state is classified.
     - **Open, native only, not changed here.** `ProcessImages` throws on a list that does not settle, before the job is terminated. Kill-on-close still reclaims the tree, and the run fails rather than reporting success. It predates this change.
     - **Re-review of `721ea12`: GO.** F1 is closed. Not blocking: if a lagging count never settles, a genuine descendant can run up to a second longer before the job is terminated.
+  - **Codex review of #51 (P2), fixed.** A listed member could start a child and exit between the list and its check. The scan then saw only the exited parent, so the marker was left out, though the new child was still running when the job was terminated.
+    - A list with none running is now read again. The decision settles only when no new member appears.
+    - Members are named by id and creation time, so a reused id counts as new. Churn that does not settle within the second counts as a descendant.
+    - The window cannot be held open, so no deterministic test covers the second read.
   - **Validation of `721ea12`.**
     - `pnpm check`: 589 passed.
     - `pnpm oracle` under Electron's Node: 61 passed across 34 files.

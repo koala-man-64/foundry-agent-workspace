@@ -71,17 +71,26 @@ public static class JobRun {
   static IntPtr EnvironmentBlock(Dictionary<string,string> values) { var keys = new List<string>(values.Keys); keys.Sort(StringComparer.OrdinalIgnoreCase); var text = new StringBuilder(); foreach (var key in keys) text.Append(key).Append('=').Append(values[key]).Append('\0'); text.Append('\0'); return Marshal.StringToHGlobalUni(text.ToString()); }
   static bool JobEmpty(IntPtr job) { int size = Marshal.SizeOf(typeof(JOBOBJECT_BASIC_ACCOUNTING_INFORMATION)); IntPtr memory = Marshal.AllocHGlobal(size); try { Check(QueryInformationJobObject(job, JobObjectBasicAccountingInformation, memory, (uint)size, IntPtr.Zero), "QueryInformationJobObject"); return Marshal.PtrToStructure<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>(memory).ActiveProcesses == 0; } finally { Marshal.FreeHGlobal(memory); } }
   // An id that no longer opens has gone, and a process whose exit code is set has exited. A live process that cannot be read counts as running.
-  public static bool Running(int processId) { IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId); if (process == IntPtr.Zero) return Marshal.GetLastWin32Error() != ERROR_INVALID_PARAMETER; try { uint code; return !GetExitCodeProcess(process, out code) || code == STILL_ACTIVE; } finally { CloseHandle(process); } }
+  public static bool Running(int processId) { long created; return Running(processId, out created); }
+  // Also names the process by its creation time (0 once its id no longer opens), so a reused id is a different member.
+  static bool Running(int processId, out long created) { created = 0; IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId); if (process == IntPtr.Zero) return Marshal.GetLastWin32Error() != ERROR_INVALID_PARAMETER; try { uint code; long exited, kernel, user; if (!GetProcessTimes(process, out created, out exited, out kernel, out user)) return true; return !GetExitCodeProcess(process, out code) || code == STILL_ACTIVE; } finally { CloseHandle(process); } }
   // The job can still list and count the root for a moment after its exit is signalled, longer under load. Only a process still running is a descendant.
+  // A member can start a child and exit between the list and its check, so a list with none running is read again; none is running once no new member appears.
   // The command has run by now, so this never throws: a list that cannot be read, or does not settle within a second, counts as a descendant.
   public static bool RunningDescendant(IntPtr job) {
-    var settle = Stopwatch.StartNew();
+    var settle = Stopwatch.StartNew(); Dictionary<int,long> previous = null;
     for (int capacity = 16; capacity <= 1 << 20 && settle.ElapsedMilliseconds < 1000; ) {
       int size = 2 * sizeof(uint) + capacity * IntPtr.Size; IntPtr memory = Marshal.AllocHGlobal(size);
       try {
         if (!QueryInformationJobObject(job, JobObjectBasicProcessIdList, memory, (uint)size, IntPtr.Zero)) { if (Marshal.GetLastWin32Error() != ERROR_MORE_DATA) return true; capacity *= 2; continue; }
         int assigned = Marshal.ReadInt32(memory, 0), listed = Marshal.ReadInt32(memory, sizeof(uint));
-        if (listed >= assigned) { for (int index = 0; index < listed; index++) if (Running((int)Marshal.ReadIntPtr(memory, 2 * sizeof(uint) + index * IntPtr.Size).ToInt64())) return true; return false; }
+        if (listed >= assigned) {
+          var members = new Dictionary<int,long>();
+          for (int index = 0; index < listed; index++) { int id = (int)Marshal.ReadIntPtr(memory, 2 * sizeof(uint) + index * IntPtr.Size).ToInt64(); long created; if (Running(id, out created)) return true; members[id] = created; }
+          bool same = previous != null; if (same) foreach (var member in members) { long before; if (!previous.TryGetValue(member.Key, out before) || before != member.Value) { same = false; break; } }
+          if (same) return false;
+          previous = members; continue;
+        }
       } finally { Marshal.FreeHGlobal(memory); }
       System.Threading.Thread.Sleep(5);
     }
