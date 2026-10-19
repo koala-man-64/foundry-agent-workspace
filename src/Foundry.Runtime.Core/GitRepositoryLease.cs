@@ -144,7 +144,10 @@ internal sealed partial class GitRepositoryLease : IDisposable
         if (!DataClassifier.IsLocal(candidate) || !string.Equals(System.IO.Path.GetFullPath(candidate), candidate, StringComparison.Ordinal)
             || candidate[3..].Split('\\').Any(component => component.EndsWith('.') || component.EndsWith(' ') || ReservedName().IsMatch(component)))
             throw new WorkspaceReadException(Invalid);
-        if (DriveAdmissions.TypeOf(candidate) is DriveType.Network) throw new WorkspaceReadException(Network);
+        // Before any open: a drive root has no parent to pin, so its Probe below would otherwise be the first open.
+        var drive = DriveAdmissions.TypeOf(candidate);
+        if (drive is DriveType.Network) throw new WorkspaceReadException(Network);
+        if (!DriveAdmission.Project.Admits(drive)) throw new WorkspaceReadException(Unavailable);
         if (System.IO.Path.GetDirectoryName(candidate) is { } parent) Acquire(parent, pins);
         if (Probe(candidate) is MetadataEntryKind.File) throw new WorkspaceReadException(Invalid);
         Acquire(candidate, pins);
