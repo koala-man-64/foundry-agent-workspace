@@ -42,13 +42,21 @@ public sealed partial class AgentChannelTests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public async Task ChannelMatchesNode(string name, int index)
+    public Task ChannelMatchesNode(string name, int index) => Replay(name, index, removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change. The data directory stays fixed.</summary>
+    [Theory, MemberData(nameof(Cases))]
+    public Task ChannelOnARemovableDriveMatchesNode(string name, int index) => Replay(name, index, removable: true);
+
+    private static async Task Replay(string name, int index, bool removable)
     {
         var item = (Dictionary<string, object?>)((List<object?>)Corpus["cases"]!)[index]!;
         Assert.Equal(name, item["name"]);
         using var fixture = RepositoryFixture.Create("foundry-p2-channel-");
         await fixture.Build(Raw.GetProperty("tree"));
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        using var drive = RemovableDrive.Place(removable, fixture.Scratch, data);
         var stamp = (string)Corpus["stamp"]!;
         await using var loop = new RuntimeLoop();
         await loop.Invoke(async () =>

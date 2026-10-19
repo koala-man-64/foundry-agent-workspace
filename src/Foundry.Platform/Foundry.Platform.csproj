@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Foundry.Platform.Tests" />
+    <!-- DriveAdmissions.Fake: the runtime suites place fixtures on removable, optical or network "drives". -->
+    <InternalsVisibleTo Include="Foundry.Conformance" />
   </ItemGroup>
 
   <ItemGroup>

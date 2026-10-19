@@ -187,7 +187,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         Admissions++;
         using var admission = RepositoryAdmission.Open(loop, projectPath);
         // resolveLocalPath(projectPath, approved): an 8.3 or case spelling of the approved folder is the same folder.
-        if (approved.Length > 0 && EcmaScriptCase.ToLower(FinalPath.Resolve(admission.Path)) != EcmaScriptCase.ToLower(FinalPath.Resolve(approved)) && !RepositoryPaths.SameFolder(approved, admission.Path))
+        if (approved.Length > 0 && EcmaScriptCase.ToLower(FinalPath.Resolve(admission.Path)) != EcmaScriptCase.ToLower(FinalPath.Resolve(approved)) && !RepositoryPaths.SameFolder(approved, admission.Path, DriveAdmission.Project))
             throw new WorkspaceReadException("The saved folder now resolves to a different location.");
         var current = admission.Identity ?? throw new WorkspaceReadException("Project channel requires an available local Git project.");
         if (Truthy(binding))
@@ -197,7 +197,7 @@ internal sealed class AgentChannel(RuntimeLoop loop, Store store, Redactor redac
         else
         {
             var physical = Path.Join(current.Root, ".git");
-            if (!RepositoryPaths.SameFolder(current.Common, physical) || !RepositoryPaths.SameFolder(current.GitDirectory, physical))
+            if (!RepositoryPaths.SameFolder(current.Common, physical, DriveAdmission.Project) || !RepositoryPaths.SameFolder(current.GitDirectory, physical, DriveAdmission.Project))
                 throw new WorkspaceReadException("Project channel requires an approved local identity.");
         }
         return Key(current.Common);

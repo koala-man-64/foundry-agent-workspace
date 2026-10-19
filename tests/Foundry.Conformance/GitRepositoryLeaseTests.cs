@@ -34,7 +34,14 @@ public sealed class GitRepositoryLeaseTests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public async Task FixtureTreesMatchCommittedNodeOutcomesOrTheirApprovedDifference(string name, int index)
+    public Task FixtureTreesMatchCommittedNodeOutcomesOrTheirApprovedDifference(string name, int index) => Replay(name, index, removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change.</summary>
+    [Theory, MemberData(nameof(Cases))]
+    public Task FixtureTreesOnARemovableDriveMatchTheSameOutcomes(string name, int index) => Replay(name, index, removable: true);
+
+    private static async Task Replay(string name, int index, bool removable)
     {
         var item = Corpus.GetProperty("cases")[index];
         Assert.Equal(name, item.GetProperty("name").GetString());
@@ -44,6 +51,7 @@ public sealed class GitRepositoryLeaseTests
         try
         {
             await Build(scratch, item.GetProperty("tree"), links);
+            using var drive = RemovableDrive.Place(removable, scratch);
             await using var loop = new RuntimeLoop();
             var outcome = await loop.Invoke(() => Task.FromResult(Admit(loop, Path.Combine(scratch, item.GetProperty("project").GetString()!.Replace('/', '\\')), scratch)));
             if (expected.TryGetProperty("identity", out var identity))
