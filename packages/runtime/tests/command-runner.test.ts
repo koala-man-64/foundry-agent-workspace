@@ -177,6 +177,30 @@ describe.runIf(process.platform === 'win32')('CommandRunner', () => {
     await expect(fs.access(path.join(root, 'background-orphan.txt'))).rejects.toThrow();
   });
 
+  // The job can still list and count the root for a moment after its wait returns, which reported a plain command's exit
+  // as "[background job descendants terminated]" (6 runs in 1,470 under load). That window cannot be held open, so this pins
+  // the decision on its exact state: a process that has exited while its handle is still held is not running.
+  it('counts only a process that is still running as a background descendant', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'packages', 'runtime', 'src', 'job-runner.ps1'), 'utf8');
+    const definition = /Add-Type -TypeDefinition @'\r?\n([\s\S]*?)\r?\n'@/.exec(source)?.[1];
+    expect(definition).toBeDefined();
+    const control = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-running-'));
+    directories.push(control);
+    const types = path.join(control, 'job-run.cs');
+    await fs.writeFile(types, definition!);
+    const shell = path.join(process.env.SystemRoot!, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const script = [
+      `Add-Type -TypeDefinition ([IO.File]::ReadAllText('${types.replace(/'/g, "''")}')) -ErrorAction Stop`,
+      `$info = [Diagnostics.ProcessStartInfo]::new("$env:SystemRoot\\System32\\cmd.exe", '/d /c exit 3'); $info.UseShellExecute = $false; $info.CreateNoWindow = $true`,
+      // The Process object keeps its handle, so the id cannot be reused: the root's state once its wait returns.
+      '$exited = [Diagnostics.Process]::Start($info); $exited.WaitForExit()',
+      // Process 0, the idle process, never opens.
+      "[Console]::Out.Write(($exited.ExitCode, [JobRun]::Running($exited.Id), [JobRun]::Running($PID), [JobRun]::Running(0)) -join ',')",
+    ].join('; ');
+    const { stdout } = await execFile(shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 60_000 });
+    expect(stdout).toBe('3,False,True,False');
+  }, 90_000);
+
   it('rejects stale fingerprints and tampered shell or cwd values before execution', async () => {
     const { root, runner } = await fixture();
     const stale = await prepare(runner, root, "Write-Output 'never'");

@@ -34,10 +34,14 @@ public static class JobRun {
   const uint INFINITE = 0xffffffff;
   const uint WAIT_OBJECT_0 = 0;
   const uint PROCESS_QUERY_INFORMATION = 0x0400;
+  const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
   const uint SYNCHRONIZE = 0x00100000;
   const uint STILL_ACTIVE = 259;
+  const int ERROR_INVALID_PARAMETER = 87;
+  const int ERROR_MORE_DATA = 234;
   const int JobObjectExtendedLimitInformation = 9;
   const int JobObjectBasicAccountingInformation = 1;
+  const int JobObjectBasicProcessIdList = 3;
   [StructLayout(LayoutKind.Sequential)] public struct SECURITY_ATTRIBUTES { public int nLength; public IntPtr lpSecurityDescriptor; [MarshalAs(UnmanagedType.Bool)] public bool bInheritHandle; }
   [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct STARTUPINFO { public int cb; public string lpReserved; public string lpDesktop; public string lpTitle; public int dwX; public int dwY; public int dwXSize; public int dwYSize; public int dwXCountChars; public int dwYCountChars; public int dwFillAttribute; public int dwFlags; public short wShowWindow; public short cbReserved2; public IntPtr lpReserved2; public IntPtr hStdInput; public IntPtr hStdOutput; public IntPtr hStdError; }
   [StructLayout(LayoutKind.Sequential)] public struct PROCESS_INFORMATION { public IntPtr hProcess; public IntPtr hThread; public int dwProcessId; public int dwThreadId; }
@@ -66,6 +70,23 @@ public static class JobRun {
   static string ReadLimited(IntPtr handle) { var bytes = new List<byte>(); var buffer = new byte[4096]; try { while (true) { uint read; if (!ReadFile(handle, buffer, (uint)buffer.Length, out read, IntPtr.Zero)) { int error = Marshal.GetLastWin32Error(); if (error == 109) break; throw new InvalidOperationException("ReadFile failed: " + error); } if (read == 0) break; int remaining = 65536 - bytes.Count; if (remaining > 0) bytes.AddRange(new ArraySegment<byte>(buffer, 0, Math.Min((int)read, remaining))); } } finally { CloseHandle(handle); } var value = Encoding.UTF8.GetString(bytes.ToArray()); return bytes.Count >= 65536 ? value + "\n[output truncated]" : value; }
   static IntPtr EnvironmentBlock(Dictionary<string,string> values) { var keys = new List<string>(values.Keys); keys.Sort(StringComparer.OrdinalIgnoreCase); var text = new StringBuilder(); foreach (var key in keys) text.Append(key).Append('=').Append(values[key]).Append('\0'); text.Append('\0'); return Marshal.StringToHGlobalUni(text.ToString()); }
   static bool JobEmpty(IntPtr job) { int size = Marshal.SizeOf(typeof(JOBOBJECT_BASIC_ACCOUNTING_INFORMATION)); IntPtr memory = Marshal.AllocHGlobal(size); try { Check(QueryInformationJobObject(job, JobObjectBasicAccountingInformation, memory, (uint)size, IntPtr.Zero), "QueryInformationJobObject"); return Marshal.PtrToStructure<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>(memory).ActiveProcesses == 0; } finally { Marshal.FreeHGlobal(memory); } }
+  // An id that no longer opens has gone, and a process whose exit code is set has exited. A live process that cannot be read counts as running.
+  public static bool Running(int processId) { IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId); if (process == IntPtr.Zero) return Marshal.GetLastWin32Error() != ERROR_INVALID_PARAMETER; try { uint code; return !GetExitCodeProcess(process, out code) || code == STILL_ACTIVE; } finally { CloseHandle(process); } }
+  // The job can still list and count the root for a moment after its exit is signalled, longer under load. Only a process still running is a descendant.
+  static bool RunningDescendant(IntPtr job) {
+    for (int capacity = 16; ; capacity *= 2) {
+      if (capacity > 1 << 20) throw new InvalidOperationException("The job's process list did not settle.");
+      int size = 2 * sizeof(uint) + capacity * IntPtr.Size; IntPtr memory = Marshal.AllocHGlobal(size);
+      try {
+        bool listedAll = QueryInformationJobObject(job, JobObjectBasicProcessIdList, memory, (uint)size, IntPtr.Zero); int error = Marshal.GetLastWin32Error();
+        if (!listedAll && error != ERROR_MORE_DATA) throw new InvalidOperationException("QueryInformationJobObject failed: " + error);
+        int assigned = Marshal.ReadInt32(memory, 0), listed = Marshal.ReadInt32(memory, sizeof(uint));
+        if (!listedAll || listed < assigned) continue;
+        for (int index = 0; index < listed; index++) if (Running((int)Marshal.ReadIntPtr(memory, 2 * sizeof(uint) + index * IntPtr.Size).ToInt64())) return true;
+        return false;
+      } finally { Marshal.FreeHGlobal(memory); }
+    }
+  }
   static string Quote(string value) { return "\"" + value.Replace("\"", "\\\"") + "\""; }
   static IntPtr VerifiedParent(int pid, long startedAtMs) { IntPtr parent = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, false, pid); if (parent == IntPtr.Zero) throw new InvalidOperationException("Runtime parent " + pid + " is unavailable: " + Marshal.GetLastWin32Error()); long created, exited, kernel, user; Check(GetProcessTimes(parent, out created, out exited, out kernel, out user), "GetProcessTimes"); long observedMs = (created / 10000L) - 11644473600000L; if (Math.Abs(observedMs - startedAtMs) > 5000L) { CloseHandle(parent); throw new InvalidOperationException("Runtime parent identity changed."); } return parent; }
   public static JobRunResult Run(string shell, string command, string cwd, Dictionary<string,string> environment, int timeoutMs, string cancelPath, int parentPid, long parentStartedAtMs) {
@@ -97,7 +118,7 @@ public static class JobRun {
       while (WaitForSingleObject(pi.hProcess, 50) != WAIT_OBJECT_0) { if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { parentDied = true; TerminateJobObject(job, 4); break; } if (File.Exists(cancelPath)) { cancelled = true; TerminateJobObject(job, 1); break; } if (watch.ElapsedMilliseconds >= timeoutMs) { timedOut = true; TerminateJobObject(job, 2); break; } }
       WaitForSingleObject(pi.hProcess, INFINITE); uint code; GetExitCodeProcess(pi.hProcess, out code); normalEnd = !cancelled && !timedOut && !parentDied;
       // A background descendant can retain stdout/stderr after the root exits. End its Job membership before draining pipes.
-      if (normalEnd && !JobEmpty(job)) { backgroundTerminated = true; TerminateJobObject(job, 3); }
+      if (normalEnd && !JobEmpty(job)) { backgroundTerminated = RunningDescendant(job); TerminateJobObject(job, 3); }
       var verify = Stopwatch.StartNew(); bool empty = JobEmpty(job); while (!empty && verify.ElapsedMilliseconds < 5000) { System.Threading.Thread.Sleep(25); empty = JobEmpty(job); }
       Task.WaitAll(stdout, stderr);
       return new JobRunResult { stdout = stdout.Result, stderr = stderr.Result + (backgroundTerminated ? "\n[background job descendants terminated]" : "") + (parentDied ? "\n[runtime parent exited; job terminated]" : ""), exitCode = normalEnd ? (int?)code : null, cancelled = cancelled || parentDied, timedOut = timedOut, cleanupVerified = empty };

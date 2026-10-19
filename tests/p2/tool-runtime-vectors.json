@@ -20,7 +20,7 @@
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",
-        "sha256": "62ce7377abd2742d15c574e134e33226bb61787b47cddb637cf7ac8aac87a03c"
+        "sha256": "9d2df4354aea766575218ed22fffbf21b6c81d2e5703464ff5b9e8f7c29c6858"
       },
       {
         "path": "packages/runtime/src/redaction.ts",

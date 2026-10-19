@@ -148,6 +148,26 @@ public sealed class JobProcessTests
         Assert.Empty(job.ProcessImages());
     }
 
+    /// <summary>The job can still list and count the root for a moment after its exit wait returns; TypeScript's helper
+    /// reported that as a background descendant. That window cannot be held open, so this pins the classification
+    /// <see cref="JobProcess.ProcessImages"/> applies to each listed id on its exact state: a root that has exited while
+    /// the job still holds its handle is not live.</summary>
+    [Fact]
+    public async Task AnExitedRootIsNotLiveWhileItsHandleIsHeld()
+    {
+        var directory = Scratch.Directory("foundry-job-exited-");
+        using var job = JobProcess.Start(new ProcessSpec(Scratch.PowerShell, Scratch.EncodedCommand("[Threading.Thread]::Sleep(30000)"),
+            directory.FullName, Scratch.Environment(directory.FullName)));
+        var (live, image) = JobProcess.ImagePath((uint)job.ProcessId);
+        Assert.True(live);
+        Assert.Equal(FinalPath.Resolve(Scratch.PowerShell), image, ignoreCase: true);
+        job.Terminate(7);
+        Assert.Equal(7, await job.WaitForExitAsync(TestContext.Current.CancellationToken));
+        Assert.Equal((false, null), JobProcess.ImagePath((uint)job.ProcessId));
+        // Process 0, the idle process, never opens.
+        Assert.Equal((false, null), JobProcess.ImagePath(0));
+    }
+
     /// <summary>The drain keeps its limit while reading to the end, and cancellation ends a pending pipe read promptly.</summary>
     [Fact]
     public async Task DrainKeepsItsLimitAndCancellationEndsAPendingRead()
