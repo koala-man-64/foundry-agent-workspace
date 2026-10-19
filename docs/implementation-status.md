@@ -287,6 +287,14 @@ Dual-landed fixes:
     - **F3 (low), fixed.** The combination of the list and `Running` was untested; the 20-process test covers the list parsing and buffer growth.
     - **F4 (low), fixed.** This entry overstated equivalence with native and how the empty-list state is classified.
     - **Open, native only, not changed here.** `ProcessImages` throws on a list that does not settle, before the job is terminated. Kill-on-close still reclaims the tree, and the run fails rather than reporting success. It predates this change.
+    - **Re-review of `721ea12`: GO.** F1 is closed. Not blocking: if a lagging count never settles, a genuine descendant can run up to a second longer before the job is terminated.
+  - **Validation of `721ea12`.**
+    - `pnpm check`: 589 passed.
+    - `pnpm oracle` under Electron's Node: 61 passed across 34 files.
+    - Native: 7,333 tests, 7,331 passed, 0 failed, 2 expected skips.
+    - `pnpm test:e2e`: 21 passed.
+    - `pnpm package:dir` and `pnpm smoke:package`: passed.
+    - `git diff --check`: clean.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |
