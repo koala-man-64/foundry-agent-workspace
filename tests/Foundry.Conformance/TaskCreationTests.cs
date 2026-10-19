@@ -18,13 +18,21 @@ public sealed partial class TaskCreationTests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public async Task TasksMatchCommittedNodeRowsAndRepositoryState(string name, int index)
+    public Task TasksMatchCommittedNodeRowsAndRepositoryState(string name, int index) => Replay(name, index, removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change. The data directory and the worktree base inside it stay fixed.</summary>
+    [Theory, MemberData(nameof(Cases))]
+    public Task TasksOnARemovableDriveMatchTheSameRowsAndRepositoryState(string name, int index) => Replay(name, index, removable: true);
+
+    private static async Task Replay(string name, int index, bool removable)
     {
         var item = Corpus.GetProperty("cases")[index];
         Assert.Equal(name, item.GetProperty("name").GetString());
         using var fixture = RepositoryFixture.Create("foundry-p2-task-create-");
         await fixture.Build(item.GetProperty("tree"));
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        using var drive = RemovableDrive.Place(removable, fixture.Scratch, data);
         var repositories = item.TryGetProperty("repositories", out var listed) ? listed.EnumerateArray().Select(entry => entry.GetString()!).ToList() : ["repo"];
         var unchanged = item.TryGetProperty("native", out var native);
         var gitBefore = unchanged ? await GitState(fixture, repositories) : null;

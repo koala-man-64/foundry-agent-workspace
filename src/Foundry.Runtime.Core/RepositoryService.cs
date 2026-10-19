@@ -156,9 +156,10 @@ internal sealed partial class RepositoryService
         {
             using var selected = await RequireRepository(root);
             var top = JsJson.Trim((await Run(selected, ["rev-parse", "--show-toplevel"])).Stdout);
-            // Git's own report is opened only when it names a fixed local drive: nothing in it can reach the network.
+            // Git's own report is opened only when it names a local drive a project may sit on (fixed or removable): nothing
+            // in it can reach the network.
             var lexical = FinalPath.Resolve(top);
-            if (NetworkPathPolicy.IsNetworkOrDevicePath(top) || !DataClassifier.IsLocal(lexical) || new DriveInfo(lexical[..3]).DriveType is not DriveType.Fixed
+            if (NetworkPathPolicy.IsNetworkOrDevicePath(top) || !DataClassifier.IsLocal(lexical) || !DriveAdmission.Project.Admits(lexical)
                 || !FinalPath.TryResolve(lexical, out var canonical)) return false;
             return EcmaScriptCase.ToLower(FinalPath.Resolve(selected.Path)) == EcmaScriptCase.ToLower(FinalPath.Resolve(canonical));
         }
@@ -242,7 +243,7 @@ internal sealed partial class RepositoryService
         if (!RepositoryPaths.IsInside(root, candidate)) throw new WorkspaceReadException(RepositoryPaths.Escapes);
         var parent = System.IO.Path.GetDirectoryName(candidate) ?? candidate;
         DirectoryLease chain;
-        try { chain = DirectoryLease.AcquireExistingSharingWrites(parent); }
+        try { chain = DirectoryLease.AcquireExistingSharingWrites(parent, DriveAdmission.Project); }
         catch (ReparsePointException) { throw new WorkspaceReadException(SymbolicLinks); }
         catch (IOException) { throw new WorkspaceReadException(Missing); }
         try
@@ -662,7 +663,7 @@ internal sealed partial class RepositoryService
     /// does not. Not in TypeScript.
     /// </summary>
     internal bool IsOwnWorktree(string taskId, string? worktreePath) =>
-        worktreePath is not null && TaskId().IsMatch(taskId) && RepositoryPaths.SameFolder(worktreePath, Path.Join(FinalPath.Resolve(WorktreeBase), taskId.ToLowerInvariant()));
+        worktreePath is not null && TaskId().IsMatch(taskId) && RepositoryPaths.SameFolder(worktreePath, Path.Join(FinalPath.Resolve(WorktreeBase), taskId.ToLowerInvariant()), DriveAdmission.Fixed);
 
     /// <summary>
     /// removeWorktree: `git worktree remove` without --force, so Git itself refuses untracked or modified files; the

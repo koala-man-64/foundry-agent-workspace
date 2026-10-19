@@ -10,7 +10,14 @@ namespace Foundry.Conformance;
 public sealed class FolderChatTests
 {
     [Fact]
-    public async Task ProjectChatsMatchCommittedNodeSteps()
+    public Task ProjectChatsMatchCommittedNodeSteps() => Replay(removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change. The data directory stays fixed.</summary>
+    [Fact]
+    public Task ProjectChatsOnARemovableDriveMatchTheSameSteps() => Replay(removable: true);
+
+    private static async Task Replay(bool removable)
     {
         var corpus = (Dictionary<string, object?>)PersistedJson.Parse(File.ReadAllText(Path.Combine(RepositoryFixture.Root, "tests/p2/folder-chat-vectors.json")))!;
         RepositoryFixture.AssertOracleSources(RepositoryFixture.ReadCorpus("tests/p2/folder-chat-vectors.json"));
@@ -21,6 +28,7 @@ public sealed class FolderChatTests
         fixture.Write("work/repo/README.md", "hello\n"); fixture.Write("work/repo/src/a.ts", "export const a = 1;\n"); fixture.Write("work/repo/docs/b.md", "# b\n");
         await fixture.Git("-C", "work/repo", "init", "-q"); await fixture.Git("-C", "work/repo", "add", "-A"); await fixture.Git("-C", "work/repo", "commit", "-qm", "fixture");
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        using var drive = RemovableDrive.Place(removable, fixture.Scratch, data);
         await using var loop = new RuntimeLoop(); Store? store = null; DevelopmentChat? chat = null;
         var events = new List<object?>(); var next = 1;
         Guid NewId() => Guid.Parse($"77777777-0000-4000-8000-{next++:000000000000}");

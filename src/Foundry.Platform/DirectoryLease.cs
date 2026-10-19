@@ -10,24 +10,30 @@ public sealed class DirectoryLease : IDisposable
     private readonly List<SafeFileHandle> handles = [];
     private DirectoryLease() { }
     private const uint ShareRead = 1, ShareReadWrite = 3;
-    public static DirectoryLease Acquire(string directory) => Acquire(directory, false, ShareRead);
-    public static DirectoryLease AcquireExisting(string directory) => Acquire(directory, true, ShareRead);
+
+    // Every chain sits on a fixed drive unless its caller names another admission: the data directory, the app-owned
+    // folders under it and local-path push remotes stay fixed-only; project paths pass DriveAdmission.Project.
+    public static DirectoryLease Acquire(string directory) => Acquire(directory, false, ShareRead, DriveAdmission.Fixed);
+    public static DirectoryLease AcquireExisting(string directory) => Acquire(directory, true, ShareRead, DriveAdmission.Fixed);
 
     /// <summary>
     /// As <see cref="AcquireExisting"/>, but entries inside the pinned directories may still be renamed or replaced
     /// (Git's lock-file renames open the target directory for writing). The pinned components themselves still cannot be
     /// renamed or deleted, because no handle shares delete access.
     /// </summary>
-    public static DirectoryLease AcquireExistingSharingWrites(string directory) => Acquire(directory, true, ShareReadWrite);
+    public static DirectoryLease AcquireExistingSharingWrites(string directory) => AcquireExistingSharingWrites(directory, DriveAdmission.Fixed);
+
+    /// <summary>As <see cref="AcquireExistingSharingWrites(string)"/>, on any drive type <paramref name="drives"/> admits.</summary>
+    public static DirectoryLease AcquireExistingSharingWrites(string directory, DriveAdmission drives) => Acquire(directory, true, ShareReadWrite, drives);
 
     /// <summary>
     /// As <see cref="Acquire"/> (missing trailing components are allowed and stay unpinned), but sharing writes: other
     /// processes may still rename or create entries inside every pinned directory, which a long-lived lease on a chain up
     /// to the drive root must allow. The pinned components themselves still cannot be renamed or deleted.
     /// </summary>
-    public static DirectoryLease AcquireSharingWrites(string directory) => Acquire(directory, false, ShareReadWrite);
+    public static DirectoryLease AcquireSharingWrites(string directory) => Acquire(directory, false, ShareReadWrite, DriveAdmission.Fixed);
 
-    private static unsafe DirectoryLease Acquire(string directory, bool requireExisting, uint share)
+    private static unsafe DirectoryLease Acquire(string directory, bool requireExisting, uint share, DriveAdmission drives)
     {
         // GetFullPath strips a trailing dot or space from the last component, so it would pin a different entry than the
         // one named ("a " would pin a decoy "a"). Intermediate components are kept and opened literally below.
@@ -36,7 +42,8 @@ public sealed class DirectoryLease : IDisposable
         if (last is not ("." or "..") && (last.EndsWith('.') || last.EndsWith(' '))) throw new IOException("Data identity cannot be established.");
         var path = Path.GetFullPath(directory);
         var root = Path.GetPathRoot(path) ?? throw new IOException("Data identity cannot be established.");
-        if (root.StartsWith("\\\\", StringComparison.Ordinal) || new DriveInfo(root).DriveType is not DriveType.Fixed) throw new IOException("Data identity cannot be established.");
+        // The drive type is read before any component is opened, so a refused drive is never touched.
+        if (root.StartsWith("\\\\", StringComparison.Ordinal) || !drives.Admits(path)) throw new IOException("Data identity cannot be established.");
         var lease = new DirectoryLease();
         try
         {

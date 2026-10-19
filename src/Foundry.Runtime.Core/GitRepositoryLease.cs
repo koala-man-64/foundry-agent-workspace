@@ -132,8 +132,9 @@ internal sealed partial class GitRepositoryLease : IDisposable
 
     /// <summary>
     /// Pins a referenced directory and returns its canonical path. The raw reference was already screened for network
-    /// and device forms; mapped network drives are refused before any open, and every component is verified free of
-    /// reparse points before anything beneath it is opened, so no probe can be redirected to another location.
+    /// and device forms; mapped network drives are refused before any open, as is any drive type a project may not sit on
+    /// (<see cref="DriveAdmission.Project"/>), and every component is verified free of reparse points before anything
+    /// beneath it is opened, so no probe can be redirected to another location.
     /// </summary>
     private static string PinnedDirectory(string candidate, List<IDisposable> pins)
     {
@@ -143,7 +144,10 @@ internal sealed partial class GitRepositoryLease : IDisposable
         if (!DataClassifier.IsLocal(candidate) || !string.Equals(System.IO.Path.GetFullPath(candidate), candidate, StringComparison.Ordinal)
             || candidate[3..].Split('\\').Any(component => component.EndsWith('.') || component.EndsWith(' ') || ReservedName().IsMatch(component)))
             throw new WorkspaceReadException(Invalid);
-        if (new DriveInfo(candidate[..3]).DriveType is DriveType.Network) throw new WorkspaceReadException(Network);
+        // Before any open: a drive root has no parent to pin, so its Probe below would otherwise be the first open.
+        var drive = DriveAdmissions.TypeOf(candidate);
+        if (drive is DriveType.Network) throw new WorkspaceReadException(Network);
+        if (!DriveAdmission.Project.Admits(drive)) throw new WorkspaceReadException(Unavailable);
         if (System.IO.Path.GetDirectoryName(candidate) is { } parent) Acquire(parent, pins);
         if (Probe(candidate) is MetadataEntryKind.File) throw new WorkspaceReadException(Invalid);
         Acquire(candidate, pins);
@@ -156,7 +160,7 @@ internal sealed partial class GitRepositoryLease : IDisposable
     private static void Acquire(string directory, List<IDisposable> pins)
     {
         // Git renames lock files into these directories while the lease is held; only the components themselves are frozen.
-        try { pins.Add(DirectoryLease.AcquireExistingSharingWrites(directory)); }
+        try { pins.Add(DirectoryLease.AcquireExistingSharingWrites(directory, DriveAdmission.Project)); }
         catch (ReparsePointException) { throw new WorkspaceReadException(Reparse); }
         catch (IOException) { throw new WorkspaceReadException(Unavailable); }
     }

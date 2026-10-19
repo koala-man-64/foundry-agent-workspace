@@ -49,9 +49,11 @@ internal static partial class RepositoryPaths
     /// approved spelling is probed, and the spellings match only when they have the same root, the same depth and the same
     /// volume and 128-bit file identity at every prefix. A short (8.3) spelling or a different case of the same folder
     /// therefore matches, while two folders that differ only in case inside a case-sensitive directory never do. Anything
-    /// that cannot be established, including a missing folder, is no match.
+    /// that cannot be established, including a missing folder, is no match. Both chains must sit on a drive type that
+    /// <paramref name="drives"/> admits: <see cref="DriveAdmission.Project"/> for project folders and their Git directories,
+    /// <see cref="DriveAdmission.Fixed"/> for the app-owned worktree folder.
     /// </summary>
-    internal static bool SameFolder(string candidate, string approved)
+    internal static bool SameFolder(string candidate, string approved, DriveAdmission drives)
     {
         if (NetworkPathPolicy.IsNetworkOrDevicePath(candidate) || NetworkPathPolicy.IsNetworkOrDevicePath(approved)) return false;
         if (HasAmbiguousSegment(candidate) || HasAmbiguousSegment(approved) || candidate.Contains('\0', StringComparison.Ordinal) || approved.Contains('\0', StringComparison.Ordinal)) return false;
@@ -59,8 +61,8 @@ internal static partial class RepositoryPaths
         if (!DataClassifier.IsLocal(left) || !DataClassifier.IsLocal(right)) return false;
         try
         {
-            using var first = DirectoryLease.AcquireExistingSharingWrites(left);
-            using var second = DirectoryLease.AcquireExistingSharingWrites(right);
+            using var first = DirectoryLease.AcquireExistingSharingWrites(left, drives);
+            using var second = DirectoryLease.AcquireExistingSharingWrites(right, drives);
             return first.Identities().SequenceEqual(second.Identities());
         }
         catch (IOException) { return false; }

@@ -212,7 +212,7 @@ public sealed class DevelopmentChat
         if (store.ProjectByPath(path) is { } previous) return previous;
         using var identity = RepositoryAdmission.Open(loop, path);
         var kind = await repositories.IsGitWorkingTree(path) ? "git" : "folder";
-        if (!RepositoryPaths.SameFolder(raw, path)) throw new WorkspaceReadException("The saved folder now resolves to a different location.");
+        if (!RepositoryPaths.SameFolder(raw, path, DriveAdmission.Project)) throw new WorkspaceReadException("The saved folder now resolves to a different location.");
         identity.Revalidate();
         return store.Transaction(() =>
         {
@@ -826,7 +826,7 @@ public sealed class DevelopmentChat
         var path = (string)project["path"]!;
         if (NetworkPathPolicy.IsNetworkOrDevicePath(path)) throw new WorkspaceReadException(ProjectUnavailable);
         using (SavedProjectFolder(path))
-            if (task.GetValueOrDefault("projectPath") is not string folder || !RepositoryPaths.SameFolder(folder, path)) throw new WorkspaceReadException(ProjectUnavailable);
+            if (task.GetValueOrDefault("projectPath") is not string folder || !RepositoryPaths.SameFolder(folder, path, DriveAdmission.Project)) throw new WorkspaceReadException(ProjectUnavailable);
         if (Store.IsGitDocument(task)) tools.Channel.AssertAdmission(task);
     }
 

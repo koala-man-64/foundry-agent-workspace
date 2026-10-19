@@ -119,7 +119,7 @@ These program rules hold until the P5 cutover:
 P5 cutover readiness. These stay open until the cutover decides them or a later slice closes them (Rudy, 18 October 2026, chose to keep the list here):
 - **External profiles and saved MCP servers** (P2.4c, security review I3). Under decision 2, main loads credentials before `profile.probe` and `task.start`, so anyone with saved MCP servers cannot use an external profile. This holds until the MCP slice lifts it.
 - **A send before the credential returns** (P2.4d, data review L1). Credentials live in memory, but verification persists. After a restart, a send made before the host sends the credential again is admitted, then fails with its reservation charged. TypeScript behaves the same, and the native port keeps it.
-- **Live qualification of `profile.probe`** against real deployments. This is Rudy's operator gate; no routine suite makes a live or paid call.
+- **Live qualification of `profile.probe`** against real deployments. This is Rudy's operator gate. He decided on 19 October 2026 that it runs once, during the P4 rehearsal, against the packaged candidate; he names the deployments and a spend cap then. No routine suite makes a live or paid call.
 
 Dual-landed fixes:
 - **Saved-project/preference transition atomicity and failed-delivery admission** (13 October 2026). Independent P2 data review found that TypeScript saved these records and inserted their events in separate commits. Both implementations now commit each mutation and event together and notify afterward. Event insertion failure rolls back the state; notification failure retains the authoritative commit and closes admission to retries. Security re-review additionally required stopping independent orchestration and automation on delivery failure: TypeScript closes both synchronously and rechecks closing after awaited Git-state/pin validation before a new child or script launch. C# has no orchestration/script execution handler yet and denies these operations before mutation; those future ports must retain these guards. Never-launched scripts remain queued for safe recovery, and already-admitted work keeps conservative intent recovery. This is a data-integrity/lifecycle correction under the dual-landed-fix rule, not a feature expansion.
@@ -514,7 +514,7 @@ Final validation: zero-warning/error Release build; **6,032 solution tests passe
 
 Independent data review accepted the exact production source; the existing security reviewer found no new execution/data authority and accepted the local parity scope with two inherited residuals. Both reviewers are the existing **GPT-6 Luna/max** read-only leaves selected through the supplied AGENTS.md Critical approved route; no new spawn occurred. Owner validation retains the final tests. Source SHA-256: `Store.WorkspacePages.cs` `879B79E2864288FE306C24907596F1F45F6F100E08E1A202D539E8568AB6DB43`; `Store.Summary.cs` `267D017C7A4BBE0AFA41C38AE22E125CEEE6F7ABA6C7311584CCAA3A6721E0D9`; `DevelopmentChat.cs` `35D5341C1BD2023503350745D42F3982CC4AC264D865FBF0F1CFFF3EC33168CF`. Corpus SHA-256: `EA3D8821302E4AAB8FE9AA42364C498289EA6F176EB5E4C306C26D8C36814886`.
 
-**Shared residuals for further P2 security qualification:** pre-v5 task pages currently parse/sort all retained tasks, so response size is bounded but work and memory remain O(n), as in TypeScript. A compatible dual-runtime bounded-memory correction and larger disposable-store coverage remain follow-ups. Project listing rejects literal UNC/device paths before probing but inherited local reparse/mapped-path probes can still reach a redirected location before final-path rejection. This is not a universal no-network guarantee. The approved plan explicitly accepts user-chosen mapped-drive resolution; reparse-to-UNC probing remains a distinct shared security residual for the filesystem slice. No real data was opened and no network path was probed by this increment. Full P2 security acceptance is not established by these parity tests.
+**Shared residuals for further P2 security qualification:** pre-v5 task pages currently parse/sort all retained tasks, so response size is bounded but work and memory remain O(n), as in TypeScript. A compatible dual-runtime bounded-memory correction and larger disposable-store coverage remain follow-ups. Project listing rejects literal UNC/device paths before probing but inherited local reparse/mapped-path probes can still reach a redirected location before final-path rejection. This is not a universal no-network guarantee. This entry used to say that the approved plan accepts user-chosen mapped-drive resolution. It does not: decision 8 refuses a project on a mapped network drive, and Rudy confirmed on 19 October 2026 that network and mapped network drives stay refused (see "Drives" under the reconciliation items below). The plan's only mapped-drive note is a residual of the path-key computation, which opens the path. Reparse-to-UNC probing remains a distinct shared security residual for the filesystem slice. No real data was opened and no network path was probed by this increment. Full P2 security acceptance is not established by these parity tests.
 
 ### Dual-runtime legacy task-page memory correction
 
@@ -641,17 +641,16 @@ P2.0 is reconciled here only for the Git/files slice. The module map for later s
 
 P2.1 below adds native identity coverage. The queued-identity, final-boundary and unknown-outcome workflows still need native worktree creation, which is P2.2.
 
-**Open reconciliation items:**
-- **Local aliases: open decision.**
-  - Native refuses every reparse point. `RepositoryFolderLease` has done so since the native-lease increment, and P2.1's Git identity now does too.
+**Reconciliation items, decided by Rudy on 19 October 2026:**
+- **Local aliases: an approved difference to cutover.**
+  - Native refuses every reparse point: junctions, symbolic links, and cloud-file placeholders such as OneDrive Files On-Demand. `RepositoryFolderLease` has done so since the native-lease increment, and P2.1's Git identity does too. It also refuses a `subst` spelling of a project folder (P2.2c).
   - TypeScript follows local junctions and symbolic links.
-  - This difference was never listed as approved. It must be decided before native Git-backed handlers are enabled: either prove that following aliases is safe, or accept refusal for projects whose folder, `.git`, gitdir or `commondir` passes through an alias.
-  - Cloud-file placeholders, such as OneDrive Files On-Demand, are also reparse points and are refused.
-- **Mapped and removable drives: conflicting docs.**
-  - The shared residuals above say the approved plan "accepts user-chosen mapped-drive resolution".
-  - The detail of migration decision 8 says projects on mapped network drives are refused.
-  - Native refuses roots that are not fixed drives, which also excludes removable drives that TypeScript admits. It now refuses network drives by drive type before any open, while TypeScript refuses them only after realpath.
-  - One decision is needed; this entry does not choose.
+  - Rudy decided that native keeps refusing local aliases, permanently. A project whose folder, `.git`, gitdir or `commondir` passes through an alias is refused. This is no longer an open decision.
+- **Drives: decided, and implemented natively (see "Removable project drives" below).**
+  - Network and mapped network drives stay refused (decision 8). Native refuses them by drive type before any open; TypeScript refuses them only after realpath.
+  - Removable drives are admitted for projects, as TypeScript admits them.
+  - The data directory, the app-owned worktree base and its hooks folder, the executables the runtime launches and local-path push remotes stay on fixed drives.
+  - The conflicting docs are resolved: the shared residuals entry above is corrected, and decision 8 stands.
 
 ### Local native Git identity foundation (P2.1)
 
@@ -664,13 +663,13 @@ P2.1 below adds native identity coverage. The queued-identity, final-boundary an
 - **No redirected probe.**
   - **Chain first.** For the folder's canonical path and for each referenced directory, the parent chain is opened one component at a time without following reparse points (`DirectoryLease`). Only then is the final component probed, pinned and canonicalized with `FinalPath`. When a subst or 8.3 spelling is used, the canonical chain is verified and pinned as well.
   - **Exact names.** Every component and metadata open uses its `\\?\` namespaced name, so Win32 cannot strip a trailing space or dot and verify a different entry than the one traversal later reaches. Referenced paths with a component ending in a dot or space are refused outright.
-  - **Drives.** Mapped network drives are refused by drive type before any open.
+  - **Drives.** Mapped network drives are refused by drive type before any open. Since 19 October 2026 removable drives are admitted for projects, and every other type that is not fixed is refused (see "Removable project drives").
   - The shared local-reparse residual for project listing is unchanged.
 - **Bounded pointer reads.** Pointer files are pinned with read-only sharing and read through the handle up to 16,385 bytes; a 16,385th byte rejects the file. TypeScript stats the file and then reads all of it, so growth after the stat is read without bound. Shipping TypeScript is unchanged, because this is neither a security nor a data-loss fix.
 - **Pins that let Git work.** Directory pins share writes but never deletes. Git's lock-file renames inside a pinned directory keep working, while the pinned directories themselves cannot be renamed, deleted or replaced until disposal. Pins defend against races, not against a hostile process running as the same user, which could still empty a pinned directory and turn it into a mount point.
 - **Strict revalidation.** Revalidation resolves again and requires ordinal equality with both the lease and the expected binding. A null or incomplete binding never matches.
 - **Approved differences, named in the corpus:**
-  - Local aliases are refused (the open decision above).
+  - Local aliases are refused (an approved difference, decided by Rudy on 19 October 2026).
   - A drive-relative pointer to another drive is refused, because TypeScript resolves it from per-drive process state.
   - A `commondir` that names a file is refused, where TypeScript accepts the file as the "common directory".
 - **Ambiguous references are refused before the lease opens them.** These are references that Win32 would read as another entry: a component ending in a dot or space, a stream suffix, or a reserved device name. TypeScript also fails them, but later and with raw filesystem errors. A real directory whose name ends in a dot or space is refused too, which is stricter than TypeScript.
@@ -833,7 +832,7 @@ Everything else stays held: shipping or runtime selectors, Electron-side .NET en
 - **L2 (low).** An operation with no predecessor started before its queue key was registered. Fixed, with a test.
 - **L3 (low).** The documentation overstated how far the `PATH` lookup avoids the network. Fixed by the drive-type check and the corrected wording above.
 - **L4 (low).** The runner took a working directory separate from the admitted folder. It now always runs in the admitted folder.
-- **Informational.** Applied: unreadable untracked files are skipped as TypeScript skips them; Git's reported top-level path is opened only on a fixed local drive; revisions must be full object ids. Not changed: a running Git process is not cancelled by shutdown and ends within its timeout, as TypeScript's drain waits; `ExistingEntry.Links` stays unused, because hard-linked reads match TypeScript.
+- **Informational.** Applied: unreadable untracked files are skipped as TypeScript skips them; Git's reported top-level path is opened only on a fixed local drive (fixed or removable since 19 October 2026); revisions must be full object ids. Not changed: a running Git process is not cancelled by shutdown and ends within its timeout, as TypeScript's drain waits; `ExistingEntry.Links` stays unused, because hard-linked reads match TypeScript.
 
 ### Read-only Git/files handlers (P2.2b)
 
@@ -920,8 +919,8 @@ New coverage:
   - a common directory redirected while classification runs Git, which must save nothing and notify nothing.
 
 **More differences, both fail-closed:**
-- A `subst` drive spelling of a folder is refused. Its chain has a different root and depth from the real path, while TypeScript's lowercased comparison admits it. This sits with the approved alias refusal and the open mapped and removable drive decision.
-- On a fixed volume that cannot report `FileIdInfo` (FAT or exFAT), the identity check fails and the project is refused.
+- A `subst` drive spelling of a folder is refused. Its chain has a different root and depth from the real path, while TypeScript's lowercased comparison admits it. This sits with the approved alias refusal (Rudy, 19 October 2026).
+- On a volume that cannot report `FileIdInfo` (FAT or exFAT), the identity check fails and the project is refused. Since 19 October 2026 this reaches removable drives too, which are often formatted FAT32 or exFAT (see "Removable project drives").
 
 **Independent review.** The same reviewer reviewed the N1 fix and slice c at `586e929` and returned **GO for P2.2a, P2.2b and P2.2c together**. It ran the focused suites (149 passed) and the stdio NUL test on its own export. It probed `project.add` through `DevelopmentChat` with an 8.3 spelling, a case variant, and the short name of a real `dotted.` folder, with and without a child path.
 
@@ -1986,7 +1985,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 
      The oracles prove adapter, probe and turn behaviour in process.
    - **Fixture credentials** are built at run time and recorded in vectors as a placeholder, in shapes that secret scanners don't match (the P2.3 GitGuardian lesson).
-   - **Live qualification** with the C# adapters (`profile.probe` against real deployments) stays the plan's operator gate: Rudy runs it, not before P4 unless he asks.
+   - **Live qualification** with the C# adapters (`profile.probe` against real deployments) stays the plan's operator gate: Rudy runs it, not before P4 unless he asks. On 19 October 2026 he scheduled it for the P4 rehearsal (see the P5 cutover readiness list).
    - **Alternative, not recommended:** a Debug-only loopback seam (connection redirection plus a test certificate) for a process-level differential of streamed turns. It would put traffic redirection for credentialed requests into runtime code.
 5. **Certificate trust.** Recommended: accept the Windows store, as the plan's "no certificate callback" implies, and record the measured difference above. The alternative, trusting only Node's bundled roots, needs a certificate callback and a shipped root list.
 
@@ -2522,7 +2521,7 @@ No renderer, IPC or user-path source changed, so no Electron E2E run was require
 - **The TypeScript N2 fix (`bbfa5d5`):** keep it. He accepted the security classification.
 - **The P5 items** (security I3, data L1 and the live qualification of `profile.probe`) are on the P5 cutover readiness list under the program rules.
 - **Still held:**
-  - Live qualification (`profile.probe` against real deployments) stays his operator gate.
+  - Live qualification (`profile.probe` against real deployments) stays his operator gate. On 19 October 2026 he scheduled it once, during the P4 rehearsal, against the packaged candidate.
   - The draft PR, main integration and any publication need his approval.
 
 ### Oracle runtime pin
@@ -2543,6 +2542,77 @@ An independent read-only review returned **GO**. It found that `removeTree` thre
 - Clearing a read-only file's attribute through a hard link also clears it on a file outside the tree. The P2 tests hard-link only inside scratch.
 
 **Not covered.** `packages/runtime/tests/agent-channel.test.ts` and `local-path.test.ts` (not oracles) still call `fs.rmSync` on junctions and fail under Electron's Node; nothing runs them there. The golden (`UPDATE_GOLDEN`) and P1 (`P1_WRITE_*`) vectors pass under Electron's Node but have no write guard.
+
+### Rudy's decisions of 19 October 2026 and removable project drives
+
+**Decisions.** Rudy decided three open items on 19 October 2026:
+1. **Local aliases.** Native keeps refusing junctions, symbolic links, `subst` spellings and OneDrive placeholders, permanently. This is an approved difference to cutover, no longer an open decision (see "Reconciliation items" under P2 coverage).
+2. **Drives.** Network and mapped network drives stay refused (decision 8). Removable drives are admitted for projects, matching TypeScript. Implemented natively below.
+3. **Live qualification of `profile.probe`.** His operator gate runs once, during the P4 rehearsal, against the packaged candidate. He names the deployments and a spend cap then. No routine suite makes paid calls. It stays on the P5 cutover readiness list until it has run.
+
+**Removable project drives.** Native only; TypeScript is unchanged. It reads no drive type for project folders, and its local-path push remotes stay fixed-only (`repository.ts:134`), a separate rule.
+- **The primitive.** `DriveAdmission` (Foundry.Platform) has two values. `Fixed` admits fixed drives only. `Project` admits fixed and removable drives, and refuses network, optical, RAM-disk, unknown and unmounted roots. `DirectoryLease` keeps its fixed-only default for every chain; a caller passes `DriveAdmission.Project` to `AcquireExistingSharingWrites` to admit a project chain. The type is read from the drive root (`GetDriveType`) before any component is opened, so a refused drive is never touched.
+- **Every caller, classified.**
+
+  | Call site | What it opens | Admission |
+  | --- | --- | --- |
+  | `RepositoryFolderLease.TryOpen` | a project folder | `Project`. A mapped network drive keeps decision 8's message; any other refused type is "Project folder is unavailable." before anything on it is opened |
+  | `GitRepositoryLease` (`Acquire`, `PinnedDirectory`) | the project chain, `.git`, gitdir and `commondir` | `Project`; a network drive keeps its message |
+  | `RepositoryPaths.SameFolder` | both spellings' chains | named by each caller: `Project` from `project.add`, the folder-chat retry and the project channel; `Fixed` from `IsOwnWorktree`, the app-owned worktree folder |
+  | `RepositoryService.IsGitWorkingTree` | Git's `rev-parse --show-toplevel` | `Project` |
+  | `RepositoryService.OpenSafe` | the parent chain of file reads, listings and edits | `Project` |
+  | `CommandRunner.AdmitWorkingDirectory` | a command's working directory inside the admitted root | `Project` |
+  | `RepositoryService.PrepareWorktreeBase` | the app-owned worktree base | `Fixed`, unchanged |
+  | `GitRunner.GuardHooks`, `HooksChanged` | the app-owned hooks folder | `Fixed`, unchanged |
+  | `GitRunner.Resolve` | `git.exe` on `PATH` | fixed only, unchanged |
+  | `CommandRunner.ResolveShell` | Windows PowerShell | fixed only, unchanged |
+  | `RepositoryService.RequireSupportedRemotes` | a local-path push remote | `Fixed`, unchanged, as TypeScript |
+  | `RepositoryService.IsNetworkRemote` | a remote's drive letter | unchanged: a network or unmounted letter is a share |
+  | `Store`, `Store.Backup`, `DataClassifier.Inspect` | the data directory and its backups | `Fixed`, unchanged |
+
+- **Differences from TypeScript, all fail-closed:**
+  - Native refuses optical drives, RAM disks and roots whose type is unknown or that are not mounted. TypeScript reads no drive type for projects.
+  - A mapped network drive is refused by type before any open; TypeScript refuses it after realpath.
+  - A folder on a refused drive type is no longer probed to tell a file from a folder: it is refused as unavailable. Before this change native probed after the lease refused it.
+  - **FAT and exFAT removable drives are still refused wherever folders are compared by identity.** `SameFolder` needs `FileIdInfo`, which P2.2c records that FAT and exFAT volumes cannot report. Many removable drives are formatted FAT32 or exFAT. Where TypeScript admits such a folder, native refuses it:
+    - `project.add`, which always compares, with "The saved folder now resolves to a different location.";
+    - the project channel of a Git task with no binding, with "Project channel requires an approved local identity.";
+    - a failed start's retry, with "Project folder is unavailable or resolves to a different location."
+
+    NTFS-formatted removable drives are admitted. This is not verified on hardware: no FAT or exFAT volume was available, and a fake drive type cannot change a file system. Whether this gap must close before cutover is Rudy's call.
+
+**Tests.**
+- **Seam.** `DriveAdmissions.Fake` reports a drive type for a folder and everything beneath it until disposal; the longest covering folder wins. It is internal, visible only to the Platform and conformance test assemblies. Each test fakes its own scratch folder, so tests running in parallel are unaffected. No physical drive is involved.
+- **`DriveAdmissionTests`** (platform, 17): the rule for every `DriveType`, the path forms refused before any probe, the fake's scope, the fixed-only lease default, and refusal before opening for network, unmounted, unknown, optical and RAM-disk roots. A junction in the chain proves nothing was opened: an open would raise `ReparsePointException`.
+- **`RemovableProjectDriveTests`** (conformance, 43): a positive and a negative test for every changed call site, plus:
+  - the data directory (`Store`, its backup, `DataClassifier.Inspect`), the worktree base and the hooks folder still refuse a removable drive;
+  - a project on a removable drive gets a task worktree end to end;
+  - the project channel admits an 8.3 spelling of a folder on a removable drive. This reports a skip where the volume makes no short names; it ran here;
+  - a failed start in a project on a removable drive is retried.
+- **Differential.** Six P2 corpora replay every committed Node case with the fixture on a fake removable drive and its app-owned folders fixed: git identity (43), project admission (15), repository inspection (87), agent channel (5), task creation (19) and folder chat (1 scenario of 22 steps). TypeScript reads no drive type for projects, so its committed outcomes must hold unchanged, and they do. The command-runner corpus is not replayed, because it takes two and a half minutes; its call site has direct tests. No corpus, oracle or TypeScript source changed, so nothing was re-pinned.
+- **Mutation check.** Each of the 15 changed checks was undone in turn: made fixed-only, its network message dropped, or the lease made to ignore its admission. Every one then fails at least one test. These mutations only narrowed checks; none removed a refusal. `IsGitWorkingTree`'s own refusal of Git's reported top level is not separately observable. The existing negative test is refused earlier, by the folder lease. When Git's top level names another drive (`core.worktree`), the final comparison returns false anyway, so only the no-open property depends on that check. The first run found two call sites no test reached: the project channel's comparison of an approved 8.3 spelling, and the folder-chat retry. The two tests above were added for them, and both mutations now fail. Logs: `mutation-check.log` and `mutation-check-gaps.log` in `foundry-evidence\removable-project-drives`.
+
+**Residuals.**
+- **Withdrawal.** A removable drive can be pulled out while its folders are pinned. Revalidation compares canonical paths, so another device with the same layout under the same drive letter would pass a later check. That needs physical access during the operation. It is not new: USB hard disks already report as fixed drives. TypeScript pins nothing at all.
+- **The "No disk" prompt (follow-up, not in this change).** The native process never sets `SEM_FAILCRITICALERRORS`, which libuv sets for Node at startup. An open on a removable drive that has no media can therefore raise Windows' "There is no disk in the drive" prompt and block the runtime loop until someone dismisses it. This is possible, not observed. It is not new, because the classification probe could already open such a drive, but admitting removable drives makes these opens routine.
+- **Decision 8 by drive type.** A user-mode file system backed by network or cloud storage that reports itself fixed (WinFsp and rclone by default) or removable (Dokan, optionally) is admitted, as TypeScript admits it after realpath.
+
+**Independent review.** A read-only filesystem-security reviewer (Opus, high effort from the security agent's definition, below the xhigh owner) reviewed the sealed tree `c43e2af` (tree `ed7deec`). It returned **GO**: no critical, high or medium finding. In its own export it built with `-warnaserror` and passed 17 of 17 platform drive tests, 43 of 43 call-site tests (none skipped) and 179 of 179 removable-drive replays and tests. It read both mutation logs and judged the replays real differential evidence, because undoing the folder or Git lease admission fails them. Its findings:
+- **L1 (low), fixed.** A Git pointer naming a drive root (`gitdir: D:/`) was probed before its drive type was refused, because a root has no parent to pin first. The comment claimed otherwise. `PinnedDirectory` now refuses every type a project may not sit on before any open, as `RepositoryFolderLease` does. The fake cannot register a drive root, so no test observes the order; the messages are the same either way.
+- **L2 (low), fixed.** The FAT and exFAT gap reaches the project channel and the retry as well as `project.add`; the difference above now names them.
+- **I1, I2 and I3 (informational).** Recorded above: the "No disk" prompt, the evidence scope of the mutation check, and decision 8 by drive type.
+
+After the L1 fix the Release build was again clean, and the full native suite again passed **8,177, with zero failures and the same two skips** (`build-release-review-fix.log`, `dotnet-test-review-fix.log`). TypeScript is unchanged, so the third `pnpm check` run still applies.
+
+The same reviewer **confirmed** the delta `c43e2af..033f160`, with no new finding above informational. In its own export it passed the Release build, 17 platform drive tests, 43 call-site tests, 103 Git identity tests and 179 removable-drive replays and tests. It found that the L1 change refuses nothing that was admitted before: on a real drive, a reference and its parent always share a type. Its one wording point, on the mutation check's evidence scope, is applied above.
+
+**Local validation of the final source and tests.**
+- Release build with `-warnaserror`: **zero warnings or errors**.
+- Full native suite: **8,177 passed, zero failed, two skipped (8,179 total)**. The skips are the expected file-symbolic-link test and the local registry-policy (WebView2 lockdown) test.
+- `pnpm check`: TypeScript is unchanged. Two full runs each failed one test, `publish.test.ts`'s push case, at 36 and 37 seconds against its 30-second timeout; the first ran beside the mutation check. That load-sensitive test has timed out in earlier sessions too (P2.3c, P2.4b). The file then passed alone, 18 of 18, and a third full run passed type checking, lint and **596 tests across 96 files**.
+- No renderer, IPC, user-path or packaging source changed, and the native runtime is not in the shipping package, so neither `pnpm test:e2e` nor the package smoke was required.
+- `git diff --check`: clean.
+- Logs: `build-release.log`, `dotnet-test.log`, `pnpm-check*.log` and `pnpm-publish-alone.log` in `foundry-evidence\removable-project-drives`.
 
 ## Personal workspace expansion — local implementation
 

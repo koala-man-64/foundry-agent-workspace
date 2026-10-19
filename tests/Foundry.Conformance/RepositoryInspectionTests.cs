@@ -16,13 +16,21 @@ public sealed class RepositoryInspectionTests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public async Task FixtureTreesMatchCommittedNodeOutcomesOrTheirApprovedDifference(string name, int index)
+    public Task FixtureTreesMatchCommittedNodeOutcomesOrTheirApprovedDifference(string name, int index) => Replay(name, index, removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change. The worktree base stays fixed.</summary>
+    [Theory, MemberData(nameof(Cases))]
+    public Task FixtureTreesOnARemovableDriveMatchTheSameOutcomes(string name, int index) => Replay(name, index, removable: true);
+
+    private static async Task Replay(string name, int index, bool removable)
     {
         var item = Corpus.GetProperty("cases")[index];
         Assert.Equal(name, item.GetProperty("name").GetString());
         var expected = item.TryGetProperty("native", out var native) ? native.GetProperty("outcome") : item.GetProperty("expected");
         using var fixture = RepositoryFixture.Create("foundry-p2-inspection-");
         await fixture.Build(item.GetProperty("tree"));
+        using var drive = RemovableDrive.Place(removable, fixture.Scratch, Path.Combine(fixture.Scratch, "wt-base"));
         await using var loop = new RuntimeLoop();
         var (result, error) = await loop.Invoke(async () =>
         {

@@ -20,7 +20,14 @@ public sealed partial class ProjectAdmissionTests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public async Task FoldersMatchCommittedNodeProjectsRowsAndEvents(string name, int index)
+    public Task FoldersMatchCommittedNodeProjectsRowsAndEvents(string name, int index) => Replay(name, index, removable: false);
+
+    /// <summary>The same committed Node outcomes with the fixture on a removable drive (Rudy, 19 October 2026): TypeScript
+    /// reads no drive type for project folders, so nothing may change. The data directory stays fixed.</summary>
+    [Theory, MemberData(nameof(Cases))]
+    public Task FoldersOnARemovableDriveMatchTheSameProjectsRowsAndEvents(string name, int index) => Replay(name, index, removable: true);
+
+    private static async Task Replay(string name, int index, bool removable)
     {
         var item = Corpus.GetProperty("cases")[index];
         Assert.Equal(name, item.GetProperty("name").GetString());
@@ -31,6 +38,7 @@ public sealed partial class ProjectAdmissionTests
         using var fixture = RepositoryFixture.Create("foundry-p2-project-add-");
         await fixture.Build(item.GetProperty("tree"));
         var data = Directory.CreateDirectory(fixture.Local("data")).FullName;
+        using var drive = RemovableDrive.Place(removable, fixture.Scratch, data);
         string Expand(string raw) => raw.Replace("{scratch-nodrive}", fixture.Scratch[2..], StringComparison.Ordinal)
             .Replace("{scratch/}", fixture.Scratch.Replace('\\', '/'), StringComparison.Ordinal).Replace("{scratch}", fixture.Scratch, StringComparison.Ordinal);
         await using var loop = new RuntimeLoop();
@@ -98,18 +106,18 @@ public sealed partial class ProjectAdmissionTests
         fixture.Write("Folder/child/a.txt", "a"); fixture.Write("other/a.txt", "a");
         await fixture.Junction("alias", "Folder");
         var folder = fixture.Local("Folder");
-        Assert.True(RepositoryPaths.SameFolder(folder, folder));
-        Assert.True(RepositoryPaths.SameFolder(fixture.Local("FOLDER"), folder));
-        Assert.True(RepositoryPaths.SameFolder(folder + "\\", folder));
-        Assert.True(RepositoryPaths.SameFolder(fixture.Scratch.Replace('\\', '/') + "/Folder", folder));
-        Assert.True(RepositoryPaths.SameFolder(fixture.Local("Folder/child/.."), folder));
-        Assert.False(RepositoryPaths.SameFolder(fixture.Local("other"), folder));
-        Assert.False(RepositoryPaths.SameFolder(fixture.Local("Folder/child"), folder));
-        Assert.False(RepositoryPaths.SameFolder(fixture.Local("alias"), folder));
-        Assert.False(RepositoryPaths.SameFolder(folder, fixture.Local("alias")));
-        Assert.False(RepositoryPaths.SameFolder(fixture.Local("missing"), folder));
-        Assert.False(RepositoryPaths.SameFolder(@"\\server\share\Folder", folder));
-        Assert.False(RepositoryPaths.SameFolder(folder, @"\\?\" + folder));
+        Assert.True(RepositoryPaths.SameFolder(folder, folder, DriveAdmission.Project));
+        Assert.True(RepositoryPaths.SameFolder(fixture.Local("FOLDER"), folder, DriveAdmission.Project));
+        Assert.True(RepositoryPaths.SameFolder(folder + "\\", folder, DriveAdmission.Project));
+        Assert.True(RepositoryPaths.SameFolder(fixture.Scratch.Replace('\\', '/') + "/Folder", folder, DriveAdmission.Project));
+        Assert.True(RepositoryPaths.SameFolder(fixture.Local("Folder/child/.."), folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(fixture.Local("other"), folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(fixture.Local("Folder/child"), folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(fixture.Local("alias"), folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(folder, fixture.Local("alias"), DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(fixture.Local("missing"), folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(@"\\server\share\Folder", folder, DriveAdmission.Project));
+        Assert.False(RepositoryPaths.SameFolder(folder, @"\\?\" + folder, DriveAdmission.Project));
     }
 
     [Fact]
@@ -119,7 +127,7 @@ public sealed partial class ProjectAdmissionTests
         var longName = Directory.CreateDirectory(fixture.Local("a folder with a long name")).FullName;
         var shortName = ShortPath(longName);
         if (shortName is null || string.Equals(shortName, longName, StringComparison.OrdinalIgnoreCase)) Assert.Skip("This volume does not generate short (8.3) names.");
-        Assert.True(RepositoryPaths.SameFolder(shortName, longName));
+        Assert.True(RepositoryPaths.SameFolder(shortName, longName, DriveAdmission.Project));
     }
 
     [Fact]
@@ -129,8 +137,8 @@ public sealed partial class ProjectAdmissionTests
         var sensitive = Directory.CreateDirectory(fixture.Local("sensitive")).FullName;
         if (!await CaseSensitive(sensitive)) Assert.Skip("fsutil cannot enable per-directory case sensitivity here.");
         Directory.CreateDirectory(Path.Combine(sensitive, "Foo")); Directory.CreateDirectory(Path.Combine(sensitive, "foo"));
-        Assert.False(RepositoryPaths.SameFolder(Path.Combine(sensitive, "foo"), Path.Combine(sensitive, "Foo")));
-        Assert.True(RepositoryPaths.SameFolder(Path.Combine(sensitive, "Foo"), Path.Combine(sensitive, "Foo")));
+        Assert.False(RepositoryPaths.SameFolder(Path.Combine(sensitive, "foo"), Path.Combine(sensitive, "Foo"), DriveAdmission.Project));
+        Assert.True(RepositoryPaths.SameFolder(Path.Combine(sensitive, "Foo"), Path.Combine(sensitive, "Foo"), DriveAdmission.Project));
     }
 
     [Fact]

@@ -37,9 +37,13 @@ internal sealed class RepositoryFolderLease : IDisposable
         if (RepositoryPaths.HasAmbiguousSegment(candidate) || candidate.Contains('\0', StringComparison.Ordinal)) throw new WorkspaceReadException(Unavailable);
         var absolute = System.IO.Path.GetFullPath(candidate);
         if (!DataClassifier.IsLocal(absolute)) throw new WorkspaceReadException("Project folder identity cannot be established.");
-        if (new DriveInfo(absolute[..3]).DriveType is DriveType.Network) throw new WorkspaceReadException(Network);
+        // Projects sit on fixed or removable drives (Rudy, 19 October 2026). A mapped network drive keeps its own message
+        // (decision 8); any other drive type is refused before anything on it is opened, the classification probe included.
+        var drive = DriveAdmissions.TypeOf(absolute);
+        if (drive is DriveType.Network) throw new WorkspaceReadException(Network);
+        if (!DriveAdmission.Project.Admits(drive)) throw new WorkspaceReadException(Unavailable);
         DirectoryLease lease;
-        try { lease = DirectoryLease.AcquireExistingSharingWrites(absolute); }
+        try { lease = DirectoryLease.AcquireExistingSharingWrites(absolute, DriveAdmission.Project); }
         catch (ReparsePointException) { throw new WorkspaceReadException(Reparse); }
         catch (IOException)
         {

@@ -234,7 +234,7 @@ internal sealed class CommandRunner
             throw new WorkspaceReadException(RepositoryPaths.Forbidden);
         var candidate = Path.GetFullPath(Path.Join(root, normalized.Length == 0 ? "." : normalized));
         DirectoryLease lease;
-        try { lease = DirectoryLease.AcquireExistingSharingWrites(candidate); }
+        try { lease = DirectoryLease.AcquireExistingSharingWrites(candidate, DriveAdmission.Project); }
         catch (ReparsePointException) { throw new WorkspaceReadException(RepositoryService.SymbolicLinks); }
         catch (IOException)
         {
