@@ -82,18 +82,31 @@ try
                 object response;
                 try
                 {
-                    var envelope = (Dictionary<string, object?>)Contracts.Validate("frame rpc request", WireJson.Parse(line))!;
-                    requestId = (string)envelope["id"]!;
-                    var request = WireJson.Request(envelope);
-                    parsingRequest = false;
-                    object? result;
-                    if (chat is not null) result = await chat.Dispatch(request.Method, (Dictionary<string, object?>)request.Params!);
+                    var input = WireJson.Parse(line);
+                    // entry.ts: a credential frame (decision 1 of P2.4) is answered with null once it is accepted; a frame
+                    // that is neither it nor an RPC request is "Invalid request." under the id "invalid".
+                    if (chat is not null && Credential(input) is { } frame)
+                    {
+                        requestId = (string)frame["id"]!; parsingRequest = false;
+                        var given = (Dictionary<string, object?>)frame["params"]!;
+                        chat.SetCredential((string)given["id"]!, (string)given["value"]!, (string)given["binding"]!);
+                        response = new { jsonrpc = "2.0", id = requestId, result = (object?)null };
+                    }
                     else
                     {
-                        if (request.Method != "workspace.summary") throw new NotSupportedException("This operation is not implemented in the P1 development runtime.");
-                        result = store.Summary();
+                        var envelope = (Dictionary<string, object?>)Contracts.Validate("frame rpc request", input)!;
+                        requestId = (string)envelope["id"]!;
+                        var request = WireJson.Request(envelope);
+                        parsingRequest = false;
+                        object? result;
+                        if (chat is not null) result = await chat.Dispatch(request.Method, (Dictionary<string, object?>)request.Params!);
+                        else
+                        {
+                            if (request.Method != "workspace.summary") throw new NotSupportedException("This operation is not implemented in the P1 development runtime.");
+                            result = store.Summary();
+                        }
+                        response = new { jsonrpc = "2.0", id = requestId, result };
                     }
-                    response = new { jsonrpc = "2.0", id = requestId, result };
                 }
                 catch (JsonException) when (parsingRequest) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, "Invalid request.") }; }
                 catch (NotSupportedException error) { response = new { jsonrpc = "2.0", id = requestId, error = new RpcError(-32000, error.Message) }; }
@@ -158,6 +171,12 @@ catch
     if (writer?.IsCompleted == true) try { await writer; } catch (Exception) { }
     // A failed or timed-out drain is never described as clean shutdown.
     return 1;
+}
+
+static Dictionary<string, object?>? Credential(object? input)
+{
+    try { return (Dictionary<string, object?>)Contracts.Validate("frame runtime.credential", input)!; }
+    catch (JsonException) { return null; }
 }
 
 static bool IsChatError(string message) => message is "Runtime is shutting down." or "Task not found." or "Profile not found." or "Select an existing model profile."

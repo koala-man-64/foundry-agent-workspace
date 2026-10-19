@@ -43,6 +43,14 @@ public sealed partial class Store
         return request;
     }
 
+    /// <summary>Decision 2 of P2.4: whether any MCP server is saved, enabled or not, which a new credential would have to
+    /// repair.</summary>
+    internal bool HasMcpServers()
+    {
+        loop.AssertCurrent();
+        return Scalar("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mcp_servers'") is not null && Scalar("SELECT 1 FROM mcp_servers LIMIT 1") is not null;
+    }
+
     /// <summary>
     /// Decision 2 of P2.3: whether an enabled MCP server has stored tools, which a coding turn would advertise. A row whose
     /// configuration or tool list does not parse counts as one, as TypeScript's tool listing would fail on it.

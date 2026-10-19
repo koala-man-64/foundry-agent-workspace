@@ -194,7 +194,8 @@ function nativeRequest(kind: Exclude<ApiKind, "fake">, request: ProviderRequest)
             const nextMessages = request.messages.filter(message => message.role !== "system");
             const results = anthropicResults(request, calls);
             if (results.length && nextMessages.length === 1 && nextMessages[0]?.role === "user") {
-                const toolResultContent = (results[0] as { content: unknown[] }).content;
+                // Every pending call's result, in the request's order, then the text: Anthropic refuses a tool_use left unanswered.
+                const toolResultContent = results.flatMap(result => (result as { content: unknown[] }).content);
                 messages.push({ role: "user", content: [...toolResultContent, { type: "text", text: nextMessages[0].content }] });
             }
             else messages.push(...results, ...nextMessages.map(message => ({ role: message.role, content: message.content })));
@@ -504,27 +505,51 @@ function requireTools(tools: ToolDefinition[] | undefined, names: string[]): voi
         throw new Error(`Tool ${name} was not advertised.`); }
 function responseCall(item: Record<string, unknown>): ToolCall { if (typeof item.call_id !== "string" || typeof item.name !== "string" || typeof item.arguments !== "string")
     throw new Error("Invalid Responses function call."); return { id: item.call_id, name: item.name, arguments: parseArguments(item.arguments) }; }
+// Every streamed item must match a completed one. The completed items are indexed once, so the check is linear in the
+// stream rather than streamed × output × content, which a hostile stream within the caps could make block the runtime
+// for minutes.
 function validateResponseCompletion(streamed: Record<string, unknown>[], completed: Record<string, unknown>[]): void {
+    if (!streamed.length)
+        return;
+    const index = new Set<string>();
+    for (const item of completed) {
+        const key = responseItemKey(item);
+        if (key !== undefined)
+            index.add(key);
+    }
     for (const item of streamed) {
-        if (!completed.some(candidate => matchingResponseItem(item, candidate)))
+        const key = responseItemKey(item);
+        if (key === undefined || !index.has(key))
             throw new Error("Responses completion output did not match an output item event.");
     }
 }
-function matchingResponseItem(streamed: Record<string, unknown>, completed: Record<string, unknown>): boolean {
-    if (streamed.type !== completed.type)
-        return false;
-    if (typeof streamed.id === "string" || typeof completed.id === "string") {
-        if (streamed.id !== completed.id)
-            return false;
+// Two items match when their keys are equal: the same type and, when either id is a string, the same id; for a function
+// call, the same call id, name and arguments; otherwise the same serialized content when either has content. Those are
+// compared with ===, so an item whose compared value is an object or array matches nothing from another parse.
+function responseItemKey(item: Record<string, unknown>): string | undefined {
+    const type = strictKey(item.type);
+    if (type === undefined)
+        return undefined;
+    const id = typeof item.id === "string" ? item.id : null;
+    if (item.type === "function_call") {
+        const fields = [item.call_id, item.name, item.arguments].map(strictKey);
+        return fields.includes(undefined) ? undefined : JSON.stringify([type, id, ...fields]);
     }
-    if (streamed.type === "function_call") {
-        return streamed.call_id === completed.call_id
-            && streamed.name === completed.name
-            && streamed.arguments === completed.arguments;
-    }
-    if ("content" in streamed || "content" in completed)
-        return JSON.stringify(streamed.content) === JSON.stringify(completed.content);
-    return true;
+    return JSON.stringify([type, id, "content" in item ? `c${JSON.stringify(item.content)}` : "-"]);
+}
+// A primitive as === compares it (String(-0) is "0"), or undefined for an object, an array or NaN.
+function strictKey(value: unknown): string | undefined {
+    if (value === null)
+        return "l";
+    if (value === undefined)
+        return "u";
+    if (typeof value === "string")
+        return `s${value}`;
+    if (typeof value === "boolean")
+        return value ? "t" : "f";
+    if (typeof value === "number" && !Number.isNaN(value))
+        return `n${String(value)}`;
+    return undefined;
 }
 function chatCall(value: {
     id?: string;

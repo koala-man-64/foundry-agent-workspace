@@ -26,7 +26,8 @@ public sealed class FakeToolTests
         var input = (Dictionary<string, object?>)item["input"]!;
         var messages = ((List<object?>)input["messages"]!).Cast<Dictionary<string, object?>>().Select(message => new ProviderMessage((string)message["role"]!, (string)message["content"]!)).ToArray();
         var state = input.GetValueOrDefault("continuation") as Dictionary<string, object?>;
-        var tools = (input.GetValueOrDefault("tools") as List<object?>)?.Cast<string>().ToArray();
+        // The oracle advertises each tool by name with an empty description and schema, which the provider never reads.
+        var tools = (input.GetValueOrDefault("tools") as List<object?>)?.Cast<string>().Select(tool => new ProviderTool(tool, "", new Dictionary<string, object?>())).ToArray();
         var results = (input.GetValueOrDefault("toolResults") as List<object?>)?.Cast<Dictionary<string, object?>>()
             .Select(result => new ProviderToolResult((string)result["id"]!, (string)result["name"]!, (string)result["content"]!, (bool)result["isError"]!)).ToArray();
         var request = new ProviderRequest(messages, state is null ? null : new ProviderContinuation((string)state["apiKind"]!, state["data"]), tools, results);

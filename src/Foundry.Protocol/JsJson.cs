@@ -13,7 +13,10 @@ public sealed class Undefined
 
 public static class JsJson
 {
-    public static string Trim(string value) => value.Trim("\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff".ToCharArray());
+    // ECMAScript WhiteSpace and LineTerminator: what String.prototype.trim and Number() remove.
+    private static readonly char[] Whitespace = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff".ToCharArray();
+    public static string Trim(string value) => value.Trim(Whitespace);
+    public static string TrimStart(string value) => value.TrimStart(Whitespace);
     private static readonly JsonSerializerOptions RecordOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     public static string? Stringify(object? value)
     {

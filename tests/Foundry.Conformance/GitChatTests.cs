@@ -116,7 +116,7 @@ public sealed class GitChatTests
             {
                 ["messages"] = request.Messages.Select(message => (object?)new Dictionary<string, object?> { ["role"] = message.Role, ["content"] = message.Content }).ToList(),
             };
-            if (request.Tools is not null) view["tools"] = request.Tools.Cast<object?>().ToList();
+            if (request.Tools is not null) view["tools"] = request.Tools.Select(tool => (object?)tool.Name).ToList();
             if (request.Continuation is not null) view["continuation"] = request.Continuation.ToWire();
             if (request.ToolResults is not null)
                 view["toolResults"] = request.ToolResults.Select(result => (object?)new Dictionary<string, object?> { ["id"] = result.Id, ["name"] = result.Name, ["content"] = result.Content, ["isError"] = result.IsError }).ToList();
