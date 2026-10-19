@@ -73,8 +73,26 @@ internal static class Scratch
     public static async Task<int[]> WaitForPids(string directory, params string[] names)
     {
         var paths = names.Select(name => Path.Combine(directory, name)).ToArray();
-        await WaitUntil(() => paths.All(path => File.Exists(path) && new FileInfo(path).Length > 0), "the process tree to record its process ids", seconds: 60);
-        return paths.Select(path => int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture)).ToArray();
+        int[]? pids = null;
+        await WaitUntil(() => (pids = TryReadPids(paths)) is not null, "the process tree to record its process ids", seconds: 60);
+        return pids!;
+    }
+
+    /// <summary>
+    /// The children write their own PID files ([IO.File]::WriteAllText), so a file can exist, and even have a length, while
+    /// its writer still holds it open. A read-only-sharing read then fails, and a read that succeeds sees complete content.
+    /// </summary>
+    private static int[]? TryReadPids(string[] paths)
+    {
+        var pids = new int[paths.Length];
+        for (var index = 0; index < paths.Length; index++)
+        {
+            string text;
+            try { text = File.ReadAllText(paths[index]); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
+            if (!int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out pids[index]) || pids[index] <= 0) return null;
+        }
+        return pids;
     }
 
     public static async Task<int[]> WaitForPids(JobProcess job, string directory, params string[] names)
