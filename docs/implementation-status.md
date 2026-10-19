@@ -267,17 +267,26 @@ Dual-landed fixes:
   - **The fix.**
     - After a normal exit, anything left in the job is still terminated.
     - The marker is reported only when a listed process is still running. An id that no longer opens has gone, and a process whose exit code is set has exited. A live process that cannot be read counts as running.
-    - This is the rule `JobProcess.ProcessImages` already applies natively.
+    - The command has run by then, so the decision never throws. If the job counts more members than it lists, it waits for the two to agree. A list that cannot be read, or does not settle within a second, counts as a descendant, as before.
+    - Natively, `JobProcess.ProcessImages` applies the same exited-or-running rule. The native runner also ignores the system console host, which this job never holds, because the command shares its helper's console.
   - **After the fix.** Load runs cannot show it: the window did not open again.
     - 2,300 runs of the fixed helper reported no marker. Interleaved with 700 of them, the unfixed helper saw no race either, even with more load and process churn.
-    - The fix rests on the recorded states instead. Each of the 6 was the root with its exit code set, or an empty list. `Running` classifies both as not running, under the deterministic tests below.
-  - **Native side.** Not affected: the native runner asks `ProcessImages`, which leaves out an exited process, and it tolerates only the console host. No native behaviour changes. That rule had no deterministic test until this change.
+    - The fix rests on the recorded states instead. Each of the 6 was the root with its exit code set, or an empty list. `Running` classifies the root as not running. An empty list has nothing to report once its count agrees.
+  - **Native side.** Not affected: the native runner asks `ProcessImages`, which leaves out an exited process. No native behaviour changes. That rule had no deterministic test until this change.
   - **Tests.**
-    - `packages/runtime/tests/command-runner.test.ts` compiles the helper's own type. It pins `Running` on the window's exact state: a process that has exited while its handle is held is not running, the test's own process is, and process 0 never opens.
-    - Native `AnExitedRootIsNotLiveWhileItsHandleIsHeld` pins `JobProcess.ImagePath`, now internal, on the same state.
-    - The window itself cannot be held open, so no deterministic test covers how the helper combines the count, the list and `Running`. The load runs above are its evidence.
+    - `packages/runtime/tests/command-runner.test.ts` compiles the helper's own types.
+      - It pins `Running` on the window's exact state: a process that has exited while its handle is held is not running, the test's own process is, and process 0 never opens. Ignoring the exit code fails it.
+      - A job of 20 processes, more than the first 16-entry buffer, reports a running member, then none once all have exited. Reading the ids at the wrong offset fails it, and so does treating a full buffer as an empty job.
+    - Native `AnExitedRootIsNotLiveWhileItsHandleIsHeld` pins `JobProcess.ImagePath`, now internal, on the same state. Ignoring the exit code fails it.
+    - The window itself cannot be held open, so no deterministic test covers the decision on a lagging count. The load runs above are its evidence.
     - A real background grandchild still reports the marker: the oracle's "ends the whole tree on timeout, cancellation and a normal exit" #7 and `security-audit.test.ts`.
   - **Vectors.** `command-runner-vectors.json` and `tool-runtime-vectors.json` were regenerated under Electron's Node. Only the `job-runner.ps1` hash changed; no recorded outcome did.
+  - **Independent review** (`cloud-security-vulnerability-expert`, Sonnet at high effort, from its definition): **GO with conditions** for `44c767d..27fa99f`. No path lets a running descendant survive, and none newly reports success or verified cleanup.
+    - **F1 (medium), fixed.** The first version grew its buffer on any count mismatch, then threw "did not settle". A throw after the command ran records it as unknown and loses its output, which is worse than the phantom marker. The decision now waits for the list to settle and never throws.
+    - **F2 (low), accepted.** A root that exits with code 259 (`STILL_ACTIVE`) during the window still reports the marker. That is the conservative direction, and native does the same.
+    - **F3 (low), fixed.** The combination of the list and `Running` was untested; the 20-process test covers the list parsing and buffer growth.
+    - **F4 (low), fixed.** This entry overstated equivalence with native and how the empty-list state is classified.
+    - **Open, native only, not changed here.** `ProcessImages` throws on a list that does not settle, before the job is terminated. Kill-on-close still reclaims the tree, and the run fails rather than reporting success. It predates this change.
 
 | Seat | Model / effort | Selection source | Routing reason |
 | --- | --- | --- | --- |

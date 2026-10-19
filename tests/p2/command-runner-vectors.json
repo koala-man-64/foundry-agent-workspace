@@ -8,7 +8,7 @@
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",
-        "sha256": "9d2df4354aea766575218ed22fffbf21b6c81d2e5703464ff5b9e8f7c29c6858"
+        "sha256": "d9708ff54192160e6056c7e747be746cf2433f8176f42174213c7194664c796f"
       }
     ]
   },

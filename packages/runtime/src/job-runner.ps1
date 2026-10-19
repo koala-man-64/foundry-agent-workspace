@@ -73,19 +73,19 @@ public static class JobRun {
   // An id that no longer opens has gone, and a process whose exit code is set has exited. A live process that cannot be read counts as running.
   public static bool Running(int processId) { IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId); if (process == IntPtr.Zero) return Marshal.GetLastWin32Error() != ERROR_INVALID_PARAMETER; try { uint code; return !GetExitCodeProcess(process, out code) || code == STILL_ACTIVE; } finally { CloseHandle(process); } }
   // The job can still list and count the root for a moment after its exit is signalled, longer under load. Only a process still running is a descendant.
-  static bool RunningDescendant(IntPtr job) {
-    for (int capacity = 16; ; capacity *= 2) {
-      if (capacity > 1 << 20) throw new InvalidOperationException("The job's process list did not settle.");
+  // The command has run by now, so this never throws: a list that cannot be read, or does not settle within a second, counts as a descendant.
+  public static bool RunningDescendant(IntPtr job) {
+    var settle = Stopwatch.StartNew();
+    for (int capacity = 16; capacity <= 1 << 20 && settle.ElapsedMilliseconds < 1000; ) {
       int size = 2 * sizeof(uint) + capacity * IntPtr.Size; IntPtr memory = Marshal.AllocHGlobal(size);
       try {
-        bool listedAll = QueryInformationJobObject(job, JobObjectBasicProcessIdList, memory, (uint)size, IntPtr.Zero); int error = Marshal.GetLastWin32Error();
-        if (!listedAll && error != ERROR_MORE_DATA) throw new InvalidOperationException("QueryInformationJobObject failed: " + error);
+        if (!QueryInformationJobObject(job, JobObjectBasicProcessIdList, memory, (uint)size, IntPtr.Zero)) { if (Marshal.GetLastWin32Error() != ERROR_MORE_DATA) return true; capacity *= 2; continue; }
         int assigned = Marshal.ReadInt32(memory, 0), listed = Marshal.ReadInt32(memory, sizeof(uint));
-        if (!listedAll || listed < assigned) continue;
-        for (int index = 0; index < listed; index++) if (Running((int)Marshal.ReadIntPtr(memory, 2 * sizeof(uint) + index * IntPtr.Size).ToInt64())) return true;
-        return false;
+        if (listed >= assigned) { for (int index = 0; index < listed; index++) if (Running((int)Marshal.ReadIntPtr(memory, 2 * sizeof(uint) + index * IntPtr.Size).ToInt64())) return true; return false; }
       } finally { Marshal.FreeHGlobal(memory); }
+      System.Threading.Thread.Sleep(5);
     }
+    return true;
   }
   static string Quote(string value) { return "\"" + value.Replace("\"", "\\\"") + "\""; }
   static IntPtr VerifiedParent(int pid, long startedAtMs) { IntPtr parent = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, false, pid); if (parent == IntPtr.Zero) throw new InvalidOperationException("Runtime parent " + pid + " is unavailable: " + Marshal.GetLastWin32Error()); long created, exited, kernel, user; Check(GetProcessTimes(parent, out created, out exited, out kernel, out user), "GetProcessTimes"); long observedMs = (created / 10000L) - 11644473600000L; if (Math.Abs(observedMs - startedAtMs) > 5000L) { CloseHandle(parent); throw new InvalidOperationException("Runtime parent identity changed."); } return parent; }
