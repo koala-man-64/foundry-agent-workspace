@@ -352,6 +352,14 @@ Dual-landed fixes:
     - A list with none running is now read again. The decision settles only when no new member appears.
     - Members are named by id and creation time, so a reused id counts as new. Churn that does not settle within the second counts as a descendant.
     - The window cannot be held open, so no deterministic test covers the second read.
+    - **Independent re-review of `cbcd234`: GO.** The reviewer checked the argument that nothing can start once a second read adds no new member. Not changed, all low: an id that never opened is named by 0 alone, which matters only in an unrealistic reuse case; the churn loop spins without sleeping until the one-second bound.
+  - **Validation of `cbcd234`** (main merged, with #47).
+    - `pnpm check`: 596 passed.
+    - `pnpm oracle` under Electron's Node: 65 passed across 38 files.
+    - Native: 7,949 tests, 7,947 passed, 0 failed, 2 expected skips.
+    - `pnpm test:e2e`: 21 passed.
+    - `pnpm package:dir` and `pnpm smoke:package`: passed.
+    - `git diff --check`: clean.
   - **Validation of `721ea12`.**
     - `pnpm check`: 589 passed.
     - `pnpm oracle` under Electron's Node: 61 passed across 34 files.
