@@ -336,6 +336,7 @@ it('pins the coding tools: definitions, arguments, search and executions through
     const corpus = {
       schemaVersion: 1,
       oracle: { sources: ['packages/runtime/src/tool-definitions.ts', 'packages/runtime/src/tool-runtime.ts', 'packages/runtime/src/repository.ts', 'packages/runtime/src/command-runner.ts', 'packages/runtime/src/job-runner.ps1',
+        'packages/runtime/src/safe-file-creation.ts', 'packages/runtime/src/windows-job.ts', 'src/Foundry.Platform/SafeFileCreation.cs',
         'packages/runtime/src/redaction.ts', 'packages/runtime/src/store.ts', 'packages/runtime/src/service.ts', 'packages/runtime/src/execution-slots.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
       stamp, tasks, definitions: JSON.stringify(TOOL_DEFINITIONS), arguments: argumentsVectors, search: searchVectors, executions: executionVectors, stored, decisions: decisionVectors,
     };

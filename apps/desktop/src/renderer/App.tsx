@@ -835,14 +835,14 @@ function App() {
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}
         {(detail?.approvals ?? []).map((approval) => <article className={`approval-card ${approval.state}`} data-approval-id={approval.id} key={approval.id}>
-          <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
+          <div className="approval-heading"><strong>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span>{approval.state}</span></div>
           <p>{approval.summary}</p>
           {approval.browser && <div className="command-evidence"><strong>Browser action</strong><dl><dt>Origin</dt><dd>{approval.browser.prepared.origin}</dd></dl><dl><dt>Target tab</dt><dd>{approval.browser.prepared.tabId}</dd></dl><dl><dt>Action</dt><dd>{approval.browser.prepared.action.kind}</dd></dl><dl><dt>Exact request</dt><dd><pre>{JSON.stringify(approval.browser.prepared.action, null, 2)}</pre></dd></dl><small>One approval permits this exact action only. The page may have changed; stale actions are rejected.</small></div>}
           {approval.mcp && <div className="command-evidence"><strong>External MCP tool</strong><dl><dt>Server</dt><dd>{approval.mcp.serverName} ({approval.mcp.serverKey})</dd></dl><dl><dt>Tool</dt><dd>{approval.mcp.tool}</dd></dl><dl><dt>Arguments</dt><dd><pre>{approval.mcp.arguments}</pre></dd></dl><small>External tools act outside the worktree with your Windows privileges; the server's own annotations grant nothing.</small></div>}
           {approval.path && <dl><dt>File</dt><dd>{approval.path}</dd></dl>}
-          {approval.before !== undefined && <dl><dt>Before</dt><dd><pre>{approval.before}</pre></dd></dl>}
+          {approval.expectedHash === null ? <dl><dt>Before</dt><dd>File is absent. This approval creates a new file.</dd></dl> : approval.before !== undefined && <dl><dt>Before</dt><dd>{approval.before === '' ? 'Existing empty file.' : <pre>{approval.before}</pre>}</dd></dl>}
           {approval.after !== undefined && <dl><dt>After</dt><dd><pre>{approval.after}</pre></dd></dl>}
-          {(approval.expectedHash !== undefined || approval.resultingHash !== undefined) && <dl><dt>Hash</dt><dd>{approval.expectedHash ?? 'none'} → {approval.resultingHash ?? 'pending'}</dd></dl>}
+          {(approval.expectedHash !== undefined || approval.resultingHash !== undefined) && <dl><dt>Hash</dt><dd>{approval.expectedHash === null ? 'absent' : approval.expectedHash ?? 'unavailable'} → {approval.resultingHash ?? 'pending'}</dd></dl>}
           {approval.command && <div className="command-evidence"><strong>Command</strong><pre>{approval.command}</pre><small>Runs with your Windows privileges; approval is not sandboxing.</small></div>}
           {approval.cwd && <dl><dt>Working directory</dt><dd>{approval.cwd}</dd></dl>}
           {approval.shell && <dl><dt>Shell</dt><dd>{approval.shell}</dd></dl>}

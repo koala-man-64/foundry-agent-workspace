@@ -8,7 +8,7 @@ import { seedPowerShellModuleCache, warmPowerShellModuleCache } from './powershe
 import { regenerating } from './oracle-node.mjs';
 import { removeTree } from './scratch';
 
-// The approved-command runner of the shipping TypeScript runtime (command-runner.ts and its job-runner.ps1 helper),
+// The approved-command runner of the shipping TypeScript runtime (command-runner.ts, windows-job.ts and job-runner.ps1),
 // driven directly over disposable Git worktrees with real Windows PowerShell 5.1 runs. The C# suite (CommandRunnerTests)
 // rebuilds every tree, replays every step through the native CommandRunner and must reproduce each outcome or its named
 // difference. Prepared fingerprints are compared only by identity within a case (group numbers in order of first
@@ -232,7 +232,7 @@ it('pins the approved-command runner of the shipping Node authority', async () =
   }
   const corpus = {
     schemaVersion: 1,
-    oracle: { sources: ['packages/runtime/src/command-runner.ts', 'packages/runtime/src/job-runner.ps1'].map(source => ({ path: source, sha256: sha256File(source) })) },
+    oracle: { sources: ['packages/runtime/src/command-runner.ts', 'packages/runtime/src/windows-job.ts', 'packages/runtime/src/job-runner.ps1'].map(source => ({ path: source, sha256: sha256File(source) })) },
     cases: recorded,
   };
   const target = 'tests/p2/command-runner-vectors.json';

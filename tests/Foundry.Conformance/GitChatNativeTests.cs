@@ -263,6 +263,73 @@ public sealed class GitChatNativeTests
         });
     });
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StoredCreateContinuationsConsumePriorResultsWithoutReplayingUnapprovedFiles(bool hasStoredError)
+    {
+        var requests = new List<ProviderRequest>();
+        var provider = new FakeChatProvider(_ => Task.CompletedTask);
+        async IAsyncEnumerable<ProviderChatEvent> Stream(ProviderRequest request, [EnumeratorCancellation] CancellationToken token)
+        {
+            requests.Add(request);
+            await foreach (var item in provider.StreamTurn(request, token)) yield return item;
+        }
+        await WithGitProject(Stream, async (fixture, loop, store, chat, projectId) =>
+        {
+            var taskId = await loop.Invoke(async () => (string)((Dictionary<string, object?>)(await chat.Dispatch("task.start", Start(projectId, "Hello", "coding")))!)["id"]!);
+            await Idle(loop, store, taskId);
+            var target = await loop.Invoke(async () =>
+            {
+                var worktree = (string)store.ReadTask(taskId)["worktreePath"]!;
+                Directory.CreateDirectory(Path.Combine(worktree, "src"));
+                var call = new Dictionary<string, object?>
+                {
+                    ["id"] = "fake-create-1", ["name"] = "write_file",
+                    ["arguments"] = new Dictionary<string, object?> { ["path"] = "src/resumed-create.txt", ["expectedHash"] = null, ["content"] = "This call must not be replayed." },
+                };
+                store.SaveProviderState(taskId, new()
+                {
+                    ["fingerprint"] = Compatibility.ProfileFingerprint(store.Profile(Store.FakeProfileId)!),
+                    ["continuation"] = new Dictionary<string, object?>
+                    {
+                        ["apiKind"] = "fake", ["data"] = new Dictionary<string, object?> { ["stage"] = "create", ["calls"] = new List<object?> { call } },
+                    },
+                    ["pending"] = new List<object?> { call },
+                    ["results"] = hasStoredError ? new List<object?>
+                    {
+                        new Dictionary<string, object?> { ["id"] = "fake-create-1", ["name"] = "write_file", ["content"] = "User rejected the prior creation.", ["isError"] = true },
+                    } : [],
+                    ["seenToolCallIds"] = new List<object?> { "fake-create-1" },
+                });
+                store.SaveTask(new(store.ReadTask(taskId)) { ["status"] = "interrupted" });
+                await chat.Dispatch("task.send", new() { ["taskId"] = taskId, ["content"] = "Continue after the interruption." });
+                return Path.Combine(worktree, "src/resumed-create.txt");
+            });
+            await Idle(loop, store, taskId);
+            await loop.Invoke(() =>
+            {
+                Assert.Equal(2, requests.Count);
+                var resumed = requests.Last();
+                Assert.Contains(resumed.Tools!, tool => tool.Name == "write_file");
+                Assert.Contains(resumed.Messages, message => message.Role == "user" && message.Content == "Continue after the interruption.");
+                var previous = Assert.Single(resumed.ToolResults!);
+                Assert.Equal(("fake-create-1", "write_file", true), (previous.Id, previous.Name, previous.IsError));
+                Assert.Equal(hasStoredError ? "User rejected the prior creation."
+                    : "The previous turn was interrupted. This call was not replayed. Inspect current state before proposing any further action.", previous.Content);
+                var answer = store.Rows("SELECT data FROM messages WHERE task_id=$p0 ORDER BY ordinal", taskId)
+                    .Select(row => (Dictionary<string, object?>)PersistedJson.Parse((string)row["data"]!)!).Last();
+                Assert.Equal(("Offline create demo stopped: creation was rejected or failed.", "complete"), (answer["content"], answer["status"]));
+                Assert.Equal("idle", store.ReadTask(taskId)["status"]);
+                Assert.Equal(["completed", "completed"], Outcomes(store, taskId));
+                Assert.Empty(store.Rows("SELECT * FROM intents WHERE kind='tool.approval'"));
+                Assert.False(File.Exists(target));
+                Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(target)!));
+                return Task.FromResult(0);
+            });
+        });
+    }
+
     /// <summary>A stored continuation must be in a stage the offline provider serves natively. A channel demo interrupted
     /// before its tool ran resumes with the interrupted-call result; the MCP demo's stage, whose tools have no native slice
     /// yet, is refused before any reservation.</summary>

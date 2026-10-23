@@ -1,5 +1,19 @@
 # Implementation status
 
+## Reviewed single-file creation — scoped local expansion, 23 October 2026
+
+After both post-merge PR56 workflows passed on `eb899fb`, Rudy explicitly approved a scoped migration-freeze exception for matching TypeScript/C# safe-file creation, the reviewed Windows primitive/bridge, and `write_file`'s null-as-create contract. Electron/TypeScript remains the shipping product. There is no native runtime adoption, cutover, database migration or new production dependency.
+
+`write_file` can propose one absent UTF-8 file of at most 65,536 bytes inside an existing safe task-worktree directory. An existing file still requires its exact SHA-256; `replace_text` remains hash-required. The Create review shows the absent original, exact relative path, complete proposed text and resulting hash. Parents are never created and existing entries are never overwritten.
+
+One C#5-compatible source is compiled into `Foundry.Platform` and embedded in the TypeScript bundle for a fixed PowerShell bridge. It anchors a local volume, opens each existing component relative to held directory handles without following reparse points, binds the complete parent identity chain into the review fingerprint, and revalidates it before atomic relative `FILE_CREATE`. It holds strict directory pins and the new exclusive file through bounded write, flush and content verification. The bridge sends bounded data through stdin under the existing kill-on-close Job supervisor; paths and content are never interpolated into executable source. This helper does not start or adopt the native runtime.
+
+Execution intent remains durable before mutation. Successful creation itself is a mutation even for an empty file. Ambiguous post-create failures, lost/malformed replies and unverified process cleanup remain unknown; retained operations are never blindly retried or deleted. One-shot approval consumption remains effective after external deletion. Missing-file reconciliation cannot prove that creation never happened.
+
+Final local validation passed: `pnpm check --maxWorkers=1 --bail=1` (105 files / 702 tests), the 65 Electron oracle tests and 698 metadata vectors, all 23 Electron workflows, the native Release build (zero warnings/errors) and full suite (8,250 passed, two existing environment skips), and `pnpm package:dir` plus `pnpm smoke:package`, including real packaged creation. A final source-binding-only addition for the extracted Windows job module passed the focused Electron command oracle, native source-binding check, typecheck and lint; application code was unchanged after the full check. All 102 oracle source bindings match. Compiled PDB checksums bind all 11 changed native source/test files, and the packaged runtime's embedded primitive and unpacked supervisor match the reviewed sources.
+
+Independent filesystem/security source review found no remaining actionable defects after correcting and reproducing the prelaunch-error outcome classification. Exact candidate, review, validation and package-custody evidence is retained under `.local/safe-file-creation/`. All fixtures use isolated repositories and application data. Unsupported volume/identity observations refuse closed; live removable-device/ReFS, installer/signing, providers and deployment remain separate qualification gates.
+
 ## Command review for installed dependencies — local expansion, 23 October 2026
 
 Rudy approved a scoped exception to the migration feature freeze for matching TypeScript and C# command-fingerprinting changes. The shipping product remains Electron/TypeScript; this does not authorize native cutover, adoption, a schema/protocol change, or another feature expansion.

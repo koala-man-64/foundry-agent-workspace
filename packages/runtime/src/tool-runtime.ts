@@ -224,7 +224,7 @@ export class ToolRuntime {
         }
         // Scope is enforced before any file access for the edit.
         if (scopes && !inScope(scopes.write, relativePath)) throw new Error('Path is outside this assignment write scope.');
-        edit = await this.repositories.prepareEdit(task.worktreePath, relativePath, expectedHash, after);
+        edit = await this.repositories.prepareEdit(task.worktreePath, relativePath, expectedHash, after, signal);
         if (scopes && !inScope(scopes.write, edit.path)) throw new Error('Path is outside this assignment write scope.');
         this.assertNoSecrets(edit.before ?? ''); this.assertNoSecrets(edit.after);
         approval = { ...common, summary: expectedHash === null ? `Create ${edit.path}` : `Edit ${edit.path}`, path: edit.path, before: edit.before, after: edit.after, expectedHash, resultingHash: edit.resultingHash, fingerprint: edit.fingerprint };
@@ -239,7 +239,7 @@ export class ToolRuntime {
       const perform = () => this.slots.use(signal, async () => {
         approved.state = 'executing'; this.save(approved);
         if (edit) {
-          await this.repositories.applyEdit(edit);
+          await this.repositories.applyEdit(edit, signal);
           approved.state = 'complete'; approved.result = { content: JSON.stringify({ path: edit.path, hash: edit.resultingHash, applied: true }), isError: false };
         } else if (command) {
           const before = role !== 'coding' ? await this.orchestration!.commandStarting(task).catch(() => undefined) : undefined;

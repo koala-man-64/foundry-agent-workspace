@@ -4,23 +4,35 @@
     "sources": [
       {
         "path": "packages/runtime/src/tool-definitions.ts",
-        "sha256": "3321681bfc0716cbef55793828e060ddb830e34842e1f4d5b1b49e57c0c0ee0e"
+        "sha256": "34b0173e0fb6f4c4374763b80fd6f00602354222f7ff0990dc4ce369f4787520"
       },
       {
         "path": "packages/runtime/src/tool-runtime.ts",
-        "sha256": "7ec7a2538b7a64cc6b65dd5c852a20d4471e87c1544c0ef4b5a21aa5d0c11a94"
+        "sha256": "b8caf71156f5684d8450218dcc625f616a1fd3a53fdd176ecd1f9f71cd1aea2b"
       },
       {
         "path": "packages/runtime/src/repository.ts",
-        "sha256": "39c522b342044aec5525b44db3f5282df68af7f034d0fa84a0c3f9612c00d1ba"
+        "sha256": "17f024b077981971d1af116f0ce7e3df5b5f84968ff1d1660237772b05a2de03"
       },
       {
         "path": "packages/runtime/src/command-runner.ts",
-        "sha256": "a43d779d748a3126c09731dd2a49dc889298cb642ae08b89e2f21728150b120d"
+        "sha256": "22c9857f615a7719a071aafdeeafaace0b23184bf1c84aee1397726e3d41742f"
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",
-        "sha256": "3ca3094cbaad0a5326bff80481c4fab286458e7c3888f3828e602d7b3a4e134e"
+        "sha256": "eae215c7c3b6b79c3a01cf4bf715ae2163e697c21f37c5ca72cc5fbce6ff42cd"
+      },
+      {
+        "path": "packages/runtime/src/safe-file-creation.ts",
+        "sha256": "615834d64c7d8eb4284ead2cc723cd5c29ad7cb04a9e74a42172569882f31446"
+      },
+      {
+        "path": "packages/runtime/src/windows-job.ts",
+        "sha256": "0ab4b0010422e16ddfd5a1345dd925839d696b2c67209c714a42191ce442d4e3"
+      },
+      {
+        "path": "src/Foundry.Platform/SafeFileCreation.cs",
+        "sha256": "022e8e6da2919a0d23803485fe80cdc925d360bca8d3fd73382176d23c6f2d8d"
       },
       {
         "path": "packages/runtime/src/redaction.ts",
@@ -138,7 +150,7 @@
       "baseCommit": "0000000000000000000000000000000000000000"
     }
   ],
-  "definitions": "[{\"name\":\"list_directory\",\"description\":\"List a relative directory in the task worktree. The root path is an empty string. Secret files and Git metadata are unavailable.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"read_file\",\"description\":\"Read a UTF-8 file and its SHA-256 content hash. Paths must be relative to the task worktree.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"search_text\",\"description\":\"Find literal text in accessible worktree files. Results are bounded and report skipped content.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"path\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096}},\"required\":[\"query\",\"path\"],\"additionalProperties\":false}},{\"name\":\"write_file\",\"description\":\"Propose full replacement of an existing file using its exact SHA-256 hash. New-file creation is unavailable through this tool. The user must review and approve the full change.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"expectedHash\":{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},\"content\":{\"type\":\"string\",\"maxLength\":65536}},\"required\":[\"path\",\"expectedHash\",\"content\"],\"additionalProperties\":false}},{\"name\":\"replace_text\",\"description\":\"Propose exactly one literal replacement in a file with the expected SHA-256 hash. The match must be unique. The user reviews and approves the change.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"expectedHash\":{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},\"oldText\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":65536},\"newText\":{\"type\":\"string\",\"maxLength\":65536}},\"required\":[\"path\",\"expectedHash\",\"oldText\",\"newText\"],\"additionalProperties\":false}},{\"name\":\"run_command\",\"description\":\"Propose a non-interactive PowerShell command in a relative directory. The user must approve the exact command, directory, shell, environment and timeout. Approval is not sandboxing.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":16384},\"cwd\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096},\"environment\":{\"default\":{},\"type\":\"object\",\"propertyNames\":{\"type\":\"string\",\"pattern\":\"^[A-Za-z_][A-Za-z0-9_]*$\"},\"additionalProperties\":{\"type\":\"string\",\"maxLength\":4096}},\"timeoutMs\":{\"default\":600000,\"type\":\"integer\",\"minimum\":100,\"maximum\":600000}},\"required\":[\"command\",\"cwd\",\"environment\",\"timeoutMs\"],\"additionalProperties\":false}}]",
+  "definitions": "[{\"name\":\"list_directory\",\"description\":\"List a relative directory in the task worktree. The root path is an empty string. Secret files and Git metadata are unavailable.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"read_file\",\"description\":\"Read a UTF-8 file and its SHA-256 content hash. Paths must be relative to the task worktree.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096}},\"required\":[\"path\"],\"additionalProperties\":false}},{\"name\":\"search_text\",\"description\":\"Find literal text in accessible worktree files. Results are bounded and report skipped content.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"path\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096}},\"required\":[\"query\",\"path\"],\"additionalProperties\":false}},{\"name\":\"write_file\",\"description\":\"Propose replacing an existing file using its exact SHA-256 hash, or creating one absent UTF-8 file with expectedHash null. Parents must already exist; content is limited to 64 KiB. The user must review and approve the exact path and full content. Creation never overwrites an existing entry.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"expectedHash\":{\"anyOf\":[{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},{\"type\":\"null\"}]},\"content\":{\"type\":\"string\",\"maxLength\":65536}},\"required\":[\"path\",\"expectedHash\",\"content\"],\"additionalProperties\":false}},{\"name\":\"replace_text\",\"description\":\"Propose exactly one literal replacement in a file with the expected SHA-256 hash. The match must be unique. The user reviews and approves the change.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"expectedHash\":{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},\"oldText\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":65536},\"newText\":{\"type\":\"string\",\"maxLength\":65536}},\"required\":[\"path\",\"expectedHash\",\"oldText\",\"newText\"],\"additionalProperties\":false}},{\"name\":\"run_command\",\"description\":\"Propose a non-interactive PowerShell command in a relative directory. The user must approve the exact command, directory, shell, environment and timeout. Approval is not sandboxing.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":16384},\"cwd\":{\"default\":\"\",\"type\":\"string\",\"maxLength\":4096},\"environment\":{\"default\":{},\"type\":\"object\",\"propertyNames\":{\"type\":\"string\",\"pattern\":\"^[A-Za-z_][A-Za-z0-9_]*$\"},\"additionalProperties\":{\"type\":\"string\",\"maxLength\":4096}},\"timeoutMs\":{\"default\":600000,\"type\":\"integer\",\"minimum\":100,\"maximum\":600000}},\"required\":[\"command\",\"cwd\",\"environment\",\"timeoutMs\"],\"additionalProperties\":false}}]",
   "arguments": [
     {
       "tool": "list_directory",
@@ -7467,7 +7479,11 @@
         "expectedHash": null,
         "content": "x"
       },
-      "error": "[\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"expectedHash\"\n    ],\n    \"message\": \"Invalid input: expected string, received null\"\n  }\n]"
+      "value": {
+        "path": "a",
+        "expectedHash": null,
+        "content": "x"
+      }
     },
     {
       "tool": "write_file",

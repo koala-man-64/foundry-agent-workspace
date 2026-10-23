@@ -251,6 +251,9 @@ describe.runIf(process.platform === 'win32')('CommandRunner', () => {
     const source = await fs.readFile(path.join(process.cwd(), 'packages', 'runtime', 'src', 'command-runner.ts'), 'utf8');
     const runnerPath = path.join(base, 'runner.mjs');
     await fs.writeFile(runnerPath, ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
+    const supervisor = await fs.readFile(path.join(process.cwd(), 'packages', 'runtime', 'src', 'windows-job.ts'), 'utf8');
+    await fs.writeFile(path.join(base, 'windows-job.js'), ts.transpileModule(supervisor, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
+    await fs.writeFile(path.join(base, 'package.json'), '{"type":"module"}');
     const rootPid = path.join(root, 'root.pid').replace(/'/g, "''");
     const childPid = path.join(root, 'child.pid').replace(/'/g, "''");
     const child = `[IO.File]::WriteAllText('${childPid}', $PID); Start-Sleep -Seconds 20`;

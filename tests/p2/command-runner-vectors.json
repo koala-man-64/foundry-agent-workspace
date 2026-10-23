@@ -4,11 +4,15 @@
     "sources": [
       {
         "path": "packages/runtime/src/command-runner.ts",
-        "sha256": "a43d779d748a3126c09731dd2a49dc889298cb642ae08b89e2f21728150b120d"
+        "sha256": "22c9857f615a7719a071aafdeeafaace0b23184bf1c84aee1397726e3d41742f"
+      },
+      {
+        "path": "packages/runtime/src/windows-job.ts",
+        "sha256": "0ab4b0010422e16ddfd5a1345dd925839d696b2c67209c714a42191ce442d4e3"
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",
-        "sha256": "3ca3094cbaad0a5326bff80481c4fab286458e7c3888f3828e602d7b3a4e134e"
+        "sha256": "eae215c7c3b6b79c3a01cf4bf715ae2163e697c21f37c5ca72cc5fbce6ff42cd"
       }
     ]
   },

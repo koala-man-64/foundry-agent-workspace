@@ -163,15 +163,15 @@ describe('RepositoryService', () => {
     await expect(fs.readFile(path.join(root, 'README.md'), 'utf8')).resolves.toBe('changed elsewhere\n');
   });
 
-  it('refuses secret paths, hard-linked files, and new-file edits', async () => {
+  it('refuses secret paths, hard-linked files, and missing parent directories', async () => {
     const { root, service } = await fixtureRepository();
     await fs.writeFile(path.join(root, '.env'), 'TOKEN=never-expose\n');
     const readme = await service.readFile(root, 'README.md');
     await expect(service.prepareEdit(root, '.env', readme.hash, 'changed\n')).rejects.toThrow(/forbidden|available/i);
     await fs.link(path.join(root, 'README.md'), path.join(root, 'README-copy.md'));
     await expect(service.prepareEdit(root, 'README.md', readme.hash, 'changed\n')).rejects.toThrow(/hard-linked/i);
-    await expect(service.prepareEdit(root, 'new.txt', null, 'new\n')).rejects.toThrow(/creating new files is unavailable/i);
-    await expect(fs.access(path.join(root, 'new.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(service.prepareEdit(root, 'missing/new.txt', null, 'new\n')).rejects.toThrow();
+    await expect(fs.access(path.join(root, 'missing'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('searches accessible text without changing repository files', async () => {

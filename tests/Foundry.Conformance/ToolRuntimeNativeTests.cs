@@ -71,6 +71,37 @@ public sealed class ToolRuntimeNativeTests
     });
 
     /// <summary>Once the edit's write has started, any failure leaves the outcome unknown; nothing is retried.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task CreationPersistsExecutionBeforeEffectsAndNeverReplaysAConsumedApproval(bool failAfterCreate) => Run(async (fixture, store, _, tools, repositories) =>
+    {
+        var task = SeedTask(store, fixture, 1);
+        var approvalId = "";
+        var sawExecuting = false;
+        repositories.EditStage = stage =>
+        {
+            if (stage != "created") return;
+            sawExecuting = Equals(store.Approval(approvalId)["state"], "executing");
+            if (failAfterCreate) throw new IOException("Injected after creation.");
+        };
+        var pending = tools.Execute(task, new ToolCall("create", "write_file", new Dictionary<string, object?> { ["path"] = "new.txt", ["expectedHash"] = null, ["content"] = "" }), CancellationToken.None);
+        var approval = await Proposal(store, pending);
+        approvalId = (string)approval["id"]!;
+        Assert.Equal("Create new.txt", approval["summary"]);
+        Assert.Equal("", approval["before"]);
+        tools.Decide((string)task["id"]!, approvalId, (string)approval["nonce"]!, "approve");
+        Assert.Equal(failAfterCreate, (await pending).IsError);
+        Assert.True(sawExecuting);
+        Assert.Equal(failAfterCreate ? "unknown" : "complete", store.Approval(approvalId)["state"]);
+        var file = fixture.Local(Worktree + "/new.txt");
+        Assert.True(File.Exists(file));
+        File.Delete(file);
+        Assert.Throws<WorkspaceReadException>(() => tools.Decide((string)task["id"]!, approvalId, (string)approval["nonce"]!, "approve"));
+        Assert.False(File.Exists(file));
+    });
+
+    /// <summary>Once the edit's write has started, any failure leaves the outcome unknown; nothing is retried.</summary>
     [Fact]
     public Task AFailureAfterTheEditWriteStartedIsUnknown() => Run(async (fixture, store, _, tools, repositories) =>
     {

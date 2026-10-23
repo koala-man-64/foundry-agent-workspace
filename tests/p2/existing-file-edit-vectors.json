@@ -4,11 +4,27 @@
     "sources": [
       {
         "path": "packages/runtime/src/repository.ts",
-        "sha256": "39c522b342044aec5525b44db3f5282df68af7f034d0fa84a0c3f9612c00d1ba"
+        "sha256": "17f024b077981971d1af116f0ce7e3df5b5f84968ff1d1660237772b05a2de03"
       },
       {
         "path": "packages/runtime/src/network-path.ts",
         "sha256": "6e6d1f17374bc04de9e7fc0d3abb3a2044bb684fbfaa5405d804901ea1e477ee"
+      },
+      {
+        "path": "packages/runtime/src/safe-file-creation.ts",
+        "sha256": "615834d64c7d8eb4284ead2cc723cd5c29ad7cb04a9e74a42172569882f31446"
+      },
+      {
+        "path": "packages/runtime/src/windows-job.ts",
+        "sha256": "0ab4b0010422e16ddfd5a1345dd925839d696b2c67209c714a42191ce442d4e3"
+      },
+      {
+        "path": "packages/runtime/src/job-runner.ps1",
+        "sha256": "eae215c7c3b6b79c3a01cf4bf715ae2163e697c21f37c5ca72cc5fbce6ff42cd"
+      },
+      {
+        "path": "src/Foundry.Platform/SafeFileCreation.cs",
+        "sha256": "022e8e6da2919a0d23803485fe80cdc925d360bca8d3fd73382176d23c6f2d8d"
       }
     ]
   },
@@ -544,7 +560,7 @@
       ]
     },
     {
-      "name": "refuses creating a file before anything else",
+      "name": "creates one reviewed absent file and refuses an unavailable root",
       "tree": [
         {
           "file": "plain/README.md",
@@ -566,9 +582,29 @@
           "path": "new.txt",
           "reviewed": null,
           "after": "x",
+          "as": "edit",
           "expected": {
-            "error": "Creating new files is unavailable until a race-safe Windows directory creation primitive is available.",
-            "outcome": null
+            "result": {
+              "root": "{scratch}\\plain",
+              "path": "new.txt",
+              "before": "",
+              "after": "x",
+              "expectedHash": null,
+              "resultingHash": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+              "fingerprint": {
+                "preimage": "[\"{scratch-json}\\\\plain\",\"new.txt\",null,\"2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881\",\"{creation-identities}\"]"
+              }
+            }
+          }
+        },
+        {
+          "op": "apply",
+          "edit": "edit",
+          "expected": {
+            "result": {
+              "path": "new.txt",
+              "hash": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+            }
           }
         },
         {
@@ -578,7 +614,7 @@
           "reviewed": null,
           "after": "x",
           "expected": {
-            "error": "Creating new files is unavailable until a race-safe Windows directory creation primitive is available.",
+            "systemError": "ENOENT",
             "outcome": null
           }
         }
@@ -591,6 +627,10 @@
         [
           "plain/docs/b.md",
           "d872451e4b3cda63d8cd50d1ea4bd9af3fbe0e8255bd3f9a6a16c84fcae54f7f"
+        ],
+        [
+          "plain/new.txt",
+          "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
         ],
         [
           "plain/src/a.ts",

@@ -857,7 +857,7 @@ public sealed class DevelopmentChat
         var clean = redactor.Text(content); var fingerprint = Compatibility.ProfileFingerprint(profile);
         var request = agent.Prepare(task, profile, fingerprint, clean);
         if (request.GetValueOrDefault("continuation") is Dictionary<string, object?> native && Equals(native.GetValueOrDefault("apiKind"), "fake")
-            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send" or "read" or "replace" or "command")))
+            && (native.GetValueOrDefault("data") is not Dictionary<string, object?> data || data.GetValueOrDefault("stage") is not ("chat" or "complete" or "channel-send" or "read" or "replace" or "command" or "create")))
             throw new NotSupportedException("This native continuation requires a later runtime feature slice.");
         var stamp = Clock.Iso(now()); var answer = new Dictionary<string, object?> { ["id"] = id().ToString(), ["taskId"] = taskId, ["role"] = "assistant", ["content"] = "", ["createdAt"] = stamp, ["status"] = "streaming" };
         var credential = credentials.GetValueOrDefault((string)profile["id"]!);

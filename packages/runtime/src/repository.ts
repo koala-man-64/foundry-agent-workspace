@@ -6,6 +6,7 @@ import path from 'node:path';
 import { isNetworkOrDevicePath } from './network-path';
 import { assertNoGitHooks, gitEnvironment } from './git-environment';
 import { promisify } from 'node:util';
+import { FileCreationError, WindowsFileCreation, type FileCreation } from './safe-file-creation';
 import type { DiffResult, FileContent, FileEntry, GitTask } from '../../protocol/src/index';
 
 const execFile = promisify(execFileCallback);
@@ -281,6 +282,8 @@ export function assertNoReparseDirectories(candidate: string): void {
 type GitOutput = { stdout: string; truncated: boolean; exitCode: number };
 export interface PreparedEdit {
   root: string; path: string; before: string; after: string; expectedHash: string | null; resultingHash: string; fingerprint: string;
+  /** Present only for creation: the observed rooted parent chain is bound into the review fingerprint. */
+  creationIdentities?: readonly string[];
 }
 export interface ArtifactBytes { bytes: Buffer; mimeType: string; width?: number; height?: number }
 
@@ -305,7 +308,7 @@ export class RepositoryService {
   /** Concurrent `worktree add` calls in one repository race on Git's worktree metadata; creation is serialized per repository. */
   private readonly creating = new Map<string, Promise<unknown>>();
 
-  public constructor(private readonly worktreeBase: string) {}
+  public constructor(private readonly worktreeBase: string, private readonly fileCreation: FileCreation = new WindowsFileCreation()) {}
 
   public get worktreeBaseDirectory(): string {
     return this.worktreeBase;
@@ -692,34 +695,47 @@ export class RepositoryService {
     } finally { await handle.close(); }
   }
 
-  public async prepareEdit(root: string, relativePath: string, expectedHash: string | null, after: string): Promise<PreparedEdit> {
+  public async prepareEdit(root: string, relativePath: string, expectedHash: string | null, after: string, signal?: AbortSignal): Promise<PreparedEdit> {
     if (Buffer.byteLength(after, 'utf8') > MAX_FILE_BYTES || after.includes('\0')) throw new Error('Edits must be UTF-8 text of at most 64 KB.');
-    if (expectedHash === null) throw new Error('Creating new files is unavailable until a race-safe Windows directory creation primitive is available.');
     const safeRoot = await this.requireRoot(root);
     this.validateRelativePath(relativePath, false);
     // Parents must exist already. Directory creation is a separately approved command.
     const parent = path.dirname(relativePath).replaceAll('\\', '/');
     await this.resolveSafePath(safeRoot, parent === '.' ? '' : parent, true);
     const target = path.resolve(safeRoot, relativePath);
+    const normalized = this.toPortableRelativePath(safeRoot, target);
+    const resultingHash = createHash('sha256').update(after, 'utf8').digest('hex');
+    if (expectedHash === null) {
+      const creationIdentities = Object.freeze(await this.fileCreation.inspect(safeRoot, normalized, signal));
+      const fingerprint = createHash('sha256').update(JSON.stringify([safeRoot, normalized, null, resultingHash, creationIdentities])).digest('hex');
+      return { root: safeRoot, path: normalized, before: '', after, expectedHash, resultingHash, fingerprint, creationIdentities };
+    }
     const current = await this.readFile(safeRoot, relativePath);
     if (current.hash !== expectedHash) throw new Error('Stale edit: file content changed since it was read.');
     const stat = await fs.stat(await this.resolveSafePath(safeRoot, relativePath, false));
     if (stat.nlink !== 1) throw new Error('Hard-linked files cannot be edited.');
     const before = current.content;
-    const normalized = this.toPortableRelativePath(safeRoot, target);
-    const resultingHash = createHash('sha256').update(after, 'utf8').digest('hex');
     const fingerprint = createHash('sha256').update(JSON.stringify([safeRoot, normalized, expectedHash, resultingHash])).digest('hex');
     return { root: safeRoot, path: normalized, before, after, expectedHash, resultingHash, fingerprint };
   }
 
-  public async applyEdit(edit: PreparedEdit): Promise<{ path: string; hash: string }> {
+  public async applyEdit(edit: PreparedEdit, signal?: AbortSignal): Promise<{ path: string; hash: string }> {
     let fresh: PreparedEdit;
     try {
-      fresh = await this.prepareEdit(edit.root, edit.path, edit.expectedHash, edit.after);
+      signal?.throwIfAborted();
+      fresh = await this.prepareEdit(edit.root, edit.path, edit.expectedHash, edit.after, signal);
       if (fresh.fingerprint !== edit.fingerprint) throw new Error('Edit approval is stale.');
     } catch (error) { throw new RepositoryError(error instanceof Error ? error.message : 'Edit preflight failed.', 'none'); }
+    if (fresh.expectedHash === null) {
+      try {
+        await this.fileCreation.create(fresh.root, fresh.path, fresh.creationIdentities!, Buffer.from(fresh.after, 'utf8'), fresh.resultingHash, signal);
+      } catch (error) {
+        throw new RepositoryError(error instanceof Error ? error.message : 'File creation could not be verified.', error instanceof FileCreationError ? error.outcome : 'unknown');
+      }
+      return { path: fresh.path, hash: fresh.resultingHash };
+    }
     const target = path.resolve(fresh.root, fresh.path);
-    // Creation is unavailable, so opening the existing file itself cannot mutate it.
+    // Existing-file opening is non-mutating; creation uses the rooted Windows primitive above.
     const handle = await fs.open(target, 'r+').catch((error: unknown) => { throw new RepositoryError(error instanceof Error ? error.message : 'Cannot open file for editing.', 'none'); });
     let mutationStarted = false;
     try {

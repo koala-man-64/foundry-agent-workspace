@@ -18,6 +18,7 @@ public sealed class ExistingFileEditTests
     /// <summary>Where Node raised a raw filesystem error, native refuses with its own fixed message and the same outcome.</summary>
     private static readonly Dictionary<string, string> NativeRefusals = new(StringComparer.Ordinal)
     {
+        ["creates one reviewed absent file and refuses an unavailable root#2"] = RepositoryFolderLease.Unavailable,
         ["refuses roots that are not working directories#4"] = RepositoryFolderLease.Unavailable,
         ["refuses directories, missing files and missing parents#1"] = RepositoryService.Missing,
         ["refuses directories, missing files and missing parents#2"] = RepositoryService.Missing,
@@ -202,9 +203,12 @@ public sealed class ExistingFileEditTests
                     var root = step.GetProperty("root").GetString()!;
                     var edit = service.PrepareEdit(root is "" or "relative" ? root : fixture.Local(root), step.GetProperty("path").GetString()!, expectedHash, after);
                     if (step.TryGetProperty("as", out var alias)) prepared[alias.GetString()!] = edit;
-                    var preimage = JsJson.Stringify(new List<object?> { edit.Root, edit.Path, edit.ExpectedHash, edit.ResultingHash })!;
-                    Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(preimage))), edit.Fingerprint);
-                    return new Dictionary<string, object?>(edit.ToWire()) { ["fingerprint"] = new Dictionary<string, object?> { ["preimage"] = preimage } };
+                    var fields = new List<object?> { edit.Root, edit.Path, edit.ExpectedHash, edit.ResultingHash };
+                    if (edit.ExpectedHash is null) fields.Add(edit.CreationIdentities!.Cast<object?>().ToList());
+                    var actualPreimage = JsJson.Stringify(fields)!;
+                    Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(actualPreimage))), edit.Fingerprint);
+                    if (edit.ExpectedHash is null) fields[^1] = "{creation-identities}";
+                    return new Dictionary<string, object?>(edit.ToWire()) { ["fingerprint"] = new Dictionary<string, object?> { ["preimage"] = JsJson.Stringify(fields)! } };
                 }
             case "apply":
                 {

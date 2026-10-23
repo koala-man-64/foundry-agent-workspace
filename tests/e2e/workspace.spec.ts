@@ -1,9 +1,76 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 import { mkdtemp, mkdir, rm, writeFile, readdir, readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createFixtureTask, notice, waitForRuntimeReady } from './fixtures';
+
+test('offline create demo clearly reviews an absent file and creates only the approved worktree content', async () => {
+  test.setTimeout(120_000);
+  const fixture = await mkdtemp(join(tmpdir(), 'foundry-create-e2e-'));
+  const project = join(fixture, 'repository');
+  await mkdir(join(project, 'src'), { recursive: true });
+  const git = (...args: string[]): string => execFileSync('git', ['-c', 'core.hooksPath=NUL', '-C', project, ...args], { windowsHide: true, encoding: 'utf8' }).trim();
+  git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
+  await writeFile(join(project, 'README.md'), '# Creation fixture\n');
+  await writeFile(join(project, 'src', 'existing-empty.txt'), '');
+  git('add', '.'); git('commit', '-m', 'Fixture');
+  const originalHead = git('rev-parse', 'HEAD');
+  const relativeFile = 'src/created-demo.txt';
+  const content = 'Created by the reviewed offline demo.\nUTF-8: café.\n';
+  const resultingHash = createHash('sha256').update(content, 'utf8').digest('hex');
+  const environment: Record<string, string> = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
+  environment.FOUNDRY_WORKSPACE_TEST_DATA = join(fixture, 'state'); delete environment.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
+  try {
+    const page = await app.firstWindow();
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await waitForRuntimeReady(page);
+    for (const decision of ['reject', 'approve'] as const) {
+      const task = await createFixtureTask(page, project, `${decision} new file`, 'coding');
+      if (!task.worktreePath) throw new Error('The creation fixture has no task worktree.');
+      const destination = join(task.worktreePath, relativeFile);
+      await page.getByLabel('Task message').fill('/create-demo');
+      await page.getByRole('button', { name: /^Send/ }).click();
+      await page.getByRole('button', { name: /^Approvals/ }).click();
+      const card = page.locator('article.approval-card.awaiting-approval');
+      await expect(card).toBeVisible();
+      await expect(card.locator('.approval-heading strong')).toHaveText('Create file');
+      await expect(card).toContainText(relativeFile);
+      await expect(card).toContainText('File is absent. This approval creates a new file.');
+      await expect(card).not.toContainText('Existing empty file.');
+      const after = card.locator('dl').filter({ has: page.locator('dt', { hasText: 'After' }) }).locator('pre');
+      expect(await after.textContent()).toBe(content);
+      await expect(card).toContainText(`absent → ${resultingHash}`);
+      await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+      await card.getByRole('button', { name: decision === 'approve' ? 'Approve' : 'Reject', exact: true }).click();
+      await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, task.id), { timeout: 60_000 }).toBe('idle');
+      if (decision === 'reject') {
+        await expect(page.locator('article.approval-card.rejected')).toContainText('Create file');
+        await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+      } else {
+        await expect(page.locator('article.approval-card.complete')).toContainText('Create file');
+        expect(await readFile(destination)).toEqual(Buffer.from(content, 'utf8'));
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
+        await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
+        // Inspect the refreshed diff before directory navigation invalidates an in-flight inspector read.
+        await page.getByRole('button', { name: 'Changes', exact: true }).click();
+        await expect(page.locator('.patch')).toContainText('src/created-demo.txt');
+        await expect(page.locator('.patch')).toContainText('+Created by the reviewed offline demo.');
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
+        await page.getByRole('button', { name: /▸ src$/ }).click();
+        await page.getByRole('button', { name: /src\/created-demo\.txt$/ }).click();
+        await expect.poll(() => page.locator('.file-content pre').textContent()).toBe(content);
+      }
+      await expect(readFile(join(project, relativeFile))).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(await readFile(join(project, 'src', 'existing-empty.txt'), 'utf8')).toBe('');
+      expect(git('rev-parse', 'HEAD')).toBe(originalHead);
+      expect(git('status', '--porcelain')).toBe('');
+    }
+    expect(errors).toEqual([]);
+  } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
+});
 
 test('isolated task, offline conversation, file inspection and restart history', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-e2e-'));

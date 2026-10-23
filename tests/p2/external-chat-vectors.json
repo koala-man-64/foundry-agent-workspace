@@ -29,7 +29,7 @@
       },
       {
         "path": "packages/runtime/src/tool-runtime.ts",
-        "sha256": "7ec7a2538b7a64cc6b65dd5c852a20d4471e87c1544c0ef4b5a21aa5d0c11a94"
+        "sha256": "b8caf71156f5684d8450218dcc625f616a1fd3a53fdd176ecd1f9f71cd1aea2b"
       },
       {
         "path": "packages/runtime/src/store.ts",
@@ -41,7 +41,7 @@
       },
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "ca6a9251b83b73e94485b69437acc824f0613dccecadb8e29c87b5276ea83159"
+        "sha256": "d568d8f88046e279d7b4cf7495b3cfd15a59a9981b5845288596b0a8f1440f51"
       },
       {
         "path": "packages/protocol/src/limits.ts",
@@ -11710,7 +11710,7 @@
               "createdAt": "2026-05-06T07:08:09.012Z",
               "updatedAt": "2026-05-06T07:08:09.012Z",
               "tokenBudget": 1000000,
-              "usedTokens": 7807,
+              "usedTokens": 7950,
               "mode": "coding",
               "workspaceKind": "git",
               "projectPath": "{scratch}\\work\\repo",
@@ -11781,7 +11781,7 @@
                     "attempted_at": "2026-05-06T07:08:09.012Z",
                     "finished_at": "2026-05-06T07:08:09.012Z",
                     "outcome": "completed",
-                    "reserved": 7807,
+                    "reserved": 7950,
                     "input_tokens": 60,
                     "output_tokens": 8,
                     "cache_read_tokens": null,
@@ -11812,7 +11812,7 @@
                     "attempted_at": "2026-05-06T07:08:09.012Z",
                     "finished_at": "2026-05-06T07:08:09.012Z",
                     "outcome": "completed",
-                    "reserved": 8345,
+                    "reserved": 8488,
                     "input_tokens": 40,
                     "output_tokens": 5,
                     "cache_read_tokens": null,
@@ -12053,8 +12053,8 @@
                   "api-key": "{credential}"
                 },
                 "body": {
-                  "length": 6672,
-                  "sha256": "ad6dce702c0370f31cd0d89b62921029583a327070527ae67b70a8493605dd54"
+                  "length": 6815,
+                  "sha256": "6398efa87da9e17cc80c9249e0f9581275352d661fadc54221b4a322a49ce14b"
                 }
               },
               {
@@ -12065,8 +12065,8 @@
                   "api-key": "{credential}"
                 },
                 "body": {
-                  "length": 7056,
-                  "sha256": "da78fe0e4d583204a03631407c3ec5e973af8ae99dac10380060e27e5a59f1ba"
+                  "length": 7199,
+                  "sha256": "be0bcbe0e149e40c91fdc68fc122fac43427a0efce6c594e3cd82e5d757f3fcb"
                 }
               }
             ]
@@ -12110,7 +12110,7 @@
               "createdAt": "2026-05-06T07:08:09.012Z",
               "updatedAt": "2026-05-06T07:08:09.012Z",
               "tokenBudget": 1000000,
-              "usedTokens": 7808,
+              "usedTokens": 7951,
               "mode": "coding",
               "workspaceKind": "git",
               "projectPath": "{scratch}\\work\\repo",
@@ -12181,7 +12181,7 @@
                     "attempted_at": "2026-05-06T07:08:09.012Z",
                     "finished_at": "2026-05-06T07:08:09.012Z",
                     "outcome": "completed",
-                    "reserved": 7808,
+                    "reserved": 7951,
                     "input_tokens": 50,
                     "output_tokens": 6,
                     "cache_read_tokens": null,
@@ -12212,7 +12212,7 @@
                     "attempted_at": "2026-05-06T07:08:09.012Z",
                     "finished_at": "2026-05-06T07:08:09.012Z",
                     "outcome": "completed",
-                    "reserved": 8318,
+                    "reserved": 8461,
                     "input_tokens": 30,
                     "output_tokens": 3,
                     "cache_read_tokens": null,
@@ -12453,8 +12453,8 @@
                   "api-key": "{credential}"
                 },
                 "body": {
-                  "length": 6781,
-                  "sha256": "68398b9baf50c9c44784bcfe987a8c4d895a2371e8aeccc26255d8757a0bfd4b"
+                  "length": 6924,
+                  "sha256": "8562fb2cade2c85927e0968079376a5ebae0c4c8e915ff33a833c44899a2401e"
                 }
               },
               {
@@ -12465,8 +12465,8 @@
                   "api-key": "{credential}"
                 },
                 "body": {
-                  "length": 7117,
-                  "sha256": "9a2c3e66a2f15cdc82dc4362a2b78d687fa8018d50dd0a952a47ce740b4450e2"
+                  "length": 7260,
+                  "sha256": "86d2f83cd01ccf2e158fa8b21932a80e15d452a0c7c1d1e71497238e7080d80a"
                 }
               }
             ]
@@ -12555,7 +12555,7 @@
                     "attempted_at": "2026-05-06T07:08:09.012Z",
                     "finished_at": "2026-05-06T07:08:09.012Z",
                     "outcome": "completed",
-                    "reserved": 8330,
+                    "reserved": 8473,
                     "input_tokens": 30,
                     "output_tokens": 3,
                     "cache_read_tokens": null,
@@ -12695,8 +12695,8 @@
                   "api-key": "{credential}"
                 },
                 "body": {
-                  "length": 7207,
-                  "sha256": "bac2bad75f861d7059bdc30d5a4b24a3f850e7cb23486eb38021915725624b43"
+                  "length": 7350,
+                  "sha256": "4632c6261895634ff4bdd8ed1ebfe90a7332c5ca77ec699bd8067ee75b897a9b"
                 }
               }
             ]
