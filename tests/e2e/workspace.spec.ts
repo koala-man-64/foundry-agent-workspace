@@ -87,12 +87,15 @@ test('isolated task, offline conversation, file inspection and restart history',
 });
 
 test('offline coding demo keeps review evidence, rejects safely, and applies only approved worktree changes', async () => {
+  test.setTimeout(180_000);
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-coding-e2e-'));
   const project = join(fixture, 'repository'); await mkdir(project);
   const git = (...args: string[]): void => { execFileSync('git', ['-c', 'core.hooksPath=NUL', '-C', project, ...args], { windowsHide: true, stdio: 'ignore' }); };
   const sourceReadme = '# Fixture\n\nInitial README content.\n';
   git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
-  await writeFile(join(project, 'README.md'), sourceReadme); git('add', 'README.md'); git('commit', '-m', 'Fixture');
+  await writeFile(join(project, 'README.md'), sourceReadme);
+  await writeFile(join(project, '.gitignore'), 'node_modules/\n');
+  git('add', 'README.md', '.gitignore'); git('commit', '-m', 'Fixture');
   const environment: Record<string, string> = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
   environment.FOUNDRY_WORKSPACE_TEST_DATA = join(fixture, 'state'); delete environment.ELECTRON_RUN_AS_NODE;
   let app = await electron.launch({ args: [resolve('out/main/index.js')], env: environment });
@@ -116,6 +119,17 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     };
 
     const rejected = await createCodingTask('Reject offline demo');
+    await page.getByRole('button', { name: 'Projects', exact: true }).click();
+    const fixtureProject = await page.evaluate(async () => (await window.workspace.invoke('workspace.projects', { limit: 50 })).projects.find(item => item.name === 'repository'));
+    expect(fixtureProject).toBeTruthy();
+    await page.getByRole('button', { name: `New chat in ${fixtureProject!.name}`, exact: true }).click();
+    await page.getByLabel('Mode', { exact: true }).selectOption('coding');
+    await expect(page.getByTestId('command-review-limits')).toContainText('50,000 files / 1 GiB');
+    await expect(page.getByTestId('command-review-limits')).toContainText('10,000 directories + links');
+    await expect(page.getByTestId('command-review-limits')).toContainText('including ignored dependencies');
+    await page.getByRole('button', { name: 'Inbox & history', exact: true }).click();
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await page.locator('.task-row', { hasText: 'Reject offline demo' }).click();
     await requestDemo();
     const rejectedEdit = page.locator('article.approval-card').filter({ has: page.locator('dt', { hasText: 'File' }) }).first();
     await expect(rejectedEdit).toBeVisible();
@@ -125,18 +139,31 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
 
     await page.getByRole('button', { name: 'Files', exact: true }).click();
     const accepted = await createCodingTask('Approve offline demo');
+    // Synthetic installed-dependency contents belong only to this app-owned fixture worktree.
+    // They exceed both former limits and remain Git-ignored, so source-checkout dirt is unchanged.
+    const installed = join(accepted.worktreePath, 'node_modules', 'installed-fixture');
+    await mkdir(installed, { recursive: true });
+    await writeFile(join(installed, 'fixture-data.bin'), Buffer.alloc(65 * 1024 * 1024, 0x61));
+    await writeFile(join(installed, 'index.js'), 'module.exports = 1;\n');
+    for (let start = 0; start < 10_001; start += 64) {
+      await Promise.all(Array.from({ length: Math.min(64, 10_001 - start) }, (_, offset) => writeFile(join(installed, `dependency-${start + offset}.js`), 'module.exports = 1;\n')));
+    }
+    expect((await readdir(installed)).length).toBe(10_003);
+    expect(execFileSync('git', ['-C', accepted.worktreePath, 'check-ignore', 'node_modules/installed-fixture/index.js'], { encoding: 'utf8', windowsHide: true }).trim()).toBe('node_modules/installed-fixture/index.js');
+    await expect(readdir(join(project, 'node_modules'))).rejects.toThrow();
     await requestDemo();
     const editApproval = page.locator('article.approval-card').filter({ has: page.locator('dt', { hasText: 'File' }) }).first();
     const reviewedAfter = await editApproval.locator('dl').filter({ has: page.locator('dt', { hasText: 'After' }) }).locator('pre').textContent();
     expect(reviewedAfter).toBeTruthy();
     await editApproval.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find((approval) => approval.state === 'awaiting-approval')?.state, accepted.id)).toBe('awaiting-approval');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find((approval) => approval.state === 'awaiting-approval')?.state, accepted.id), { timeout: 60_000 }).toBe('awaiting-approval');
     const commandApproval = page.locator('article.approval-card').filter({ has: page.locator('.command-evidence') }).first();
     await expect(commandApproval).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
+    await expect(page.getByTestId('command-review-limits')).toContainText('including ignored dependencies');
     await page.screenshot({ path: 'test-results/coding-approval-screenshot.png', fullPage: true });
     await commandApproval.getByRole('button', { name: 'Approve', exact: true }).click();
     // Windows process startup and verified Job cleanup can exceed the generic 5s UI assertion budget.
-    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.read', { taskId })).task.status, accepted.id), { timeout: 30000 }).toBe('idle');
+    await expect.poll(() => page.evaluate(async (taskId) => (await window.workspace.invoke('task.read', { taskId })).task.status, accepted.id), { timeout: 60_000 }).toBe('idle');
     const completedCommand = await page.evaluate(async (taskId) => {
       const command = (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find(approval => approval.tool === 'run_command');
       if (!command) throw new Error('Reviewed command approval was not retained.');
@@ -144,6 +171,31 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     }, accepted.id);
     expect(completedCommand).toMatchObject({ state: 'complete', result: { cleanupVerified: true, exitCode: 0 } });
     await expect(readFile(join(accepted.worktreePath, 'README.md'), 'utf8')).resolves.toBe(reviewedAfter);
+    await expect(readFile(join(project, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
+    expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
+
+    const stale = await createCodingTask('Reject changed ignored dependency');
+    const changedDependency = join(stale.worktreePath, 'node_modules', 'installed-fixture', 'index.js');
+    await mkdir(join(stale.worktreePath, 'node_modules', 'installed-fixture'), { recursive: true });
+    await writeFile(changedDependency, 'module.exports = 1;\n');
+    await requestDemo();
+    await page.locator('article.approval-card.awaiting-approval').first().getByRole('button', { name: 'Approve', exact: true }).click();
+    const staleCommand = page.locator('article.approval-card.awaiting-approval').filter({ has: page.locator('.command-evidence') });
+    await expect(staleCommand).toBeVisible();
+    // Same file size, same ignored path: a content hash must invalidate the old approval.
+    await writeFile(changedDependency, 'module.exports = 2;\n');
+    await staleCommand.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, stale.id), { timeout: 30_000 }).toBe('idle');
+    const refusedCommand = await page.evaluate(async taskId => {
+      const command = (await window.workspace.invoke('task.approvals', { taskId, limit: 50 })).approvals.find(item => item.tool === 'run_command');
+      if (!command) throw new Error('The stale command approval was not retained.');
+      return (await window.workspace.invoke('approval.get', { taskId, approvalId: command.id })).approval;
+    }, stale.id);
+    expect(refusedCommand.state).toBe('failed');
+    expect(refusedCommand.result).toEqual({ content: 'Prepared command fingerprint is stale; request approval again.', isError: true, cleanupVerified: false });
+    expect(refusedCommand.result?.content).not.toContain('Foundry command demo completed');
+    expect(refusedCommand.result?.exitCode).toBeUndefined();
+    await expect(page.locator('article.approval-card.failed .approval-result')).toContainText('stale');
     await expect(readFile(join(project, 'README.md'), 'utf8')).resolves.toBe(sourceReadme);
     expect(execFileSync('git', ['-C', project, 'status', '--porcelain'], { encoding: 'utf8', windowsHide: true })).toBe('');
 

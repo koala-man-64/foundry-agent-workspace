@@ -50,9 +50,9 @@ internal sealed class CommandRunner
     internal const int MaximumEnvironmentValueCharacters = 4 * 1024;
     internal const int MaximumTimeoutMilliseconds = 10 * 60 * 1000;
     internal const int MaximumStreamBytes = 64 * 1024;
-    internal const int MaximumStateFiles = 10_000;
+    internal const int MaximumStateFiles = 50_000;
     internal const int MaximumStateFolders = 10_000;
-    internal const long MaximumStateBytes = 64L * 1024 * 1024;
+    internal const long MaximumStateBytes = 1024L * 1024 * 1024;
     internal const string Truncated = "\n[output truncated]";
     internal const string BackgroundTerminated = "\n[background job descendants terminated]";
     internal const string Aborted = "This operation was aborted";
@@ -60,7 +60,7 @@ internal sealed class CommandRunner
     internal const string StaleCommand = "Prepared command fingerprint is stale; request approval again.";
     internal const string NotStarted = "The command could not be started.";
     internal const string StateUnreadable = "Worktree state could not be read safely.";
-    internal const string TooLarge = "Worktree is too large to fingerprint safely.";
+    internal const string TooLarge = "Worktree exceeds command review limits (50,000 files, 10,000 directories or links, 1 GiB of file content).";
     internal const string SystemRootUnavailable = "SystemRoot is unavailable.";
     internal const string ShellUnavailable = "Windows PowerShell executable is unavailable.";
     internal static readonly TimeSpan CleanupWindow = TimeSpan.FromSeconds(5);
@@ -290,7 +290,7 @@ internal sealed class CommandRunner
 
     /// <summary>
     /// worktreeState: HEAD, porcelain status and a digest of the content beneath the root (Git's metadata excluded), at most
-    /// 10,000 files and 64 MiB. Git runs through <see cref="GitRunner"/>, so the app's empty hooks folder applies and
+    /// 50,000 files, 10,000 directories or links and 1 GiB of file content. Git runs through <see cref="GitRunner"/>, so the app's empty hooks folder applies and
     /// `core.hooksPath` is never empty. The digest runs off the loop and never follows a reparse point.
     /// </summary>
     private async Task<string> WorktreeState(RepositoryAdmission admission)
@@ -310,7 +310,7 @@ internal sealed class CommandRunner
     /// following it, as TypeScript hashes readlink, and refuses any other reparse point, which Node would read through.
     /// Files are opened by their exact names without following a reparse point. The walk keeps its own stack in the same
     /// pre-order, so a deep tree cannot exhaust the thread's stack (Node's async recursion does not grow one), and folders
-    /// and links count against their own limit of 10,000, where TypeScript counts files only.
+    /// and links count against their own limit of 10,000.
     /// </summary>
     private static string ContentState(string root)
     {
@@ -339,18 +339,16 @@ internal sealed class CommandRunner
             }
             if (attributes.HasFlag(FileAttributes.Directory)) { Add($"D\0{relative}\0"); pending.Push(new(target, relative, Entries(target))); continue; }
             if (attributes.HasFlag(FileAttributes.Device)) continue;
-            byte[] content;
             try
             {
-                using var entry = ExistingEntry.TryOpen(target) ?? throw new WorkspaceReadException(StateUnreadable);
+                using var entry = ExistingEntry.TryOpenForHash(target) ?? throw new WorkspaceReadException(StateUnreadable);
                 if (entry.IsReparsePoint || entry.IsDirectory) throw new WorkspaceReadException(StateUnreadable);
-                files++; bytes += entry.Length;
-                if (files > MaximumStateFiles || bytes > MaximumStateBytes) throw new WorkspaceReadException(TooLarge);
+                if (++files > MaximumStateFiles || entry.Length > MaximumStateBytes - bytes) throw new WorkspaceReadException(TooLarge);
                 Add($"F\0{relative}\0{entry.Length.ToString(CultureInfo.InvariantCulture)}\0");
-                content = entry.ReadBounded((int)entry.Length);
+                entry.AppendToHash(digest, MaximumStateBytes - bytes);
+                bytes += entry.Length;
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException) { throw new WorkspaceReadException(StateUnreadable); }
-            digest.AppendData(content);
         }
         return Convert.ToHexStringLower(digest.GetHashAndReset());
     }

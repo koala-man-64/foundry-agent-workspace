@@ -1,5 +1,15 @@
 # Implementation status
 
+## Command review for installed dependencies — local expansion, 23 October 2026
+
+Rudy approved a scoped exception to the migration feature freeze for matching TypeScript and C# command-fingerprinting changes. The shipping product remains Electron/TypeScript; this does not authorize native cutover, adoption, a schema/protocol change, or another feature expansion.
+
+The old 10,000-file / 64 MiB bounds rejected an isolated frozen-install checkout containing 15,237 regular files and 280,793,930 bytes (about 268 MiB), plus 3,015 directories and 1,368 links. Both command runners now stream full regular-file contents outside `.git` in 64 KiB chunks, including ignored dependencies, with bounded admission at 50,000 regular files, 1 GiB aggregate content, and 10,000 directories or links. The TypeScript directory/link bound now matches the existing native bound. No ignored regular-file dependency is silently omitted, and no metadata cache substitutes for its bytes. Read growth, shortening, or changed file observations refuse the scan. Native hashing uses its existing safe-handle primitive with a dedicated read-only share mode that refuses an open writer and prevents writes or replacement while each file is being read. TypeScript instead checks the opened and named file's identity, size and timestamps around the bounded read. This native difference does not turn either whole-tree scan into an atomic snapshot.
+
+Preparation retains the complete fingerprint; execution still consumes its one-shot capability and recomputes the full fingerprint before launch. The UI describes the limits before Send and in Approvals without claiming a live repository assessment. These scans observe filesystem state; they are not an atomic snapshot, filesystem isolation, or a guarantee against every same-user filesystem race. Task admission separately retains its 5,000 tracked-path Git filter-inspection bound. This expansion specifically supports larger installed dependency/output trees within an otherwise admissible repository.
+
+Regressions use isolated synthetic repositories, including ignored trees above both old limits and same-size executable dependency changes after review. Generated P2 behavioral evidence is recorded under Electron's own pinned Node. Required local validation and independent review evidence are retained under `.local/repository-readiness/`; live providers, signing, installation and hosted CI remain separate gates.
+
 ## Coordinated handoff report — local expansion, 23 October 2026
 
 Rudy selected a coordinated handoff/export as the first expansion after remediation PR54 merged. This increment starts from `main` at `cf2ccab` on the private `codex/coordinator-handoff-20261023` branch. It is a renderer-only metadata report using the existing `orchestration.get` read; protocol/runtime/DB contracts, execution permissions, native migration behavior and coordinated publication gates are unchanged.

@@ -80,10 +80,10 @@ const cases: Case[] = [
     { op: 'unlink', link: 'repo/lnk' }, refused({}),
     refused({ timeoutMs: 9999 }), refused({ cwd: 'src' }), refused({ environment: [['A', '1']] }), refused({ command: "Write-Output 'other'" }),
   ] },
-  { name: 'refuses to fingerprint more than 10,000 files', tree: committed(), steps: [
+  { name: 'admits the former 10,000-file boundary and fingerprints additions', tree: committed(), steps: [
     { op: 'fill', dir: 'repo/bulk', count: 9997, prefix: 'f' }, refused({}), { op: 'write', file: 'repo/bulk/extra.txt', text: 'x' }, refused({}),
   ] },
-  { name: 'refuses to fingerprint more than 64 MiB', tree: committed(), steps: [
+  { name: 'admits the former 64 MiB boundary and fingerprints additions', tree: committed(), steps: [
     { op: 'write', file: 'repo/big.bin', text: { repeat: ['a', 64 * 1024 * 1024 - 30] } }, refused({}), { op: 'write', file: 'repo/one.bin', text: 'a' }, refused({}),
   ] },
   { name: 'refuses a status larger than the Git output limit', tree: committed(), steps: [
