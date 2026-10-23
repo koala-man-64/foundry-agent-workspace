@@ -16,7 +16,7 @@
       },
       {
         "path": "packages/runtime/src/command-runner.ts",
-        "sha256": "881d1725228d1f38ef0dc8ccce011b687bf1b186f41e034ee313a7daea1fe385"
+        "sha256": "a43d779d748a3126c09731dd2a49dc889298cb642ae08b89e2f21728150b120d"
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",

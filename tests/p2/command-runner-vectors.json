@@ -4,7 +4,7 @@
     "sources": [
       {
         "path": "packages/runtime/src/command-runner.ts",
-        "sha256": "881d1725228d1f38ef0dc8ccce011b687bf1b186f41e034ee313a7daea1fe385"
+        "sha256": "a43d779d748a3126c09731dd2a49dc889298cb642ae08b89e2f21728150b120d"
       },
       {
         "path": "packages/runtime/src/job-runner.ps1",
@@ -2709,7 +2709,7 @@
       ]
     },
     {
-      "name": "refuses to fingerprint more than 10,000 files",
+      "name": "admits the former 10,000-file boundary and fingerprints additions",
       "tree": [
         {
           "dir": "repo"
@@ -2817,14 +2817,53 @@
           "op": "prepare",
           "command": "Write-Output 'never'",
           "expected": {
-            "error": "Worktree is too large to fingerprint safely.",
-            "preflight": false
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
           }
         }
       ]
     },
     {
-      "name": "refuses to fingerprint more than 64 MiB",
+      "name": "admits the former 64 MiB boundary and fingerprints additions",
       "tree": [
         {
           "dir": "repo"
@@ -2936,8 +2975,47 @@
           "op": "prepare",
           "command": "Write-Output 'never'",
           "expected": {
-            "error": "Worktree is too large to fingerprint safely.",
-            "preflight": false
+            "prepared": {
+              "command": "Write-Output 'never'",
+              "cwd": "{scratch}\\repo",
+              "shell": "{shell}",
+              "timeoutMs": 10000,
+              "environment": [
+                [
+                  "ComSpec",
+                  "{SystemRoot}\\System32\\cmd.exe"
+                ],
+                [
+                  "PATH",
+                  "{SystemRoot}\\System32;{SystemRoot};{SystemRoot}\\System32\\WindowsPowerShell\\v1.0"
+                ],
+                [
+                  "PATHEXT",
+                  ".COM;.EXE;.BAT;.CMD"
+                ],
+                [
+                  "SystemRoot",
+                  "{SystemRoot}"
+                ],
+                [
+                  "TEMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "TMP",
+                  "{scratch}\\tmp"
+                ],
+                [
+                  "USERPROFILE",
+                  "{scratch}\\profile"
+                ],
+                [
+                  "WINDIR",
+                  "{SystemRoot}"
+                ]
+              ]
+            },
+            "fingerprint": 2
           }
         }
       ]

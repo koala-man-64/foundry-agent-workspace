@@ -15,8 +15,12 @@ const HELPER_GRACE_MS = 10_000;
 // Allow bounded cold Windows helper startup before the native execution deadline begins.
 const HELPER_STARTUP_MS = 60_000;
 const MAX_HELPER_ERROR_BYTES = 8 * 1024;
-const MAX_STATE_FILES = 10_000;
-const MAX_STATE_BYTES = 64 * 1024 * 1024;
+const MAX_STATE_FILES = 50_000;
+const MAX_STATE_FOLDERS = 10_000;
+const MAX_STATE_BYTES = 1024 * 1024 * 1024;
+const STATE_CHUNK_BYTES = 64 * 1024;
+const STATE_TOO_LARGE = 'Worktree exceeds command review limits (50,000 files, 10,000 directories or links, 1 GiB of file content).';
+const STATE_CHANGED = 'Worktree changed while fingerprinting; request approval again.';
 const FORBIDDEN_ENVIRONMENT = /(?:credential|secret|token|password|authorization|api[_-]?key|cookie|proxy|node_options)/i;
 const RESERVED_ENVIRONMENT = /^(?:path|comspec|systemroot|windir|pathext|psmodulepath)$/i;
 
@@ -201,7 +205,9 @@ export class CommandRunner {
   private async contentState(root: string): Promise<string> {
     const digest = createHash('sha256');
     let files = 0;
+    let folders = 0;
     let bytes = 0;
+    const buffer = Buffer.allocUnsafe(STATE_CHUNK_BYTES);
     const visit = async (directory: string): Promise<void> => {
       const entries = await fs.readdir(directory, { withFileTypes: true });
       entries.sort((left, right) => left.name.localeCompare(right.name));
@@ -210,14 +216,35 @@ export class CommandRunner {
         const target = path.join(directory, entry.name);
         const relative = path.relative(root, target).split(path.sep).join('/');
         const stat = await fs.lstat(target);
+        if ((stat.isSymbolicLink() || stat.isDirectory()) && ++folders > MAX_STATE_FOLDERS) throw new Error(STATE_TOO_LARGE);
         if (stat.isSymbolicLink()) { digest.update(`L\0${relative}\0${await fs.readlink(target)}\0`); continue; }
         if (stat.isDirectory()) { digest.update(`D\0${relative}\0`); await visit(target); continue; }
         if (!stat.isFile()) continue;
         files += 1;
         bytes += stat.size;
-        if (files > MAX_STATE_FILES || bytes > MAX_STATE_BYTES) throw new Error('Worktree is too large to fingerprint safely.');
+        if (files > MAX_STATE_FILES || bytes > MAX_STATE_BYTES) throw new Error(STATE_TOO_LARGE);
         digest.update(`F\0${relative}\0${stat.size}\0`);
-        digest.update(await fs.readFile(target));
+        // All regular content, including ignored executable dependencies, remains part of approval freshness.
+        // Read only the observed length plus one byte: a growing file cannot create an unbounded read.
+        const handle = await fs.open(target, 'r');
+        try {
+          const opened = await handle.stat();
+          if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size
+            || opened.mtimeMs !== stat.mtimeMs || opened.ctimeMs !== stat.ctimeMs) throw new Error(STATE_CHANGED);
+          let readBytes = 0;
+          while (readBytes <= stat.size) {
+            const { bytesRead } = await handle.read(buffer, 0, Math.min(buffer.length, stat.size + 1 - readBytes), readBytes);
+            if (bytesRead === 0) break;
+            readBytes += bytesRead;
+            if (readBytes > stat.size) throw new Error(STATE_CHANGED);
+            digest.update(buffer.subarray(0, bytesRead));
+          }
+          const after = await handle.stat();
+          const named = await fs.lstat(target);
+          if (readBytes !== stat.size || after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs
+            || !named.isFile() || named.dev !== opened.dev || named.ino !== opened.ino || named.size !== opened.size
+            || named.mtimeMs !== opened.mtimeMs || named.ctimeMs !== opened.ctimeMs) throw new Error(STATE_CHANGED);
+        } finally { await handle.close(); }
       }
     };
     await visit(root);

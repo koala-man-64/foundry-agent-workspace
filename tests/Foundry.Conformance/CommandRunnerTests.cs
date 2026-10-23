@@ -417,7 +417,106 @@ public sealed class CommandRunnerTests
         });
     }
 
-    /// <summary>Native difference (review F2): folders and links count against their own limit of 10,000.</summary>
+    [Fact]
+    public async Task IgnoredDependenciesAboveTheOldLimitsRemainFreshnessBound()
+    {
+        using var fixture = await Repository("foundry-command-representative-");
+        fixture.Write("repo/.gitignore", "node_modules/\n");
+        var dependencies = Directory.CreateDirectory(fixture.Local("repo/node_modules")).FullName;
+        for (var index = 0; index < 10_001; index++) File.WriteAllText(Path.Combine(dependencies, $"{index:D5}.js"), "dependency\n");
+        var large = Path.Combine(dependencies, "large.bin");
+        using (var writer = File.Create(large))
+        {
+            writer.SetLength(65L * 1024 * 1024 + 1);
+            writer.Position = writer.Length - 1;
+            writer.WriteByte(1);
+        }
+        var observed = File.GetLastWriteTimeUtc(large);
+        var marker = fixture.Local("must-not-launch.marker");
+        var request = new CommandRequest($"[IO.File]::WriteAllText('{marker.Replace("'", "''", StringComparison.Ordinal)}', 'launched')", "", [], 10_000);
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            var prepared = await runner.Prepare(fixture.Local("repo"), request);
+            // Same length and restored timestamp: content, including the final streamed byte, must determine freshness.
+            using (var writer = new FileStream(large, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+            {
+                writer.Position = writer.Length - 1;
+                writer.WriteByte(2);
+            }
+            File.SetLastWriteTimeUtc(large, observed);
+            var refusal = await Assert.ThrowsAsync<CommandPreflightException>(() => runner.Execute(prepared, CancellationToken.None));
+            Assert.Equal(CommandRunner.StaleCommand, refusal.Message);
+            Assert.Equal("none", refusal.Outcome);
+            Assert.False(File.Exists(marker));
+            Assert.Equal(CommandRunner.UnknownCommand, (await Assert.ThrowsAsync<CommandPreflightException>(() => runner.Execute(prepared, CancellationToken.None))).Message);
+            return 0;
+        });
+    }
+
+    [Fact]
+    public async Task AnOpenIgnoredDependencyWriterRefusesExecutionBeforeLaunch()
+    {
+        using var fixture = await Repository("foundry-command-active-writer-");
+        fixture.Write("repo/.gitignore", "node_modules/\n");
+        fixture.Write("repo/node_modules/dependency.js", "dependency\n");
+        var marker = fixture.Local("must-not-launch.marker");
+        var request = new CommandRequest($"[IO.File]::WriteAllText('{marker.Replace("'", "''", StringComparison.Ordinal)}', 'launched')", "", [], 10_000);
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            var prepared = await runner.Prepare(fixture.Local("repo"), request);
+            using (var writer = new FileStream(fixture.Local("repo/node_modules/dependency.js"), FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+            {
+                var refusal = await Assert.ThrowsAsync<CommandPreflightException>(() => runner.Execute(prepared, CancellationToken.None));
+                Assert.Equal(CommandRunner.StateUnreadable, refusal.Message);
+                Assert.Equal("none", refusal.Outcome);
+                Assert.False(File.Exists(marker));
+            }
+            Assert.Equal(CommandRunner.UnknownCommand, (await Assert.ThrowsAsync<CommandPreflightException>(() => runner.Execute(prepared, CancellationToken.None))).Message);
+            runner.Discard(await runner.Prepare(fixture.Local("repo"), request));
+            return 0;
+        });
+    }
+
+    [Fact]
+    public async Task MoreThanFiftyThousandFilesAreRefusedEvenWhenIgnored()
+    {
+        using var fixture = await Repository("foundry-command-file-limit-");
+        fixture.Write("repo/.gitignore", "node_modules/\n");
+        var dependencies = Directory.CreateDirectory(fixture.Local("repo/node_modules")).FullName;
+        for (var index = 0; index < CommandRunner.MaximumStateFiles; index++) File.WriteAllBytes(Path.Combine(dependencies, $"{index:D5}.js"), []);
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            Assert.Equal(CommandRunner.TooLarge, (await Assert.ThrowsAsync<WorkspaceReadException>(() => runner.Prepare(fixture.Local("repo"), Say("x")))).Message);
+            return 0;
+        });
+    }
+
+    [Theory]
+    [InlineData(1024L * 1024 * 1024)]
+    [InlineData(1024L * 1024 * 1024 + 1)]
+    public async Task OversizeFileOrAggregateContentIsRefused(long dependencyBytes)
+    {
+        using var fixture = await Repository("foundry-command-byte-limit-");
+        fixture.Write("repo/.gitignore", "node_modules/\n");
+        Directory.CreateDirectory(fixture.Local("repo/node_modules"));
+        // At exactly 1 GiB the other files exceed the aggregate cap; one byte more exceeds the cap by itself.
+        using (var writer = File.Create(fixture.Local("repo/node_modules/large.bin"))) writer.SetLength(dependencyBytes);
+        await using var loop = new RuntimeLoop();
+        await loop.Invoke(async () =>
+        {
+            var runner = new CommandRunner(loop, new RepositoryService(loop, fixture.Local("wt"), fixture.Environment), fixture.Environment);
+            Assert.Equal(CommandRunner.TooLarge, (await Assert.ThrowsAsync<WorkspaceReadException>(() => runner.Prepare(fixture.Local("repo"), Say("x")))).Message);
+            return 0;
+        });
+    }
+
+    /// <summary>Folders and links count against their own limit of 10,000.</summary>
     [Fact]
     public async Task MoreThanTenThousandFoldersAreRefused()
     {
