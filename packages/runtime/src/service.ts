@@ -163,13 +163,24 @@ export class RuntimeService {
     const task = this.store.task(taskId);
     if (this.continuityLocks.has(task.rootTaskId ?? taskId)) throw new Error('Wait for the continuation to finish before changing source execution.');
   }
-  setCredential(id: string, secret: string, binding?: string): void {
+  setCredential(id: string, secret: string, binding?: string, restoring = false): void {
     if (this.closing) throw new Error('Runtime is shutting down.');
     if (this.upgrading) throw new Error('The database upgrade is in progress.');
     const targetProfile = this.store.profile(id);
     if (binding !== undefined && (!targetProfile || JSON.stringify([targetProfile.apiKind, targetProfile.endpoint, targetProfile.deployment]) !== binding)) throw new Error('Profile changed while saving the credential; retry from model settings.');
+    // Only the trusted main process can restore an endpoint-bound vault entry. Explicit
+    // replacement invalidates persisted qualification before main writes the new vault
+    // value, so a crash between those steps also leaves qualification invalidated.
+    if (restoring && (binding === undefined || (this.credentials.has(id) && this.credentials.get(id) !== secret))) throw new Error('A saved credential can only be restored into an uninitialized profile.');
     if (this.credentials.get(id) === secret && !this.credentialRepairError) return;
     if (this.running.size) throw new Error('Wait for active responses before changing credentials.');
+    // A failed database write must leave the old in-memory credential untouched:
+    // otherwise retrying that secret could take the idempotent path above and let
+    // main persist it without ever invalidating the old qualification.
+    if (targetProfile && !restoring) {
+      delete targetProfile.verifiedAt; delete targetProfile.verificationFingerprint; delete targetProfile.capabilities;
+      this.store.saveProfile(targetProfile);
+    }
     this.credentials.set(id, secret); this.redactor.add(secret);
     this.credentialRepairs = this.credentialRepairs.then(async () => {
       this.credentialRepairError = undefined;
@@ -178,8 +189,6 @@ export class RuntimeService {
       if (repaired.repairedIds.length) this.publish('mcp.repaired', { serverIds: repaired.repairedIds, backupPath: repaired.backupPath });
     }).catch(error => { this.credentialRepairError = this.redactor.text(error instanceof Error ? error.message : 'MCP configuration repair failed.'); });
     this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
-    const profile = this.store.profile(id);
-    if (profile) { delete profile.verifiedAt; delete profile.verificationFingerprint; delete profile.capabilities; this.store.saveProfile(profile); }
   }
   async flushCredentialRepairs(): Promise<void> {
     await this.credentialRepairs;

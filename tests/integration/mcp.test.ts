@@ -302,6 +302,75 @@ else result={};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result
     expect(runtime.mcp['sessions'].has(cfg.id as string)).toBe(false);
   });
 
+  it.each(['malformed', 'oversized', 'non-jsonrpc'])('retains an unknown mutation after an in-flight %s transport frame', async kind => {
+    const cfg = config({ environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_LIFECYCLE: '1' } });
+    await runtime.dispatch('mcp.save', cfg);
+    await withProvider(new ScriptProvider([[{ id: 'broken', name: 'mcp__fixture__break_transport', arguments: { kind } }]]));
+    const task = await codingTask();
+    await runtime.dispatch('task.send', { taskId: task.id, content: 'go' });
+    const approval = await proposal(task.id); await decide(approval); await done(task.id);
+    // Initialization succeeded; the fixture mutates only after receiving tools/call, before breaking framing.
+    expect(await readFile(notes, 'utf8')).toBe('mutation-before-broken-frame\n');
+    expect(store.approval(approval.id)).toMatchObject({ state: 'unknown', result: { isError: true } });
+    expect(store.task(task.id).status).toBe('failed');
+    expect(runtime.mcp.statusOf(cfg.id as string).running).toBe(false);
+    await expect(runtime.dispatch('task.send', { taskId: task.id, content: 'again' })).rejects.toThrow('unknown mutation outcome');
+    await expect(runtime.dispatch('task.compact', { taskId: task.id })).rejects.toThrow('unknown mutation outcome');
+  });
+
+  it('task cancellation stops the shared MCP job before either pending mutation can finish', async () => {
+    const release = join(directory, 'release-mutations');
+    const cfg = config({ callTimeoutMs: 10000, environment: { MCP_FIXTURE_NOTES: notes, MCP_FIXTURE_LIFECYCLE: '1', MCP_FIXTURE_RELEASE: release } });
+    await runtime.dispatch('mcp.save', cfg);
+    await withProvider(new ScriptProvider([
+      [{ id: 'first', name: 'mcp__fixture__barrier_write', arguments: { tag: 'first' } }],
+      [{ id: 'second', name: 'mcp__fixture__barrier_write', arguments: { tag: 'second' } }]
+    ]));
+    const starts = async () => (await readFile(notes, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as { tag: string; actor: string; pid: number });
+    const first = await codingTask(); const second = await codingTask();
+    await runtime.dispatch('task.send', { taskId: first.id, content: 'go' });
+    const firstApproval = await proposal(first.id); await decide(firstApproval);
+    await expect.poll(async () => (await starts()).filter(item => item.tag === 'first').map(item => item.actor).sort(), { timeout: 15000 }).toEqual(['child', 'server']);
+    await runtime.dispatch('task.send', { taskId: second.id, content: 'go' });
+    const secondApproval = await proposal(second.id); await decide(secondApproval);
+    await expect.poll(async () => (await starts()).filter(item => item.tag === 'second').map(item => item.actor).sort(), { timeout: 15000 }).toEqual(['child', 'server']);
+    const started = await starts();
+    expect(started).toHaveLength(4);
+    const ownedPids = [...new Set(started.map(item => item.pid))];
+    expect(ownedPids).toHaveLength(3);
+    expect(ownedPids.every(pid => alive(pid))).toBe(true);
+    expect(store.approval(firstApproval.id).state).toBe('executing');
+    expect(store.approval(secondApproval.id).state).toBe('executing');
+    await expect(runtime.dispatch('task.cancel', { taskId: first.id })).resolves.toEqual({ accepted: true });
+    await done(first.id);
+    // Check the cancellation boundary before waiting for another call's timeout: the old
+    // waiter-only cancellation leaves this session alive and must fail here.
+    expect(runtime.mcp.statusOf(cfg.id as string)).toEqual({ running: false, lastError: null });
+    expect(ownedPids.every(pid => !alive(pid))).toBe(true);
+    await done(second.id);
+    expect(store.task(first.id).status).toBe('cancelled');
+    expect(store.task(second.id).status).toBe('failed');
+    expect(store.approval(firstApproval.id).state).toBe('unknown');
+    expect(store.approval(secondApproval.id).state).toBe('unknown');
+    expect(runtime.mcp.statusOf(cfg.id as string)).toEqual({ running: false, lastError: null });
+    // All effect-producing processes are dead before the test releases their shared barrier.
+    // No scheduling interval can allow a mutation to escape while the second call starts.
+    const beforeRelease = await readFile(notes, 'utf8');
+    await writeFile(release, 'released');
+    expect(await readFile(notes, 'utf8')).toBe(beforeRelease);
+    expect(beforeRelease).not.toContain('-effect');
+  });
+
+  it('does not dispatch or stop an existing MCP session when its signal is already cancelled', async () => {
+    const cfg = config({ environment: { MCP_FIXTURE_NOTES: notes } }) as unknown as McpServerConfig;
+    await runtime.dispatch('mcp.save', cfg);
+    const abort = new AbortController(); abort.abort();
+    await expect(runtime.mcp.call(cfg, 'write_note', { text: 'must not run' }, abort.signal)).rejects.toMatchObject({ name: 'McpError', unknownOutcome: false });
+    await expect(stat(notes)).rejects.toThrow();
+    expect(runtime.mcp.statusOf(cfg.id).running).toBe(true);
+    await expect(runtime.mcp.call(cfg, 'echo', { text: 'still available' }, new AbortController().signal)).resolves.toMatchObject({ isError: false, content: 'echo: still available' });
+  });
+
   it('revokes a pending MCP approval when the runtime stops and never executes it afterwards', async () => {
     await runtime.dispatch('mcp.save', config());
     const task = await codingTask();

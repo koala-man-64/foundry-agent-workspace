@@ -1,5 +1,26 @@
 # Implementation status
 
+## Audit remediation — 23 October 2026
+
+Scope: confirmed findings A01–A10 from the local application audit of `12773c7`, rechecked against current `main` at `ce73c53`. Implementation is isolated on `codex/audit-remediation-20261023`; feature expansion, publication, migration/adoption of real data, signing and main-branch integration are outside this change.
+
+- **A01/A02, MCP cancellation and uncertain outcomes:** malformed, oversized and invalid JSON-RPC frames after dispatch retain an unknown outcome. Cancelling a dispatched call stops its supervised shared session and awaits cleanup; affected concurrent calls remain unknown. A cancelled pre-dispatch call does not stop another task's server. Replacement sessions wait for the previous stop, and missing cleanup evidence remains visible. Regressions include actual hosted stdio tools, delayed effects, descendants, shared callers and failure before dispatch.
+- **A03, coordinator transcript:** already implemented on current main. Added coverage for the actual persisted user/assistant messages, child navigation and restart rather than duplicating upstream UI.
+- **A04, credential restoration:** the private main-to-runtime credential frame distinguishes initial endpoint-bound vault restoration from replacement. Restoration preserves stored qualification; a different initialized secret or stale binding is refused. Replacement durably invalidates qualification before adopting the new secret and before main writes its encrypted vault. Database-write failure and same-secret retry are covered. The fix and private frame validation are present in both TypeScript and C#; it adds no public RPC or database migration.
+- **A05/A06, coordinated controls:** selected-agent usage and manual compaction are available, as are explicit clean terminal root/child retirement and read-only reconciliation of unknown file edits. Aggregate root usage is distinguished from selected-agent context. Existing runtime gates remain authoritative; coordinated commit/push and automatic replay remain prohibited.
+- **A07, qualification fidelity:** the developer qualifier loads the production provider adapters through a narrow in-memory build with configuration/env/public discovery disabled. It injects transport instead of maintaining independent request and stream parsers. Offline fixtures cover invalid authoritative output, continuation, refusal, malformed events, usage and cancellation.
+- **A08, dependency patches:** Electron 44.5.0, Vite 7.3.7, Vitest 5.0.3 and resolved source-map-js 1.2.2. Electron's actual Node remains 24.21.0, matching `.node-version`. One disputed, unpatched `http-cache-semantics` advisory remains on the packaging dependency path; it is neither suppressed nor presented as a clean audit.
+- **A09, installation evidence:** already corrected upstream in `docs/release-evidence.md`. Actual clean-profile installation remains open; the static verifier does not perform installation, launch or uninstall.
+- **A10, completion evidence:** a retained completion preserves its timestamp while current unreadable/changed/unknown worktree state exposes blockers. The UI labels historical completion separately from current verification, including after retirement.
+
+### Migration parity and validation custody
+
+The shipping product remains Electron/TypeScript. Credential restoration/replacement is dual-landed in `DevelopmentChat` and the native private-frame validator. The native provider already rejects missing authoritative Responses output. Native coordination and MCP execution are still explicitly unavailable, so this change does not introduce those migration features or claim parity for them.
+
+The additive private credential-frame metadata and generated C# model were regenerated from their TypeScript schemas. The affected P2 corpora were generated under Electron's own pinned Node; their behavioral payloads are unchanged and only their source seals changed. No fixture database or existing user data was migrated.
+
+Final sequential validation passed: `pnpm check --maxWorkers=1` (typecheck, lint, 98 files / 621 tests), `pnpm test:e2e` (22 tests), locked native restore, Release build with zero warnings/errors, native tests (8,181 successes / two environment-dependent skips), `pnpm package:dir` and `pnpm smoke:package`. Focused regressions, initial failures, independent security/integration reviews and exact package hashes are retained under `.local/audit-remediation/`. Source, local tests, package custody, live deployment qualification, signing and clean installation remain separate evidence classes.
+
 ## WPF + WebView2 migration — P1 privately qualified; P2 in progress, integration held
 
 Recorded 8 October 2026. The [migration plan](wpf-webview2-migration.md) replaces Electron and Node with three parts, delivered in a single cutover:

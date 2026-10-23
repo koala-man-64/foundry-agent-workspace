@@ -422,8 +422,10 @@ export class Orchestrator implements OrchestrationToolHooks {
     else if (!evidence.passed) blockers.push('The latest combined validation did not pass with verified cleanup on a clean tree.');
     else if (target && (evidence.head !== target.head || evidence.tree !== target.tree)) blockers.push('The combined validation is stale: the integrated tree changed after it ran.');
     if (done && !forCompletion) {
-      if (target && (done.head !== target.head || done.tree !== target.tree)) return { complete: false, completedAt: done.createdAt, blockers: ['The task worktree changed after completion was recorded.'] };
-      return { complete: true, completedAt: done.createdAt, blockers: [] };
+      // A retained completion proves the historical tree, not unreadable or changed
+      // current state. Preserve its timestamp while exposing verification blockers.
+      if (target && (done.head !== target.head || done.tree !== target.tree)) blockers.unshift('The task worktree changed after completion was recorded.');
+      return { complete: blockers.length === 0, completedAt: done.createdAt, blockers: [...new Set(blockers)] };
     }
     if (done && forCompletion) blockers.push('Completion is already recorded.');
     return { complete: blockers.length === 0, completedAt: null, blockers: [...new Set(blockers)] };

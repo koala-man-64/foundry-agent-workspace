@@ -36,7 +36,7 @@ const browserHost: BrowserHost = { request(input: BrowserHostRequest, signal?: A
   });
 } };
 const service = new RuntimeService(new Store(join(directory, 'workspace.db')), new RepositoryService(join(directory, 'wt')), event => output({ jsonrpc: '2.0', method: 'workspace.event', params: event }), undefined, undefined, { browserHost });
-const CredentialSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string(), method: z.literal('runtime.credential'), params: z.object({ id: z.string().uuid(), value: z.string().min(4).max(8192), binding: z.string().max(4096) }).strict() }).strict();
+const CredentialSchema = z.object({ jsonrpc: z.literal('2.0'), id: z.string(), method: z.literal('runtime.credential'), params: z.object({ id: z.string().uuid(), value: z.string().min(4).max(8192), binding: z.string().max(4096), restoring: z.boolean().optional() }).strict() }).strict();
 const decoder = new LineDecoder(MAX_RPC_BYTES);
 let stopped = false;
 const activeHandles = new Set<Promise<void>>();
@@ -69,7 +69,7 @@ async function handle(line: string): Promise<void> {
     if (stopped) return;
     const credential = CredentialSchema.safeParse(input);
     if (credential.success) {
-      id = credential.data.id; service.setCredential(credential.data.params.id, credential.data.params.value, credential.data.params.binding);
+      id = credential.data.id; service.setCredential(credential.data.params.id, credential.data.params.value, credential.data.params.binding, credential.data.params.restoring);
       await service.flushCredentialRepairs();
       output({ jsonrpc: '2.0', id, result: null }); return;
     }

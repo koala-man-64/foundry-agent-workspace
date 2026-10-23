@@ -743,11 +743,13 @@ public sealed record FrameRuntimeCredentialInputParams : IWireModel
     public required string Id { get; init; }
     public required string Value { get; init; }
     public required string Binding { get; init; }
+    public Specified<bool> Restoring { get; init; }
     public Dictionary<string, object?> ToWire() => new()
     {
         ["id"] = Id,
         ["value"] = Value,
-        ["binding"] = Binding
+        ["binding"] = Binding,
+        ["restoring"] = Restoring.IsPresent ? (object?)Restoring.Value : Undefined.Value
     };
 }
 

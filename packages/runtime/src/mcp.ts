@@ -84,14 +84,14 @@ export class McpClient {
   }
   private receive(chunk: string): void {
     let lines: string[];
-    try { lines = this.decoder.push(chunk); } catch { this.close(new McpError('The MCP server sent a message above the size limit.')); return; }
+    try { lines = this.decoder.push(chunk); } catch { this.close(new McpError('The MCP server sent a message above the size limit.', true)); return; }
     if (lines.length && this.firstFrameMs === null) this.firstFrameMs = this.elapsedMs();
     this.completedFrames += lines.length;
     for (const line of lines) {
       if (!line.trim()) continue;
       let message: JsonRpcMessage;
-      try { message = JSON.parse(line) as JsonRpcMessage; } catch { this.close(new McpError('The MCP server sent malformed JSON.')); return; }
-      if (!message || typeof message !== 'object' || message.jsonrpc !== '2.0') { this.close(new McpError('The MCP server sent a non JSON-RPC 2.0 message.')); return; }
+      try { message = JSON.parse(line) as JsonRpcMessage; } catch { this.close(new McpError('The MCP server sent malformed JSON.', true)); return; }
+      if (!message || typeof message !== 'object' || message.jsonrpc !== '2.0') { this.close(new McpError('The MCP server sent a non JSON-RPC 2.0 message.', true)); return; }
       if (message.id === undefined || message.id === null) {
         if (typeof message.method === 'string') { if (this.notifications.length < 100) this.notifications.push({ method: message.method, params: message.params }); }
         continue;
@@ -207,13 +207,14 @@ export class McpProcess {
   }
 }
 
-interface Session { config: McpServerConfig; fingerprint: string; process: McpProcess; client: McpClient; tools: McpTool[]; serverInfo: { name: string; version: string } | null; idle?: NodeJS.Timeout; busy: number; failed?: Error }
+interface Session { config: McpServerConfig; fingerprint: string; process: McpProcess; client: McpClient; tools: McpTool[]; serverInfo: { name: string; version: string } | null; idle?: NodeJS.Timeout; busy: number; failed?: Error; stopping?: Promise<void> }
 
 export interface McpManagerOptions { hostPath?: string; forbiddenRoots?: () => string[] }
 
 export class McpManager {
   private readonly sessions = new Map<string, Session>();
   private readonly starting = new Map<string, Promise<Session>>();
+  private readonly stopping = new Map<string, Promise<void>>();
   private readonly hostPath: string;
   private closing = false;
   constructor(private readonly servers: () => StoredMcpServer[], private readonly redactor: Redactor, private readonly options: McpManagerOptions = {}) {
@@ -263,26 +264,33 @@ export class McpManager {
   /** Execute a tool call. The caller has already applied policy (approval or allowlist) and secret screening of the arguments. */
   async call(config: McpServerConfig, toolName: string, args: unknown, signal: AbortSignal): Promise<McpCallResult> {
     if (this.closing) throw new McpError('The runtime is shutting down.');
+    if (signal.aborted) throw new McpError('MCP call cancelled before dispatch.');
     if (!isRecord(args)) throw new McpError('MCP tool arguments must be a JSON object.');
     const encoded = JSON.stringify(args);
     if (Buffer.byteLength(encoded, 'utf8') > MAX_ARGUMENT_BYTES) throw new McpError('MCP tool arguments exceed the size limit.');
     const session = await this.openSession(config, false);
+    // Cancellation during initialization has not sent tools/call and must not stop another task's session.
+    if (signal.aborted) throw new McpError('MCP call cancelled before dispatch.');
+    if (session.client.isClosed) throw new McpError('The MCP connection closed before dispatch.');
     if (!session.tools.some(tool => tool.name === toolName)) throw new McpError(`The running server no longer lists tool ${toolName}. Reconnect the server from settings.`);
     session.busy++;
     try {
       const raw = await session.client.request('tools/call', { name: toolName, arguments: args }, config.callTimeoutMs, signal);
       return this.boundResult(raw);
     } catch (error) {
-      if (!(error instanceof McpError) && session.client.isClosed) throw new McpError(`The MCP server connection closed during the call: ${error instanceof Error ? error.message : 'unknown error'}`, true);
-      // A timed-out or protocol-broken session is stopped so a stuck server cannot hold the slot; it is not retried.
-      if (error instanceof McpError && (error.unknownOutcome || session.client.isClosed)) await this.stopSession(session.config.id, error);
-      throw error;
+      const failure = signal.aborted || session.client.isClosed
+        ? new McpError(`The MCP call was interrupted: ${error instanceof Error ? error.message : 'unknown error'}`, true)
+        : error;
+      // A dispatched call can still mutate after its waiter is cancelled. End the shared job and
+      // await its cleanup for every affected caller; no in-flight outcome can become a known failure.
+      if (failure instanceof McpError && failure.unknownOutcome) await this.stopSession(session.config.id, failure, session);
+      throw failure;
     } finally { session.busy--; this.touch(session); }
   }
 
   statusOf(serverId: string): { running: boolean; lastError: string | null } {
     const session = this.sessions.get(serverId);
-    const note = session?.failed ? this.redactor.text(session.failed.message) : this.unverifiedStops.has(serverId) ? 'The last stop could not verify that every server process ended within five seconds; the kill-on-close job still terminates the tree when the host exits.' : null;
+    const note = session?.failed ? this.redactor.text(session.failed.message) : this.unverifiedStops.has(serverId) ? 'The last stop could not verify that every server process ended. Inspect local processes before relying on cleanup.' : null;
     return { running: Boolean(session?.process.running), lastError: note };
   }
   private readonly unverifiedStops = new Set<string>();
@@ -291,7 +299,7 @@ export class McpManager {
 
   async shutdown(): Promise<void> {
     this.closing = true;
-    await Promise.allSettled([...this.sessions.keys()].map(id => this.stopSession(id, new McpError('Runtime shutdown.'))));
+    await Promise.allSettled([...this.sessions.keys()].map(id => this.stopSession(id, new McpError('Runtime shutdown.'))).concat([...this.stopping.values()]));
   }
 
   // ---------------------------------------------------------------- internals
@@ -351,6 +359,7 @@ export class McpManager {
   }
 
   private async openSession(config: McpServerConfig, fresh: boolean): Promise<Session> {
+    await this.stopping.get(config.id);
     if (this.closing) throw new McpError('The runtime is shutting down.');
     const fingerprint = configFingerprint(config);
     const existing = this.sessions.get(config.id);
@@ -366,7 +375,7 @@ export class McpManager {
       const processHandle = await McpProcess.start(host, { ...config, cwd }, this.environment(config));
       const session: Session = { config, fingerprint, process: processHandle, client: undefined as unknown as McpClient, tools: [], serverInfo: null, busy: 0 };
       session.client = new McpClient(processHandle.stdin, processHandle.stdout, error => { session.failed = error; });
-      void processHandle.exited.then(() => session.client.close(new McpError(`The MCP server exited${processHandle.stderr ? `: ${this.redactor.text(processHandle.stderr).slice(0, 500)}` : '.'}`)));
+      void processHandle.exited.then(() => session.client.close(new McpError(`The MCP server exited${processHandle.stderr ? `: ${this.redactor.text(processHandle.stderr).slice(0, 500)}` : '.'}`, true)));
       try {
         const init = await session.client.request('initialize', { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'foundry-agent-workspace', version: '0.2.0' } }, INITIALIZE_TIMEOUT_MS);
         if (!isRecord(init) || typeof init.protocolVersion !== 'string') throw new McpError('The MCP server returned an invalid initialize result.');
@@ -454,19 +463,29 @@ export class McpManager {
   }
 
   private touch(session: Session): void {
+    if (this.sessions.get(session.config.id) !== session) return;
     if (session.idle) clearTimeout(session.idle);
     session.idle = setTimeout(() => { if (!session.busy) void this.stopSession(session.config.id, undefined); }, IDLE_STOP_MS);
     session.idle.unref?.();
   }
 
-  private async stopSession(serverId: string, error: Error | undefined): Promise<void> {
-    const session = this.sessions.get(serverId);
-    if (!session) return;
+  private stopSession(serverId: string, error: Error | undefined, target?: Session): Promise<void> {
+    const session = target ?? this.sessions.get(serverId);
+    if (session?.stopping) return session.stopping;
+    if (!session || this.sessions.get(serverId) !== session) return this.stopping.get(serverId) ?? Promise.resolve();
     this.sessions.delete(serverId);
     if (session.idle) clearTimeout(session.idle);
-    session.client.close(error ?? new McpError('The MCP server was stopped.'));
-    const result = await session.process.stop();
-    if (result && !result.cleanupVerified) this.unverifiedStops.add(serverId); else if (result) this.unverifiedStops.delete(serverId);
+    session.client.close(new McpError(error?.message ?? 'The MCP server was stopped.', true));
+    const operation = (async () => {
+      try {
+        const result = await session.process.stop();
+        if (result?.cleanupVerified) this.unverifiedStops.delete(serverId); else this.unverifiedStops.add(serverId);
+      } catch { this.unverifiedStops.add(serverId); }
+    })();
+    session.stopping = operation;
+    this.stopping.set(serverId, operation);
+    void operation.then(() => { if (this.stopping.get(serverId) === operation) this.stopping.delete(serverId); });
+    return operation;
   }
 }
 

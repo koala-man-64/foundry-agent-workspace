@@ -89,7 +89,7 @@ try
                     {
                         requestId = (string)frame["id"]!; parsingRequest = false;
                         var given = (Dictionary<string, object?>)frame["params"]!;
-                        chat.SetCredential((string)given["id"]!, (string)given["value"]!, (string)given["binding"]!);
+                        chat.SetCredential((string)given["id"]!, (string)given["value"]!, (string)given["binding"]!, given.GetValueOrDefault("restoring") is true);
                         response = new { jsonrpc = "2.0", id = requestId, result = (object?)null };
                     }
                     else

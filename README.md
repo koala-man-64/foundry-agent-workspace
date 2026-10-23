@@ -70,6 +70,8 @@ Profiles offer **Provider default** (no effort parameter) or the API's supported
 
 Responses and Chat Completions use the OpenAI v1 routes; Anthropic uses `/anthropic/v1/messages`. The app rejects redirects and non-Azure credential destinations. A failed probe disables real requests until a successful test.
 
+The source qualification CLI requires the installed development dependencies (`pnpm install`). It builds the production provider adapters in memory and injects transport rather than using separate request or stream parsers. `node scripts/qualify-deployments.mjs --mock` runs offline; its report does not replace the application's profile-specific probe or live coding-task qualification.
+
 ## Validation and packaging
 
 ```powershell
