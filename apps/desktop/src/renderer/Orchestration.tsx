@@ -7,6 +7,7 @@ import { TaskActivity } from './TaskActivity';
 import { AssignmentGraph } from './AssignmentGraph';
 import { ContinuityPanel } from './ContinuityPanel';
 import { CoordinatedTaskControls } from './CoordinatedTaskControls';
+import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -113,7 +114,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
   const inspectorWasOpen = useRef(false);
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
-  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage'>('orchestration');
+  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage' | 'handoff'>('orchestration');
   const [composer, setComposer] = useState('');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
@@ -538,9 +539,10 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         <button className={tab === 'activity' ? 'active' : ''} onClick={() => setTab('activity')}>Activity</button>
         <button className={tab === 'continuity' ? 'active' : ''} onClick={() => setTab('continuity')}>Continue</button>
         <button className={tab === 'usage' ? 'active' : ''} onClick={() => setTab('usage')}>Usage</button>
+        <button className={tab === 'handoff' ? 'active' : ''} onClick={() => setTab('handoff')}>Handoff</button>
       </div>
       <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} onClick={() => setTab('channel')}>Project channel</button>
-      {tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
+      {tab === 'handoff' ? <CoordinatedHandoffPanel key={rootTaskId} api={api} rootTaskId={rootTaskId} /> : tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}

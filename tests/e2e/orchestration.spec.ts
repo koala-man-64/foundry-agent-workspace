@@ -5,11 +5,40 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import type { Approval } from '../../packages/protocol/src/index';
+import type { CoordinatedHandoffReport } from '../../apps/desktop/src/renderer/coordinatedHandoff';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
 import { createFixtureTask, waitForRuntimeReady } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 const VALIDATION_COMMAND = "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)";
+
+type HandoffDownload = { filename: string; path: string; state: string };
+
+async function captureHandoffDownloads(app: ElectronApplication, directory: string, prefix: string): Promise<void> {
+  await mkdir(directory, { recursive: true });
+  await app.evaluate(({ session }, input) => {
+    const records: { filename: string; path: string; state: string }[] = [];
+    (globalThis as unknown as { handoffDownloads: typeof records }).handoffDownloads = records;
+    session.defaultSession.on('will-download', (_event, item) => {
+      const record = { filename: item.getFilename(), path: `${input.directory}/${input.prefix}-${records.length + 1}.json`, state: 'progressing' };
+      records.push(record);
+      // Intercept before Chromium chooses a destination; the user's Downloads directory is never used.
+      item.setSavePath(record.path);
+      item.once('done', (_event, state) => { record.state = state; });
+    });
+  }, { directory, prefix });
+}
+
+async function handoffDownloads(app: ElectronApplication): Promise<HandoffDownload[]> {
+  return app.evaluate(() => (globalThis as unknown as { handoffDownloads: HandoffDownload[] }).handoffDownloads);
+}
+
+async function readHandoffDownload(app: ElectronApplication, count: number): Promise<{ report: CoordinatedHandoffReport; path: string }> {
+  await expect.poll(async () => (await handoffDownloads(app)).filter(item => item.state === 'completed').length, { timeout: 15_000 }).toBe(count);
+  const item = (await handoffDownloads(app))[count - 1]!;
+  expect(item.filename).toMatch(/^coordinated-handoff-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/);
+  return { report: JSON.parse(await readFile(item.path, 'utf8')) as CoordinatedHandoffReport, path: item.path };
+}
 
 function baseEnvironment(stateDirectory: string): Record<string, string> {
   const environment: Record<string, string> = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
@@ -182,6 +211,39 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     expect(await readFile(join(project, 'README.md'), 'utf8')).toContain('Uncommitted local edit.');
     expect(await stat(join(project, 'untracked-note.txt'))).toBeTruthy();
 
+    await captureHandoffDownloads(app, join(fixture, 'reports'), 'initial');
+    await page.getByRole('button', { name: 'Handoff', exact: true }).click();
+    let handoff = page.getByRole('region', { name: 'Coordinated handoff report' });
+    const repository = { head: git(worktree, 'rev-parse', 'HEAD').trim(), tree: git(worktree, 'rev-parse', 'HEAD^{tree}').trim(), branch: git(worktree, 'branch', '--show-current').trim() };
+    await expect(handoff).toContainText(repository.head);
+    await expect(handoff).toContainText(repository.tree);
+    await expect(handoff).toContainText(repository.branch);
+    await handoff.getByRole('button', { name: 'Download handoff report', exact: true }).click();
+    const firstDownload = await readHandoffDownload(app, 1);
+    expect(firstDownload.report.repository).toEqual(repository);
+    expect(firstDownload.report.rootTaskId).toBe(created.id);
+    expect(firstDownload.report.containsCode).toBe(false);
+    const exactValidation = await page.evaluate(async rootTaskId => (await window.workspace.invoke('orchestration.get', { rootTaskId })).evidence.find(item => item.kind === 'combined')!.id, created.id);
+    expect(firstDownload.report.validation.id).toBe(exactValidation);
+    const reportText = JSON.stringify(firstDownload.report);
+    for (const excluded of [VALIDATION_COMMAND, finalReply!, '/orchestrate-demo', 'alpha child change', worktree]) expect(reportText).not.toContain(excluded);
+    const reportKeys = (value: unknown): string[] => value && typeof value === 'object' ? Object.entries(value).flatMap(([key, child]) => [key, ...reportKeys(child)]) : [];
+    expect(reportKeys(firstDownload.report).filter(key => /command|nonce|transcript|content|environment|credential|arguments|patch|approval/i.test(key))).toEqual([]);
+
+    // Cached successful preview must not permit a report after an external repository change.
+    const staleFile = join(worktree, 'handoff-dirty.txt');
+    await writeFile(staleFile, 'untracked change after handoff preview\n');
+    await handoff.getByRole('button', { name: 'Download handoff report', exact: true }).click();
+    await expect(handoff.getByRole('alert')).toContainText('Report not exported');
+    await expect(handoff.getByRole('heading', { name: 'Checked report preview' })).toHaveCount(0);
+    expect(await handoffDownloads(app)).toHaveLength(1);
+    await rm(staleFile);
+    await createFixtureTask(page, project, 'Handoff navigation task', 'chat');
+    await page.locator('.task-row', { hasText: 'Coordinated demo task' }).click();
+    await page.getByRole('button', { name: 'Handoff', exact: true }).click();
+    await expect(handoff).toContainText(repository.head);
+    expect(JSON.parse(await readFile(firstDownload.path, 'utf8')).repository).toEqual(repository);
+
     expect(errors).toEqual([]);
     const childTasks = await page.evaluate(async rootTaskId => {
       const runs = (await window.workspace.invoke('orchestration.get', { rootTaskId })).runs.filter(run => run.role === 'child');
@@ -191,6 +253,17 @@ test('coordinated workflow: delegation, review, serial integration and restart e
         return { id: task.id, worktreePath: task.worktreePath, branch: task.branch };
       }));
     }, created.id);
+
+    // Reject the next fresh renderer read using supported Electron test hooks. A valid cached
+    // preview exists, but losing IPC must never turn that preview into a downloaded report.
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('workspace:invoke');
+      ipcMain.handle('workspace:invoke', () => { throw new Error('Synthetic handoff refresh unavailable'); });
+    });
+    await handoff.getByRole('button', { name: 'Download handoff report', exact: true }).click();
+    await expect(handoff.getByRole('alert')).toContainText('Synthetic handoff refresh unavailable');
+    await expect(handoff.getByRole('heading', { name: 'Checked report preview' })).toHaveCount(0);
+    expect(await handoffDownloads(app)).toHaveLength(1);
     await app.close();
 
     // Reproduce the durable crash boundary in isolated app data: the approved file was applied,
@@ -214,6 +287,12 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     const childRows = page.locator('nav[aria-label="Agent tree"] .agent-row').filter({ hasNotText: 'Coordinator' });
     await expect(childRows).toHaveCount(3);
     for (let i = 0; i < 3; i++) await expect(childRows.nth(i)).toContainText('Succeeded');
+    await captureHandoffDownloads(app, join(fixture, 'reports'), 'restart');
+    handoff = page.getByRole('region', { name: 'Coordinated handoff report' });
+    await page.getByRole('button', { name: 'Handoff', exact: true }).click();
+    await handoff.getByRole('button', { name: 'Download handoff report', exact: true }).click();
+    await expect(handoff.getByRole('alert')).toContainText('An effect is unknown');
+    expect(await handoffDownloads(app)).toHaveLength(0);
 
     await page.getByRole('button', { name: 'Orchestration', exact: true }).click();
     const assignmentCards = page.locator('.orchestration-panel article.assignment-card').filter({ hasText: 'Integrated' });
@@ -234,6 +313,12 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.getByText(/^Completed on /)).toBeVisible();
     expect(await readFile(appliedFile, 'utf8')).toBe(appliedContent);
     expect((await page.evaluate(async input => (await window.workspace.invoke('approval.get', input)).approval.state, { taskId: interruptedEdit.taskId, approvalId: interruptedEdit.id }))).toBe('complete');
+    await page.getByRole('button', { name: 'Handoff', exact: true }).click();
+    await handoff.getByRole('button', { name: 'Download handoff report', exact: true }).click();
+    const resumedDownload = await readHandoffDownload(app, 1);
+    expect(resumedDownload.report.repository).toEqual(firstDownload.report.repository);
+    expect(resumedDownload.report.validation).toEqual(firstDownload.report.validation);
+    expect(JSON.parse(await readFile(firstDownload.path, 'utf8')).repository).toEqual(repository);
 
     await page.getByRole('button', { name: 'Usage', exact: true }).click();
     const controls = page.getByTestId('coordinated-task-controls');

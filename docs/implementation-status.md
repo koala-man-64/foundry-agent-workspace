@@ -1,5 +1,15 @@
 # Implementation status
 
+## Coordinated handoff report — local expansion, 23 October 2026
+
+Rudy selected a coordinated handoff/export as the first expansion after remediation PR54 merged. This increment starts from `main` at `cf2ccab` on the private `codex/coordinator-handoff-20261023` branch. It is a renderer-only metadata report using the existing `orchestration.get` read; protocol/runtime/DB contracts, execution permissions, native migration behavior and coordinated publication gates are unchanged.
+
+The Handoff inspector panel shows the full branch, commit, tree and validation reference, then re-fetches current state on every download. Export requires recorded/current completion, a terminal successful uncancelled coordinator, terminal children, complete bounded metadata and the latest combined validation on that branch with a clean tree, zero exit and verified cleanup. It refuses stale/dirty/unknown state, missing or failed evidence and failed refresh. Valid superseded/failed historical runs and resolved conflict continuations do not by themselves prevent export.
+
+The JSON uses a positive metadata whitelist: Git object IDs, task/result/integration references and validation status. It omits commands, working paths, credentials, patches, file contents, transcript text, approval payloads and continuation state. It contains no Git objects and grants no execution/publication authority. This is a fresh observed snapshot, not an atomic seal of the database and repository; subsequent changes require fresh review. Browser download uses a fixed-format UUID filename and JSON MIME type. Tests intercept download into isolated temporary storage.
+
+Final local validation passed: `pnpm check --maxWorkers=1` (typecheck, lint, 99 files / 642 tests) and `pnpm test:e2e` (22 tests). The focused real-download workflow and 21 metadata regressions passed; an independent hash-bound security/integration review found no actionable defects. Evidence is retained under `.local/coordinator-handoff/`. This local feature does not qualify hosted CI, live providers, signing, installation, native cutover or release.
+
 ## Audit remediation — 23 October 2026
 
 Scope: confirmed findings A01–A10 from the local application audit of `12773c7`, rechecked against current `main` at `ce73c53`. Implementation is isolated on `codex/audit-remediation-20261023`; feature expansion, publication, migration/adoption of real data, signing and main-branch integration are outside this change.
