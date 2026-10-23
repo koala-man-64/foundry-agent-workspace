@@ -140,7 +140,7 @@ else {
           if (credentialsLoaded.has(profileId)) continue;
           const profile = await runtime!.request('profile.read', { profileId }) as ModelProfile | null;
           const credential = profile ? await vault.load(profileId, binding(profile)) : undefined;
-          if (credential && profile) await runtime!.request('runtime.credential', { id: profileId, value: credential, binding: binding(profile) });
+          if (credential && profile) await runtime!.request('runtime.credential', { id: profileId, value: credential, binding: binding(profile), restoring: true });
           credentialsLoaded.add(profileId);
         }
       }
@@ -159,6 +159,7 @@ else {
       const id = z.string().uuid().parse(profileId); const secret = z.string().min(4).max(8192).parse(value);
       const profile = await runtime!.request('profile.read', { profileId: id }) as ModelProfile | null;
       if (!profile) throw new Error('Save the profile before its credential.');
+      // Invalidate qualification durably before replacing the encrypted vault value.
       await runtime!.request('runtime.credential', { id, value: secret, binding: binding(profile) });
       await vault.save(id, secret, binding(profile)); credentialsLoaded.add(id);
     });

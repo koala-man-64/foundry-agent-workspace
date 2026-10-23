@@ -547,23 +547,27 @@ public sealed class DevelopmentChat
     /// The runtime.credential frame (service.ts setCredential; decision 1 of P2.4). The binding must name the stored profile's
     /// API kind, endpoint and deployment. The same secret again changes nothing. Otherwise no response may be running, and
     /// (decision 2) no MCP server may be saved. The secret is held in memory and registered with the redactor, as fetch trims
-    /// it too (a native addition); the profile's generation advances and its verification is cleared without an event.
+    /// it too (a native addition). An initial trusted, endpoint-bound vault restoration preserves qualification;
+    /// explicit replacement clears it before main can persist the replacement in its encrypted vault.
     /// </summary>
-    public void SetCredential(string profileId, string secret, string binding)
+    public void SetCredential(string profileId, string secret, string binding, bool restoring = false)
     {
         loop.AssertCurrent();
         ArgumentNullException.ThrowIfNull(secret);
         if (closing) throw new InvalidOperationException("Runtime is shutting down.");
         var target = store.Profile(profileId);
         if (target is null || Binding(target) != binding) throw new WorkspaceReadException("Profile changed while saving the credential; retry from model settings.");
+        if (restoring && credentials.TryGetValue(profileId, out var initialized) && initialized != secret) throw new WorkspaceReadException("A saved credential can only be restored into an uninitialized profile.");
         if (credentials.TryGetValue(profileId, out var known) && known == secret) return;
         if (running.Count > 0) throw new WorkspaceReadException("Wait for active responses before changing credentials.");
         if (store.HasMcpServers()) throw new WorkspaceReadException(McpRepair);
+        // Persist invalidation before adopting the new secret. On a failed write,
+        // retrying the same replacement must not become an idempotent success.
+        if (!restoring) store.SaveProfile(Without(target, Verification));
         credentials[profileId] = secret; redactor.Add(secret);
         var trimmed = secret.Trim('\t', '\n', '\r', ' ');
         if (trimmed != secret) redactor.Add(trimmed);
         generations[profileId] = generations.GetValueOrDefault(profileId) + 1;
-        if (store.Profile(profileId) is { } profile) store.SaveProfile(Without(profile, Verification));
     }
 
     /// <summary>

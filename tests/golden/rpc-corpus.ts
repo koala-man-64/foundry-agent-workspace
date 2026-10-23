@@ -13,7 +13,7 @@ import { encode, type Tagged } from './encoding';
 
 // entry.ts:39 and the main-process IPC handlers (index.ts:115,159) declare these inline. Neither module can be
 // imported by a test (entry.ts starts the runtime and index.ts starts Electron), so they are mirrored here.
-const RuntimeCredentialFrame = z.object({ jsonrpc: z.literal('2.0'), id: z.string(), method: z.literal('runtime.credential'), params: z.object({ id: z.string().uuid(), value: z.string().min(4).max(8192), binding: z.string().max(4096) }).strict() }).strict();
+const RuntimeCredentialFrame = z.object({ jsonrpc: z.literal('2.0'), id: z.string(), method: z.literal('runtime.credential'), params: z.object({ id: z.string().uuid(), value: z.string().min(4).max(8192), binding: z.string().max(4096), restoring: z.boolean().optional() }).strict() }).strict();
 const SaveCredentialArguments = z.object({ profileId: z.string().uuid(), value: z.string().min(4).max(8192) }).strict();
 const NotificationArgument = z.object({ enabled: z.boolean() }).strict();
 

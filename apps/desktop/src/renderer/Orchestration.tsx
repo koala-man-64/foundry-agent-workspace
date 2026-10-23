@@ -6,6 +6,7 @@ import { Transcript } from './Transcript';
 import { TaskActivity } from './TaskActivity';
 import { AssignmentGraph } from './AssignmentGraph';
 import { ContinuityPanel } from './ContinuityPanel';
+import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -45,7 +46,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 
 function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
 
-function ApprovalCard({ approval, busy, complete, onDecide }: { approval: Approval; busy?: 'approve' | 'reject'; complete: boolean; onDecide: (approval: Approval, decision: 'approve' | 'reject') => void }) {
+function ApprovalCard({ approval, busy, complete, onDecide, onReconcile }: { approval: Approval; busy?: 'approve' | 'reject' | 'reconcile'; complete: boolean; onDecide: (approval: Approval, decision: 'approve' | 'reject') => void; onReconcile: (approval: Approval) => void }) {
   return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id} key={approval.id}>
     <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
     {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
@@ -82,6 +83,10 @@ function ApprovalCard({ approval, busy, complete, onDecide }: { approval: Approv
       <button type="button" className="primary" disabled={Boolean(busy) || !complete} onClick={() => onDecide(approval, 'approve')}>{busy === 'approve' ? 'Approving…' : 'Approve'}</button>
       <button type="button" className="danger" disabled={Boolean(busy)} onClick={() => onDecide(approval, 'reject')}>{busy === 'reject' ? 'Rejecting…' : 'Reject'}</button>
     </div>}
+    {approval.state === 'unknown' && approval.path && approval.resultingHash && !approval.handoff && !approval.integration && <div className="approval-actions">
+      <button type="button" className="secondary" disabled={Boolean(busy)} onClick={() => onReconcile(approval)}>{busy === 'reconcile' ? 'Checking…' : 'Check outcome'}</button>
+      <small>Read-only file reconciliation; this never retries the edit.</small>
+    </div>}
   </article>;
 }
 
@@ -108,9 +113,9 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
   const inspectorWasOpen = useRef(false);
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
-  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel'>('orchestration');
+  const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage'>('orchestration');
   const [composer, setComposer] = useState('');
-  const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject'>>({});
+  const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
   const [reviseTarget, setReviseTarget] = useState<string>();
   const [reviseObjective, setReviseObjective] = useState('');
@@ -392,6 +397,24 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
     catch (error) { setComposer(content); setNotice(`Message was not sent: ${error instanceof Error ? error.message : String(error)}`); }
   };
 
+  const reconcileApproval = async (approval: Approval) => {
+    if (approvalInFlight[approval.id]) return;
+    setApprovalInFlight(current => ({ ...current, [approval.id]: 'reconcile' }));
+    try {
+      const result = await api.invoke('approval.reconcile', { taskId: approval.taskId, approvalId: approval.id });
+      setNotice(result.result?.content ?? `File outcome: ${result.state}`);
+      await loadApprovals();
+      await fetchLatest();
+    } catch (error) { setNotice(`Could not check this file outcome: ${error instanceof Error ? error.message : String(error)}`); }
+    finally { setApprovalInFlight(current => { const next = { ...current }; delete next[approval.id]; return next; }); }
+  };
+
+  const refreshManagedTask = async () => {
+    await fetchLatest(); await loadRootTranscript();
+    if (selectedChildRef.current) await loadChild(selectedChildRef.current);
+    onWorkspaceRefresh();
+  };
+
   const cancelChild = async (run: AgentRun, key: string) => {
     setBusy(`cancel-${run.taskId}`);
     try { await api.invoke('orchestration.cancelChild', { rootTaskId, childTaskId: run.taskId, generation: run.generation }); await fetchLatest(); if (selectedChildId === run.taskId) await loadChild(run.taskId); }
@@ -452,7 +475,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
             charged {budget.charged.toLocaleString()} · in flight {budget.inFlight.toLocaleString()} · held {budget.unusedHolds.toLocaleString()} · unallocated {budget.unallocated.toLocaleString()} of {budget.cap.toLocaleString()}
             {budget.overrun && <span className="overrun-notice"> · budget overrun recorded</span>}
           </p>}
-          {completion && <p className="task-status">{completion.complete ? `Completed on ${short(latestCombined?.head)}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
+          {completion && <p className="task-status">{completion.complete ? `Completed on ${short(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         </div>
         <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspectorToggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
       </header>
@@ -478,8 +501,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
           <form className="composer" onSubmit={sendToCoordinator}>
-            <textarea value={composer} onChange={(e) => setComposer(e.target.value)} aria-label="Message coordinator" placeholder="Message the coordinator…" />
-            <button className="primary" disabled={!composer.trim()}>Send <span>↵</span></button>
+            <textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={task.status === 'retired'} aria-label="Message coordinator" placeholder={task.status === 'retired' ? 'This task worktree is retired.' : 'Message the coordinator…'} />
+            <button className="primary" disabled={!composer.trim() || task.status === 'retired'}>Send <span>↵</span></button>
           </form>
         </> : <div className="child-panel">
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
@@ -514,9 +537,10 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         <button className={tab === 'orchestration' ? 'active' : ''} onClick={() => setTab('orchestration')}>Orchestration</button>
         <button className={tab === 'activity' ? 'active' : ''} onClick={() => setTab('activity')}>Activity</button>
         <button className={tab === 'continuity' ? 'active' : ''} onClick={() => setTab('continuity')}>Continue</button>
+        <button className={tab === 'usage' ? 'active' : ''} onClick={() => setTab('usage')}>Usage</button>
       </div>
       <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} onClick={() => setTab('channel')}>Project channel</button>
-      {tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
+      {tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
@@ -526,7 +550,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={decideApproval} />)}
+          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>

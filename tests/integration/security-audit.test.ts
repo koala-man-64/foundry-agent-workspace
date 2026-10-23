@@ -270,6 +270,7 @@ describe('IPC sender origin and subframe rejection', () => {
       expect(response).toEqual(result);
       expect(vault.mock.calls).toEqual([root, child].map(profile => [profile.id, JSON.stringify([profile.apiKind, profile.endpoint, profile.deployment])]));
       expect(request.mock.calls.filter(([method]) => method === 'runtime.credential').map(([, params]) => (params as { id: string }).id)).toEqual([root.id, child.id]);
+      expect(request.mock.calls.filter(([method]) => method === 'runtime.credential').every(([, params]) => (params as { restoring?: boolean }).restoring === true)).toBe(true);
       expect(request.mock.calls.filter(([method]) => method === 'profile.read').map(([, params]) => (params as { profileId: string }).profileId)).toEqual([root.id, child.id]);
       expect(request.mock.calls.some(([method]) => method === 'workspace.snapshot')).toBe(false);
       expect(request.mock.calls.at(-1)).toEqual(['task.start', params]);
@@ -290,6 +291,35 @@ describe('IPC sender origin and subframe rejection', () => {
       desktop.mainFrame.url = RENDERER_URL.href;
       await expect(desktop.handlers.get('workspace:invoke')!({ sender: desktop.webContents, senderFrame: desktop.mainFrame }, 'task.start', { requestId: randomUUID(), projectId: null, content: 'First message', profileId: profile.id, mode: 'chat' })).rejects.toThrow('Could not unlock');
       expect(request.mock.calls.map(([method]) => method)).toEqual(['profile.read']);
+    } finally { vault.mockRestore(); request.mockRestore(); }
+  });
+
+  it('invalidates qualification before a vault replacement and never saves after failed invalidation', async () => {
+    const { RuntimeSupervisor } = await import('../../apps/desktop/src/main/supervisor');
+    const { CredentialVault } = await import('../../apps/desktop/src/main/credentials');
+    const profile = { id: randomUUID(), name: 'Rotation fixture', apiKind: 'responses', endpoint: 'https://fixture.openai.azure.com', deployment: 'fixture', contextLimit: 32000, outputLimit: 2048 };
+    const order: string[] = []; let refuse = false;
+    const request = vi.spyOn(RuntimeSupervisor.prototype, 'request').mockImplementation(async (method, params) => {
+      if (method === 'profile.read') return profile;
+      if (method === 'runtime.credential') {
+        expect(params).not.toHaveProperty('restoring');
+        order.push('invalidate');
+        if (refuse) throw new Error('Injected qualification invalidation failure.');
+        return null;
+      }
+      throw new Error(`Unexpected fixture method: ${method}`);
+    });
+    const vault = vi.spyOn(CredentialVault.prototype, 'save').mockImplementation(async () => { order.push('save-vault'); });
+    try {
+      desktop.mainFrame.url = RENDERER_URL.href;
+      const event = { sender: desktop.webContents, senderFrame: desktop.mainFrame };
+      await desktop.handlers.get('workspace:save-credential')!(event, profile.id, 'synthetic-rotation-secret');
+      expect(order).toEqual(['invalidate', 'save-vault']);
+      order.length = 0; refuse = true;
+      await expect(desktop.handlers.get('workspace:save-credential')!(event, profile.id, 'synthetic-second-secret')).rejects.toThrow('invalidation failure');
+      expect(order).toEqual(['invalidate']); expect(vault).toHaveBeenCalledTimes(1);
+      await expect(desktop.handlers.get('workspace:invoke')!(event, 'runtime.credential', { id: profile.id, value: 'synthetic-forged-secret', binding: 'forged', restoring: true })).rejects.toThrow();
+      expect(vault).toHaveBeenCalledTimes(1);
     } finally { vault.mockRestore(); request.mockRestore(); }
   });
 

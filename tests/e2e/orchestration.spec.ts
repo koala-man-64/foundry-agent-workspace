@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
+import type { Approval } from '../../packages/protocol/src/index';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
 import { createFixtureTask, waitForRuntimeReady } from './fixtures';
 
@@ -150,6 +151,15 @@ test('coordinated workflow: delegation, review, serial integration and restart e
       throw error;
     }
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);
+    const rootHistory = await page.evaluate(taskId => window.workspace.invoke('task.messages', { taskId, limit: 50 }), created.id);
+    const finalReply = rootHistory.items.map(item => item.message).filter(message => message.role === 'assistant' && message.status === 'complete').at(-1)?.content;
+    expect(finalReply).toBeTruthy();
+    await expect(page.getByLabel('Conversation transcript')).toContainText('/orchestrate-demo');
+    await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
+    await page.locator('nav[aria-label="Agent tree"] .agent-row').filter({ hasNotText: 'Coordinator' }).first().click();
+    await expect(page.getByLabel('Conversation transcript').locator('article.message.assistant').first()).toBeVisible();
+    await page.getByRole('button', { name: /^Coordinator/ }).click();
+    await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
 
     await page.screenshot({ path: 'test-results/orchestration-complete.png', fullPage: true });
     await page.getByRole('button', { name: 'Orchestration', exact: true }).click();
@@ -173,12 +183,33 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     expect(await stat(join(project, 'untracked-note.txt'))).toBeTruthy();
 
     expect(errors).toEqual([]);
+    const childTasks = await page.evaluate(async rootTaskId => {
+      const runs = (await window.workspace.invoke('orchestration.get', { rootTaskId })).runs.filter(run => run.role === 'child');
+      return Promise.all(runs.map(async run => {
+        const { task } = await window.workspace.invoke('task.read', { taskId: run.taskId });
+        if (!task.worktreePath || !task.branch) throw new Error('The child fixture has no Git worktree.');
+        return { id: task.id, worktreePath: task.worktreePath, branch: task.branch };
+      }));
+    }, created.id);
     await app.close();
+
+    // Reproduce the durable crash boundary in isolated app data: the approved file was applied,
+    // but its intent still says executing. Restart must retain it as unknown rather than replaying it.
+    const db = new Database(join(fixture, 'state', 'workspace.db'));
+    let interruptedEdit: Approval;
+    try {
+      const approvals = (db.prepare("SELECT data FROM intents WHERE kind = 'tool.approval'").all() as { data: string }[]).map(row => JSON.parse(row.data) as Approval);
+      const edit = approvals.find(item => childTasks.some(child => child.id === item.taskId) && item.path && item.resultingHash && !item.handoff && !item.integration);
+      if (!edit) throw new Error('The coordinated fixture did not retain an ordinary file edit.');
+      interruptedEdit = edit;
+      db.prepare("UPDATE intents SET state = 'executing', data = ? WHERE id = ?").run(JSON.stringify({ ...edit, state: 'executing' }), edit.id);
+    } finally { db.close(); }
 
     ({ app, page, errors } = await launch(join(fixture, 'state')));
     await page.getByRole('button', { name: 'Recent', exact: true }).click();
     await page.locator('.task-row', { hasText: 'Coordinated demo task' }).click();
     await expect(page.getByLabel('Conversation transcript')).toContainText('/orchestrate-demo');
+    await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
     await expect(page.getByRole('navigation', { name: 'Agent tree' })).toBeVisible();
     const childRows = page.locator('nav[aria-label="Agent tree"] .agent-row').filter({ hasNotText: 'Coordinator' });
     await expect(childRows).toHaveCount(3);
@@ -188,7 +219,97 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     const assignmentCards = page.locator('.orchestration-panel article.assignment-card').filter({ hasText: 'Integrated' });
     await expect(assignmentCards).toHaveCount(3);
     await expect(page.getByRole('heading', { name: 'Combined validation', level: 3 })).toBeVisible();
+    await expect(page.getByText(/^Completion recorded .*current state unverified:/)).toContainText('An effect is unknown');
+    await expect(page.getByText(/^Completed on /)).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^Approvals/ }).click();
+    const unknownEdit = page.locator(`[data-approval-id="${interruptedEdit.id}"]`);
+    await expect(unknownEdit).toContainText('unknown');
+    const editTask = childTasks.find(child => child.id === interruptedEdit.taskId)!;
+    const appliedFile = join(editTask.worktreePath, interruptedEdit.path!);
+    const appliedContent = await readFile(appliedFile, 'utf8');
+    await unknownEdit.getByRole('button', { name: 'Check outcome', exact: true }).click();
+    await expect(unknownEdit).toContainText('complete');
+    await expect(unknownEdit).toContainText('Read-only reconciliation found the exact approved file content.');
     await expect(page.getByText(/^Completed on /)).toBeVisible();
+    expect(await readFile(appliedFile, 'utf8')).toBe(appliedContent);
+    expect((await page.evaluate(async input => (await window.workspace.invoke('approval.get', input)).approval.state, { taskId: interruptedEdit.taskId, approvalId: interruptedEdit.id }))).toBe('complete');
+
+    await page.getByRole('button', { name: 'Usage', exact: true }).click();
+    const controls = page.getByTestId('coordinated-task-controls');
+    await expect(controls.getByRole('heading', { name: 'Coordinator usage' })).toBeVisible();
+    await expect(controls).toContainText('Next request estimate');
+    await expect(controls).toContainText('Cache read / creation');
+    await childRows.first().click();
+    await expect(controls.getByRole('heading', { name: 'Child usage' })).toBeVisible();
+    await page.getByRole('button', { name: /^Coordinator/ }).click();
+    await expect(controls.getByRole('heading', { name: 'Coordinator usage' })).toBeVisible();
+
+    // A dirty child blocks the entire root retirement before any worktree is removed.
+    const dirtyFile = join(childTasks[0]!.worktreePath, 'retirement-guard.txt');
+    await writeFile(dirtyFile, 'retain this untracked child file\n');
+    await controls.getByRole('button', { name: 'Retire worktrees…', exact: true }).click();
+    await controls.getByRole('button', { name: 'Confirm retire (clean worktrees only)', exact: true }).click();
+    await expect(page.locator('.notice')).toContainText('uncommitted or untracked files');
+    for (const member of [{ worktreePath: worktree }, ...childTasks]) expect(await stat(member.worktreePath)).toBeTruthy();
+    await rm(dirtyFile);
+    await controls.getByRole('button', { name: 'Retire worktrees…', exact: true }).click();
+    await controls.getByRole('button', { name: 'Confirm retire (clean worktrees only)', exact: true }).click();
+    // Retirement validates and removes four worktrees with sequential Git operations. Wait for the
+    // durable terminal state, rather than applying the 5 s UI assertion budget to the whole operation.
+    await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, created.id), {
+      timeout: 60_000, message: 'The coordinated root must finish retiring all four clean worktrees'
+    }).toBe('retired');
+    await expect(page.locator('.notice')).toContainText('Retired 4 clean worktree(s)');
+    for (const child of childTasks) {
+      await expect(stat(child.worktreePath)).rejects.toThrow();
+      expect(git(project, 'rev-parse', '--verify', child.branch).trim()).toHaveLength(40);
+    }
+    await expect(stat(worktree)).rejects.toThrow();
+    await expect(page.getByLabel('Message coordinator')).toBeDisabled();
+    await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
+    await expect(page.getByText(/^Completion recorded .*current state unverified:/)).toBeVisible();
+    await expect(page.getByText(/^Completed on /)).toHaveCount(0);
+    expect(errors).toEqual([]);
+  } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
+});
+
+test('coordinator usage compacts idle history and retains the original conversation after restart', async () => {
+  test.setTimeout(120_000);
+  const fixture = await mkdtemp(join(tmpdir(), 'foundry-coordinator-compaction-e2e-'));
+  const project = join(fixture, 'repository');
+  await initFixtureRepo(project);
+  let { app, page, errors } = await launch(join(fixture, 'state'));
+  try {
+    await createCoordinatedTask(page, project, 'Coordinator compaction');
+    const created = await snapshotTaskByTitle(page, 'Coordinator compaction');
+    for (const content of ['first coordinator direction '.repeat(40).trim(), 'second coordinator direction '.repeat(40).trim(), 'third coordinator direction '.repeat(40).trim()]) {
+      await page.getByLabel('Message coordinator').fill(content);
+      await page.getByRole('button', { name: /^Send/ }).click();
+      await expect(page.getByLabel('Conversation transcript')).toContainText(`Fake coordinator response: ${content}`);
+      await expect.poll(() => page.evaluate(async id => (await window.workspace.invoke('task.read', { taskId: id })).task.status, created.id)).toBe('idle');
+    }
+    await page.getByRole('button', { name: 'Usage', exact: true }).click();
+    const controls = page.getByTestId('coordinated-task-controls');
+    await expect(controls).toContainText('3 attempts');
+    await expect(controls.getByRole('button', { name: 'Retire worktrees…', exact: true })).toBeDisabled();
+    await expect(controls.getByRole('button', { name: 'Commit all changes', exact: true })).toHaveCount(0);
+    await expect(controls.getByRole('button', { name: 'Push branch…', exact: true })).toHaveCount(0);
+    await controls.getByRole('button', { name: 'Compact context', exact: true }).click();
+    await expect(page.locator('.notice')).toContainText('Compacted Coordinator context');
+    await expect(page.locator('article.compaction-summary')).toHaveCount(1);
+    await expect(page.locator('article.message.compacted')).toHaveCount(2);
+    const usage = await page.evaluate(id => window.workspace.invoke('task.usage', { taskId: id }), created.id);
+    expect(usage.compactions).toHaveLength(1);
+    expect(usage.compactions[0]!.estimatedTokensAfter).toBeLessThan(usage.compactions[0]!.estimatedTokensBefore);
+    expect(errors).toEqual([]);
+    await app.close();
+    ({ app, page, errors } = await launch(join(fixture, 'state')));
+    await page.getByRole('button', { name: 'Recent', exact: true }).click();
+    await page.locator('.task-row', { hasText: 'Coordinator compaction' }).click();
+    await expect(page.locator('article.compaction-summary')).toHaveCount(1);
+    await expect(page.getByLabel('Conversation transcript')).toContainText('first coordinator direction');
+    await expect(page.getByLabel('Conversation transcript')).toContainText('third coordinator direction');
     expect(errors).toEqual([]);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });

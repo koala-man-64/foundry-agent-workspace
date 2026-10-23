@@ -114,4 +114,34 @@ describe('qualification engine (mock mode, offline)', () => {
     expect(called).toBe(false);
     expect(report.capabilities.streaming).toBe(true);
   });
+
+  it.each([
+    ['responses', 'event: response.output_text.delta\ndata: {"delta":"hi"}\n\nevent: response.completed\ndata: {"response":{"status":"completed","usage":{"input_tokens":5,"output_tokens":2}}}\n\n', 'omitted authoritative output'],
+    ['responses', 'event: response.output_text.delta\ndata: {"type":"response.completed","delta":"hi"}\n\n', 'did not match'],
+    ['responses', 'event: response.output_text.delta\ndata: {"delta":"hi"}\n\nevent: response.completed\ndata: {"response":{"status":"completed","output":[{"type":"refusal","refusal":"no"}],"usage":{"input_tokens":5,"output_tokens":2}}}\n\n', 'unsupported'],
+    ['chat-completions', 'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\ndata: {"choices":[]}\n\n', 'after [DONE]'],
+    ['anthropic', 'event: message_start\ndata: {"message":{"usage":{"input_tokens":5}}}\n\nevent: content_block_start\ndata: {"index":0,"content_block":{"type":"text","text":""}}\n\nevent: content_block_delta\ndata: {"index":0,"delta":{"type":"text_delta","text":"hi"}}\n\nevent: message_delta\ndata: {"delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}\n\nevent: message_stop\ndata: {}\n\n', 'before all content blocks stopped']
+  ])('uses production %s rejection rules in qualification', async (apiKind, frames, reason) => {
+    const report = await runQualification({ apiKind, mock: true, mockOverrides: { [apiKind]: { streaming: [frames] } } });
+    expect(report.capabilities.streaming).toBe(false);
+    expect(report.checks.streaming.detail).toContain(reason);
+    expect(report.capabilities.usageAccounting).toBe(false);
+    expect(report.capabilities.toolCalling).toBe(true);
+  });
+
+  it('rejects malformed authoritative output on the tool continuation rather than qualifying it', async () => {
+    const report = await runQualification({ apiKind: 'responses', mock: true, mockOverrides: { responses: { continuation: [
+      'event: response.output_text.delta\ndata: {"delta":"Acknowledged"}\n\n',
+      'event: response.completed\ndata: {"response":{"status":"completed","usage":{"input_tokens":5,"output_tokens":2}}}\n\n'
+    ] } } });
+    expect(report.capabilities.toolCalling).toBe(true);
+    expect(report.capabilities.toolContinuation).toBe(false);
+    expect(report.checks.toolContinuation.detail).toContain('omitted authoritative output');
+  });
+
+  it('applies production Azure endpoint restrictions before making even an injected request', async () => {
+    let called = false;
+    await expect(runQualification({ apiKind: 'responses', endpoint: 'http://localhost:9999', deployment: 'fixture', credential: 'fixture', fetchImpl: (() => { called = true; throw new Error('must not send'); }) as typeof fetch })).rejects.toThrow('HTTPS Azure resource URL');
+    expect(called).toBe(false);
+  });
 });

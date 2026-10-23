@@ -5,7 +5,7 @@
     "sources": [
       {
         "path": "packages/runtime/src/service.ts",
-        "sha256": "6eaebec85b27f345559652f3adc64f4d1fa7347aacd89bb33a04e0000216bcef"
+        "sha256": "d0bf4be530cf27483e57ead0656c8eaeeb6cc07319327f4a7eef4f28005cde27"
       },
       {
         "path": "packages/runtime/src/repository.ts",

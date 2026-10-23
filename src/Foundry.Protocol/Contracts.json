@@ -2024,6 +2024,12 @@
                 "maximum": 4096
               }
             ]
+          },
+          "restoring": {
+            "type": "optional",
+            "innerType": {
+              "type": "boolean"
+            }
           }
         },
         "strict": true

@@ -59,4 +59,5 @@ export interface QualificationReport {
   };
 }
 
+/** Developer qualification using the shipping adapter, built in memory with installed dev dependencies. */
 export function runQualification(options?: QualificationOptions): Promise<QualificationReport>;

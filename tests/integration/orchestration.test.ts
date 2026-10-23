@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OrchestrationView, ProviderAdapter, GitTask as Task } from '../../packages/protocol/src/index';
 import { createProvider } from '../../packages/providers/src/index';
 import { FAKE_PROFILE_ID } from '../../packages/runtime/src/store';
@@ -82,6 +82,16 @@ describe('coordinated orchestration (real Git, SQLite and Windows commands)', ()
     const restored = await view(root.id);
     expect(restored.completion.complete).toBe(true);
     expect(restored.integrations).toHaveLength(3); expect(restored.results).toHaveLength(3);
+    const unreadable = vi.spyOn(GitOperations.prototype, 'state').mockRejectedValueOnce(new Error('Fixture worktree is unreadable.'));
+    try {
+      const unverified = await view(root.id);
+      expect(unverified.completion).toMatchObject({ complete: false, completedAt: restored.completion.completedAt });
+      expect(unverified.completion.blockers).toContain('The task worktree state could not be verified.');
+    } finally { unreadable.mockRestore(); }
+    await writeFile(join(root.worktreePath, 'alpha.txt'), 'external dirty change\n');
+    const changed = await view(root.id);
+    expect(changed.completion).toMatchObject({ complete: false, completedAt: restored.completion.completedAt });
+    expect(changed.completion.blockers).toContain('The task worktree is not clean on its branch or has a Git operation in progress.');
     await expect(harness.runtime.dispatch('task.send', { taskId: root.id, content: 'more' })).rejects.toThrow('finished or cancelled');
   }, 240_000);
 

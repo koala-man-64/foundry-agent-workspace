@@ -92,6 +92,19 @@ describe('MCP JSON-RPC client', () => {
     big.toClient.write('x'.repeat(1024 * 1024 + 10) + '\n');
     await expect(waiting).rejects.toThrow('size limit');
   });
+  it.each(['{not json\n', 'x'.repeat(1024 * 1024 + 10) + '\n', '{"jsonrpc":"1.0","id":"1"}\n'])('retains unknown outcomes for dispatched calls when framing breaks (%#)', async frame => {
+    const { client, fromClient, toClient } = pair();
+    const pending = client.request('tools/call', { name: 'mutate' }, 1000);
+    expect(lines(fromClient)).toHaveLength(1);
+    toClient.write(frame);
+    await expect(pending).rejects.toMatchObject({ name: 'McpError', unknownOutcome: true });
+  });
+  it('does not write a request with an already-aborted signal', async () => {
+    const { client, fromClient } = pair();
+    const abort = new AbortController(); abort.abort();
+    await expect(client.request('tools/call', { name: 'mutate' }, 1000, abort.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(lines(fromClient)).toEqual([]);
+  });
   it('composes advertised names only within provider limits', () => {
     expect(composeName('fixture', 'echo')).toBe('mcp__fixture__echo');
     expect(composeName('fixture', 'bad.name')).toBeUndefined();

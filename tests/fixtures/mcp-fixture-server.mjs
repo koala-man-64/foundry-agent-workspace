@@ -1,8 +1,8 @@
 // Deterministic stdio MCP fixture used by integration, E2E and packaged smoke tests. No network access.
 import { createInterface } from 'node:readline';
 import { spawn } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { appendFileSync, existsSync, watch } from 'node:fs';
+import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { setTimeout } from 'node:timers';
 
@@ -29,6 +29,34 @@ async function call(name, args) {
     case 'huge': return text('x'.repeat(Number(args.bytes)));
     case 'fail': return text('fixture failure', true);
     case 'malformed': return 'not-an-object';
+    case 'break_transport': {
+      appendFileSync(notesPath, 'mutation-before-broken-frame\n');
+      process.stdout.write(args.kind === 'oversized' ? 'x'.repeat(1024 * 1024 + 10) + '\n' : args.kind === 'non-jsonrpc' ? '{"jsonrpc":"1.0","id":"broken"}\n' : '{not json\n');
+      return new Promise(() => {});
+    }
+    case 'barrier_write': {
+      const tag = String(args.tag); const release = process.env.MCP_FIXTURE_RELEASE;
+      if (!release) throw new Error('The lifecycle fixture requires a release marker.');
+      const childSource = `
+        const { appendFileSync, existsSync, watch } = require('node:fs');
+        const { dirname } = require('node:path');
+        const release = ${JSON.stringify(release)};
+        let released = false;
+        const finish = () => { if (!released && existsSync(release)) { released = true; watcher.close(); appendFileSync(${JSON.stringify(notesPath)}, ${JSON.stringify(tag + ':child-effect\n')}); } };
+        const watcher = watch(dirname(release), finish);
+        appendFileSync(${JSON.stringify(notesPath)}, JSON.stringify({ tag: ${JSON.stringify(tag)}, actor: 'child', pid: process.pid }) + '\\n');
+        finish();
+      `;
+      const child = spawn(process.execPath, ['-e', childSource], { stdio: 'ignore', windowsHide: true });
+      child.unref();
+      await new Promise(resolve => {
+        const check = () => { if (existsSync(release)) { watcher.close(); resolve(); } };
+        const watcher = watch(dirname(release), check);
+        appendFileSync(notesPath, JSON.stringify({ tag, actor: 'server', pid: process.pid }) + '\n');
+        check();
+      });
+      appendFileSync(notesPath, tag + ':server-effect\n'); return text('effect complete');
+    }
     default: throw Object.assign(new Error(`Unknown tool ${name}`), { code: -32602 });
   }
 }
@@ -51,6 +79,9 @@ rl.on('line', line => {
       }
       if (process.env.MCP_FIXTURE_MALFORMED === '1') {
         return { tools: [...tools, { name: 'malformed', description: 'Return a non-object call result.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }] };
+      }
+      if (process.env.MCP_FIXTURE_LIFECYCLE === '1') {
+        return { tools: [...tools, ...['break_transport', 'barrier_write'].map(name => ({ name, inputSchema: { type: 'object' } }))] };
       }
       return { tools };
     }

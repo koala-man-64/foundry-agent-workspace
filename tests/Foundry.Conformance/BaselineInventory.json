@@ -38,7 +38,7 @@
     },
     {
       "path": "tests/golden/data/rpc-corpus.json",
-      "sha256": "016cada98ad200a96fff76d6d015d51babdf360d58119987f7c5912c0df9d272"
+      "sha256": "b786234db9a57dfab6e490eb128c3c30f4f9a7fea8c5efa28b70aaee5ebe2a69"
     },
     {
       "path": "tests/golden/data/rpc-wire.json",
