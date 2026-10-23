@@ -36,11 +36,12 @@ async function fill(directory: string, count: number, directories = false) {
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(roots.splice(0).map(root => fs.rm(root, { recursive: true, force: true }))); });
 
 // Pause at a real file-handle read, so these races are deterministic rather than scheduled with sleeps.
-function mutateAfterFirstChunk(target: string, mutate: () => Promise<void>) {
+async function mutateAfterFirstChunk(target: string, mutate: () => Promise<void>) {
+  const canonicalTarget = await fs.realpath(target);
   const open = fs.open.bind(fs);
   vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
     const handle = await open(...args);
-    if (args[0] === target && args[1] === 'r') {
+    if (args[0] === canonicalTarget && args[1] === 'r') {
       const read = handle.read.bind(handle);
       vi.spyOn(handle, 'read').mockImplementationOnce(async (...readArgs) => {
         const result = await Reflect.apply(read, handle, readArgs) as Awaited<ReturnType<typeof handle.read>>;
@@ -90,7 +91,9 @@ describe.runIf(process.platform === 'win32')('command review for installed depen
     await fs.writeFile(target, Buffer.alloc(3 * 64 * 1024, 97));
     const prepared = await prepare();
     const before = await fs.stat(target);
-    mutateAfterFirstChunk(target, async () => {
+    let mutations = 0;
+    await mutateAfterFirstChunk(target, async () => {
+      mutations++;
       if (change === 'grow') await fs.appendFile(target, 'x');
       else if (change === 'truncate') await fs.truncate(target, 16);
       else if (change === 'replace') {
@@ -102,7 +105,27 @@ describe.runIf(process.platform === 'win32')('command review for installed depen
       }
       await fs.utimes(target, before.atime, before.mtime);
     });
-    await expect(runner.execute(prepared, new AbortController().signal)).rejects.toMatchObject({ outcome: 'none', message: expect.stringMatching(/changed while fingerprinting/i) });
+    const result = await Promise.allSettled([runner.execute(prepared, new AbortController().signal)]);
+    expect(mutations).toBe(1);
+    expect(result).toMatchObject([{ status: 'rejected', reason: { outcome: 'none', message: expect.stringMatching(/changed while fingerprinting/i) } }]);
+    await expect(fs.access(path.join(root, 'must-not-start.txt'))).rejects.toThrow();
+  });
+
+  it('injects the streaming mutation when the worktree is reached through a path alias', async () => {
+    const { root, dependencies, runner } = await fixture();
+    await fs.writeFile(path.join(dependencies, 'entry.js'), Buffer.alloc(3 * 64 * 1024, 97));
+    const aliasParent = await fs.mkdtemp(path.join(os.tmpdir(), 'foundry-fingerprint-alias-'));
+    roots.push(aliasParent);
+    const alias = path.join(aliasParent, 'worktree');
+    await fs.symlink(root, alias, 'junction');
+    const target = path.join(alias, 'node_modules', 'entry.js');
+    expect(target).not.toBe(await fs.realpath(target));
+    const prepared = await runner.prepare(alias, { command: "[IO.File]::WriteAllText('must-not-start.txt', 'started')", cwd: '', environment: {}, timeoutMs: 5000 });
+    let mutations = 0;
+    await mutateAfterFirstChunk(target, async () => { mutations++; await fs.appendFile(target, 'x'); });
+    const result = await Promise.allSettled([runner.execute(prepared, new AbortController().signal)]);
+    expect(mutations).toBe(1);
+    expect(result).toMatchObject([{ status: 'rejected', reason: { outcome: 'none', message: expect.stringMatching(/changed while fingerprinting/i) } }]);
     await expect(fs.access(path.join(root, 'must-not-start.txt'))).rejects.toThrow();
   });
 
