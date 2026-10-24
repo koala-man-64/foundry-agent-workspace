@@ -1,20 +1,16 @@
-import { execFile as execFileCallback, spawn } from 'node:child_process';
+import { execFile as execFileCallback } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { resolveWindowsJobHelperPath, runWindowsJob } from './windows-job.js';
 
 const execFile = promisify(execFileCallback);
 const MAX_COMMAND_CHARS = 64 * 1024;
 const MAX_ENV_ENTRIES = 64;
 const MAX_ENV_VALUE_CHARS = 4 * 1024;
 const MAX_TIMEOUT_MS = 10 * 60 * 1000;
-const HELPER_GRACE_MS = 10_000;
-// Allow bounded cold Windows helper startup before the native execution deadline begins.
-const HELPER_STARTUP_MS = 60_000;
-const MAX_HELPER_ERROR_BYTES = 8 * 1024;
 const MAX_STATE_FILES = 50_000;
 const MAX_STATE_FOLDERS = 10_000;
 const MAX_STATE_BYTES = 1024 * 1024 * 1024;
@@ -43,7 +39,6 @@ export interface CommandResult {
 }
 
 interface PreparedRecord { root: string; relativeCwd: string; changes: Record<string, string>; prepared: PreparedCommand; }
-interface HelperResult extends CommandResult { nonce: string; }
 
 /** A rejected command before the helper can launch any user command. */
 export class CommandPreflightError extends Error {
@@ -57,7 +52,7 @@ export class CommandRunner {
   private readonly helperPath: string;
 
   public constructor(helperPath?: string) {
-    this.helperPath = path.resolve(helperPath ?? unpackedHelperPath());
+    this.helperPath = path.resolve(helperPath ?? resolveWindowsJobHelperPath());
   }
 
   public async prepare(root: string, args: { command: string; cwd: string; environment: Record<string, string>; timeoutMs: number }): Promise<PreparedCommand> {
@@ -108,7 +103,7 @@ export class CommandRunner {
     const cancelPath = path.join(directory, 'cancel');
     const nonce = randomUUID();
     try {
-      const result = await this.runHelper(helper, { ...prepared, nonce, resultPath, cancelPath }, signal);
+      const result = await runWindowsJob(helper, { ...prepared, nonce, resultPath, cancelPath }, signal);
       if (result.nonce !== nonce) throw new Error('Command helper returned an untrusted result.');
       return {
         stdout: boundedText(result.stdout),
@@ -189,7 +184,7 @@ export class CommandRunner {
 
   private async worktreeState(root: string): Promise<string> {
     const git = await resolveExecutable('git.exe', root);
-    // Kept self-contained (the crash-host test loads this file alone). Inherited GIT_* variables could redirect Git away from the worktree.
+    // Inherited GIT_* variables could redirect Git away from the approved worktree.
     const env: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
     env.GIT_CONFIG_NOSYSTEM = '1'; env.GIT_TERMINAL_PROMPT = '0';
     const options = { cwd: root, env, windowsHide: true, timeout: 15_000, maxBuffer: 256 * 1024 };
@@ -251,37 +246,7 @@ export class CommandRunner {
     return digest.digest('hex');
   }
 
-  private async runHelper(helper: string, spec: PreparedCommand & { nonce: string; resultPath: string; cancelPath: string }, signal: AbortSignal): Promise<HelperResult> {
-    if (signal.aborted) throw abortError(signal);
-    const helperSpec = { ...spec, parentPid: process.pid, parentStartedAtMs: Math.floor(Date.now() - process.uptime() * 1000) };
-    const child = spawn(spec.shell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true, env: spec.environment });
-    let helperError = '';
-    child.stderr?.on('data', (chunk: Buffer) => { if (helperError.length < MAX_HELPER_ERROR_BYTES) helperError += chunk.toString('utf8').slice(0, MAX_HELPER_ERROR_BYTES - helperError.length); });
-    const cancel = () => { void fs.writeFile(spec.cancelPath, 'cancelled', { flag: 'w' }).catch(() => undefined); };
-    signal.addEventListener('abort', cancel, { once: true });
-    if (signal.aborted) { cancel(); child.kill(); throw abortError(signal); }
-    let watchdogFired = false;
-    const watchdog = setTimeout(() => { watchdogFired = true; child.kill(); }, spec.timeoutMs + HELPER_STARTUP_MS + HELPER_GRACE_MS);
-    try {
-      child.stdin?.end(JSON.stringify(helperSpec));
-      const exitCode = await new Promise<number | null>((resolve, reject) => {
-        child.once('error', reject);
-        child.once('close', resolve);
-      });
-      const raw = await fs.readFile(spec.resultPath, 'utf8').catch(() => undefined);
-      if (!raw) {
-        if (signal.aborted) return { nonce: spec.nonce, stdout: '', stderr: boundedText(helperError), exitCode, cancelled: true, timedOut: false, cleanupVerified: false };
-        if (watchdogFired) return { nonce: spec.nonce, stdout: '', stderr: boundedText(helperError), exitCode, cancelled: false, timedOut: true, cleanupVerified: false };
-        throw new Error(`Command helper exited without a verified result${helperError ? `: ${boundedText(helperError)}` : '.'}`);
-      }
-      const result = JSON.parse(raw) as HelperResult;
-      return result;
-    } finally {
-      clearTimeout(watchdog);
-      signal.removeEventListener('abort', cancel);
-      if (signal.aborted) cancel();
-    }
-  }
+
 }
 
 function samePrepared(left: PreparedCommand, right: PreparedCommand): boolean {
@@ -306,11 +271,4 @@ async function resolveExecutable(name: string, root: string): Promise<string> {
     } catch { /* Skip untrusted or unavailable PATH entries without executing them. */ }
   }
   throw new Error('Git executable was not found outside the approved root.');
-}
-function unpackedHelperPath(): string {
-  const source = path.join(path.dirname(fileURLToPath(import.meta.url)), 'job-runner.ps1');
-  const marker = `${path.sep}app.asar${path.sep}`;
-  return source.toLowerCase().includes(marker.toLowerCase())
-    ? source.replace(new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), `${path.sep}app.asar.unpacked${path.sep}`)
-    : source;
 }

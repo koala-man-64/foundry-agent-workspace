@@ -85,7 +85,7 @@ internal static partial class ToolDefinitions
           },
           {
             "name": "write_file",
-            "description": "Propose full replacement of an existing file using its exact SHA-256 hash. New-file creation is unavailable through this tool. The user must review and approve the full change.",
+            "description": "Propose replacing an existing file using its exact SHA-256 hash, or creating one absent UTF-8 file with expectedHash null. Parents must already exist; content is limited to 64 KiB. The user must review and approve the exact path and full content. Creation never overwrites an existing entry.",
             "inputSchema": {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
@@ -96,8 +96,10 @@ internal static partial class ToolDefinitions
                   "maxLength": 4096
                 },
                 "expectedHash": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$"
+                  "anyOf": [
+                    { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                    { "type": "null" }
+                  ]
                 },
                 "content": {
                   "type": "string",
@@ -336,7 +338,7 @@ internal static partial class ToolDefinitions
             "list_directory" => [new("path", optionalPath)],
             "read_file" => [new("path", relativePath)],
             "search_text" => [new("query", Text(new(1, 2000))), new("path", optionalPath)],
-            "write_file" => [new("path", relativePath), new("expectedHash", Text(new(Pattern: HashFormat))), new("content", Text(new(null, 65536)))],
+            "write_file" => [new("path", relativePath), new("expectedHash", Nullable(Text(new(Pattern: HashFormat)))), new("content", Text(new(null, 65536)))],
             "replace_text" => [new("path", relativePath), new("expectedHash", Text(new(Pattern: HashFormat))), new("oldText", Text(new(1, 65536))), new("newText", Text(new(null, 65536)))],
             "run_command" =>
             [

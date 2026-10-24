@@ -3,7 +3,7 @@
     "sources": [
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "ca6a9251b83b73e94485b69437acc824f0613dccecadb8e29c87b5276ea83159"
+        "sha256": "d568d8f88046e279d7b4cf7495b3cfd15a59a9981b5845288596b0a8f1440f51"
       },
       {
         "path": "packages/protocol/src/limits.ts",

@@ -106,7 +106,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
             }
             else
             {
-                var path = (string)arguments["path"]!; var expectedHash = (string)arguments["expectedHash"]!;
+                var path = (string)arguments["path"]!; var expectedHash = (string?)arguments["expectedHash"];
                 string after;
                 if (call.Name == "write_file") after = (string)arguments["content"]!;
                 else
@@ -123,7 +123,7 @@ internal sealed class ToolRuntime(RuntimeLoop loop, Store store, RepositoryServi
                 AssertNoSecrets(edit.Before); AssertNoSecrets(edit.After);
                 approval = new(common)
                 {
-                    ["summary"] = $"Edit {edit.Path}", ["path"] = edit.Path, ["before"] = edit.Before, ["after"] = edit.After, ["expectedHash"] = edit.ExpectedHash,
+                    ["summary"] = $"{(edit.ExpectedHash is null ? "Create" : "Edit")} {edit.Path}", ["path"] = edit.Path, ["before"] = edit.Before, ["after"] = edit.After, ["expectedHash"] = edit.ExpectedHash,
                     ["resultingHash"] = edit.ResultingHash, ["fingerprint"] = edit.Fingerprint,
                 };
             }

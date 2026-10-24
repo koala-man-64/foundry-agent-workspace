@@ -1,6 +1,7 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, stat, writeFile, readFile } from 'node:fs/promises';
+import { Buffer } from 'node:buffer';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm, stat, writeFile, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
@@ -69,6 +70,8 @@ try {
   execFileSync('git', ['init', '-q', '-b', 'main', source], { windowsHide: true });
   git(source, 'config', 'user.name', 'Package Fixture'); git(source, 'config', 'user.email', 'fixture@example.invalid'); git(source, 'config', 'core.autocrlf', 'false');
   await writeFile(join(source, 'README.md'), '# Package fixture\n');
+  await mkdir(join(source, 'src'));
+  await writeFile(join(source, 'src', 'fixture.md'), 'Existing parent fixture.\n');
   for (const name of ['alpha', 'beta', 'gamma']) await writeFile(join(source, `${name}.txt`), `${name} fixture\n`);
   git(source, 'add', '.'); git(source, 'commit', '-qm', 'fixture');
   launchRuntime();
@@ -98,6 +101,29 @@ try {
   assert.equal(final.approvals.length, 2);
   assert.ok(final.approvals.every(value => value.state === 'complete'), JSON.stringify(final.approvals));
   assert.equal(final.approvals.find(value => value.command).result.cleanupVerified, true);
+
+  // Exercise the embedded shared primitive and unpacked supervisor from app.asar, using a fresh one-shot file review.
+  const creation = await invoke('task.create', { title: 'Packaged file creation smoke', projectPath: source, profileId: snapshot.profiles[0].id, mode: 'coding', tokenBudget: 200000 });
+  const createdBytes = Buffer.from('Created by the reviewed offline demo.\nUTF-8: café.\n', 'utf8');
+  const createdHash = createHash('sha256').update(createdBytes).digest('hex');
+  await invoke('task.send', { taskId: creation.id, content: '/create-demo' });
+  let created;
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    const detail = await taskDetail(creation.id);
+    const review = detail.approvals.find(value => value.state === 'awaiting-approval');
+    if (review) {
+      assert.equal(review.tool, 'write_file'); assert.equal(review.expectedHash, null);
+      assert.equal(review.path, 'src/created-demo.txt'); assert.equal(review.before, '');
+      assert.equal(review.after, createdBytes.toString('utf8')); assert.equal(review.resultingHash, createdHash);
+      await invoke('approval.decide', { taskId: creation.id, approvalId: review.id, nonce: review.nonce, decision: 'approve' });
+    }
+    if (detail.task.status !== 'running') { created = detail; break; }
+    await delay(100);
+  }
+  assert.equal(created?.task.status, 'idle', JSON.stringify(created));
+  assert.equal(created.approvals.length, 1); assert.equal(created.approvals[0].state, 'complete');
+  assert.deepEqual(await readFile(join(creation.worktreePath, 'src', 'created-demo.txt')), createdBytes);
+  await assert.rejects(readFile(join(source, 'src', 'created-demo.txt')), { code: 'ENOENT' });
 
   // 2. Coordinated two-child workflow plus a dependent child, serial integration and combined validation.
   assert.deepEqual(await invoke('workspace.schema', {}), { version: 5, current: 5, upgradeRequired: false, coordinatedAvailable: true });
@@ -225,7 +251,7 @@ try {
   console.log(`Expansion smoke: ${JSON.stringify(expansion)}`);
   child.stdin.end(); assert.equal(await exit, 0, errors);
   assert.ok((await stat(join(directory, 'data', 'workspace.db'))).size > 0);
-  console.log(`PASS: packaged runtime loads schema v5, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
+  console.log(`PASS: packaged runtime loads schema v5, starts idempotent folder and projectless chats, manages saved projects, applies an approved edit and verified-cleanup command, creates the exact reviewed UTF-8 file through the embedded shared Windows primitive, completes a coordinated workflow (${approvals} bound approvals, at most ${maxActiveChildren} active children, 3 serial cherry-picks, combined validation on the exact final tree), compacts a chat task, validates usage summaries, model breakdowns and request pagination, runs the offline MCP demo through the unpacked Job Object host with one approval, exports sanitized diagnostics, and commits then retires a clean worktree while preserving the source repository.`);
 } catch (error) {
   failure = error;
   console.error('Packaged smoke failed before cleanup:', error);

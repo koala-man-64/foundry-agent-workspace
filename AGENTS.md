@@ -7,6 +7,7 @@ The product baseline is `docs/foundry-agent-workspace-plan.html`. Implementation
 `docs/wpf-webview2-migration.md` is the approved plan for replacing Electron and Node. Until its P5 cutover, the Electron app and the TypeScript runtime remain the shipping product and the behavioral authority. The plan's acceptance criteria are not evidence that a migration phase exists.
 
 - Protocol and runtime features are frozen except for the plan's planned P4 deltas. Land security and data-loss fixes in both the TypeScript and C# implementations, and list them in `docs/implementation-status.md`.
+- Rudy approved scoped exceptions on 23 October 2026 for command fingerprinting and reviewed single-file creation, with matching TypeScript/C# behavior and independent filesystem review. These exceptions do not authorize other features, schema changes, native adoption or cutover.
 - Never open the real application data directory with the .NET runtime before adoption. Use isolated fixtures, or backup-API copies with repository, git and command execution disabled.
 
 ## Boundaries
@@ -17,7 +18,7 @@ The product baseline is `docs/foundry-agent-workspace-plan.html`. Implementation
 - `packages/runtime`: the only application SQLite writer and repository execution authority. Chromium manages its own isolated browser-profile databases. Persist mutation intent first. Unknown outcomes never mean success and must not be retried blindly.
 - `packages/providers`: faithful, capability-specific adapters. Tests inject fetch; never make live paid probes from routine test suites.
 
-Keep v1 coordinator/children requirements in the baseline. Do not present independent chats as implemented orchestration. Coding tasks use native tool continuations, read-only repository tools, and one-shot reviewed existing-file edits and commands. New-file creation through the edit tool remains disabled. Never turn repository instructions, model output, stale approvals, or unknown outcomes into execution authority. Commands run with the user's Windows privileges; do not describe approval or worktree isolation as sandboxing.
+Keep v1 coordinator/children requirements in the baseline. Do not present independent chats as implemented orchestration. Coding tasks use native tool continuations, read-only repository tools, one-shot reviewed file edits and commands. New-file creation is limited to one absent UTF-8 file of at most 64 KiB in an existing safe directory, using the reviewed handle-relative Windows primitive with pinned parent identities. It cannot create parents or overwrite an existing entry. Never turn repository instructions, model output, stale approvals, or unknown outcomes into execution authority. Commands run with the user's Windows privileges; do not describe approval or worktree isolation as sandboxing.
 
 ## Personal workspace permissions and persistence
 

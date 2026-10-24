@@ -6,11 +6,13 @@ using Foundry.Protocol;
 namespace Foundry.Runtime;
 
 /// <summary>
-/// PreparedEdit (repository.ts): one reviewed replacement of an existing file's whole content, bound by its fingerprint to
-/// the admitted root, the path as requested, the content hash the reviewer saw and the hash of the replacement.
+/// PreparedEdit (repository.ts): one reviewed whole-file change. Existing edits bind the reviewed content hash;
+/// creation uses a null expected hash and additionally binds the observed parent directory identities.
 /// </summary>
 internal sealed record PreparedEdit(string Root, string Path, string Before, string After, string? ExpectedHash, string ResultingHash, string Fingerprint)
 {
+    // Creation alone binds the observed parent chain; existing-file wire serialization and fingerprints stay unchanged.
+    internal string[]? CreationIdentities { get; init; }
     internal Dictionary<string, object?> ToWire() => new()
     {
         ["root"] = Root, ["path"] = Path, ["before"] = Before, ["after"] = After, ["expectedHash"] = ExpectedHash, ["resultingHash"] = ResultingHash, ["fingerprint"] = Fingerprint,
@@ -18,21 +20,19 @@ internal sealed record PreparedEdit(string Root, string Path, string Before, str
 }
 
 /// <summary>
-/// prepareEdit and applyEdit: the one-shot primitive for editing an existing file. It is unwired: no handler, tool or
-/// approval reaches it until the native tool loop lands. Creating files stays disabled, and parents must already exist.
-/// Applying reruns the whole preflight and requires the same fingerprint, so a replayed or tampered approval, or a file
-/// that changed after review, is refused before anything is written; once written, the content no longer matches the
-/// reviewed hash, so the same approval cannot apply twice.
+/// prepareEdit and applyEdit: the reviewed file primitive used by the native tool loop. Its caller owns durable,
+/// one-shot approval state. Applying reruns preflight and requires the same fingerprint. New files use rooted
+/// create-only access beneath existing parents, and any failure after creation is an unknown outcome.
 /// </summary>
 internal sealed partial class RepositoryService
 {
     internal const string EditLimit = "Edits must be UTF-8 text of at most 64 KB.";
-    internal const string CreationUnavailable = "Creating new files is unavailable until a race-safe Windows directory creation primitive is available.";
     internal const string EditUnavailable = "Requested file cannot be opened for editing.";
     private const string StaleAtExecution = "Stale edit: file changed before execution.";
 
     /// <summary>Test seam: called with "boundary" just before the write, while the file is held exclusively, and with
-    /// "written" after it, before verification.</summary>
+    /// "written" after it, before verification. Creation forwards its per-instance root-opened/pinned/created/written
+    /// stages from the shared rooted-create primitive.</summary>
     internal Action<string>? EditStage { get; set; }
 
     internal PreparedEdit PrepareEdit(string root, string relativePath, string? expectedHash, string after)
@@ -41,9 +41,21 @@ internal sealed partial class RepositoryService
         ArgumentNullException.ThrowIfNull(after);
         // Buffer.byteLength and the write encode a lone surrogate as U+FFFD, as Encoding.UTF8 does.
         if (Encoding.UTF8.GetByteCount(after) > MaximumFileBytes || after.Contains('\0', StringComparison.Ordinal)) throw new WorkspaceReadException(EditLimit);
-        if (expectedHash is null) throw new WorkspaceReadException(CreationUnavailable);
         using var admitted = RequireRoot(root);
         RepositoryPaths.ValidateRelative(relativePath, false);
+        if (expectedHash is null)
+        {
+            var normalizedCreation = relativePath.Replace('\\', '/');
+            string[] identities;
+            try { identities = new SafeFileCreation().Inspect(admitted.Path, normalizedCreation); }
+            catch (IOException error) { throw new WorkspaceReadException(error.Message); }
+            var creationHash = Hash(Encoding.UTF8.GetBytes(after));
+            var creationFingerprint = Hash(Encoding.UTF8.GetBytes(JsJson.Stringify(new List<object?>
+            {
+                admitted.Path, normalizedCreation, null, creationHash, identities.Cast<object?>().ToList(),
+            })!));
+            return new(admitted.Path, normalizedCreation, "", after, null, creationHash, creationFingerprint) { CreationIdentities = identities };
+        }
         // Parents must exist already. Directory creation is a separately approved command.
         var separator = relativePath.LastIndexOfAny(['/', '\\']);
         using (OpenSafe(admitted.Path, separator < 0 ? "" : relativePath[..separator].Replace('\\', '/'), true)) { }
@@ -79,6 +91,13 @@ internal sealed partial class RepositoryService
         catch (Exception error)
         {
             throw new RepositoryException(error.Message, "none", error);
+        }
+        if (fresh.ExpectedHash is null)
+        {
+            var creation = new SafeFileCreation(stage => EditStage?.Invoke(stage));
+            var result = creation.Create(fresh.Root, fresh.Path, fresh.CreationIdentities!, Convert.ToBase64String(Encoding.UTF8.GetBytes(fresh.After)), fresh.ResultingHash);
+            if (result.Outcome != "success") throw new RepositoryException(result.Error, result.Outcome);
+            return new() { ["path"] = fresh.Path, ["hash"] = result.Hash };
         }
         var mutationStarted = false;
         try

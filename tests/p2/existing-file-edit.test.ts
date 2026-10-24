@@ -49,8 +49,9 @@ const cases: Case[] = [
   { name: 'accepts exactly 64 KiB and refuses more, counted in UTF-8 bytes', tree: plain(), steps: [
     prepare('README.md', { repeat: ['a', 65537] }), prepare('README.md', { repeat: ['\u00e9', 32769] }), prepare('README.md', 'a\0b'),
     prepare('README.md', { repeat: ['\u00e9', 32768] }), apply()] },
-  { name: 'refuses creating a file before anything else', tree: plain(), steps: [
-    { op: 'prepare', root: 'plain', path: 'new.txt', reviewed: null, after: 'x' }, { op: 'prepare', root: 'missing', path: '../escape.txt', reviewed: null, after: 'x' }] },
+  { name: 'creates one reviewed absent file and refuses an unavailable root', tree: plain(), steps: [
+    { op: 'prepare', root: 'plain', path: 'new.txt', reviewed: null, after: 'x', as: 'edit' }, apply(),
+    { op: 'prepare', root: 'missing', path: '../escape.txt', reviewed: null, after: 'x' }] },
   { name: 'refuses a stale expected hash', tree: plain(), steps: [refused('plain', 'README.md')] },
   { name: 'refuses forbidden, absolute and escaping paths', tree: plain([file('plain/.env', 'SECRET=1\n')]),
     steps: ['', '.env', 'docs/../README.md', 'C:\\x.txt', '/x.txt', 'README.md.', 'docs//b.md', 'nul', 'docs/b.md ', 'a:b.txt', 'id_rsa', 'cert.pem'].map(name => refused('plain', name)) },
@@ -121,9 +122,14 @@ it('pins the one-shot existing-file edit primitive of the shipping Node authorit
               const root = step.root && step.root !== 'relative' ? path.join(scratch, step.root) : step.root;
               const edit = await service.prepareEdit(root, step.path, expected, after);
               if (step.as) prepared.set(step.as, edit);
-              const preimage = JSON.stringify([edit.root, edit.path, edit.expectedHash, edit.resultingHash]);
+              const fields = [edit.root, edit.path, edit.expectedHash, edit.resultingHash];
+              const preimage = JSON.stringify(edit.creationIdentities ? [...fields, edit.creationIdentities] : fields);
               expect(createHash('sha256').update(preimage).digest('hex')).toBe(edit.fingerprint);
-              result = { result: normalize({ ...edit, fingerprint: { preimage } }, scratch) };
+              // Kernel identities are fixture-specific. Check the real preimage above, then record a stable marker;
+              // the native replay independently binds and checks its own identities before producing this same wire form.
+              const recordedPreimage = edit.creationIdentities ? JSON.stringify([...fields, '{creation-identities}']) : preimage;
+              const wire = { root: edit.root, path: edit.path, before: edit.before, after: edit.after, expectedHash: edit.expectedHash, resultingHash: edit.resultingHash, fingerprint: { preimage: recordedPreimage } };
+              result = { result: normalize(wire, scratch) };
             } else if (step.op === 'apply') {
               const edit = prepared.get(step.edit)!;
               result = { result: normalize(await service.applyEdit({ ...edit, ...step.tamper }), scratch) };
@@ -144,7 +150,8 @@ it('pins the one-shot existing-file edit primitive of the shipping Node authorit
   }
   const corpus = {
     schemaVersion: 1,
-    oracle: { sources: ['packages/runtime/src/repository.ts', 'packages/runtime/src/network-path.ts'].map(source => ({ path: source, sha256: sha256File(source) })) },
+    oracle: { sources: ['packages/runtime/src/repository.ts', 'packages/runtime/src/network-path.ts', 'packages/runtime/src/safe-file-creation.ts',
+      'packages/runtime/src/windows-job.ts', 'packages/runtime/src/job-runner.ps1', 'src/Foundry.Platform/SafeFileCreation.cs'].map(source => ({ path: source, sha256: sha256File(source) })) },
     cases: recorded,
   };
   const target = 'tests/p2/existing-file-edit-vectors.json';

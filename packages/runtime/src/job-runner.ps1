@@ -5,6 +5,12 @@ $ErrorActionPreference = 'Stop'
 # of the approved command, its environment, working directory and result/cancel paths. Invalid UTF-8 fails closed.
 $spec = [IO.StreamReader]::new([Console]::OpenStandardInput(), [Text.UTF8Encoding]::new($false, $true), $false).ReadToEnd() | ConvertFrom-Json
 if (-not $spec.nonce -or -not $spec.resultPath -or -not $spec.cancelPath) { throw 'Invalid command helper input.' }
+$stdinBytes = $null
+if ($null -ne $spec.psobject.Properties['stdinBytesBase64']) {
+  if ($spec.stdinBytesBase64 -isnot [string] -or $spec.stdinBytesBase64.Length -gt 349528) { throw 'Invalid bounded command stdin.' }
+  try { $stdinBytes = [Convert]::FromBase64String($spec.stdinBytesBase64) } catch { throw 'Invalid bounded command stdin.' }
+  if ($stdinBytes.Length -gt 262144 -or [Convert]::ToBase64String($stdinBytes) -cne $spec.stdinBytesBase64) { throw 'Invalid bounded command stdin.' }
+}
 
 Add-Type -TypeDefinition @'
 using System;
@@ -23,6 +29,7 @@ public sealed class JobRunResult {
   public bool cancelled { get; set; }
   public bool timedOut { get; set; }
   public bool cleanupVerified { get; set; }
+  public bool stdinDelivered { get; set; }
 }
 
 public static class JobRun {
@@ -67,6 +74,20 @@ public static class JobRun {
   [DllImport("kernel32.dll", SetLastError=true)] static extern bool ReadFile(IntPtr handle, byte[] buffer, uint count, out uint read, IntPtr overlapped);
   static void Check(bool value, string operation) { if (!value) throw new InvalidOperationException(operation + " failed: " + Marshal.GetLastWin32Error()); }
   static IntPtr PipeRead(out IntPtr write) { SECURITY_ATTRIBUTES sa = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf(typeof(SECURITY_ATTRIBUTES)), bInheritHandle = true }; IntPtr read; Check(CreatePipe(out read, out write, ref sa, 0), "CreatePipe"); Check(SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0), "SetHandleInformation"); return read; }
+  // Child stdin is the inverse of the output pipes: only its read end is inherited.
+  static IntPtr PipeInput(out IntPtr write) { SECURITY_ATTRIBUTES sa = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf(typeof(SECURITY_ATTRIBUTES)), bInheritHandle = true }; IntPtr read; Check(CreatePipe(out read, out write, ref sa, 0), "CreatePipe"); Check(SetHandleInformation(write, HANDLE_FLAG_INHERIT, 0), "SetHandleInformation"); return read; }
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool WriteFile(IntPtr handle, byte[] buffer, uint count, out uint written, IntPtr overlapped);
+  static bool WriteInput(IntPtr handle, byte[] bytes) {
+    try {
+      var buffer = new byte[4096]; int offset = 0;
+      while (offset < bytes.Length) {
+        int count = Math.Min(buffer.Length, bytes.Length - offset); Buffer.BlockCopy(bytes, offset, buffer, 0, count); uint written;
+        if (!WriteFile(handle, buffer, (uint)count, out written, IntPtr.Zero) || written == 0) return false;
+        offset += (int)written;
+      }
+      return true;
+    } catch { return false; } finally { CloseHandle(handle); }
+  }
   static string ReadLimited(IntPtr handle) { var bytes = new List<byte>(); var buffer = new byte[4096]; try { while (true) { uint read; if (!ReadFile(handle, buffer, (uint)buffer.Length, out read, IntPtr.Zero)) { int error = Marshal.GetLastWin32Error(); if (error == 109) break; throw new InvalidOperationException("ReadFile failed: " + error); } if (read == 0) break; int remaining = 65536 - bytes.Count; if (remaining > 0) bytes.AddRange(new ArraySegment<byte>(buffer, 0, Math.Min((int)read, remaining))); } } finally { CloseHandle(handle); } var value = Encoding.UTF8.GetString(bytes.ToArray()); return bytes.Count >= 65536 ? value + "\n[output truncated]" : value; }
   static IntPtr EnvironmentBlock(Dictionary<string,string> values) { var keys = new List<string>(values.Keys); keys.Sort(StringComparer.OrdinalIgnoreCase); var text = new StringBuilder(); foreach (var key in keys) text.Append(key).Append('=').Append(values[key]).Append('\0'); text.Append('\0'); return Marshal.StringToHGlobalUni(text.ToString()); }
   static bool JobEmpty(IntPtr job) { int size = Marshal.SizeOf(typeof(JOBOBJECT_BASIC_ACCOUNTING_INFORMATION)); IntPtr memory = Marshal.AllocHGlobal(size); try { Check(QueryInformationJobObject(job, JobObjectBasicAccountingInformation, memory, (uint)size, IntPtr.Zero), "QueryInformationJobObject"); return Marshal.PtrToStructure<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>(memory).ActiveProcesses == 0; } finally { Marshal.FreeHGlobal(memory); } }
@@ -98,7 +119,7 @@ public static class JobRun {
   }
   static string Quote(string value) { return "\"" + value.Replace("\"", "\\\"") + "\""; }
   static IntPtr VerifiedParent(int pid, long startedAtMs) { IntPtr parent = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, false, pid); if (parent == IntPtr.Zero) throw new InvalidOperationException("Runtime parent " + pid + " is unavailable: " + Marshal.GetLastWin32Error()); long created, exited, kernel, user; Check(GetProcessTimes(parent, out created, out exited, out kernel, out user), "GetProcessTimes"); long observedMs = (created / 10000L) - 11644473600000L; if (Math.Abs(observedMs - startedAtMs) > 5000L) { CloseHandle(parent); throw new InvalidOperationException("Runtime parent identity changed."); } return parent; }
-  public static JobRunResult Run(string shell, string command, string cwd, Dictionary<string,string> environment, int timeoutMs, string cancelPath, int parentPid, long parentStartedAtMs) {
+  public static JobRunResult Run(string shell, string command, string cwd, Dictionary<string,string> environment, int timeoutMs, string cancelPath, int parentPid, long parentStartedAtMs, byte[] stdinBytes) {
     IntPtr job = IntPtr.Zero, parent = IntPtr.Zero, stdoutRead = IntPtr.Zero, stdoutWrite = IntPtr.Zero, stderrRead = IntPtr.Zero, stderrWrite = IntPtr.Zero, stdinRead = IntPtr.Zero, stdinWrite = IntPtr.Zero, env = IntPtr.Zero;
     PROCESS_INFORMATION pi = new PROCESS_INFORMATION(); bool processCreated = false; bool assigned = false; bool normalEnd = false;
     try {
@@ -106,14 +127,14 @@ public static class JobRun {
       parent = VerifiedParent(parentPid, parentStartedAtMs); job = CreateJobObject(IntPtr.Zero, null); if (job == IntPtr.Zero) throw new InvalidOperationException("CreateJobObject failed: " + Marshal.GetLastWin32Error());
       var limits = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION(); limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
       int limitsSize = Marshal.SizeOf(typeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)); IntPtr limitsMemory = Marshal.AllocHGlobal(limitsSize); try { Marshal.StructureToPtr(limits, limitsMemory, false); Check(SetInformationJobObject(job, JobObjectExtendedLimitInformation, limitsMemory, (uint)limitsSize), "SetInformationJobObject"); } finally { Marshal.FreeHGlobal(limitsMemory); }
-      stdoutRead = PipeRead(out stdoutWrite); stderrRead = PipeRead(out stderrWrite); stdinRead = PipeRead(out stdinWrite);
+      stdoutRead = PipeRead(out stdoutWrite); stderrRead = PipeRead(out stderrWrite); stdinRead = PipeInput(out stdinWrite);
       var startup = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFO)), dwFlags = (int)STARTF_USESTDHANDLES, hStdInput = stdinRead, hStdOutput = stdoutWrite, hStdError = stderrWrite };
       string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(command)); var line = new StringBuilder(Quote(shell) + " -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + encoded);
       if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) throw new InvalidOperationException("Runtime parent exited before command launch.");
       env = EnvironmentBlock(environment);
       if (File.Exists(cancelPath)) return new JobRunResult { stdout = "", stderr = "", exitCode = null, cancelled = true, timedOut = false, cleanupVerified = true };
       Check(CreateProcess(shell, line, IntPtr.Zero, IntPtr.Zero, true, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, env, cwd, ref startup, out pi), "CreateProcess"); processCreated = true;
-      CloseHandle(stdinRead); stdinRead = IntPtr.Zero; CloseHandle(stdinWrite); stdinWrite = IntPtr.Zero; CloseHandle(stdoutWrite); stdoutWrite = IntPtr.Zero; CloseHandle(stderrWrite); stderrWrite = IntPtr.Zero;
+      CloseHandle(stdinRead); stdinRead = IntPtr.Zero; CloseHandle(stdoutWrite); stdoutWrite = IntPtr.Zero; CloseHandle(stderrWrite); stderrWrite = IntPtr.Zero;
       Check(AssignProcessToJobObject(job, pi.hProcess), "AssignProcessToJobObject"); assigned = true;
       if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { TerminateJobObject(job, 4); throw new InvalidOperationException("Runtime parent exited before command resume."); }
       if (File.Exists(cancelPath)) {
@@ -123,14 +144,20 @@ public static class JobRun {
       }
       if (ResumeThread(pi.hThread) == 0xffffffff) throw new InvalidOperationException("ResumeThread failed: " + Marshal.GetLastWin32Error());
       IntPtr stdoutHandle = stdoutRead; stdoutRead = IntPtr.Zero; IntPtr stderrHandle = stderrRead; stderrRead = IntPtr.Zero; Task<string> stdout = Task.Run(() => ReadLimited(stdoutHandle)); Task<string> stderr = Task.Run(() => ReadLimited(stderrHandle));
+      // A full input pipe must not block deadline, parent-death or cancellation monitoring.
+      // Job termination closes its readers; input delivery never gets an unbounded cleanup wait.
+      Task<bool> input = null;
+      if (stdinBytes == null) { CloseHandle(stdinWrite); stdinWrite = IntPtr.Zero; }
+      else { IntPtr inputHandle = stdinWrite; stdinWrite = IntPtr.Zero; input = Task.Run(() => WriteInput(inputHandle, stdinBytes)); }
       var watch = Stopwatch.StartNew(); bool cancelled = false, timedOut = false, parentDied = false, backgroundTerminated = false;
       while (WaitForSingleObject(pi.hProcess, 50) != WAIT_OBJECT_0) { if (WaitForSingleObject(parent, 0) == WAIT_OBJECT_0) { parentDied = true; TerminateJobObject(job, 4); break; } if (File.Exists(cancelPath)) { cancelled = true; TerminateJobObject(job, 1); break; } if (watch.ElapsedMilliseconds >= timeoutMs) { timedOut = true; TerminateJobObject(job, 2); break; } }
       WaitForSingleObject(pi.hProcess, INFINITE); uint code; GetExitCodeProcess(pi.hProcess, out code); normalEnd = !cancelled && !timedOut && !parentDied;
       // A background descendant can retain stdout/stderr after the root exits. End its Job membership before draining pipes.
       if (normalEnd && !JobEmpty(job)) { backgroundTerminated = RunningDescendant(job); TerminateJobObject(job, 3); }
       var verify = Stopwatch.StartNew(); bool empty = JobEmpty(job); while (!empty && verify.ElapsedMilliseconds < 5000) { System.Threading.Thread.Sleep(25); empty = JobEmpty(job); }
+      bool delivered = input == null || (input.Wait(1000) && input.Result);
       Task.WaitAll(stdout, stderr);
-      return new JobRunResult { stdout = stdout.Result, stderr = stderr.Result + (backgroundTerminated ? "\n[background job descendants terminated]" : "") + (parentDied ? "\n[runtime parent exited; job terminated]" : ""), exitCode = normalEnd ? (int?)code : null, cancelled = cancelled || parentDied, timedOut = timedOut, cleanupVerified = empty };
+      return new JobRunResult { stdout = stdout.Result, stderr = stderr.Result + (backgroundTerminated ? "\n[background job descendants terminated]" : "") + (parentDied ? "\n[runtime parent exited; job terminated]" : ""), exitCode = normalEnd ? (int?)code : null, cancelled = cancelled || parentDied, timedOut = timedOut, cleanupVerified = empty, stdinDelivered = delivered };
     } finally {
       if (processCreated && !assigned && pi.hProcess != IntPtr.Zero) TerminateProcess(pi.hProcess, 3);
       if (processCreated && assigned && !normalEnd && job != IntPtr.Zero) TerminateJobObject(job, 3);
@@ -145,7 +172,7 @@ public static class JobRun {
 try {
   $environment = [System.Collections.Generic.Dictionary[string,string]]::new([System.StringComparer]::OrdinalIgnoreCase)
   $spec.environment.psobject.Properties | ForEach-Object { $environment.Add($_.Name, [string]$_.Value) }
-  $result = [JobRun]::Run([string]$spec.shell, [string]$spec.command, [string]$spec.cwd, $environment, [int]$spec.timeoutMs, [string]$spec.cancelPath, [int]$spec.parentPid, [long]$spec.parentStartedAtMs)
+  $result = [JobRun]::Run([string]$spec.shell, [string]$spec.command, [string]$spec.cwd, $environment, [int]$spec.timeoutMs, [string]$spec.cancelPath, [int]$spec.parentPid, [long]$spec.parentStartedAtMs, $stdinBytes)
   $result | Add-Member -NotePropertyName nonce -NotePropertyValue ([string]$spec.nonce)
   [System.IO.File]::WriteAllText([string]$spec.resultPath, ($result | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
   exit 0

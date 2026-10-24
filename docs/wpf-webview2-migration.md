@@ -740,7 +740,7 @@ pwsh ./build.ps1 smoke      # runtime stdio smoke + artifact audit (+ clean-prof
 ## Out of scope
 
 - New features.
-- Enabling new-file creation through the edit tool. A native primitive becomes possible, but enabling it is a feature change.
+- Enabling new-file creation through the edit tool is a separate feature change. Rudy approved a scoped TypeScript/C# exception on 23 October 2026 for one reviewed absent file in an existing safe directory; see `implementation-status.md`. This does not extend the migration cutover or adoption authority.
 - Clipboard UI limits for commands.
 - Auto-update, MSIX, Fixed-Version WebView2.
 - History browsing while adoption is pending.

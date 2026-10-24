@@ -3,7 +3,7 @@
     "sources": [
       {
         "path": "packages/providers/src/index.ts",
-        "sha256": "ca6a9251b83b73e94485b69437acc824f0613dccecadb8e29c87b5276ea83159"
+        "sha256": "d568d8f88046e279d7b4cf7495b3cfd15a59a9981b5845288596b0a8f1440f51"
       },
       {
         "path": "packages/providers/src/browser-fixture.ts",
@@ -1315,6 +1315,302 @@
         "messages": [
           {
             "role": "user",
+            "content": "/create-demo"
+          }
+        ],
+        "tools": [
+          "write_file"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "tool_call",
+            "call": {
+              "id": "fake-create-1",
+              "name": "write_file",
+              "arguments": {
+                "path": "src/created-demo.txt",
+                "expectedHash": null,
+                "content": "Created by the reviewed offline demo.\nUTF-8: café.\n"
+              }
+            }
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "create",
+                "calls": [
+                  {
+                    "id": "fake-create-1",
+                    "name": "write_file",
+                    "arguments": {
+                      "path": "src/created-demo.txt",
+                      "expectedHash": null,
+                      "content": "Created by the reviewed offline demo.\nUTF-8: café.\n"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:26",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/create-demo"
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /create-d"
+          },
+          {
+            "type": "text",
+            "text": "emo"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:27",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/create-demo suffix"
+          }
+        ],
+        "tools": [
+          "write_file"
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Fake respons"
+          },
+          {
+            "type": "text",
+            "text": "e: /create-d"
+          },
+          {
+            "type": "text",
+            "text": "emo suffix"
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "chat",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:28",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "/create-demo"
+          }
+        ],
+        "tools": [
+          "write_file"
+        ],
+        "abortBefore": true
+      },
+      "expected": {
+        "events": [],
+        "error": "This operation was aborted"
+      }
+    },
+    {
+      "name": "fake-tools:29",
+      "input": {
+        "messages": [],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "create",
+            "calls": [
+              {
+                "id": "fake-create-1",
+                "name": "write_file",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-create-1",
+            "name": "write_file",
+            "content": "{}",
+            "isError": false
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Foundry offl"
+          },
+          {
+            "type": "text",
+            "text": "ine create d"
+          },
+          {
+            "type": "text",
+            "text": "emo complete"
+          },
+          {
+            "type": "text",
+            "text": "d."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:30",
+      "input": {
+        "messages": [],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "create",
+            "calls": [
+              {
+                "id": "fake-create-1",
+                "name": "write_file",
+                "arguments": {}
+              }
+            ]
+          }
+        },
+        "toolResults": [
+          {
+            "id": "fake-create-1",
+            "name": "write_file",
+            "content": "{}",
+            "isError": true
+          }
+        ]
+      },
+      "expected": {
+        "events": [
+          {
+            "type": "text",
+            "text": "Offline crea"
+          },
+          {
+            "type": "text",
+            "text": "te demo stop"
+          },
+          {
+            "type": "text",
+            "text": "ped: creatio"
+          },
+          {
+            "type": "text",
+            "text": "n was reject"
+          },
+          {
+            "type": "text",
+            "text": "ed or failed"
+          },
+          {
+            "type": "text",
+            "text": "."
+          },
+          {
+            "type": "done",
+            "continuation": {
+              "apiKind": "fake",
+              "data": {
+                "stage": "complete",
+                "calls": []
+              }
+            }
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "fake-tools:31",
+      "input": {
+        "messages": [],
+        "continuation": {
+          "apiKind": "fake",
+          "data": {
+            "stage": "create",
+            "calls": [
+              {
+                "id": "fake-create-1",
+                "name": "write_file",
+                "arguments": {}
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "events": [],
+        "error": "Pending tool calls require matching results."
+      }
+    },
+    {
+      "name": "fake-tools:32",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
             "content": "/browser-demo"
           }
         ]
@@ -1340,7 +1636,7 @@
       }
     },
     {
-      "name": "fake-tools:26",
+      "name": "fake-tools:33",
       "input": {
         "messages": [
           {
@@ -1375,7 +1671,7 @@
       }
     },
     {
-      "name": "fake-tools:27",
+      "name": "fake-tools:34",
       "input": {
         "messages": [
           {
@@ -1414,7 +1710,7 @@
       }
     },
     {
-      "name": "fake-tools:28",
+      "name": "fake-tools:35",
       "input": {
         "messages": [
           {
@@ -1451,7 +1747,7 @@
       }
     },
     {
-      "name": "fake-tools:29",
+      "name": "fake-tools:36",
       "input": {
         "messages": [
           {
@@ -1467,7 +1763,7 @@
       }
     },
     {
-      "name": "fake-tools:30",
+      "name": "fake-tools:37",
       "input": {
         "messages": [
           {
@@ -1505,7 +1801,7 @@
       }
     },
     {
-      "name": "fake-tools:31",
+      "name": "fake-tools:38",
       "input": {
         "messages": [
           {
@@ -1543,7 +1839,7 @@
       }
     },
     {
-      "name": "fake-tools:32",
+      "name": "fake-tools:39",
       "input": {
         "messages": [
           {
@@ -1577,7 +1873,7 @@
       }
     },
     {
-      "name": "fake-tools:33",
+      "name": "fake-tools:40",
       "input": {
         "messages": [
           {
@@ -1629,7 +1925,7 @@
       }
     },
     {
-      "name": "fake-tools:34",
+      "name": "fake-tools:41",
       "input": {
         "messages": [
           {
@@ -1681,7 +1977,7 @@
       }
     },
     {
-      "name": "fake-tools:35",
+      "name": "fake-tools:42",
       "input": {
         "messages": [
           {
@@ -1723,7 +2019,7 @@
       }
     },
     {
-      "name": "fake-tools:36",
+      "name": "fake-tools:43",
       "input": {
         "messages": [
           {
@@ -1741,7 +2037,7 @@
       }
     },
     {
-      "name": "fake-tools:37",
+      "name": "fake-tools:44",
       "input": {
         "messages": [
           {
@@ -1760,7 +2056,7 @@
       }
     },
     {
-      "name": "fake-tools:38",
+      "name": "fake-tools:45",
       "input": {
         "messages": [
           {
@@ -1799,7 +2095,7 @@
       }
     },
     {
-      "name": "fake-tools:39",
+      "name": "fake-tools:46",
       "input": {
         "messages": [
           {
@@ -1848,7 +2144,7 @@
       }
     },
     {
-      "name": "fake-tools:40",
+      "name": "fake-tools:47",
       "input": {
         "messages": [
           {
@@ -1872,7 +2168,7 @@
       }
     },
     {
-      "name": "fake-tools:41",
+      "name": "fake-tools:48",
       "input": {
         "messages": [],
         "tools": [
@@ -1948,7 +2244,7 @@
       }
     },
     {
-      "name": "fake-tools:42",
+      "name": "fake-tools:49",
       "input": {
         "messages": [],
         "tools": [
@@ -2024,7 +2320,7 @@
       }
     },
     {
-      "name": "fake-tools:43",
+      "name": "fake-tools:50",
       "input": {
         "messages": [],
         "tools": [
@@ -2100,7 +2396,7 @@
       }
     },
     {
-      "name": "fake-tools:44",
+      "name": "fake-tools:51",
       "input": {
         "messages": [],
         "tools": [
@@ -2176,7 +2472,7 @@
       }
     },
     {
-      "name": "fake-tools:45",
+      "name": "fake-tools:52",
       "input": {
         "messages": [],
         "tools": [
@@ -2252,7 +2548,7 @@
       }
     },
     {
-      "name": "fake-tools:46",
+      "name": "fake-tools:53",
       "input": {
         "messages": [],
         "tools": [
@@ -2328,7 +2624,7 @@
       }
     },
     {
-      "name": "fake-tools:47",
+      "name": "fake-tools:54",
       "input": {
         "messages": [],
         "tools": [
@@ -2361,7 +2657,7 @@
       }
     },
     {
-      "name": "fake-tools:48",
+      "name": "fake-tools:55",
       "input": {
         "messages": [],
         "tools": [
@@ -2402,7 +2698,7 @@
       }
     },
     {
-      "name": "fake-tools:49",
+      "name": "fake-tools:56",
       "input": {
         "messages": [],
         "tools": [
@@ -2443,7 +2739,7 @@
       }
     },
     {
-      "name": "fake-tools:50",
+      "name": "fake-tools:57",
       "input": {
         "messages": [],
         "tools": [
@@ -2490,7 +2786,7 @@
       }
     },
     {
-      "name": "fake-tools:51",
+      "name": "fake-tools:58",
       "input": {
         "messages": [],
         "tools": [
@@ -2536,7 +2832,7 @@
       }
     },
     {
-      "name": "fake-tools:52",
+      "name": "fake-tools:59",
       "input": {
         "messages": [],
         "tools": [
@@ -2588,7 +2884,7 @@
       }
     },
     {
-      "name": "fake-tools:53",
+      "name": "fake-tools:60",
       "input": {
         "messages": [],
         "tools": [
@@ -2621,7 +2917,7 @@
       }
     },
     {
-      "name": "fake-tools:54",
+      "name": "fake-tools:61",
       "input": {
         "messages": [],
         "tools": [
@@ -2646,7 +2942,7 @@
       }
     },
     {
-      "name": "fake-tools:55",
+      "name": "fake-tools:62",
       "input": {
         "messages": [],
         "tools": [
@@ -2684,7 +2980,7 @@
       }
     },
     {
-      "name": "fake-tools:56",
+      "name": "fake-tools:63",
       "input": {
         "messages": [],
         "tools": [
@@ -2726,7 +3022,7 @@
       }
     },
     {
-      "name": "fake-tools:57",
+      "name": "fake-tools:64",
       "input": {
         "messages": [],
         "tools": [
@@ -2800,7 +3096,7 @@
       }
     },
     {
-      "name": "fake-tools:58",
+      "name": "fake-tools:65",
       "input": {
         "messages": [],
         "tools": [
@@ -2870,7 +3166,7 @@
       }
     },
     {
-      "name": "fake-tools:59",
+      "name": "fake-tools:66",
       "input": {
         "messages": [],
         "tools": [
@@ -2895,7 +3191,7 @@
       }
     },
     {
-      "name": "fake-tools:60",
+      "name": "fake-tools:67",
       "input": {
         "messages": [],
         "tools": [
@@ -2957,7 +3253,7 @@
       }
     },
     {
-      "name": "fake-tools:61",
+      "name": "fake-tools:68",
       "input": {
         "messages": [],
         "tools": [
@@ -3002,7 +3298,7 @@
       }
     },
     {
-      "name": "fake-tools:62",
+      "name": "fake-tools:69",
       "input": {
         "messages": [],
         "tools": [

@@ -105,6 +105,24 @@ public sealed class FakeChatProvider
             yield return Done("complete", []);
             yield break;
         }
+        if (state is null && request.Advertises("write_file") && last == "/create-demo")
+        {
+            RequireTools(request, ["write_file"]);
+            var call = new ProviderToolCall("fake-create-1", "write_file", new Dictionary<string, object?>
+            {
+                ["path"] = "src/created-demo.txt", ["expectedHash"] = null, ["content"] = "Created by the reviewed offline demo.\nUTF-8: café.\n",
+            });
+            yield return call;
+            yield return Done("create", [call.Call()]);
+            yield break;
+        }
+        if (state?.Stage == "create")
+        {
+            var result = First(RequiredResults(request, state.Calls), "isError");
+            await foreach (var text in Text(result.IsError ? "Offline create demo stopped: creation was rejected or failed." : "Foundry offline create demo completed.", cancellationToken)) yield return text;
+            yield return Done("complete", []);
+            yield break;
+        }
         // The coding demo, on a task's first turn: read the README, propose appending a line, then propose a command.
         if (state is null && request.Advertises("read_file") && (last ?? "").StartsWith("/demo", StringComparison.Ordinal))
         {

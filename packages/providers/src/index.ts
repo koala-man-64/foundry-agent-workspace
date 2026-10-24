@@ -35,6 +35,19 @@ class FakeProvider implements ProviderAdapter {
             yield* fakeText(result?.isError ? 'Channel message was not sent.' : 'Channel message recorded. Idle agents receive it on their next turn.', request.signal);
             yield { type: 'done', continuation: fakeContinuation('complete', []) }; return;
         }
+        if (!state && request.tools?.some(tool => tool.name === 'write_file') && lastUser(request.messages) === '/create-demo') {
+            requireTools(request.tools, ['write_file']);
+            const call = { id: 'fake-create-1', name: 'write_file', arguments: { path: 'src/created-demo.txt', expectedHash: null, content: 'Created by the reviewed offline demo.\nUTF-8: café.\n' } };
+            yield { type: 'tool_call', call };
+            yield { type: 'done', continuation: fakeContinuation('create', [call]) };
+            return;
+        }
+        if (state?.stage === 'create') {
+            const result = requiredResults(request, state.calls)[0]!;
+            yield* fakeText(result.isError ? 'Offline create demo stopped: creation was rejected or failed.' : 'Foundry offline create demo completed.', request.signal);
+            yield { type: 'done', continuation: fakeContinuation('complete', []) };
+            return;
+        }
         if (!state && request.tools?.some(tool => tool.name === 'read_file') && lastUser(request.messages).startsWith("/demo")) {
             requireTools(request.tools, ["read_file", "replace_text", "run_command"]);
             const call = { id: "fake-read-1", name: "read_file", arguments: { path: "README.md" } };

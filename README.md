@@ -2,7 +2,7 @@
 
 A local Windows desktop workspace for Azure Foundry models. This repository implements the foundation and reviewed single-agent coding increment of the [product plan](docs/foundry-agent-workspace-plan.html).
 
-**Current scope:** persistent tasks, isolated Git worktrees, text conversations, native provider tool loops, reviewed existing-file edits and Windows commands, coordinated coordinator/child tasks, controlled context compaction, external MCP tools under the same approval policy, usage and diagnostics visibility, explicit commit/push actions, safe worktree retirement, cancellation, recovery, model settings, credential protection, file inspection, and diff review. The offline profile provides deterministic fixtures, not a general-purpose coding model.
+**Current scope:** persistent tasks, isolated Git worktrees, text conversations, native provider tool loops, reviewed existing-file replacement and bounded new-file creation, reviewed Windows commands, coordinated coordinator/child tasks, controlled context compaction, external MCP tools under the same approval policy, usage and diagnostics visibility, explicit commit/push actions, safe worktree retirement, cancellation, recovery, model settings, credential protection, file inspection, and diff review. The offline profile provides deterministic fixtures, not a general-purpose coding model.
 
 ## Run locally
 
@@ -20,7 +20,7 @@ The runtime owns an SQLite database and task worktrees beneath `%LOCALAPPDATA%/F
 
 Choose **Coding with reviewed tools** to enable the coding loop. With **Offline demo**, send `/demo` in a repository containing a non-empty `README.md`: it reads the file, proposes appending a demo line, and then proposes a harmless `Write-Output` command. Review each action in **Approvals**. Rejecting the edit leaves the file unchanged. Ordinary offline messages still produce deterministic echoes.
 
-Real coding profiles can list/search/read files, propose full or single-match replacement of existing files, and propose commands. File proposals carry SHA-256 preconditions and full before/after evidence. Commands bind the exact command, worktree state, canonical directory, Windows PowerShell executable, environment, and timeout. Each mutation needs a new one-shot approval. **Commands run with your Windows privileges; the worktree and approval UI are not a sandbox.** New-file creation through the file-edit tool is disabled until a race-safe Windows creation primitive exists; commands can have broader effects when explicitly approved.
+Real coding profiles can list/search/read files, propose full or single-match replacement of existing files, create one absent UTF-8 file of at most 64 KiB inside an existing safe directory, and propose commands. Replacement requires the exact existing SHA-256; creation requires an explicit null original hash and review of the full new content. The Create approval distinguishes an absent file from an empty original. Creation pins and revalidates the reviewed parent identities, uses handle-relative create-only Windows access, and never creates directories or overwrites an entry. Commands bind the exact command, worktree state, canonical directory, Windows PowerShell executable, environment, and timeout. Each mutation needs a new one-shot approval. **Commands run with your Windows privileges; the worktree and approval UI are not a sandbox.** An uncertain creation remains unknown and is never automatically retried.
 
 ## Project communication
 
