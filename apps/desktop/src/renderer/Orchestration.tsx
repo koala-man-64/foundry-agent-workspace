@@ -427,6 +427,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
 
   const awaitingCount = pendingApprovals.filter(item => item.state === 'awaiting-approval').length;
+  const waitingFor = (taskId: string) => pendingApprovals.filter(item => item.state === 'awaiting-approval' && item.taskId === taskId).length;
   const canSendToCoordinator = Boolean(composer.trim()) && task.status !== 'retired' && coordinatorRun?.lifecycle !== 'terminal';
   const approvalsLabel = approvalsTabLabel(awaitingCount, pendingApprovals.filter(item => item.state === 'unknown').length, awaitingCount > 0 && runsCursor !== null);
   const rootLifecycle = coordinatorRun?.lifecycle;
@@ -435,7 +436,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const completion = view?.completion;
 
   return <>
-    <section className="conversation orchestration-conversation">
+    <section className="conversation orchestration-conversation" role="main" aria-label="Coordinated conversation">
       <header className="task-header orchestration-header">
         <div>
           <p className="eyebrow">{task.projectPath}</p>
@@ -453,14 +454,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       <nav aria-label="Agent tree" className="agent-tree">
         <button type="button" className={`agent-row ${!selectedChildId ? 'selected' : ''}`} onClick={() => setSelectedChildId(undefined)}>
           <span className="agent-key" title="coordinator">Coordinator</span>
-          <span className="agent-lifecycle">{coordinatorRun ? lifecycleLabel[coordinatorRun.lifecycle] : 'Loading…'}{coordinatorRun?.lifecycle === 'waiting' && coordinatorRun.waitReason ? ` · ${waitReasonLabel[coordinatorRun.waitReason]}` : ''}{coordinatorRun?.outcome ? ` · ${outcomeLabel[coordinatorRun.outcome]}` : ''}</span>
+          <span className="agent-lifecycle">{coordinatorRun ? lifecycleLabel[coordinatorRun.lifecycle] : 'Loading…'}{coordinatorRun?.lifecycle === 'waiting' && coordinatorRun.waitReason ? ` · ${waitReasonLabel[coordinatorRun.waitReason]}` : ''}{coordinatorRun?.outcome ? ` · ${outcomeLabel[coordinatorRun.outcome]}` : ''}</span>{waitingFor(rootTaskId) > 0 && <span className="agent-pending">{waitingFor(rootTaskId)} awaiting approval</span>}
         </button>
         {childRuns.map((run) => {
           const assignment = run.assignmentId ? assignmentById[run.assignmentId] : undefined;
           const key = assignment?.key ?? run.title;
           return <button type="button" key={run.taskId} className={`agent-row ${selectedChildId === run.taskId ? 'selected' : ''}`} onClick={() => setSelectedChildId(run.taskId)}>
             <span className="agent-key" title={`${key} · ${run.title}`}>{key} · {run.title}</span>
-            <span className="agent-lifecycle">{lifecycleLabel[run.lifecycle]}{run.lifecycle === 'waiting' && run.waitReason ? ` · ${waitReasonLabel[run.waitReason]}` : ''}{run.outcome ? ` · ${outcomeLabel[run.outcome]}` : ''}</span>
+            <span className="agent-lifecycle">{lifecycleLabel[run.lifecycle]}{run.lifecycle === 'waiting' && run.waitReason ? ` · ${waitReasonLabel[run.waitReason]}` : ''}{run.outcome ? ` · ${outcomeLabel[run.outcome]}` : ''}</span>{waitingFor(run.taskId) > 0 && <span className="agent-pending">{waitingFor(run.taskId)} awaiting approval</span>}
           </button>;
         })}
         {runsCursor !== null && <button type="button" className="quiet" onClick={() => void loadMoreAgents()}>Load more agents</button>}
@@ -478,7 +479,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
           </form>
         </> : <div className="child-panel">
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
-          <Transcript messages={childDetail?.messages ?? []} ordinals={childMessageOrdinals.current} api={api} taskId={selectedChildId} empty={<p className="muted">No child messages yet.</p>} />
+          <Transcript messages={childDetail?.messages ?? []} ordinals={childMessageOrdinals.current} api={api} taskId={selectedChildId} userLabel="Coordinator assignment" empty={<p className="muted">No child messages yet.</p>} />
           {childNextBefore !== null && <button type="button" className="quiet" onClick={() => void loadOlderChildMessages()}>Load older agent messages</button>}
           {childDetail?.assignment && <div className="assignment-summary">
             <dl><dt>Objective</dt><dd>{childDetail.assignment.objective}</dd></dl>

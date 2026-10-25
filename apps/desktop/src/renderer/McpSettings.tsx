@@ -6,6 +6,9 @@ interface Props { api: DesktopApi; servers: McpServerStatus[]; onChanged: () => 
 
 interface Draft { id: string; key: string; name: string; command: string; argumentsText: string; cwd: string; environmentText: string; callTimeoutMs: number }
 
+/** Lowercase key: a letter or digit, then up to 31 letters, digits or hyphens. The hyphen is escaped so the pattern is valid under the `v` flag browsers use for pattern attributes. */
+export const MCP_KEY_PATTERN = '[a-z0-9][a-z0-9\\-]{0,31}';
+
 const emptyDraft = (): Draft => ({ id: crypto.randomUUID(), key: '', name: '', command: '', argumentsText: '', cwd: '', environmentText: '', callTimeoutMs: 60000 });
 
 function parseEnvironment(text: string): Record<string, string> {
@@ -60,7 +63,7 @@ export function McpSettings({ api, servers, onChanged, setNotice }: Props) {
         <p className="muted">{server.command} · {server.argumentCount} argument(s) · {server.environmentCount} environment variable(s){server.serverInfo ? ` · ${server.serverInfo.name} ${server.serverInfo.version}` : ''}{server.toolsListedAt ? ` · listed ${server.tools.length} tool(s)` : ' · not listed yet'}</p>
         {server.lastError && <p className="mcp-error">{server.lastError}</p>}
         {server.tools.length > 0 && <fieldset className="child-profiles"><legend>Read-only allowlist (runs without approval)</legend>
-          {server.tools.map((tool) => <label key={tool.name} className="checkbox-row"><input type="checkbox" disabled={Boolean(busy)} checked={server.readOnlyTools.includes(tool.name)} onChange={(e) => void update(server, { readOnlyTools: e.target.checked ? [...server.readOnlyTools, tool.name] : server.readOnlyTools.filter((name) => name !== tool.name) })} />{tool.name}{tool.readOnlyHint ? ' (server hints read-only)' : ''}<small className="muted"> {tool.description.slice(0, 120)}</small></label>)}
+          {server.tools.map((tool) => <label key={tool.name} className="checkbox-row"><input type="checkbox" disabled={Boolean(busy)} checked={server.readOnlyTools.includes(tool.name)} onChange={(e) => void update(server, { readOnlyTools: e.target.checked ? [...server.readOnlyTools, tool.name] : server.readOnlyTools.filter((name) => name !== tool.name) })} />{tool.name}{tool.readOnlyHint ? ' (server hints read-only)' : ''}{server.readOnlyTools.includes(tool.name) && <span className="chip-light">Runs without approval</span>}{tool.description && <small className="muted" title={tool.description}> Server says: {tool.description.length > 120 ? `${tool.description.slice(0, 120)}…` : tool.description}</small>}</label>)}
         </fieldset>}
         <div className="approval-actions">
           <button type="button" className="secondary" disabled={Boolean(busy)} onClick={() => void update(server, { enabled: !server.enabled })}>{server.enabled ? 'Disable' : 'Enable'}</button>
@@ -71,7 +74,7 @@ export function McpSettings({ api, servers, onChanged, setNotice }: Props) {
       {!servers.length && <p className="muted">No MCP servers are configured.</p>}
       <form onSubmit={save} className="mcp-form">
         <div className="limits">
-          <label>Key <input value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} placeholder="fixture" pattern="[a-z0-9][a-z0-9-]{0,31}" required aria-label="MCP key" /></label>
+          <label>Key <input value={draft.key} onChange={(e) => setDraft({ ...draft, key: e.target.value })} placeholder="fixture" pattern={MCP_KEY_PATTERN} title="Lowercase letters, digits and hyphens; starts with a letter or digit" required aria-label="MCP key" /></label>
           <label>Display name <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required maxLength={100} aria-label="MCP name" /></label>
         </div>
         <label>Command (absolute .exe path) <input value={draft.command} onChange={(e) => setDraft({ ...draft, command: e.target.value })} required aria-label="MCP command" /></label>

@@ -65,6 +65,12 @@ test('compaction, MCP under approval, diagnostics export, explicit commit and sa
 
     // 3. The offline MCP demo runs echo without approval and stops for the state-changing write_note.
     const coding = await createTask('MCP demo task', 'coding');
+    // Unsent text stays with the task it was typed in.
+    await page.getByLabel('Task message').fill('Draft kept with this task');
+    await page.getByRole('navigation', { name: 'Task history' }).locator('.task-row', { hasText: 'Compaction task' }).click();
+    await expect(page.getByLabel('Task message')).toHaveValue('');
+    await page.getByRole('navigation', { name: 'Task history' }).locator('.task-row', { hasText: 'MCP demo task' }).click();
+    await expect(page.getByLabel('Task message')).toHaveValue('Draft kept with this task');
     await page.getByLabel('Task message').fill('/mcp-demo');
     await page.getByRole('button', { name: /^Send/ }).click();
     await page.getByRole('button', { name: 'Approvals', exact: false }).click();

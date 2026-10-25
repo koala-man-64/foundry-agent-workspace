@@ -45,7 +45,7 @@ function SummaryBody({ record, api, taskId }: { record: CompactionSummary; api?:
   return <article className="message system compaction-summary"><div className="message-meta">Runtime summary <span>{record.messageCount} messages · estimate {record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()}</span></div><p>{content ?? record.summaryExcerpt}{nextOffset !== null && ' …'}</p>{nextOffset !== null && <button type="button" className="quiet" onClick={() => void load()}>{content === undefined ? 'Load full summary' : 'Load more summary'}</button>}{error && <p role="alert">Could not load summary: {error}</p>}</article>;
 }
 
-export function Transcript({ messages, compactions = [], ordinals, awaitingApproval = false, empty, api, taskId }: {
+export function Transcript({ messages, compactions = [], ordinals, awaitingApproval = false, empty, api, taskId, userLabel = 'You' }: {
   messages: DisplayMessage[];
   compactions?: (CompactionRecord | CompactionSummary)[];
   ordinals?: ReadonlyMap<string, number>;
@@ -53,6 +53,8 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
   empty?: ReactNode;
   api?: DesktopApi;
   taskId?: string;
+  /** Who wrote the user-role messages; a child agent's are its coordinator's assignment. */
+  userLabel?: string;
 }) {
   const [pagedCompactions, setPagedCompactions] = useState<CompactionSummary[]>([]);
   const [olderBefore, setOlderBefore] = useState<number | null>(null);
@@ -115,11 +117,11 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
     ? <SummaryBody key={key} record={record} api={api} taskId={taskId} />
     : <article key={key} className="message system compaction-summary"><div className="message-meta">Runtime summary <span>{record.messageIds.length} messages · estimate {record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()}</span></div><p>{record.summary}</p></article>;
 
-  return <div className="messages" aria-live="polite" aria-label="Conversation transcript">
+  return <div className="messages" role="log" aria-busy={messages.some(message => message.status === 'streaming')} aria-label="Conversation transcript">
     {slots[0]?.map(record => summary(record, record.id))}
     {messages.map((message, index) => {
       const record = byMessage.get(message.id);
-      const label = message.role === 'assistant' ? 'Agent' : message.role === 'user' ? 'You' : 'System';
+      const label = message.role === 'assistant' ? 'Agent' : message.role === 'user' ? userLabel : 'System';
       const content = message.content || (message.status === 'streaming' ? awaitingApproval ? 'Awaiting your reviewed tool approval.' : 'Receiving response…' : '');
       return <div key={message.id}>
         <article className={`message ${message.role} ${record ? 'compacted' : ''}`} data-message-id={message.id}>

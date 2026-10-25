@@ -180,6 +180,8 @@ test('coordinated workflow: delegation, review, serial integration and restart e
       throw error;
     }
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);
+    // The runtime rejects messages to a finished coordinator, so the composer says so instead of accepting them.
+    await expect(page.getByLabel('Message coordinator')).toBeDisabled();
     const rootHistory = await page.evaluate(taskId => window.workspace.invoke('task.messages', { taskId, limit: 50 }), created.id);
     const finalReply = rootHistory.items.map(item => item.message).filter(message => message.role === 'assistant' && message.status === 'complete').at(-1)?.content;
     expect(finalReply).toBeTruthy();
@@ -535,6 +537,9 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
     await page.getByRole('button', { name: 'Projects', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add project', exact: true })).toBeDisabled();
     await expect(page.locator('.upgrade-banner')).toBeVisible();
+    // The banner takes its own row: the bottom of the app stays inside the window.
+    const footer = await page.getByRole('button', { name: 'Hooks and follow-ups' }).boundingBox();
+    expect(footer!.y + footer!.height).toBeLessThanOrEqual(await page.evaluate(() => window.innerHeight));
 
     await page.locator('.upgrade-banner').getByRole('button', { name: 'Review upgrade' }).click();
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'Back up and upgrade' })).toBeVisible();

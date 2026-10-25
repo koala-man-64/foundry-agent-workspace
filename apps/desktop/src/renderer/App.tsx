@@ -19,7 +19,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { approvalsTabLabel, useCompactLayout } from './layout';
+import { approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout } from './layout';
 import { draftSendBlockReason, sendOnShortcut } from './composer';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
@@ -41,6 +41,8 @@ interface StartPayload { requestId: string; projectId: string | null; content: s
 interface Draft { content: string; title: string; requiredValidationCommand: string; tokenBudget: number; coordinatedBudget: number; childProfileIds: string[]; scopeGuidance: string[]; startPayload?: StartPayload; pending?: boolean; unknown?: boolean; }
 const blankDraft = (): Draft => ({ content: '', title: '', requiredValidationCommand: '', tokenBudget: 100000, coordinatedBudget: 600000, childProfileIds: [], scopeGuidance: [] });
 const draftKey = (projectId: string | null) => projectId ?? 'none';
+/** Local storage is a per-viewer convenience (the inspector width); it can be unavailable, so every access is guarded. */
+function viewerStorage(): Storage | undefined { try { return window.localStorage; } catch { return undefined; } }
 
 function payloadString(payload: unknown, key: string): string | undefined {
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
@@ -70,6 +72,8 @@ function App() {
   const [approvalNextBefore, setApprovalNextBefore] = useState<number | null>(null);
   const [incompleteApprovalIds, setIncompleteApprovalIds] = useState<Set<string>>(new Set());
   const [usage, setUsage] = useState<UsageReport>();
+  const [usageError, setUsageError] = useState('');
+  const [diffError, setDiffError] = useState('');
   const [compactions, setCompactions] = useState<CompactionSummary[]>([]);
   const [profileId, setProfileId] = useState(OFFLINE_PROFILE.id);
   const [taskMode, setTaskMode] = useState<Mode>('chat');
@@ -94,7 +98,7 @@ function App() {
   const [currentPath, setCurrentPath] = useState('');
   const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'activity' | 'continuity' | 'publish' | 'channel' | 'browser'>('files');
   const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [inspectorWidth, setInspectorWidth] = useState(360);
+  const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage()));
   const [inspectorDragging, setInspectorDragging] = useState(false);
   const [browserExpanded, setBrowserExpanded] = useState(false);
   const [appDialogOpen, setAppDialogOpen] = useState(false);
@@ -162,6 +166,18 @@ function App() {
   const retriedSequenceRef = useRef(0);
 
   const compactLayout = useCompactLayout();
+  // Announce, once per change on the open task, when it starts waiting for a decision and when a run finishes.
+  const announcedState = useRef<{ taskId?: string; awaiting: boolean; status?: string }>({ awaiting: false });
+  const watchedStatus = detail?.task.id === selectedId ? detail?.task.status : undefined;
+  const watchedAwaiting = detail?.task.id === selectedId && (pendingApprovalCount > 0 || (detail?.approvals?.some(approval => approval.state === 'awaiting-approval') ?? false));
+  useEffect(() => {
+    const previous = announcedState.current;
+    if (previous.taskId === selectedId) {
+      if (watchedAwaiting && !previous.awaiting) announce('An action is waiting for your decision in Approvals.');
+      else if (previous.status === 'running' && watchedStatus && watchedStatus !== 'running') announce(watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.`);
+    }
+    announcedState.current = { taskId: selectedId, awaiting: Boolean(watchedAwaiting), status: watchedStatus };
+  }, [announce, selectedId, watchedAwaiting, watchedStatus]);
   useEffect(() => {
     if (!compactLayout) return;
     if (inspectorOpen) inspectorCloseRef.current?.focus();
@@ -209,7 +225,7 @@ function App() {
     try {
       const [read, page, nextUsage] = await Promise.all([
         api.invoke('task.read', { taskId }), api.invoke('task.messages', { taskId, limit: 50 }),
-        api.invoke('task.usage', { taskId }).catch(() => undefined)
+        api.invoke('task.usage', { taskId }).then(report => ({ report, error: '' }), error => ({ report: undefined, error: errorMessage(error) }))
       ]);
       if (version === detailVersion.current && selectedRef.current === taskId) {
         const sameTask = detailLoadedTask.current === taskId;
@@ -220,12 +236,12 @@ function App() {
           return { ...current, task: read.task, messages: mergeTranscriptPage(current.messages, page.items, messageOrdinals.current), hasUnknownPublication: read.unknownOutcomes > 0 };
         });
         detailLoadedTask.current = taskId;
-        setCompactions(nextUsage?.compactions ?? []);
+        setCompactions(nextUsage.report?.compactions ?? []);
         messageCursor.current = sameTask ? refreshedOlderCursor(previousThrough, messageCursor.current, page) : page.nextBefore;
         setMessageNextBefore(messageCursor.current);
         latestMessageThrough.current = page.through;
         setMessageThrough(page.through);
-        setUsage(nextUsage); setPendingApprovalCount(read.pendingApprovals); setUnknownOutcomes(read.unknownOutcomes);
+        setUsage(nextUsage.report); setUsageError(nextUsage.error); setPendingApprovalCount(read.pendingApprovals); setUnknownOutcomes(read.unknownOutcomes);
       }
     } catch (error) {
       if (version === detailVersion.current && selectedRef.current === taskId) setNotice(`Could not load task: ${errorMessage(error)}`);
@@ -333,9 +349,10 @@ function App() {
       if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) {
         setFiles(nextFiles);
         setDiff(nextDiff);
+        setDiffError('');
       }
     } catch (error) {
-      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setNotice(`Could not refresh inspector: ${errorMessage(error)}`);
+      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) { setDiffError(errorMessage(error)); setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
     }
   }, [api]);
 
@@ -496,7 +513,7 @@ function App() {
     detailLoadedTask.current = undefined;
     messageOrdinals.current.clear(); latestMessageThrough.current = undefined; messageCursor.current = null;
     approvalLoadedTask.current = undefined;
-    setCurrentPath(''); setDetail(undefined); setUsage(undefined); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
+    setCurrentPath(''); setDetail(undefined); setUsage(undefined); setUsageError(''); setDiffError(''); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
     void loadTaskDetail(selectedId);
     const kind = snapshot.tasks.find((task) => task.id === selectedId)?.workspaceKind;
     inspectorLoadedTask.current = kind ? selectedId : undefined;
@@ -719,13 +736,22 @@ function App() {
     const maxWidth = Math.max(300, (workspace?.getBoundingClientRect().width ?? window.innerWidth) - sidebarWidth - minConversation - separator.getBoundingClientRect().width);
     setInspectorDragging(true);
     separator.setPointerCapture(event.pointerId);
-    const move = (next: PointerEvent) => setInspectorWidth(Math.max(300, Math.min(maxWidth, startWidth + startX - next.clientX)));
-    const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); window.removeEventListener('blur', stop); separator.removeEventListener('lostpointercapture', stop); if (separator.hasPointerCapture(event.pointerId)) separator.releasePointerCapture(event.pointerId); setInspectorDragging(false); };
+    let latest: number | undefined;
+    const move = (next: PointerEvent) => { latest = Math.max(MIN_INSPECTOR_WIDTH, Math.min(maxWidth, startWidth + startX - next.clientX)); setInspectorWidth(latest); };
+    const stop = () => { if (latest !== undefined) rememberInspectorWidth(latest, viewerStorage()); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); window.removeEventListener('blur', stop); separator.removeEventListener('lostpointercapture', stop); if (separator.hasPointerCapture(event.pointerId)) separator.releasePointerCapture(event.pointerId); setInspectorDragging(false); };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop, { once: true });
     window.addEventListener('pointercancel', stop, { once: true });
     window.addEventListener('blur', stop, { once: true });
     separator.addEventListener('lostpointercapture', stop, { once: true });
+  };
+  const resizeInspectorByKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 64 : 16;
+    const next = event.key === 'ArrowLeft' ? inspectorWidth + step : event.key === 'ArrowRight' ? inspectorWidth - step : event.key === 'Home' ? MIN_INSPECTOR_WIDTH : event.key === 'End' ? maxInspectorWidth(window.innerWidth) : undefined;
+    if (next === undefined) return;
+    event.preventDefault();
+    const width = clampInspectorWidth(next, window.innerWidth);
+    setInspectorWidth(width); rememberInspectorWidth(width, viewerStorage());
   };
   const openSettings = async () => {
     setCredential(''); setProbe(undefined);
@@ -767,24 +793,17 @@ function App() {
       This database needs a verified, backed-up upgrade to v{schema.current} for {upgradeFeatures}{!schema.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain accessible.
       <button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button>
     </div>}
-    <main className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
+    <button type="button" className="skip-link" onClick={() => document.querySelector<HTMLElement>('.composer textarea:not(:disabled), .draft-compose > textarea:not(:disabled)')?.focus()}>Skip to message box</button>
+    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
       <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} onClick={() => setSidebarView('workspace')}>Inbox & history</button><button type="button" className={sidebarView === 'projects' ? 'selected' : ''} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
       {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
       <nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button><button type="button" disabled={!schema || schema.version < 5} onClick={openAutomation}>Hooks and follow-ups</button>{sidebarView === 'workspace' && <><button type="button" onClick={() => void openSettings()}>Model settings</button><button type="button" disabled={exporting} onClick={() => void exportDiagnostics()}>Export diagnostics</button></>}</nav>
     </div>
-    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} notice={mainNotice} /> : <section className="usage-gate">{mainNotice}<h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation">
-      <header className="task-header"><div><p className="eyebrow">{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
+    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} notice={mainNotice} /> : <section className="usage-gate" role="main" aria-label="Usage">{mainNotice}<h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation" role="main" aria-label="New chat">
+      <header className="task-header"><div><p className="eyebrow" title={activeProject?.path}>{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
       {mainNotice}
       <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
-      {schema && schema.version >= 5 && <TemplatePicker api={api} current={{ prompt: draft.content, mode: activeProject?.kind === 'git' ? taskMode : 'chat', profileId, tokenBudget: taskMode === 'coordinated' ? draft.coordinatedBudget : draft.tokenBudget, scope: draft.scopeGuidance, ...(taskMode === 'coordinated' && activeProject?.kind === 'git' ? { coordination: { childProfileIds: draft.childProfileIds, requiredValidation: { command: draft.requiredValidationCommand, cwd: '', timeoutMs: 600000 } } } : {}) }} onApply={template => {
-        updateDraft({ content: template.prompt, tokenBudget: template.tokenBudget, coordinatedBudget: template.tokenBudget, scopeGuidance: template.scope, childProfileIds: template.coordination?.childProfileIds ?? [], requiredValidationCommand: template.coordination?.requiredValidation.command ?? '', startPayload: undefined });
-        if (profiles.some(profile => profile.id === template.profileId)) { setProfileId(template.profileId); void savePreferences({ profileId: template.profileId }); }
-        else setNotice('Template profile is unavailable. Choose a model before sending.', 'warning');
-        if (activeProject?.kind === 'git' || template.mode === 'chat') { setTaskMode(template.mode); void savePreferences({ mode: template.mode }); }
-        else setNotice('This folder supports chat mode only. Review the template prompt before sending.', 'warning');
-        setMoreOptions(true);
-      }} setNotice={setNotice} />}
       <form className="draft-compose" onSubmit={startDraft}>
         <textarea aria-label="Chat message" placeholder="Ask a question or describe the work…" onKeyDown={sendOnShortcut(!draftSendDisabled)} value={draft.content} onChange={(event) => updateDraft({ content: event.target.value, startPayload: undefined })} disabled={creating || draft.unknown || activeProject?.kind === 'unavailable' || !schema || schema.version < 3} />
         <div className="draft-toolbar"><label>Model<select aria-label="Model" value={draftDisplayProfileId} disabled={draft.unknown} onChange={(event) => { const next = event.target.value; preferencesTouched.current = true; setProfileId(next); void savePreferences({ profileId: next }); }}>{!profiles.some((profile) => profile.id === draftDisplayProfileId) && <option value={draftDisplayProfileId}>Unavailable profile</option>}{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label><label>Mode<select aria-label="Mode" value={draftDisplayMode} disabled={activeProject?.kind !== 'git' || draft.unknown} onChange={(event) => { const next = event.target.value as Mode; preferencesTouched.current = true; setTaskMode(next); void savePreferences({ mode: next }); }}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated</option></select></label><button type="button" className="draft-more" aria-expanded={moreOptions} onClick={() => setMoreOptions(!moreOptions)}>More options {moreOptions ? '⌃' : '⌄'}</button></div>
@@ -798,8 +817,19 @@ function App() {
         {draft.unknown && <p className="draft-warning">The start outcome is unknown. Check the project chat list first. Retry uses the original message and settings. <button type="button" className="secondary" onClick={() => updateDraft({ startPayload: undefined, unknown: false })}>Start fresh draft</button></p>}
         <button type="submit" className="primary draft-send" disabled={draftSendDisabled} aria-describedby={draftReason ? 'draft-send-reason' : undefined} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : <>Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></>}</button>
       </form>
+      {schema && schema.version >= 5 && <details className="template-disclosure">
+        <summary>Templates</summary>
+        <TemplatePicker api={api} current={{ prompt: draft.content, mode: activeProject?.kind === 'git' ? taskMode : 'chat', profileId, tokenBudget: taskMode === 'coordinated' ? draft.coordinatedBudget : draft.tokenBudget, scope: draft.scopeGuidance, ...(taskMode === 'coordinated' && activeProject?.kind === 'git' ? { coordination: { childProfileIds: draft.childProfileIds, requiredValidation: { command: draft.requiredValidationCommand, cwd: '', timeoutMs: 600000 } } } : {}) }} onApply={template => {
+        updateDraft({ content: template.prompt, tokenBudget: template.tokenBudget, coordinatedBudget: template.tokenBudget, scopeGuidance: template.scope, childProfileIds: template.coordination?.childProfileIds ?? [], requiredValidationCommand: template.coordination?.requiredValidation.command ?? '', startPayload: undefined });
+        if (profiles.some(profile => profile.id === template.profileId)) { setProfileId(template.profileId); void savePreferences({ profileId: template.profileId }); }
+        else setNotice('Template profile is unavailable. Choose a model before sending.', 'warning');
+        if (activeProject?.kind === 'git' || template.mode === 'chat') { setTaskMode(template.mode); void savePreferences({ mode: template.mode }); }
+        else setNotice('This folder supports chat mode only. Review the template prompt before sending.', 'warning');
+        setMoreOptions(true);
+      }} setNotice={setNotice} />
+      </details>}
     </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
-    <section className="conversation">
+    <section className="conversation" role="main" aria-label="Conversation">
       <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
@@ -811,7 +841,7 @@ function App() {
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
     </section>
-    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" onPointerDown={beginInspectorResize} />
+    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={inspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth)} aria-valuetext={`Inspector ${inspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
     <aside className={`inspector${inspectorOpen ? ' open' : ''}`} role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} aria-label="Task inspector" onKeyDown={event => { if (event.key === 'Escape' && inspectorOpen) setInspectorOpen(false); }}>
       <button ref={inspectorCloseRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([
@@ -827,7 +857,7 @@ function App() {
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : effectiveRightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
+      </> : effectiveRightTab === 'changes' ? <div className="patch">{!diff && diffError ? <div className="load-error" role="alert"><p>Could not load changes: {diffError}</p><button type="button" className="secondary" onClick={refreshCurrentInspector}>Retry</button></div> : <p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>}{diff && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
         {usage ? <>
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>
@@ -847,7 +877,7 @@ function App() {
           <h3>Recent requests</h3>
           {usage.records.slice(-20).reverse().map((record) => <div className="usage-row" key={record.id}><strong>{record.usageKnown ? `${(record.promptTokens ?? 0).toLocaleString()} in · ${(record.completionTokens ?? 0).toLocaleString()} out` : `reserved ${record.reservedTokens.toLocaleString()}`}</strong><span>{record.usageKnown ? `cache ${record.cacheReadTokens === null ? 'unavailable' : record.cacheReadTokens.toLocaleString()} · reservation ${record.reservedTokens.toLocaleString()}` : record.reason ?? 'usage unknown'} · {relativeTime(record.createdAt)}</span></div>)}
           {!usage.records.length && <p className="muted">No provider requests recorded yet.</p>}
-        </> : <p className="muted inspector-empty">Loading usage…</p>}
+        </> : usageError ? <div className="load-error inspector-empty" role="alert"><p>Could not load usage: {usageError}</p><button type="button" className="secondary" onClick={() => selectedId && void loadTaskDetail(selectedId)}>Retry</button></div> : <p className="muted inspector-empty">Loading usage…</p>}
       </div> : effectiveRightTab === 'publish' ? <div className="publish-panel" data-testid="publish-panel">
         <p className="tool-readiness">Commit, push and retirement are explicit actions you take here. The agent never proposes or runs them. Push uses your Git credential helper for this action only and never forces.</p>
         {selectedTask?.mode === 'coordinated' ? <p className="muted">Coordinated worktrees are integrated through reviewed operations; retire the root once every run is terminal.</p> : <>
@@ -880,9 +910,9 @@ function App() {
       {dialogNotice('manage')}
       <div className="manage-list">{projects.map((project) => <form key={`${project.id}:${project.updatedAt}`} className="manage-project" onSubmit={(event) => { event.preventDefault(); const name = new FormData(event.currentTarget).get('name'); if (typeof name === 'string' && name.trim() && name.trim() !== project.name) void updateProject(project, { name: name.trim() }); }}><div><label>Name for {project.name}<input name="name" aria-label={`Name for ${project.name}`} defaultValue={project.name} maxLength={100} required /></label><small title={project.path}>{project.path}</small>{project.kind === 'unavailable' && <span className="project-unavailable-note">Folder unavailable</span>}</div><div className="manage-actions"><button type="submit" className="secondary">Save name</button><button type="button" className="secondary" onClick={() => void updateProject(project, { hidden: !project.hidden })}>{project.hidden ? `Restore ${project.name}` : `Hide ${project.name}`}</button></div></form>)}{!projects.length && <p className="muted">No saved projects yet.</p>}</div>
     </dialog>
-    <dialog ref={dialogRef} className="settings-dialog" onToggle={updateDialogVisibility} onClose={() => setCredential('')}>
+    <dialog ref={dialogRef} className="settings-dialog" aria-labelledby="model-profile-title" onToggle={updateDialogVisibility} onClose={() => setCredential('')}>
       <form method="dialog" className="dialog-head">
-        <div><p className="eyebrow">CONNECTIONS</p><h2>Model profile</h2></div>
+        <div><p className="eyebrow">CONNECTIONS</p><h2 id="model-profile-title">Model profile</h2></div>
         <div className="dialog-actions"><button type="button" className="secondary" onClick={newProfile}>New profile</button><button type="submit" className="secondary">Close settings</button></div>
       </form>
       {dialogNotice('settings')}
@@ -900,9 +930,9 @@ function App() {
       </form>
       <McpSettings api={api} servers={mcpServers} onChanged={() => void loadMcp()} setNotice={setNotice} />
     </dialog>
-    <dialog ref={automationDialogRef} className="settings-dialog automation-dialog" onClose={event => { if (event.target === event.currentTarget) { setAutomationOpen(false); updateDialogVisibility(); } }}><div className="dialog-actions"><button type="button" className="secondary" onClick={() => automationDialogRef.current?.close()}>Close hooks and follow-ups</button></div>{dialogNotice('automation')}{automationOpen && <AutomationSettings api={api} onDraft={useAutomationDraft} onPrepared={(draft, approvalId) => void openPreparedApproval(draft, approvalId)} setNotice={setNotice} />}</dialog>
-    <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog" onToggle={updateDialogVisibility}>
-      <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2>Back up and upgrade</h2></div></div>
+    <dialog ref={automationDialogRef} className="settings-dialog automation-dialog" aria-labelledby="automation-title" onClose={event => { if (event.target === event.currentTarget) { setAutomationOpen(false); updateDialogVisibility(); } }}><div className="dialog-actions"><button type="button" className="secondary" onClick={() => automationDialogRef.current?.close()}>Close hooks and follow-ups</button></div>{dialogNotice('automation')}{automationOpen && <AutomationSettings api={api} onDraft={useAutomationDraft} onPrepared={(draft, approvalId) => void openPreparedApproval(draft, approvalId)} setNotice={setNotice} />}</dialog>
+    <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog" aria-labelledby="upgrade-title" onToggle={updateDialogVisibility}>
+      <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2 id="upgrade-title">Back up and upgrade</h2></div></div>
       {dialogNotice('upgrade')}
       <div className="profile-form">
         <p>This creates a verified SQLite backup, then upgrades the database to v{schema?.current ?? 5} for {upgradeFeatures}{!schema?.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain available during the upgrade decision. Keep the backup to open the previous database with an older application.</p>
@@ -912,7 +942,7 @@ function App() {
         </div>
       </div>
     </dialog>
-  </main>
+  </div>
   </>;
 }
 
