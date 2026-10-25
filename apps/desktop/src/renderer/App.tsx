@@ -709,7 +709,7 @@ function App() {
     if (file) void readFile(file.path);
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
-  /** One approval action. A failure is shown in the card, and the card stays disabled until approvals are re-read. */
+  /** One approval action. A failure is shown in the card, and Approve stays disabled until a complete read of that approval succeeds. */
   const runApprovalAction = async (approval: Approval, action: 'approve' | 'reject' | 'reconcile' | 'acknowledge', run: (taskId: string) => Promise<unknown>) => {
     if (!selectedId || approvalInFlight[approval.id]) return;
     const taskId = selectedId;
@@ -718,10 +718,11 @@ function App() {
     try {
       await run(taskId);
       await refresh(taskId); await loadTaskDetail(taskId);
-      if (action === 'approve' || action === 'reject') { announce(`${action === 'approve' ? 'Approved' : 'Rejected'}: ${approval.expectedHash === null ? 'create file' : approval.tool}.`); focusAfterDecision(approval.id); }
+      if (action === 'approve' || action === 'reject') { announce(`${action === 'approve' ? 'Approval' : 'Rejection'} recorded for ${approval.expectedHash === null ? 'create file' : approval.tool}.`); focusAfterDecision(approval.id); }
     } catch (error) {
       setApprovalErrors((current) => ({ ...current, [approval.id]: { text: decisionFailure(action, error), state: approval.state } }));
-      await loadApprovals(taskId).catch(() => undefined);
+      setIncompleteApprovalIds(current => new Set(current).add(approval.id));
+      await loadApprovals(taskId);
     } finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
   const decideApproval = (approval: Approval, decision: 'approve' | 'reject') => runApprovalAction(approval, decision, taskId => api.invoke('approval.decide', { taskId, approvalId: approval.id, nonce: approval.nonce, decision }));
@@ -807,7 +808,7 @@ function App() {
       <header className="task-header"><div><p className="eyebrow" title={activeProject?.path}>{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
       {mainNotice}
       <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
-      <form className="draft-compose" onSubmit={startDraft}>
+      <form className="draft-compose" onSubmit={startDraft} onKeyDown={event => { if (event.key === 'Enter' && event.target instanceof HTMLInputElement) event.preventDefault(); }}>
         <textarea aria-label="Chat message" placeholder="Ask a question or describe the work…" onKeyDown={sendOnShortcut(!draftSendDisabled)} value={draft.content} onChange={(event) => updateDraft({ content: event.target.value, startPayload: undefined })} disabled={creating || draft.unknown || activeProject?.kind === 'unavailable' || !schema || schema.version < 3} />
         <div className="draft-toolbar"><label>Model<select aria-label="Model" value={draftDisplayProfileId} disabled={draft.unknown} onChange={(event) => { const next = event.target.value; preferencesTouched.current = true; setProfileId(next); void savePreferences({ profileId: next }); }}>{!profiles.some((profile) => profile.id === draftDisplayProfileId) && <option value={draftDisplayProfileId}>Unavailable profile</option>}{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label><label>Mode<select aria-label="Mode" value={draftDisplayMode} disabled={activeProject?.kind !== 'git' || draft.unknown} onChange={(event) => { const next = event.target.value as Mode; preferencesTouched.current = true; setTaskMode(next); void savePreferences({ mode: next }); }}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated</option></select></label><button type="button" className="draft-more" aria-expanded={moreOptions} onClick={() => setMoreOptions(!moreOptions)}>More options {moreOptions ? '⌃' : '⌄'}</button></div>
         {moreOptions && <div className="draft-options"><label>Title (optional)<input value={draft.title} maxLength={160} disabled={draft.unknown} placeholder="From first message if empty" onChange={(event) => updateDraft({ title: event.target.value, startPayload: undefined })} /></label>{activeProject?.kind === 'git' && draftDisplayMode === 'coordinated' && <><label>Required validation command<textarea value={draft.requiredValidationCommand} maxLength={16384} disabled={draft.unknown} onChange={(event) => updateDraft({ requiredValidationCommand: event.target.value, startPayload: undefined })} /></label><label>Token budget<input type="number" min={1024} max={10000000} value={draft.coordinatedBudget} disabled={draft.unknown} onChange={(event) => updateDraft({ coordinatedBudget: Number(event.target.value), startPayload: undefined })} /></label><fieldset className="child-profiles" disabled={draft.unknown}><legend>Child profiles</legend>{availableChildProfiles.map((profile) => <label key={profile.id} className="checkbox-row"><input type="checkbox" checked={draft.childProfileIds.includes(profile.id)} disabled={!draft.childProfileIds.includes(profile.id) && draft.childProfileIds.length >= ORCHESTRATION_LIMITS.maxChildProfiles} onChange={(event) => updateDraft({ childProfileIds: event.target.checked ? [...draft.childProfileIds, profile.id] : draft.childProfileIds.filter((id) => id !== profile.id), startPayload: undefined })} />{profile.name}</label>)}{!availableChildProfiles.length && <p className="muted">Children reuse the coordinator profile.</p>}</fieldset></>}</div>}

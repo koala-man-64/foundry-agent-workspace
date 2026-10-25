@@ -26,7 +26,9 @@ describe('errorMessage', () => {
 describe('decisionFailure', () => {
   it('names the action, keeps the cause verbatim and claims no outcome', () => {
     const text = decisionFailure('approve', new Error("Error invoking remote method 'workspace:invoke': Error: Approval nonce mismatch."));
-    expect(text).toBe("This approval could not be confirmed: Approval nonce mismatch. Approvals were refreshed; review the card's current state before deciding again.");
+    expect(text).toBe("This approval could not be confirmed: Approval nonce mismatch. Check the card's recorded state before deciding again; reopen Approvals if it has not changed.");
+    expect(decisionFailure('reject', new Error('busy'))).toMatch(/: busy\. Check/);
+    expect(text).not.toMatch(/refreshed/i);
     expect(text).not.toMatch(/applied|succeeded|was not run|failed to run/i);
     expect(decisionFailure('reconcile', 'x')).toMatch(/^The outcome check could not be confirmed: x/);
   });

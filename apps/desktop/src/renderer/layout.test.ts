@@ -21,6 +21,11 @@ describe('classifyPatchLines', () => {
     expect(classifyPatchLines('a\n').map(line => line.text).join('')).toBe('a\n');
   });
 
+  it('treats --/++ content inside a hunk as a change, not a header', () => {
+    const tricky = '--- a/x\n+++ b/x\n@@ -1 +1 @@\n--- old dashes\n+++ new pluses\ndiff --git a/y b/y\n--- a/y';
+    expect(classifyPatchLines(tricky).map(line => line.kind)).toEqual(['meta', 'meta', 'hunk', 'del', 'add', 'meta', 'meta']);
+  });
+
   it('keeps the +/- marks in the text and classifies each line', () => {
     expect(classifyPatchLines(patch).map(line => line.kind)).toEqual(['meta', 'meta', 'meta', 'meta', 'hunk', 'context', 'del', 'add', 'add']);
     expect(classifyPatchLines(patch).find(line => line.kind === 'add')?.text.startsWith('+')).toBe(true);

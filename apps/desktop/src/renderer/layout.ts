@@ -25,10 +25,15 @@ export type PatchLineKind = 'add' | 'del' | 'hunk' | 'meta' | 'context';
 /** Classify unified-diff lines for display. The text is untouched; joining the lines reproduces the patch exactly. */
 export function classifyPatchLines(patch: string): { text: string; kind: PatchLineKind }[] {
   const lines = patch.split('\n');
+  let inHunk = false;
   return lines.map((line, index) => {
     const text = index < lines.length - 1 ? `${line}\n` : line;
-    const kind: PatchLineKind = line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ') ? 'meta'
-      : line.startsWith('@@') ? 'hunk' : line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : 'context';
+    // Inside a hunk, "---"/"+++" are a deleted "--…" line or an added "++…" line, not file headers.
+    if (line.startsWith('diff ')) inHunk = false;
+    const kind: PatchLineKind = line.startsWith('@@') ? 'hunk'
+      : !inHunk && (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ')) ? 'meta'
+        : line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : 'context';
+    if (kind === 'hunk') inHunk = true;
     return { text, kind };
   });
 }

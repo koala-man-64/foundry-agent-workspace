@@ -351,7 +351,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       await fetchLatest(); await loadApprovals(); if (selectedChildId) await loadChild(selectedChildId);
       setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
       focusAfterDecision(approval.id);
-    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure(decision, error), state: approval.state } })); await loadApprovals().catch(() => undefined); }
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure(decision, error), state: approval.state } })); setIncompleteApprovalIds(current => new Set(current).add(approval.id)); await loadApprovals(); }
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 
@@ -371,7 +371,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       await loadApprovals();
       await fetchLatest();
       setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
-    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure('reconcile', error), state: approval.state } })); await loadApprovals().catch(() => undefined); }
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure('reconcile', error), state: approval.state } })); await loadApprovals(); }
     finally { setApprovalInFlight(current => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 

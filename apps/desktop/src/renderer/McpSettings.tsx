@@ -33,7 +33,7 @@ export function McpSettings({ api, servers, onChanged, setNotice }: Props) {
     setSaving(true);
     try {
       const result = await api.invoke('mcp.save', { id: draft.id, key: draft.key.trim(), name: draft.name.trim(), command: draft.command.trim(), arguments: draft.argumentsText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), cwd: draft.cwd.trim(), environment: parseEnvironment(draft.environmentText), enabled: true, readOnlyTools: [], callTimeoutMs: draft.callTimeoutMs });
-      setNotice(result.tools.length ? `MCP server "${result.name}" connected and listed ${result.tools.length} tool(s). Mark read-only tools below; everything else requires approval per call.${result.lastError ? ` ${result.lastError}` : ''}` : `MCP server "${result.name}" saved with a problem: ${result.lastError ?? 'no tools were listed'}`, result.tools.length ? 'success' : 'warning');
+      setNotice(result.tools.length ? `MCP server "${result.name}" connected and listed ${result.tools.length} tool(s). Mark read-only tools below; everything else requires approval per call.${result.lastError ? ` ${result.lastError}` : ''}` : `MCP server "${result.name}" saved with a problem: ${result.lastError ?? 'no tools were listed'}`, result.tools.length && !result.lastError ? 'success' : 'warning');
       setDraft(emptyDraft()); onChanged();
     } catch (error) { setNotice(`Could not save MCP server: ${errorMessage(error)}`); }
     finally { setSaving(false); }
