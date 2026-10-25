@@ -94,6 +94,13 @@ test('isolated task, offline conversation, file inspection and restart history',
     await page.getByLabel('Task message').fill('Explain the project briefly.');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.getByText('Fake response: Explain the project briefly.', { exact: true })).toBeVisible();
+    // Ctrl+Enter sends through the same guarded path as the button; bare Enter stays a newline.
+    await page.getByLabel('Task message').fill('Second message by shortcut.');
+    await page.getByLabel('Task message').press('Enter');
+    await expect(page.getByLabel('Task message')).toHaveValue('Second message by shortcut.\n');
+    await page.getByLabel('Task message').press('Control+Enter');
+    await expect(page.getByText('Fake response: Second message by shortcut.', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Task message')).toHaveValue('');
     await page.getByRole('button', { name: /hello.txt/ }).click();
     await expect(page.getByText('Hello from an isolated task.', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: /▸ src$/ }).click();
@@ -105,6 +112,7 @@ test('isolated task, offline conversation, file inspection and restart history',
     await writeFile(join(worktree, 'hello.txt'), 'Changed in the task worktree.\n');
     await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
     await page.getByRole('button', { name: 'Changes', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Changes', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('+Changed in the task worktree.', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: 'Files', exact: true }).click();
     await expect(page.getByText('Changed in the task worktree.', { exact: true })).toBeVisible();

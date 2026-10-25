@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { DesktopApi } from '../../../../packages/protocol/src/index';
 import { createCoordinatedHandoff } from './coordinatedHandoff';
 import type { CoordinatedHandoffReport } from './coordinatedHandoff';
+import { errorMessage } from './feedback';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,7 +21,7 @@ export function CoordinatedHandoffPanel({ api, rootTaskId }: { api: DesktopApi; 
       const preview = createCoordinatedHandoff(view, rootTaskId);
       if (current === generation.current) setReport(preview);
     }).catch(reason => {
-      if (current === generation.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (current === generation.current) setError(errorMessage(reason));
     }).finally(() => { if (current === generation.current) setBusy(false); });
     return () => { ++generation.current; };
   }, [api, rootTaskId]);
@@ -53,7 +54,7 @@ export function CoordinatedHandoffPanel({ api, rootTaskId }: { api: DesktopApi; 
     } catch (reason) {
       if (current === generation.current) {
         setReport(undefined);
-        setError(`Report not exported: ${reason instanceof Error ? reason.message : String(reason)}`);
+        setError(`Report not exported: ${errorMessage(reason)}`);
       }
     } finally {
       if (current === generation.current) { inFlight.current = false; setBusy(false); }

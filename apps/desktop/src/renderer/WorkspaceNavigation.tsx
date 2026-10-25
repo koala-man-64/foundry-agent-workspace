@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { DesktopApi, Project, Task } from '../../../../packages/protocol/src/index';
 import type { ActionItem, ActionPage, SearchHit, SearchPage, TaskPage } from '../../../../packages/protocol/src/workspace';
+import { actionDetailLabel, actionStateLabel, formatDateTime, formatWhen, taskStatusLabel } from './labels';
+import { activeFilterCount } from './layout';
+import { errorMessage } from './feedback';
 
 type View = 'inbox' | 'recent' | 'all' | 'archived';
 type Cursor = TaskPage['nextCursor'];
 const PAGE_SIZE = 30;
 
-const taskStatus = (task: Task) => task.status === 'idle' ? 'Ready' : task.status === 'running' ? 'Working' : task.status === 'failed' ? 'Needs attention' : task.status.charAt(0).toUpperCase() + task.status.slice(1);
 const actionGroup = (action: ActionItem) => action.tier === 0 ? 'Needs decision' : action.tier === 1 ? 'In progress' : 'Recent outcomes';
 
 export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAction, onSearchHit, onOpenAutomation, refreshToken, onChanged, canArchive = true }: {
@@ -44,6 +46,10 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
   const [projectId, setProjectId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const filterCount = activeFilterCount({ mode, status, projectId, projectPath, fromDate, toDate });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // A set filter is never hidden behind a closed disclosure.
+  useEffect(() => { if (filterCount > 0) setFiltersOpen(true); }, [filterCount]);
   const requestVersion = useRef(0);
   const activeLoad = useRef<Promise<void> | null>(null);
   const reloadQueued = useRef(false);
@@ -55,7 +61,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
     const version = ++requestVersion.current;
     setLoading(true);
     try {
-      const actionResult = await api.invoke('workspace.actions', { limit: 50 }).then(value => ({ value, error: '' }), error => ({ value: null, error: error instanceof Error ? error.message : String(error) }));
+      const actionResult = await api.invoke('workspace.actions', { limit: 50 }).then(value => ({ value, error: '' }), error => ({ value: null, error: errorMessage(error) }));
       if (version !== requestVersion.current) return;
       const failedActions = Boolean(actionResult.error);
       setActionError(actionResult.error);
@@ -77,7 +83,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
         const search = await api.invoke('workspace.search', { query: submittedQuery, visibility, limit: PAGE_SIZE, ...(mode ? { mode } : {}), ...(status ? { status } : {}), ...(projectPath.trim() ? { projectPath: projectPath.trim() } : {}), ...(projectId ? { projectId } : {}), ...(fromDate ? { from: new Date(`${fromDate}T00:00:00`).toISOString() } : {}), ...(toDate ? { to: new Date(`${toDate}T23:59:59.999`).toISOString() } : {}) });
         if (version === requestVersion.current) { setHits(search.hits); setSearchCursor(search.nextCursor); }
       }
-    } catch (error) { if (version === requestVersion.current) { setListError(error instanceof Error ? error.message : String(error)); setTasks([]); setCursor(null); } }
+    } catch (error) { if (version === requestVersion.current) { setListError(errorMessage(error)); setTasks([]); setCursor(null); } }
     finally { if (version === requestVersion.current) setLoading(false); }
   }, [api, view, cursor, mode, status, projectPath, projectId, fromDate, toDate, selectedId, onSelect, submittedQuery]);
   currentLoad.current = load;
@@ -95,6 +101,8 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
 
   useEffect(() => { requestLoad(); }, [view, mode, status, projectPath, projectId, fromDate, toDate, submittedQuery, refreshToken]);
 
+  const decisionCount = actionError ? 0 : actionCounts?.needsDecision ?? actions.filter(action => action.tier === 0).length;
+  const clearFilters = () => { setMode(''); setStatus(''); setProjectId(''); setProjectPath(''); setFromDate(''); setToDate(''); };
   const submitSearch = (event: FormEvent) => { event.preventDefault(); setSubmittedQuery(query.trim()); };
   const loadMoreActions = async () => {
     if (!actionCursor || actionPageActive.current) return;
@@ -105,7 +113,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
       if (version !== requestVersion.current) return;
       setActions(current => [...current, ...page.items.filter(item => !current.some(existing => existing.id === item.id))]);
       setActionMore(page.hasMore); setActionCursor(page.nextCursor); setActionCounts(page.counts);
-    } catch (error) { setActionError(`Could not load more actions: ${error instanceof Error ? error.message : String(error)}`); requestLoad(); }
+    } catch (error) { setActionError(`Could not load more actions: ${errorMessage(error)}`); requestLoad(); }
     finally { actionPageActive.current = false; setActionPageLoading(false); }
   };
   const loadMoreSearch = async () => {
@@ -117,7 +125,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
       if (version !== requestVersion.current) return;
       setHits(current => [...current, ...result.hits]); setSearchCursor(result.nextCursor);
     } catch (error) {
-      setListError(`Search results changed or could not load: ${error instanceof Error ? error.message : String(error)}. Refreshing from the first page.`);
+      setListError(`Search results changed or could not load: ${errorMessage(error)}. Refreshing from the first page.`);
       setSearchCursor(null);
       requestLoad();
     } finally { searchPageActive.current = false; setSearchPageLoading(false); }
@@ -125,21 +133,21 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
   const setArchived = async (task: Task) => {
     setBusyId(task.id);
     try { await api.invoke('task.setArchived', { taskId: task.id, archived: !task.archivedAt }); onChanged(); requestLoad(); }
-    catch (error) { setListError(`Could not ${task.archivedAt ? 'restore' : 'archive'} task: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setListError(`Could not ${task.archivedAt ? 'restore' : 'archive'} task: ${errorMessage(error)}`); }
     finally { setBusyId(undefined); }
   };
 
   return <section className="workspace-navigation" aria-label="Workspace navigation">
-    <div className="workspace-views" role="group" aria-label="Task views">
-      {(['inbox', 'recent', 'all', 'archived'] as const).map(item => <button key={item} type="button" className={view === item ? 'active' : ''} aria-pressed={view === item} onClick={() => { if (view === item) { requestLoad(); return; } setView(item); setTasks([]); setCursor(null); }}>{item === 'inbox' ? `Inbox${actions.length ? ` (${actions.length}${actionMore ? '+' : ''})` : ''}` : item === 'recent' ? 'Recent' : item === 'all' ? 'All tasks' : 'Archived'}</button>)}
+    <div className="workspace-views" role="group" aria-label="Task views" data-decisions={decisionCount > 0 ? 'pending' : undefined}>
+      {(['inbox', 'recent', 'all', 'archived'] as const).map(item => <button key={item} type="button" className={view === item ? 'active' : ''} aria-pressed={view === item} onClick={() => { if (view === item) { requestLoad(); return; } setView(item); setTasks([]); setCursor(null); }}>{item === 'inbox' ? `Inbox${decisionCount ? ` (${decisionCount})` : ''}` : item === 'recent' ? 'Recent' : item === 'all' ? 'All tasks' : 'Archived'}</button>)}
     </div>
     <form className="task-search" onSubmit={submitSearch}><label htmlFor="task-search-input">Search tasks and conversations</label><div><input id="task-search-input" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} placeholder="Search locally" /><button type="submit">Search</button></div>{submittedQuery && <button type="button" className="quiet" onClick={() => { setQuery(''); setSubmittedQuery(''); setHits([]); setSearchCursor(null); }}>Clear search</button>}</form>
-    <div className="task-filters"><label>Mode <select value={mode} onChange={event => setMode(event.target.value as typeof mode)}><option value="">Any</option><option value="chat">Chat</option><option value="coding">Coding</option><option value="coordinated">Coordinated</option></select></label><label>Status <select value={status} onChange={event => setStatus(event.target.value as typeof status)}><option value="">Any</option><option value="running">Working</option><option value="idle">Ready</option><option value="failed">Needs attention</option><option value="interrupted">Interrupted</option><option value="cancelled">Cancelled</option><option value="retired">Retired</option></select></label><label>Saved project <select value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">Any project</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label>Project path <input value={projectPath} onChange={event => setProjectPath(event.target.value)} placeholder="Optional path filter" /></label><label>From <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} /></label><label>Through <input type="date" value={toDate} min={fromDate || undefined} onChange={event => setToDate(event.target.value)} /></label></div>
+    <details className="task-filters-disclosure" open={filtersOpen} onToggle={event => setFiltersOpen(event.currentTarget.open)}><summary>Filters{filterCount ? ` · ${filterCount} active` : ''}</summary><div className="task-filters"><label>Mode <select value={mode} onChange={event => setMode(event.target.value as typeof mode)}><option value="">Any</option><option value="chat">Chat</option><option value="coding">Coding</option><option value="coordinated">Coordinated</option></select></label><label>Status <select value={status} onChange={event => setStatus(event.target.value as typeof status)}><option value="">Any</option><option value="running">Working</option><option value="idle">Ready</option><option value="failed">Needs attention</option><option value="interrupted">Interrupted</option><option value="cancelled">Cancelled</option><option value="retired">Retired</option></select></label><label>Saved project <select value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">Any project</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label>Project path <input value={projectPath} onChange={event => setProjectPath(event.target.value)} placeholder="Optional path filter" /></label><label>From <input type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} /></label><label>Through <input type="date" value={toDate} min={fromDate || undefined} onChange={event => setToDate(event.target.value)} /></label>{filterCount > 0 && <button type="button" className="quiet" onClick={clearFilters}>Clear filters</button>}</div></details>
     {actionError && <p role="alert" className="navigation-error">Action center unavailable: {actionError}. Showing active and archived tasks together until it recovers.</p>}
     {listError && <p role="alert" className="navigation-error">Could not load tasks: {listError} <button type="button" onClick={() => requestLoad()}>Retry</button></p>}
-    {view === 'inbox' && !actionError && <div className="action-list" aria-label="Global action center">{(['Needs decision', 'In progress', 'Recent outcomes'] as const).map((group, tier) => <section key={group} aria-label={group}><h3>{group} ({actionCounts ? [actionCounts.needsDecision, actionCounts.inProgress, actionCounts.recent][tier] : actions.filter(action => actionGroup(action) === group).length})</h3>{actions.filter(action => actionGroup(action) === group).map(action => <button key={action.id} type="button" className="action-row" onClick={() => onAction ? onAction(action) : action.taskId ? onSelect(action.taskId) : onOpenAutomation?.()}><strong>{action.taskTitle}</strong><span>{action.kind} · {action.state}{action.archived ? ' · Archived' : ''}</span><small>{action.detail}</small></button>)}{!actions.some(action => actionGroup(action) === group) && <p className="muted">None on this page.</p>}</section>)}{!actions.length && !loading && !listError && <p className="muted">No work needs attention or is in progress.</p>}{actionMore && <button type="button" className="quiet" disabled={actionPageLoading || loading} onClick={() => void loadMoreActions()}>{actionPageLoading ? 'Loading…' : 'More actions'}</button>}</div>}
-    {submittedQuery && <div className="search-results" aria-label="Search results">{hits.map((hit, index) => <button key={`${hit.taskId}-${hit.messageId ?? ''}-${index}`} type="button" onClick={() => onSearchHit ? onSearchHit(hit) : onSelect(hit.rootTaskId)}><strong>{hit.taskTitle}</strong><small>{hit.excerpt}</small></button>)}{!hits.length && !loading && !listError && <p className="muted">No matches. Clear or adjust the search.</p>}{searchCursor !== null && <button type="button" className="quiet" disabled={searchPageLoading || loading} onClick={() => void loadMoreSearch()}>{searchPageLoading ? 'Loading…' : 'More results'}</button>}</div>}
-    {!submittedQuery && (view !== 'inbox' || actionError) && <nav className="task-list" aria-label="Task history">{tasks.map(task => <div className="task-row-wrap" key={task.id}><button type="button" className={`task-row ${task.id === selectedId ? 'selected' : ''}`} onClick={() => onSelect(task.id)}><span className={`status-dot ${task.status}`} /><span><strong>{task.title}</strong><small>{taskStatus(task)}{task.archivedAt ? ' · Archived' : ''} · {new Date(task.updatedAt).toLocaleDateString()}</small></span></button><button type="button" className="task-archive" disabled={busyId === task.id || !canArchive || Boolean(actionError && !task.archivedAt)} onClick={() => void setArchived(task)} aria-label={`${task.archivedAt ? 'Restore' : 'Archive'} ${task.title}`}>{task.archivedAt ? 'Restore' : 'Archive'}</button></div>)}{!tasks.length && !loading && !listError && <p className="muted">{view === 'archived' ? 'No archived tasks. Browse All tasks to find your work.' : 'No tasks in this view.'}</p>}{cursor && <button type="button" className="quiet" onClick={() => requestLoad(true)} disabled={loading}>Older tasks</button>}</nav>}
+    {view === 'inbox' && !actionError && <div className="action-list" aria-label="Global action center">{(['Needs decision', 'In progress', 'Recent outcomes'] as const).map((group, tier) => { const count = actionCounts ? [actionCounts.needsDecision, actionCounts.inProgress, actionCounts.recent][tier]! : actions.filter(action => actionGroup(action) === group).length; const rows = actions.filter(action => actionGroup(action) === group); return count > 0 || rows.length > 0 ? <section key={group} aria-label={group}><h3>{group} ({count})</h3>{rows.map(action => <button key={action.id} type="button" className={`action-row tier-${action.tier}`} aria-label={[action.taskTitle, actionStateLabel(action), action.archived ? 'archived' : '', actionDetailLabel(action)].filter(Boolean).join(', ')} onClick={() => onAction ? onAction(action) : action.taskId ? onSelect(action.taskId) : onOpenAutomation?.()}><strong>{action.taskTitle}</strong><span>{actionStateLabel(action)}{action.archived && <span className="chip">Archived</span>}</span><small>{actionDetailLabel(action)}</small></button>)}{!rows.length && <p className="muted">More on the next page.</p>}</section> : null; })}{!actions.length && !loading && !listError && <p className="muted">No work needs attention or is in progress.</p>}{actionMore && <button type="button" className="quiet" disabled={actionPageLoading || loading} onClick={() => void loadMoreActions()}>{actionPageLoading ? 'Loading…' : 'More actions'}</button>}</div>}
+    {submittedQuery && <div className="search-results" aria-label="Search results"><p className="muted search-scope">Searching {actionError || view === 'all' ? 'all tasks' : view === 'archived' ? 'archived tasks' : 'active tasks'}{filterCount ? ` · ${filterCount} ${filterCount === 1 ? 'filter' : 'filters'}` : ''}</p>{hits.map((hit, index) => <button key={`${hit.taskId}-${hit.messageId ?? ''}-${index}`} type="button" onClick={() => onSearchHit ? onSearchHit(hit) : onSelect(hit.rootTaskId)}><strong>{hit.taskTitle}</strong><small>{hit.excerpt}</small></button>)}{!hits.length && !loading && !listError && <><p className="muted">No matches. Clear or adjust the search.</p>{(filterCount > 0 || (view !== 'all' && !actionError)) && <button type="button" className="quiet" onClick={() => { clearFilters(); setView('all'); setTasks([]); setCursor(null); }}>Search all tasks</button>}</>}{searchCursor !== null && <button type="button" className="quiet" disabled={searchPageLoading || loading} onClick={() => void loadMoreSearch()}>{searchPageLoading ? 'Loading…' : 'More results'}</button>}</div>}
+    {!submittedQuery && (view !== 'inbox' || actionError) && <nav className="task-list" aria-label="Task history">{tasks.map(task => <div className="task-row-wrap" key={task.id}><button type="button" className={`task-row ${task.id === selectedId ? 'selected' : ''}`} aria-current={task.id === selectedId ? 'page' : undefined} onClick={() => onSelect(task.id)}><span className={`status-dot ${task.status}`} /><span><strong>{task.title}</strong><small>{taskStatusLabel[task.status]}{task.archivedAt ? ' · Archived' : ''} · <time dateTime={task.updatedAt} title={formatDateTime(task.updatedAt)}>{formatWhen(task.updatedAt)}</time></small></span></button><button type="button" className="task-archive" disabled={busyId === task.id || !canArchive || Boolean(actionError && !task.archivedAt)} onClick={() => void setArchived(task)} aria-label={`${task.archivedAt ? 'Restore' : 'Archive'} ${task.title}`}>{task.archivedAt ? 'Restore' : 'Archive'}</button></div>)}{!tasks.length && !loading && !listError && <p className="muted">{view === 'archived' ? 'No archived tasks. Browse All tasks to find your work.' : 'No tasks in this view.'}</p>}{cursor && <button type="button" className="quiet" onClick={() => requestLoad(true)} disabled={loading}>Older tasks</button>}</nav>}
     {loading && <p className="muted" role="status">Loading workspace…</p>}
   </section>;
 }

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { CompactionRecord, DesktopApi, Message } from '../../../../packages/protocol/src/index';
 import type { CompactionSummary } from '../../../../packages/protocol/src/workspace';
 import { compactionSlot, isCompactedMessage } from './transcriptHistory';
+import { formatDateTime } from './labels';
+import { errorMessage } from './feedback';
 
 type DisplayMessage = Pick<Message, 'id' | 'role' | 'content' | 'createdAt'> & { status?: string; truncated?: boolean };
 
@@ -22,7 +24,7 @@ function MessageBody({ message, initial, api, taskId }: { message: DisplayMessag
       setContent(previous => nextOffset === 0 ? chunk.content : `${previous ?? ''}${chunk.content}`);
       setNextOffset(chunk.nextOffset);
       setError('');
-    } catch (cause) { setError(`Could not load content: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    } catch (cause) { setError(`Could not load content: ${errorMessage(cause)}`); }
     finally { setLoading(false); }
   };
   return <><p>{content ?? initial}{nextOffset !== null && ' …'}</p>{nextOffset !== null && api && taskId && <button type="button" className="quiet" disabled={loading} onClick={() => void load()}>{loading ? 'Loading…' : content === undefined ? 'Load full message' : 'Load more content'}</button>}{error && <p role="alert">{error}</p>}</>;
@@ -38,12 +40,12 @@ function SummaryBody({ record, api, taskId }: { record: CompactionSummary; api?:
       const chunk = await api.invoke('task.compactionContent', { taskId, compactionId: record.id, offset: nextOffset, maxBytes: 64 * 1024 });
       setContent(previous => nextOffset === 0 ? chunk.content : `${previous ?? ''}${chunk.content}`);
       setNextOffset(chunk.nextOffset); setError('');
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { setError(errorMessage(cause)); }
   };
   return <article className="message system compaction-summary"><div className="message-meta">Runtime summary <span>{record.messageCount} messages · estimate {record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()}</span></div><p>{content ?? record.summaryExcerpt}{nextOffset !== null && ' …'}</p>{nextOffset !== null && <button type="button" className="quiet" onClick={() => void load()}>{content === undefined ? 'Load full summary' : 'Load more summary'}</button>}{error && <p role="alert">Could not load summary: {error}</p>}</article>;
 }
 
-export function Transcript({ messages, compactions = [], ordinals, awaitingApproval = false, empty, api, taskId }: {
+export function Transcript({ messages, compactions = [], ordinals, awaitingApproval = false, empty, api, taskId, userLabel = 'You' }: {
   messages: DisplayMessage[];
   compactions?: (CompactionRecord | CompactionSummary)[];
   ordinals?: ReadonlyMap<string, number>;
@@ -51,6 +53,8 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
   empty?: ReactNode;
   api?: DesktopApi;
   taskId?: string;
+  /** Who wrote the user-role messages; a child agent's are its coordinator's assignment. */
+  userLabel?: string;
 }) {
   const [pagedCompactions, setPagedCompactions] = useState<CompactionSummary[]>([]);
   const [olderBefore, setOlderBefore] = useState<number | null>(null);
@@ -67,7 +71,7 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
       if (version !== compactionRequest.current) return;
       setPagedCompactions(page.compactions); setOlderBefore(page.nextBefore);
     }, cause => {
-      if (version === compactionRequest.current) setCompactionError(cause instanceof Error ? cause.message : String(cause));
+      if (version === compactionRequest.current) setCompactionError(errorMessage(cause));
     }).finally(() => { if (version === compactionRequest.current) setLoadingCompactions(false); });
     return () => { ++compactionRequest.current; };
   }, [api, taskId, retryCompactions]);
@@ -83,7 +87,7 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
         return [...current, ...page.compactions.filter(item => !ids.has(item.id))];
       });
       setOlderBefore(page.nextBefore); setCompactionError('');
-    } catch (cause) { if (version === compactionRequest.current) setCompactionError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { if (version === compactionRequest.current) setCompactionError(errorMessage(cause)); }
     finally { if (version === compactionRequest.current) setLoadingCompactions(false); }
   };
   const allCompactions = useMemo(() => {
@@ -113,15 +117,15 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
     ? <SummaryBody key={key} record={record} api={api} taskId={taskId} />
     : <article key={key} className="message system compaction-summary"><div className="message-meta">Runtime summary <span>{record.messageIds.length} messages · estimate {record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()}</span></div><p>{record.summary}</p></article>;
 
-  return <div className="messages" aria-live="polite" aria-label="Conversation transcript">
+  return <div className="messages" role="log" tabIndex={-1} aria-busy={messages.some(message => message.status === 'streaming')} aria-label="Conversation transcript">
     {slots[0]?.map(record => summary(record, record.id))}
     {messages.map((message, index) => {
       const record = byMessage.get(message.id);
-      const label = message.role === 'assistant' ? 'Agent' : message.role === 'user' ? 'You' : 'System';
+      const label = message.role === 'assistant' ? 'Agent' : message.role === 'user' ? userLabel : 'System';
       const content = message.content || (message.status === 'streaming' ? awaitingApproval ? 'Awaiting your reviewed tool approval.' : 'Receiving response…' : '');
       return <div key={message.id}>
         <article className={`message ${message.role} ${record ? 'compacted' : ''}`} data-message-id={message.id}>
-          <div className="message-meta">{label} <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>{record && <span className="compacted-tag">compacted · retained locally</span>}</div>
+          <div className="message-meta">{label} <time dateTime={message.createdAt} title={new Date(message.createdAt).toLocaleString()}>{formatDateTime(message.createdAt)}</time>{record && <span className="compacted-tag">compacted · retained locally</span>}</div>
           <MessageBody message={message} initial={content} api={api} taskId={taskId} />
         </article>
         {slots[index + 1]?.map(item => summary(item, item.id))}

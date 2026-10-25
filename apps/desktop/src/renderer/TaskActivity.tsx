@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DesktopApi, WorkspaceEvent } from '../../../../packages/protocol/src/index';
+import { errorMessage } from './feedback';
 
 const label = (type: string) => type.replace(/[._-]/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
 
@@ -40,7 +41,7 @@ export function TaskActivity({ api, taskId, refreshToken, unknownOutcomes = 0 }:
           if (!sameTask || nextOlder || gap) { cursor.current = page.nextBefore; setBefore(page.nextBefore); }
           newest.current = Math.max(sameTask ? newest.current : 0, page.events[0]?.sequence ?? 0);
           loadedTask.current = target; setError('');
-        } catch (cause) { if (selectedTask.current === target) setError(cause instanceof Error ? cause.message : String(cause)); }
+        } catch (cause) { if (selectedTask.current === target) setError(errorMessage(cause)); }
         nextOlder = false;
       } while (dirty.current);
     })();

@@ -1,5 +1,15 @@
 # Implementation status
 
+## UI polish (renderer only) — 25 October 2026
+
+Rudy asked for a UI deep-clean session: drive the app, hold an agent roundtable, implement the consensus. Task id `ui-polish-20261025`, branch `claude/ui-polish-improvements-c4cef3` from `main` at `bf7855a`. Renderer and CSS only: no protocol, IPC bridge, main-process, runtime, provider, schema or dependency change, so nothing is dual-landed in C#; the WPF host reuses these React components verbatim. Security disclosure wording is unchanged (restyled only).
+
+Method: a scripted Playwright tour of 46 states at four sizes (1480×940, 1000×680, 1000×680 at 200% zoom, 1920×1080) with aria snapshots, an in-page WCAG contrast scan and an overflow scan, plus a keyboard-only pass. Six lens reviewers (visual, interaction, accessibility, trust/security UX, maintainability, power user) produced 80 findings; a seven-voter second round (adding QA/e2e coupling) accepted 52 merged items and dropped four (sticky approval bar, vocabulary sweep, header chips, two-column key/value panels).
+
+Delivered: a `:root` token layer with AA-measured text and 3:1 UI tokens and an 11px type floor; visible low-emphasis controls (`.quiet` was 1.2:1); one tone-aware notice rendered in the open dialog or the main column (it was hidden behind modals and absent on Usage); inline approval-card failures; one shared `ApprovalCard` for both shells (coordinated cards had dropped Hash/Shell/Environment rows); prominent privilege and screening disclosures; outlined Reject/Cancel; humanised state words that keep the raw keyword; full hashes wherever authoritative; patch line classes; "Waiting for your approval" status, a review banner and real Approvals counts; Ctrl+Enter send (bare Enter stays a newline, and Enter in draft option fields no longer submits); per-task composer text; skip link, landmarks, named dialogs, a transcript log, aria-pressed tabs, a keyboard separator; a scoped usage chart that no longer paints unknown reservations as reported usage; header, sidebar, draft and coordinated-panel layouts that hold at the minimum size and 200% zoom; an MCP key pattern valid under Chromium's `v` flag (it was silently ignored); and a fixed `pnpm docs:screenshots` source/target mapping. Evidence and the roundtable record are under `.local/verification/ui-polish-20261025/`.
+
+Measured: non-disabled WCAG text-contrast failures across the tour fell from 237 to 0; elements past the viewport fell from 422 to 0; the tour's console error is gone. `styles.test.ts` guards the token contrast, the font-size floor and every class hook, test id and accessible name the e2e specs locate. Independent reviews: a branch code review (eight findings: six fixed, two recorded as not changed), a trust/security-UX review (GO for the approval and disclosure surfaces; its three medium findings fixed, including Enter in a New chat option field implicitly sending), and a before/after visual and accessibility verification (mostly delivered; its remaining defects fixed). Not verified: real screen-reader output, forced-colors rendering and a repeat of the keyboard-only pass. Exact `pnpm check` and `pnpm test:e2e` results are in the PR.
+
 ## Reviewed single-file creation — scoped local expansion, 23 October 2026
 
 After both post-merge PR56 workflows passed on `eb899fb`, Rudy explicitly approved a scoped migration-freeze exception for matching TypeScript/C# safe-file creation, the reviewed Windows primitive/bridge, and `write_file`'s null-as-create contract. Electron/TypeScript remains the shipping product. There is no native runtime adoption, cutover, database migration or new production dependency.
@@ -2977,7 +2987,7 @@ Logs are in `.local/validation/` of the implementation worktree (`final-check.lo
 - Worktree-creation crashes were exercised by injected failures, not by killing a real process mid-operation. Deletion-guard triggers are asserted only for child results.
 - Commands still run with the user's Windows privileges; scopes are checked on Git-visible changes, not enforced on process behavior.
 - The main-process frame/origin check is exercised only for main-frame IPC; a subframe sender is not separately tested.
-- The coordinator composer remains visible on a completed task (the runtime rejects the send), and the child-profile fieldset legend overlaps its border.
+- The coordinator composer remains visible on a completed task (the runtime rejects the send), and the child-profile fieldset legend overlaps its border. *Both fixed 25 October 2026 (UI polish, below): the composer is disabled with a reason and the legend sits inside its box.*
 
 ---
 

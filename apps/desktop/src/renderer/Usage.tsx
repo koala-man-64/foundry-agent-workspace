@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DesktopApi, UsageBreakdownRow, UsageFilters, UsageGroup, UsageRequest, UsageSummary, UsageTotals } from '../../../../packages/protocol/src/index';
+import { errorMessage } from './feedback';
 
 type Period = 'today' | '7' | '30' | 'all' | 'custom';
 type Sort = 'tokens' | 'requests' | 'name';
@@ -48,7 +49,7 @@ function RequestRow({ record, onOpenTask }: { record: UsageRequest; onOpenTask: 
   </article>;
 }
 
-export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; refreshKey: number; onOpenTask: (taskId: string) => void }) {
+export function UsageView({ api, refreshKey, onOpenTask, notice }: { api: DesktopApi; refreshKey: number; onOpenTask: (taskId: string) => void; notice?: ReactNode }) {
   const [period, setPeriod] = useState<Period>('30');
   const [from, setFrom] = useState(localDate(new Date()));
   const [to, setTo] = useState(localDate(new Date()));
@@ -81,7 +82,7 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
       if (version !== queryVersion.current) return;
       setSummary(nextSummary); setRows(nextBreakdown.rows); setNextRowCursor(nextBreakdown.nextCursor);
       setRequests(nextRequests.records); setNextRequestCursor(nextRequests.nextCursor); setLoading(false);
-    }).catch(cause => { if (version === queryVersion.current) { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); } });
+    }).catch(cause => { if (version === queryVersion.current) { setError(errorMessage(cause)); setLoading(false); } });
     return () => { ++queryVersion.current; };
   }, [api, filters, requestFilters, groupBy, sort, timeZone, refreshKey, validDates]);
 
@@ -89,13 +90,13 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
     if (!nextRowCursor) return;
     const version = queryVersion.current; const cursor = nextRowCursor; setNextRowCursor(null);
     try { const result = await api.invoke('usage.breakdown', { filters, groupBy, sort, cursor, limit: 25 }); if (version === queryVersion.current) { setRows(current => [...current, ...result.rows]); setNextRowCursor(result.nextCursor); } }
-    catch (cause) { if (version === queryVersion.current) { setNextRowCursor(cursor); setError(cause instanceof Error ? cause.message : String(cause)); } }
+    catch (cause) { if (version === queryVersion.current) { setNextRowCursor(cursor); setError(errorMessage(cause)); } }
   }
   async function loadMoreRequests() {
     if (!nextRequestCursor) return;
     const version = queryVersion.current; const cursor = nextRequestCursor; setNextRequestCursor(null);
     try { const result = await api.invoke('usage.requests', { filters: requestFilters, cursor, limit: 25 }); if (version === queryVersion.current) { setRequests(current => [...current, ...result.records]); setNextRequestCursor(result.nextCursor); } }
-    catch (cause) { if (version === queryVersion.current) { setNextRequestCursor(cursor); setError(cause instanceof Error ? cause.message : String(cause)); } }
+    catch (cause) { if (version === queryVersion.current) { setNextRequestCursor(cursor); setError(errorMessage(cause)); } }
   }
 
   const totals: UsageTotals | undefined = summary?.totals;
@@ -108,6 +109,7 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
   const chartWidth = Math.max(320, Math.min(1200, chartSpan * 20));
   const chartStep = chartWidth / chartSpan;
   return <section className="usage-page" aria-label="Usage overview">
+    {notice}
     <header className="usage-page-header"><div><p className="eyebrow">LOCAL REQUEST HISTORY</p><h1>Usage</h1><p>Measured tokens from this workspace. Unknown usage and budget reservations are shown separately.</p></div><small>Calendar days in {timeZone}</small></header>
     <div className="usage-controls" role="group" aria-label="Date range">
       {([['today', 'Today'], ['7', '7 days'], ['30', '30 days'], ['all', 'All'], ['custom', 'Custom']] as const).map(([value, label]) => <button key={value} type="button" className={period === value ? 'active' : ''} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}
@@ -129,7 +131,7 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
       <section className="usage-section" aria-label="Daily measured tokens"><h2>Daily trend</h2>{summary.daysTruncated && <p className="usage-context">The chart shows the most recent 730 active days; totals cover the full selected range.</p>}{days.length ? <div className="usage-chart"><svg role="img" aria-label="Daily measured token totals, spaced by calendar day" viewBox={`0 0 ${chartWidth} ${chartHeight + 22}`} preserveAspectRatio="none"><title>Daily measured tokens</title>{days.filter(day => day.totals.total > 0).map(day => { const height = day.totals.total / peak * chartHeight; const x = (calendarDay(day.date) - calendarDay(chartFrom ?? day.date)) * chartStep + chartStep * .12; return <rect key={day.date} x={x} y={chartHeight - height} width={chartStep * .76} height={height}><title>{day.date}: {number(day.totals.total)} measured tokens</title></rect>; })}</svg><div className="usage-chart-scale"><span>{chartFrom}</span><span>{chartTo}</span></div><ul className="visually-hidden">{days.map(day => <li key={day.date}>{day.date}: {number(day.totals.total)} measured tokens</li>)}</ul></div> : <p className="muted">No requests in this date range.</p>}</section>
     </>}
     <section className="usage-section" aria-label="Usage breakdown"><div className="usage-section-head"><h2>Breakdown</h2><div><label>Group by <select value={groupBy} onChange={event => { setGroupBy(event.target.value as UsageGroup); setSelectedRow(undefined); }}>{groups.map(group => <option key={group.value} value={group.value}>{group.label}</option>)}</select></label><label>Sort <select value={sort} onChange={event => setSort(event.target.value as Sort)}><option value="tokens">Measured tokens</option><option value="requests">Requests</option><option value="name">Name</option></select></label></div></div>
-      <div className="usage-breakdown" role="list">{rows.map(row => <button type="button" role="listitem" key={row.key} className={selectedRow?.key === row.key ? 'selected' : ''} onClick={() => setSelectedRow(current => current?.key === row.key ? undefined : row)}><span><strong>{row.label}</strong><small>{number(row.totals.attemptedRequests)} attempts · {number(row.totals.unknownRequests)} unknown</small></span><span><strong>{number(row.totals.total)}</strong><small>{row.sharePercent.toFixed(1)}% measured</small></span></button>)}</div>
+      {rows.length > 0 && <ul className="usage-breakdown">{rows.map(row => <li key={row.key}><button type="button" className={selectedRow?.key === row.key ? 'selected' : ''} aria-pressed={selectedRow?.key === row.key} onClick={() => setSelectedRow(current => current?.key === row.key ? undefined : row)}><span><strong>{row.label}</strong><small>{number(row.totals.attemptedRequests)} attempts · {number(row.totals.unknownRequests)} unknown</small></span><span><strong>{number(row.totals.total)}</strong><small>{row.sharePercent.toFixed(1)}% measured</small></span></button></li>)}</ul>}
       {!loading && !rows.length && <p className="muted">No groups in this date range.</p>}{nextRowCursor && <button type="button" className="secondary" onClick={() => void loadMoreRows()}>More groups</button>}
     </section>
     <section className="usage-section" aria-label="Request details"><div className="usage-section-head"><h2>{selectedRow ? `Requests · ${selectedRow.label}` : 'Recent requests'}</h2>{selectedRow && <button type="button" className="quiet" onClick={() => setSelectedRow(undefined)}>Clear group</button>}</div>

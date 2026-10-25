@@ -1,31 +1,32 @@
 import { useEffect, useState } from 'react';
 import type { DesktopApi } from '../../../../packages/protocol/src/index';
 import type { TaskTemplate } from '../../../../packages/protocol/src/continuity';
+import { errorMessage, type SetNotice } from './feedback';
 
 export function TemplatePicker({ api, current, onApply, setNotice }: {
   api: DesktopApi;
   current: Omit<TaskTemplate, 'id' | 'name'>;
   onApply: (template: TaskTemplate) => void;
-  setNotice: (message: string) => void;
+  setNotice: SetNotice;
 }) {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
-  const reload = async () => { try { const page = await api.invoke('templates.list', {}); setTemplates(page.items); setNextAfter(page.nextAfter); } catch (error) { setNotice(`Could not load templates: ${error instanceof Error ? error.message : String(error)}`); } };
-  const loadMore = async () => { if (!nextAfter) return; try { const page = await api.invoke('templates.list', { after: nextAfter }); setTemplates(current => [...current, ...page.items]); setNextAfter(page.nextAfter); } catch (error) { setNotice(`Could not load more templates: ${error instanceof Error ? error.message : String(error)}`); } };
+  const reload = async () => { try { const page = await api.invoke('templates.list', {}); setTemplates(page.items); setNextAfter(page.nextAfter); } catch (error) { setNotice(`Could not load templates: ${errorMessage(error)}`); } };
+  const loadMore = async () => { if (!nextAfter) return; try { const page = await api.invoke('templates.list', { after: nextAfter }); setTemplates(current => [...current, ...page.items]); setNextAfter(page.nextAfter); } catch (error) { setNotice(`Could not load more templates: ${errorMessage(error)}`); } };
   useEffect(() => { void reload(); }, [api]);
   const save = async () => {
     if (!name.trim() || busy) return; setBusy(true);
-    try { const template = await api.invoke('templates.save', { id: crypto.randomUUID(), name: name.trim(), ...current }); setName(''); setSelected(template.id); await reload(); setNotice(`Saved template "${template.name}". Review its fields whenever you apply it.`); }
-    catch (error) { setNotice(`Could not save template: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const template = await api.invoke('templates.save', { id: crypto.randomUUID(), name: name.trim(), ...current }); setName(''); setSelected(template.id); await reload(); setNotice(`Saved template "${template.name}". Review its fields whenever you apply it.`, 'success'); }
+    catch (error) { setNotice(`Could not save template: ${errorMessage(error)}`); }
     finally { setBusy(false); }
   };
   const remove = async () => {
     if (!selected || busy) return; setBusy(true);
     try { await api.invoke('templates.remove', { templateId: selected }); setSelected(''); await reload(); }
-    catch (error) { setNotice(`Could not remove template: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not remove template: ${errorMessage(error)}`); }
     finally { setBusy(false); }
   };
   const preview = templates.find(template => template.id === selected);
