@@ -1,4 +1,6 @@
 import type { Approval } from '../../../../packages/protocol/src/index';
+import { Hash, PatchText } from './Evidence';
+import { approvalStateLabel } from './labels';
 
 export type ApprovalBusy = 'approve' | 'reject' | 'reconcile' | 'acknowledge';
 
@@ -15,14 +17,25 @@ interface Props {
   onAcknowledgeBrowser?: (approval: Approval) => void;
 }
 
-function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
+/**
+ * After a decision the decided card's buttons unmount, which would drop focus to the document. Move it to the next
+ * card still awaiting a decision, else to the decided card itself; never to a decision button.
+ */
+export function focusAfterDecision(approvalId: string): void {
+  requestAnimationFrame(() => {
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const next = document.querySelector<HTMLElement>('.approvals-panel article.approval-card.awaiting-approval')
+      ?? document.querySelector<HTMLElement>(`.approvals-panel [data-approval-id="${CSS.escape(approvalId)}"]`);
+    next?.focus();
+  });
+}
 
 /** One reviewed tool action. Render-only: the caller owns the decision, reconciliation and evidence loading. */
 export function ApprovalCard({ approval, variant, complete, busy, error, onDecide, onReconcile, onAcknowledgeBrowser }: Props) {
   const coordinated = variant === 'coordinated';
   const fileReconcilable = approval.path && approval.resultingHash && !approval.handoff && !approval.integration;
-  return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id}>
-    <div className="approval-heading"><strong>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span>{approval.state}</span></div>
+  return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id} tabIndex={-1} aria-label={`${approval.expectedHash === null ? 'Create file' : approval.tool}, ${approvalStateLabel[approval.state]}`}>
+    <div className="approval-heading"><strong>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span className={`approval-state ${approval.state}`}>{approvalStateLabel[approval.state]}</span></div>
     {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
     <p>{approval.summary}</p>
     {error && <p className="approval-error" role="alert">{error}</p>}
@@ -58,26 +71,26 @@ export function ApprovalCard({ approval, variant, complete, busy, error, onDecid
       <dl><dt>Paths</dt><dd>{approval.handoff.paths.join(', ')}</dd></dl>
       <dl><dt>Message</dt><dd>{approval.handoff.message}</dd></dl>
       <dl><dt>Manifest SHA-256</dt><dd>{approval.handoff.manifestSha256}</dd></dl>
-      <dl><dt>Git</dt><dd>{approval.handoff.gitPath} ({short(approval.handoff.gitSha256)})</dd></dl>
-      <dl><dt>Expected HEAD</dt><dd>{short(approval.handoff.expectedHead)}</dd></dl>
-      <dl><dt>Patch</dt><dd><pre>{approval.handoff.patch}{approval.handoff.patchTruncated ? '\n(truncated)' : ''}</pre></dd></dl>
+      <dl><dt>Git</dt><dd>{approval.handoff.gitPath} (SHA-256 <Hash value={approval.handoff.gitSha256} />)</dd></dl>
+      <dl><dt>Expected HEAD</dt><dd><Hash value={approval.handoff.expectedHead} /></dd></dl>
+      <dl><dt>Patch</dt><dd><PatchText patch={approval.handoff.patch} suffix={approval.handoff.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
     </div>}
     {approval.integration && <div className="orchestration-evidence">
       <strong>Integration</strong>
       <dl><dt>Kind</dt><dd>{approval.integration.kind}</dd></dl>
-      <dl><dt>Source SHA</dt><dd>{short(approval.integration.sourceSha)}</dd></dl>
-      <dl><dt>Expected HEAD / tree</dt><dd>{short(approval.integration.expectedHead)} / {short(approval.integration.expectedTree)}</dd></dl>
+      <dl><dt>Source SHA</dt><dd><Hash value={approval.integration.sourceSha} /></dd></dl>
+      <dl><dt>Expected HEAD / tree</dt><dd><Hash value={approval.integration.expectedHead} /> / <Hash value={approval.integration.expectedTree} /></dd></dl>
       <dl><dt>Manifest SHA-256</dt><dd>{approval.integration.manifestSha256}</dd></dl>
-      {approval.integration.resolvedTree && <dl><dt>Resolved tree (continuation)</dt><dd>{short(approval.integration.resolvedTree)}</dd></dl>}
+      {approval.integration.resolvedTree && <dl><dt>Resolved tree (continuation)</dt><dd><Hash value={approval.integration.resolvedTree} /></dd></dl>}
       <dl><dt>Changed paths</dt><dd>{approval.integration.changedPaths.join(', ') || 'none'}</dd></dl>
-      <dl><dt>Git</dt><dd>{approval.integration.gitPath} ({short(approval.integration.gitSha256)})</dd></dl>
-      <dl><dt>Patch</dt><dd><pre>{approval.integration.patch}{approval.integration.patchTruncated ? '\n(truncated)' : ''}</pre></dd></dl>
+      <dl><dt>Git</dt><dd>{approval.integration.gitPath} (SHA-256 <Hash value={approval.integration.gitSha256} />)</dd></dl>
+      <dl><dt>Patch</dt><dd><PatchText patch={approval.integration.patch} suffix={approval.integration.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
     </div>}
     {approval.result && <div className="approval-result">
       <strong>{approval.result.isError ? 'Redacted error result' : 'Redacted result'}</strong>
-      <pre>{approval.result.content}</pre>
       {approval.result.exitCode !== undefined && <small>Exit code {approval.result.exitCode}</small>}
       {approval.result.cleanupVerified !== undefined && <small>Cleanup {approval.result.cleanupVerified ? 'verified' : 'not verified'}</small>}
+      <pre tabIndex={0} aria-label={approval.result.isError ? 'Redacted error result output' : 'Redacted result output'}>{approval.result.content}</pre>
     </div>}
     {approval.state === 'awaiting-approval' && <div className="approval-actions">
       {!coordinated && !complete && <p role="alert">Full evidence has not loaded. Refresh approvals before deciding.</p>}

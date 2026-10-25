@@ -324,7 +324,8 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .task-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px; min-height: 118px; padding: 27px 34px 20px; border-bottom: 1px solid var(--line-soft); }
 .task-header h1 { margin-top: 7px; font-size: var(--fs-3xl); font-weight: normal; line-height: 1.1; }
 .task-status { margin-top: 8px; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
-.task-status.running { color: var(--warn-ink); }
+.task-status.running, .task-status.awaiting { color: var(--warn-ink); }
+.task-status.awaiting { font-weight: 650; }
 .notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 32px 9px 28px; color: var(--notice-error-ink); border-bottom: 1px solid #e6b8a5; border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.45; }
 .notice p { min-width: 0; overflow-wrap: anywhere; }
 .notice button { flex: 0 0 auto; min-width: 24px; min-height: 24px; margin: -3px -8px -3px 0; color: inherit; border: 0; border-radius: var(--radius-sm); background: none; font-size: 18px; line-height: 1; }
@@ -360,11 +361,11 @@ dialog .notice { padding-inline: 20px 24px; }
 .inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface-inspector); }
 .inspector-resize { cursor: col-resize; background: linear-gradient(to right, transparent 2px, var(--line-strong) 2px, var(--line-strong) 3px, transparent 3px), var(--line-soft); touch-action: none; }
 .inspector-resize:hover { background: var(--accent); }
-.inspector-tabs { display: flex; flex: 0 0 auto; overflow-x: auto; border-bottom: 1px solid var(--line-soft); }
-.inspector-tabs button { flex: 0 0 auto; min-width: 0; padding: 13px 10px; color: var(--ink-muted); border: 0; background: transparent; font-size: var(--fs-xs); }
+.inspector-tabs { display: flex; flex: 0 0 auto; flex-wrap: wrap; border-bottom: 1px solid var(--line-soft); }
+.inspector-tabs button { flex: 0 0 auto; min-width: 0; padding: 11px 9px; color: var(--ink-muted); border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: var(--fs-sm); }
 .inspector-tabs button:hover { color: var(--ink); background: var(--surface-well); }
 .inspector-tabs button:focus-visible { outline-offset: -3px; }
-.inspector-tabs button.active { color: var(--ink); border-bottom: 2px solid var(--accent); }
+.inspector-tabs button.active { color: var(--ink); font-weight: 650; border-bottom-color: var(--accent); }
 .inspector-tools { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
 .inspector-tools button { min-height: 26px; padding: 4px 8px; color: var(--ink-2); border: 1px solid var(--line-strong); background: var(--canvas); font-size: var(--fs-xs); }
 .inspector-tools button:hover:not(:disabled) { background: var(--surface-card); }
@@ -382,14 +383,21 @@ dialog .notice { padding-inline: 20px 24px; }
 .file-content pre, .patch pre { margin: 10px 0 0; color: #34453b; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.5; }
 .approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px; }
 .tool-readiness { padding: 10px; margin-bottom: 10px; color: var(--ink-2); border-left: 3px solid var(--accent); background: var(--surface-well); font-size: var(--fs-sm); line-height: 1.45; }
+.tool-readiness + .tool-readiness { margin-top: -10px; padding-top: 0; }
 
 /* Approval cards */
 .approval-card { margin-bottom: 12px; padding: 12px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
+.approval-card:focus-visible { outline-offset: 1px; }
 .approval-card.awaiting-approval { border-left: 3px solid var(--accent); }
-.approval-card.unknown, .approval-card.failed { border-left: 3px solid var(--danger); }
+.approval-card.unknown, .approval-card.failed { border-left: 3px solid var(--danger); background: #fbefe8; }
 .approval-card.complete { border-left: 3px solid #758c72; }
-.approval-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.approval-heading span { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
+.approval-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.approval-heading strong { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-md); }
+.approval-heading span { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
+.approval-state { padding: 2px 7px; border-radius: var(--radius-sm); background: var(--surface-well); }
+.approval-state.awaiting-approval, .approval-state.approved, .approval-state.executing { color: var(--danger-ink); background: var(--accent-soft); }
+.approval-state.complete { color: var(--ok-ink); background: var(--ok-soft); }
+.approval-state.unknown, .approval-state.failed, .approval-state.rejected, .approval-state.revoked { color: var(--danger-ink); background: var(--danger-soft); box-shadow: inset 0 0 0 1px var(--danger); }
 .approval-card > p { line-height: 1.45; }
 .approval-error { margin-top: 8px; padding: 8px 10px; color: var(--notice-error-ink); border-left: 3px solid var(--danger); background: var(--notice-error-bg); overflow-wrap: anywhere; }
 .approval-card dl { margin: 9px 0 0; }
@@ -398,8 +406,25 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-card pre { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.45; }
 .command-evidence, .approval-result { margin-top: 10px; padding: 9px; background: var(--surface-sunken); }
 .command-evidence small, .approval-result small { display: block; margin-top: 6px; color: var(--ink-muted); font-size: var(--fs-xs); line-height: 1.35; }
+/* The privilege and screening disclosures qualify the whole approval, so they read as warnings, not footnotes. */
+.command-evidence > small { margin-top: 8px; padding: 6px 9px; color: var(--ink); border-left: 3px solid var(--danger); background: var(--warn-soft); font-size: var(--fs-sm); line-height: 1.4; }
+.approval-result pre { max-height: 40vh; overflow: auto; margin-top: 6px; padding: 6px; border: 1px solid var(--line); background: var(--surface); }
+.approval-result small + small { margin-top: 2px; }
 .environment { display: block; font-family: var(--font-mono); font-size: var(--fs-xs); }
 .approval-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.approval-card .approval-actions { gap: 12px; }
+/* Approve is the only filled action on a card; Reject (and Cancel in headers) is outlined, same size and weight. */
+.approval-card .danger, .header-actions .danger { color: var(--danger-ink); background: transparent; box-shadow: inset 0 0 0 1px var(--danger); }
+.approval-card .danger:hover:not(:disabled), .header-actions .danger:hover:not(:disabled) { background: var(--danger-soft); }
+.approval-card .danger:disabled, .header-actions .danger:disabled { color: var(--ink-disabled); background: var(--surface-disabled); box-shadow: none; }
+.approval-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 32px; color: var(--notice-warning-ink); border-top: 1px solid #e3c38f; background: var(--notice-warning-bg); font-size: var(--fs-sm); font-weight: 650; }
+.coordinator-detail > .approval-banner { margin: 0 -32px; }
+.hash { font-family: var(--font-mono); font-size: .95em; overflow-wrap: anywhere; }
+.patch-line { display: block; }
+.patch-line.add { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.patch-line.del { background: var(--danger-soft); box-shadow: inset 3px 0 #b75a42; }
+.patch-line.hunk { color: var(--ink-muted); background: var(--surface-well); }
+.patch-line.meta { color: var(--ink-muted); font-weight: 650; }
 .approval-actions small { flex-basis: 100%; color: var(--ink-muted); font-size: var(--fs-xs); line-height: 1.35; }
 .approval-target { color: var(--warn-ink); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .03em; text-transform: uppercase; }
 

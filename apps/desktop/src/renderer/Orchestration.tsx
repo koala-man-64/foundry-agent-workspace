@@ -9,7 +9,9 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
-import { ApprovalCard } from './ApprovalCard';
+import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
+import { approvalsTabLabel, useCompactLayout } from './layout';
+import { Hash, PatchText } from './Evidence';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -43,7 +45,7 @@ const integrationStateLabel: Record<IntegrationState, string> = {
 const REVISABLE: AssignmentState[] = ['proposed', 'incomplete', 'failed', 'cancelled', 'revoked'];
 const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'mismatch'];
 
-function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
+function full(sha: string | undefined | null): string { return sha || 'none'; }
 
 export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit }: Props) {
   const rootTaskId = task.id;
@@ -124,11 +126,13 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       requestAnimationFrame(() => document.querySelector(`[data-message-id="${searchHit.messageId}"]`)?.scrollIntoView({ block: 'center' }));
     }, error => { searchedMessage.current = ''; setNotice(`Could not open search result: ${errorMessage(error)}`); });
   }, [api, searchHit, rootTaskId, childDetail?.run.taskId, setNotice]);
+  const compactLayout = useCompactLayout();
   useEffect(() => {
+    if (!compactLayout) return;
     if (inspectorOpen) inspectorCloseRef.current?.focus();
     else if (inspectorWasOpen.current) inspectorToggleRef.current?.focus();
     inspectorWasOpen.current = inspectorOpen;
-  }, [inspectorOpen]);
+  }, [inspectorOpen, compactLayout]);
 
   const performFetchLatest = useCallback(async () => {
     const version = ++viewVersion.current;
@@ -343,6 +347,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       await api.invoke('orchestration.decide', { rootTaskId, taskId: approval.taskId, approvalId: approval.id, nonce: approval.nonce, assignmentId: approval.assignmentId ?? null, generation: approval.generation ?? 1, fingerprint: approval.fingerprint, decision });
       await fetchLatest(); await loadApprovals(); if (selectedChildId) await loadChild(selectedChildId);
       setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
+      focusAfterDecision(approval.id);
     } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: decisionFailure(decision, error) })); await loadApprovals().catch(() => undefined); }
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
@@ -418,6 +423,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
 
+  const awaitingCount = pendingApprovals.filter(item => item.state === 'awaiting-approval').length;
+  const approvalsLabel = approvalsTabLabel(awaitingCount, pendingApprovals.filter(item => item.state === 'unknown').length, awaitingCount > 0 && runsCursor !== null);
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;
@@ -433,7 +440,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
             charged {budget.charged.toLocaleString()} · in flight {budget.inFlight.toLocaleString()} · held {budget.unusedHolds.toLocaleString()} · unallocated {budget.unallocated.toLocaleString()} of {budget.cap.toLocaleString()}
             {budget.overrun && <span className="overrun-notice"> · budget overrun recorded</span>}
           </p>}
-          {completion && <p className="task-status">{completion.complete ? `Completed on ${short(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
+          {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         </div>
         <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspectorToggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
       </header>
@@ -458,6 +465,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         {!selectedChildId ? <>
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
+          {awaitingCount > 0 && !(tab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
           <form className="composer" onSubmit={sendToCoordinator}>
             <textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={task.status === 'retired'} aria-label="Message coordinator" placeholder={task.status === 'retired' ? 'This task worktree is retired.' : 'Message the coordinator…'} />
             <button className="primary" disabled={!composer.trim() || task.status === 'retired'}>Send <span>↵</span></button>
@@ -472,13 +480,13 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
             <dl><dt>Read scope</dt><dd>{childDetail.assignment.readPaths.join(', ') || 'none'}</dd></dl>
             <dl><dt>Write scope</dt><dd>{childDetail.assignment.writePaths.join(', ') || 'none'}</dd></dl>
             <dl><dt>Validation command</dt><dd>{childDetail.assignment.validation?.command ?? 'none'}</dd></dl>
-            <dl><dt>Base commit</dt><dd>{short(childDetail.assignment.baseCommit)}</dd></dl>
+            <dl><dt>Base commit</dt><dd><Hash value={childDetail.assignment.baseCommit} /></dd></dl>
             <dl><dt>Revision</dt><dd>{childDetail.assignment.revision}</dd></dl>
             <dl><dt>Allocation / charged</dt><dd>{childDetail.assignment.allocation.toLocaleString()} / {(budget?.runs.find((item) => item.taskId === selectedChildId)?.charged ?? 0).toLocaleString()}</dd></dl>
           </div>}
           {childDetail && childDetail.results.length > 0 && <div className="assignment-summary">
             <strong>Results</strong>
-            {childDetail.results.map((result) => <dl key={result.id}><dt>Commit / tree</dt><dd>{short(result.commit)} / {short(result.tree)}</dd></dl>)}
+            {childDetail.results.map((result) => <dl key={result.id}><dt>Commit / tree</dt><dd><Hash value={result.commit} /> / <Hash value={result.tree} /></dd></dl>)}
           </div>}
           {childDetail && childDetail.run.lifecycle !== 'terminal' && <button type="button" className="danger" disabled={busy === `cancel-${childDetail.run.taskId}`} onClick={() => void cancelChild(childDetail.run, childDetail.assignment?.key ?? childDetail.run.title)}>
             {busy === `cancel-${childDetail.run.taskId}` ? 'Cancelling…' : `Cancel child ${childDetail.assignment?.key ?? childDetail.run.title}`}
@@ -486,19 +494,19 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         </div>}
       </div>
     </section>
-    <aside className={`inspector ${inspectorOpen ? 'open' : ''}`} id="coordinated-inspector" aria-label="Coordinated task inspector" role={inspectorOpen ? 'dialog' : undefined} aria-modal={inspectorOpen ? true : undefined} onKeyDown={event => { if (event.key === 'Escape') setInspectorOpen(false); }}>
+    <aside className={`inspector ${inspectorOpen ? 'open' : ''}`} id="coordinated-inspector" aria-label="Coordinated task inspector" role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} onKeyDown={event => { if (event.key === 'Escape') setInspectorOpen(false); }}>
       <button ref={inspectorCloseRef} type="button" className="secondary inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
-      <div className="inspector-tabs">
-        <button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')}>Files</button>
-        <button className={tab === 'changes' ? 'active' : ''} onClick={() => setTab('changes')}>Changes</button>
-        <button className={tab === 'approvals' ? 'active' : ''} onClick={() => setTab('approvals')}>Approvals{pendingApprovals.some((item) => item.state === 'awaiting-approval') ? ' · 1+' : ''}</button>
-        <button className={tab === 'orchestration' ? 'active' : ''} onClick={() => setTab('orchestration')}>Orchestration</button>
-        <button className={tab === 'activity' ? 'active' : ''} onClick={() => setTab('activity')}>Activity</button>
-        <button className={tab === 'continuity' ? 'active' : ''} onClick={() => setTab('continuity')}>Continue</button>
-        <button className={tab === 'usage' ? 'active' : ''} onClick={() => setTab('usage')}>Usage</button>
-        <button className={tab === 'handoff' ? 'active' : ''} onClick={() => setTab('handoff')}>Handoff</button>
+      <div className="inspector-tabs" role="group" aria-label="Inspector sections">
+        <button type="button" className={tab === 'files' ? 'active' : ''} aria-pressed={tab === 'files'} onClick={() => setTab('files')}>Files</button>
+        <button type="button" className={tab === 'changes' ? 'active' : ''} aria-pressed={tab === 'changes'} onClick={() => setTab('changes')}>Changes</button>
+        <button type="button" className={tab === 'approvals' ? 'active' : ''} aria-pressed={tab === 'approvals'} onClick={() => setTab('approvals')}>{approvalsLabel}</button>
+        <button type="button" className={tab === 'orchestration' ? 'active' : ''} aria-pressed={tab === 'orchestration'} onClick={() => setTab('orchestration')}>Orchestration</button>
+        <button type="button" className={tab === 'activity' ? 'active' : ''} aria-pressed={tab === 'activity'} onClick={() => setTab('activity')}>Activity</button>
+        <button type="button" className={tab === 'continuity' ? 'active' : ''} aria-pressed={tab === 'continuity'} onClick={() => setTab('continuity')}>Continue</button>
+        <button type="button" className={tab === 'usage' ? 'active' : ''} aria-pressed={tab === 'usage'} onClick={() => setTab('usage')}>Usage</button>
+        <button type="button" className={tab === 'handoff' ? 'active' : ''} aria-pressed={tab === 'handoff'} onClick={() => setTab('handoff')}>Handoff</button>
       </div>
-      <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} onClick={() => setTab('channel')}>Project channel</button>
+      <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} aria-pressed={tab === 'channel'} onClick={() => setTab('channel')}>Project channel</button>
       {tab === 'handoff' ? <CoordinatedHandoffPanel key={rootTaskId} api={api} rootTaskId={rootTaskId} /> : tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
         <div className="file-tree">
@@ -507,7 +515,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div>
+      </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
           {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
@@ -532,7 +540,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
               const passed = result.evidenceIds.map((id) => view?.evidence.find((item) => item.id === id)).filter(Boolean);
               return <article className="assignment-card" key={result.id}>
                 <div className="approval-heading"><strong>{assignmentById[result.assignmentId]?.key ?? result.assignmentId}</strong><span>{passed.length && passed.every((item) => item?.passed) ? 'evidence passed' : passed.length ? 'evidence failed' : 'no evidence'}</span></div>
-                <dl><dt>Commit / tree</dt><dd>{short(result.commit)} / {short(result.tree)}</dd></dl>
+                <dl><dt>Commit / tree</dt><dd><Hash value={result.commit} /> / <Hash value={result.tree} /></dd></dl>
                 <dl><dt>Changed paths</dt><dd>{result.changedPaths.join(', ') || 'none'}</dd></dl>
                 <dl><dt>Child claim (untrusted)</dt><dd>{result.summary}</dd></dl>
                 {result.unresolved && <dl><dt>Unresolved</dt><dd>{result.unresolved}</dd></dl>}
@@ -543,8 +551,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
           <section><h3>Integrations</h3>
             {(view?.integrations ?? []).map((operation) => <article className="assignment-card" key={operation.id}>
               <div className="approval-heading"><strong>{assignmentById[operation.assignmentId]?.key ?? operation.assignmentId} · {operation.kind}</strong><span>{integrationStateLabel[operation.state]}</span></div>
-              <dl><dt>Source SHA</dt><dd>{short(operation.sourceSha)}</dd></dl>
-              <dl><dt>Observed</dt><dd>{operation.observed?.commit ? `commit ${short(operation.observed.commit)}` : operation.observed?.unmergedPaths?.length ? `conflict: ${operation.observed.unmergedPaths.join(', ')}` : operation.observed?.detail ?? 'none'}</dd></dl>
+              <dl><dt>Source SHA</dt><dd><Hash value={operation.sourceSha} /></dd></dl>
+              <dl><dt>Observed</dt><dd>{operation.observed?.commit ? `commit ${full(operation.observed.commit)}` : operation.observed?.unmergedPaths?.length ? `conflict: ${operation.observed.unmergedPaths.join(', ')}` : operation.observed?.detail ?? 'none'}</dd></dl>
               {(operation.state === 'empty' || operation.state === 'mismatch') && <p className="muted">Blocked outcome; the runtime never auto-skips or manufactures a commit here.</p>}
               {RECONCILABLE.includes(operation.state) && <div className="approval-actions">
                 <button type="button" className="secondary" disabled={Boolean(operationInFlight[operation.id])} onClick={() => void checkOutcome(operation)}>{operationInFlight[operation.id] === 'check' ? 'Checking…' : 'Check outcome'}</button>
@@ -555,8 +563,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
           </section>
           <section><h3>Combined validation</h3>
             {combinedEvidence.map((item) => <article className="assignment-card" key={item.id}>
-              <div className="approval-heading"><strong>{item.passed ? 'Passed' : 'Did not pass'}</strong><span>{short(item.head)}</span></div>
-              <dl><dt>Tree</dt><dd>{short(item.tree)}</dd></dl>
+              <div className="approval-heading"><strong>{item.passed ? 'Passed' : 'Did not pass'}</strong><span><Hash value={item.head} /></span></div>
+              <dl><dt>Tree</dt><dd><Hash value={item.tree} /></dd></dl>
               <dl><dt>Command</dt><dd><pre>{item.command}</pre></dd></dl>
             </article>)}
             {!combinedEvidence.length && <p className="muted">No combined validation evidence yet.</p>}

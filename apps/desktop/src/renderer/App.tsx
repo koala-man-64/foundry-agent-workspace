@@ -17,7 +17,9 @@ import type { AutomationDraft } from '../../../../packages/protocol/src/automati
 import { TemplatePicker } from './TemplatePicker';
 import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
-import { ApprovalCard } from './ApprovalCard';
+import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
+import { PatchText } from './Evidence';
+import { approvalsTabLabel, useCompactLayout } from './layout';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
@@ -158,12 +160,13 @@ function App() {
   const eventSequenceRef = useRef(0);
   const retriedSequenceRef = useRef(0);
 
+  const compactLayout = useCompactLayout();
   useEffect(() => {
-    if (!window.matchMedia('(max-width: 880px)').matches) return;
+    if (!compactLayout) return;
     if (inspectorOpen) inspectorCloseRef.current?.focus();
     else if (inspectorWasOpen.current) inspectorToggleRef.current?.focus();
     inspectorWasOpen.current = inspectorOpen;
-  }, [inspectorOpen]);
+  }, [inspectorOpen, compactLayout]);
   selectedRef.current = selectedId;
   draftProjectRef.current = draftProjectId;
   currentPathRef.current = currentPath;
@@ -187,6 +190,8 @@ function App() {
   const availableChildProfiles = profiles.filter((profile) => profile.id !== profileId && isProfileReady(profile));
   const taskModeLabel = (selectedTask?.mode ?? 'chat') === 'coding' ? 'Coding with reviewed tools' : (selectedTask?.mode ?? 'chat') === 'coordinated' ? 'Coordinated' : 'Chat';
   const awaitingApproval = pendingApprovalCount > 0 || (detail?.approvals?.some((approval) => approval.state === 'awaiting-approval') ?? false);
+  const unknownApprovals = detail?.approvals?.filter(approval => approval.state === 'unknown').length ?? 0;
+  const approvalsLabel = approvalsTabLabel(Math.max(pendingApprovalCount, awaitingApproval ? 1 : 0), unknownApprovals, awaitingApproval && pendingApprovalCount === 0);
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
   const taskRetired = selectedTask?.status === 'retired';
   const taskBusy = selectedTask?.status === 'running';
@@ -577,7 +582,7 @@ function App() {
   };
   const exportDiagnostics = async () => {
     if (exporting) return; setExporting(true);
-    try { const result = await api.invoke('diagnostics.export', {}); setNotice(`Sanitized diagnostics written to ${result.path} (${result.bytes.toLocaleString()} bytes, SHA-256 ${result.sha256.slice(0, 12)}…). Credentials, file contents and patches are excluded.`, 'success'); }
+    try { const result = await api.invoke('diagnostics.export', {}); setNotice(`Sanitized diagnostics written to ${result.path} (${result.bytes.toLocaleString()} bytes, SHA-256 ${result.sha256}). Credentials, file contents and patches are excluded.`, 'success'); }
     catch (error) { setNotice(`Could not export diagnostics: ${errorMessage(error)}`); }
     finally { setExporting(false); }
   };
@@ -609,7 +614,7 @@ function App() {
   const commit = async () => {
     if (!selectedId || publishBusy || !commitMessage.trim()) return;
     setPublishBusy('commit');
-    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit.slice(0, 10)} on ${result.branch} (${result.changedPaths.length} paths).`, 'success'); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current, 'git'); }
+    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit} on ${result.branch} (${result.changedPaths.length} paths).`, 'success'); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current, 'git'); }
     catch (error) { setNotice(`Could not commit: ${errorMessage(error)}`); }
     finally { setPublishBusy(undefined); }
   };
@@ -678,6 +683,7 @@ function App() {
     try {
       await run(taskId);
       await refresh(taskId); await loadTaskDetail(taskId);
+      if (action === 'approve' || action === 'reject') { announce(`${action === 'approve' ? 'Approved' : 'Rejected'}: ${approval.expectedHash === null ? 'create file' : approval.tool}.`); focusAfterDecision(approval.id); }
     } catch (error) {
       setApprovalErrors((current) => ({ ...current, [approval.id]: decisionFailure(action, error) }));
       await loadApprovals(taskId).catch(() => undefined);
@@ -777,17 +783,21 @@ function App() {
       </form>
     </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
     <section className="conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
-      <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
+      {awaitingApproval && !(effectiveRightTab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
+      <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. Approve or reject there, or cancel the task.' : 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
     </section>
     <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" onPointerDown={beginInspectorResize} />
-    <aside className={`inspector${inspectorOpen ? ' open' : ''}`} role={inspectorOpen ? 'dialog' : undefined} aria-label={inspectorOpen ? 'Task inspector' : undefined} onKeyDown={event => { if (event.key === 'Escape' && inspectorOpen) setInspectorOpen(false); }}>
+    <aside className={`inspector${inspectorOpen ? ' open' : ''}`} role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} aria-label="Task inspector" onKeyDown={event => { if (event.key === 'Escape' && inspectorOpen) setInspectorOpen(false); }}>
       <button ref={inspectorCloseRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
-      <div className="inspector-tabs">{workspaceKind !== 'none' && <button className={effectiveRightTab === 'files' ? 'active' : ''} onClick={() => setRightTab('files')}>Files</button>}{workspaceKind === 'git' && <button className={effectiveRightTab === 'changes' ? 'active' : ''} onClick={() => setRightTab('changes')}>Changes</button>}<button className={effectiveRightTab === 'approvals' ? 'active' : ''} onClick={() => setRightTab('approvals')}>Approvals{awaitingApproval ? ' · 1+' : ''}</button><button className={effectiveRightTab === 'activity' ? 'active' : ''} onClick={() => setRightTab('activity')}>Activity</button><button className={effectiveRightTab === 'continuity' ? 'active' : ''} onClick={() => setRightTab('continuity')}>Continue</button><button className={effectiveRightTab === 'usage' ? 'active' : ''} onClick={() => setRightTab('usage')}>Usage</button>{workspaceKind === 'git' && <button className={effectiveRightTab === 'publish' ? 'active' : ''} onClick={() => setRightTab('publish')}>Publish</button>}<button className={effectiveRightTab === 'browser' ? 'active' : ''} onClick={() => setRightTab('browser')}>Browser</button></div>
-      {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} onClick={() => setRightTab('channel')}>Project channel</button>}
+      <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([
+        ['files', 'Files', workspaceKind !== 'none'], ['changes', 'Changes', workspaceKind === 'git'], ['approvals', approvalsLabel, true], ['activity', 'Activity', true],
+        ['continuity', 'Continue', true], ['usage', 'Usage', true], ['publish', 'Publish', workspaceKind === 'git'], ['browser', 'Browser', true]
+      ] as const).filter(([, , shown]) => shown).map(([id, label]) => <button key={id} type="button" className={effectiveRightTab === id ? 'active' : ''} aria-pressed={effectiveRightTab === id} onClick={() => setRightTab(id)}>{label}</button>)}</div>
+      {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} aria-pressed={effectiveRightTab === 'channel'} onClick={() => setRightTab('channel')}>Project channel</button>}
       {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen || inspectorDragging} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'activity' ? <TaskActivity api={api} taskId={selectedId} refreshToken={navigationVersion} unknownOutcomes={unknownOutcomes} /> : effectiveRightTab === 'continuity' ? <ContinuityPanel api={api} taskId={selectedId} messages={detail?.messages ?? []} profiles={profiles} onCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks] })); selectTask(task.id); void refresh(task.id); }} setNotice={setNotice} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
@@ -796,7 +806,7 @@ function App() {
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : effectiveRightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
+      </> : effectiveRightTab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
         {usage ? <>
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>
