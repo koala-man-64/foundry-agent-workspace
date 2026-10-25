@@ -452,14 +452,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       {notice}
       {viewError && <p className="muted inspector-empty">{viewError}</p>}
       <nav aria-label="Agent tree" className="agent-tree">
-        <button type="button" className={`agent-row ${!selectedChildId ? 'selected' : ''}`} onClick={() => setSelectedChildId(undefined)}>
+        <button type="button" className={`agent-row ${!selectedChildId ? 'selected' : ''}`} aria-pressed={!selectedChildId} onClick={() => setSelectedChildId(undefined)}>
           <span className="agent-key" title="coordinator">Coordinator</span>
           <span className="agent-lifecycle">{coordinatorRun ? lifecycleLabel[coordinatorRun.lifecycle] : 'Loading…'}{coordinatorRun?.lifecycle === 'waiting' && coordinatorRun.waitReason ? ` · ${waitReasonLabel[coordinatorRun.waitReason]}` : ''}{coordinatorRun?.outcome ? ` · ${outcomeLabel[coordinatorRun.outcome]}` : ''}</span>{waitingFor(rootTaskId) > 0 && <span className="agent-pending">{waitingFor(rootTaskId)} awaiting approval</span>}
         </button>
         {childRuns.map((run) => {
           const assignment = run.assignmentId ? assignmentById[run.assignmentId] : undefined;
           const key = assignment?.key ?? run.title;
-          return <button type="button" key={run.taskId} className={`agent-row ${selectedChildId === run.taskId ? 'selected' : ''}`} onClick={() => setSelectedChildId(run.taskId)}>
+          return <button type="button" key={run.taskId} className={`agent-row ${selectedChildId === run.taskId ? 'selected' : ''}`} aria-pressed={selectedChildId === run.taskId} onClick={() => setSelectedChildId(run.taskId)}>
             <span className="agent-key" title={`${key} · ${run.title}`}>{key} · {run.title}</span>
             <span className="agent-lifecycle">{lifecycleLabel[run.lifecycle]}{run.lifecycle === 'waiting' && run.waitReason ? ` · ${waitReasonLabel[run.waitReason]}` : ''}{run.outcome ? ` · ${outcomeLabel[run.outcome]}` : ''}</span>{waitingFor(run.taskId) > 0 && <span className="agent-pending">{waitingFor(run.taskId)} awaiting approval</span>}
           </button>;

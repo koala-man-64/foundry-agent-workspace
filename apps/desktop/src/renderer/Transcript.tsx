@@ -117,7 +117,7 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
     ? <SummaryBody key={key} record={record} api={api} taskId={taskId} />
     : <article key={key} className="message system compaction-summary"><div className="message-meta">Runtime summary <span>{record.messageIds.length} messages · estimate {record.estimatedTokensBefore.toLocaleString()} → {record.estimatedTokensAfter.toLocaleString()}</span></div><p>{record.summary}</p></article>;
 
-  return <div className="messages" role="log" aria-busy={messages.some(message => message.status === 'streaming')} aria-label="Conversation transcript">
+  return <div className="messages" role="log" tabIndex={-1} aria-busy={messages.some(message => message.status === 'streaming')} aria-label="Conversation transcript">
     {slots[0]?.map(record => summary(record, record.id))}
     {messages.map((message, index) => {
       const record = byMessage.get(message.id);

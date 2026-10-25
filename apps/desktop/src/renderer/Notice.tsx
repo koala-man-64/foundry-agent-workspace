@@ -5,11 +5,12 @@ const toneLabel = { error: 'Error', warning: 'Warning', info: 'Note', success: '
 /**
  * The app notice. Exactly one is rendered at a time (inside the open dialog, otherwise in the main column), so it is
  * never hidden behind a modal backdrop. Screen-reader announcement goes through the always-mounted live regions in
- * App, so this element sets aria-live="off" and keeps role="status" for its semantics.
+ * App, so this element normally sets aria-live="off" and keeps role="status" for its semantics. Inside a modal
+ * dialog those regions are inert, so `announce` makes the notice its own live region.
  */
-export function Notice({ notice, onDismiss }: { notice?: NoticeState; onDismiss: () => void }) {
+export function Notice({ notice, onDismiss, announce = false }: { notice?: NoticeState; onDismiss: () => void; announce?: boolean }) {
   if (!notice) return null;
-  return <div className={`notice notice-${notice.tone}`} role="status" aria-live="off" data-tone={notice.tone}>
+  return <div className={`notice notice-${notice.tone}`} role="status" aria-live={announce ? notice.tone === 'error' ? 'assertive' : 'polite' : 'off'} data-tone={notice.tone}>
     <p><span className="visually-hidden">{toneLabel[notice.tone]}: </span>{notice.text}</p>
     <button type="button" onClick={onDismiss} aria-label="Dismiss notice">×</button>
   </div>;

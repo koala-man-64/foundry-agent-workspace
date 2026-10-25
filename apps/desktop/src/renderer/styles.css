@@ -204,7 +204,7 @@ h3 { margin: var(--space-4) 0 var(--space-2); color: var(--ink-muted); font: 650
 .task-archive:hover { background: var(--rail-hover); text-decoration: underline; }
 .task-archive:disabled { cursor: not-allowed; color: var(--rail-faint); text-decoration: none; background: none; }
 .action-list, .search-results { display: grid; align-content: start; gap: 4px; }
-.action-row, .search-results > button { display: grid; gap: 3px; padding: 9px; color: #f4efe2; border: 1px solid var(--rail-line); border-radius: var(--radius-sm); background: var(--rail-raised); text-align: left; }
+.action-row, .search-results > button { display: grid; width: 100%; gap: 3px; padding: 9px; color: #f4efe2; border: 1px solid var(--rail-line); border-radius: var(--radius-sm); background: var(--rail-raised); text-align: left; }
 .action-row:hover, .search-results > button:hover { background: var(--rail-hover); }
 .action-row span, .action-row small, .search-results small { color: #cad6c8; font-size: var(--fs-xs); }
 .action-row.tier-0 { border-color: #6a5a3c; box-shadow: inset 3px 0 0 var(--rail-accent); }
@@ -371,6 +371,7 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 dialog .notice { padding-inline: 20px 24px; }
 .usage-page > .notice { margin: -26px calc(-1 * clamp(18px, 4vw, 52px)) 18px; }
 .messages { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 30px 13%; }
+.messages:focus-visible { outline-offset: -3px; }
 .message { max-width: 780px; margin-bottom: 25px; }
 .message.user { margin-left: auto; }
 .message-meta { margin-bottom: 6px; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .02em; }
@@ -466,7 +467,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 32px; color: var(--notice-warning-ink); border-top: 1px solid #e3c38f; background: var(--notice-warning-bg); font-size: var(--fs-sm); font-weight: 650; }
 .coordinator-detail > .approval-banner { margin: 0 -32px; }
 .hash { font-family: var(--font-mono); font-size: .95em; overflow-wrap: anywhere; }
-.patch-line { display: block; }
+.patch-line { display: block; padding-left: 6px; }
 .patch-line.add { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
 .patch-line.del { background: var(--danger-soft); box-shadow: inset 3px 0 #b75a42; }
 .patch-line.hunk { color: var(--ink-muted); background: var(--surface-well); }
@@ -524,6 +525,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .assignment-card dl { margin: 6px 0 0; }
 .assignment-card dt { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .assignment-card dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.assignment-card pre, .orchestration-evidence pre, .assignment-summary pre, .activity-timeline pre { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--fs-xs)/1.45 var(--font-mono); }
 .orchestration-evidence { margin-top: 8px; padding: 8px; background: var(--surface-sunken); }
 .revise-form { display: grid; gap: 8px; margin-top: 8px; }
 .revise-form textarea { min-height: 60px; }
@@ -548,6 +550,8 @@ dialog .notice { padding-inline: 20px 24px; }
 .automation-settings h3 { margin: 8px 0; }
 .automation-card { display: grid; gap: 5px; margin: 8px 0; padding: 10px; border: 1px solid #c9c0af; background: #f8f4ea; overflow-wrap: anywhere; }
 .automation-card small { color: var(--ink-muted); }
+.automation-card > button, .automation-card > div > button, .automation-form > button { justify-self: start; }
+.automation-columns > section > h3 { color: var(--ink); font-size: var(--fs-md); }
 .automation-form { display: grid; gap: 8px; margin-top: 12px; padding: 12px; border: 1px solid #c9c0af; }
 .automation-form textarea { min-height: 80px; }
 .automation-form label { color: var(--ink-2); }
@@ -626,6 +630,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .mcp-error { margin-top: 6px; color: var(--danger-ink); font-size: var(--fs-xs); }
 .chip-light { margin-left: 6px; padding: 0 6px; color: var(--danger-ink); border: 1px solid var(--danger); border-radius: var(--radius-sm); background: var(--accent-soft); font-size: var(--fs-xs); font-weight: 650; }
 .mcp-server .checkbox-row { flex-wrap: wrap; }
+.mcp-server .checkbox-row small { flex-basis: 100%; padding-left: 20px; }
 .mcp-form { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #ded6c4; }
 .mcp-form textarea { min-height: 48px; }
 .channel-tab { flex: 0 0 auto; margin: 8px 12px; padding: 9px 10px; color: var(--ink-2); border: 1px solid var(--line-control); background: var(--canvas); text-align: left; font-size: var(--fs-sm); }

@@ -31,7 +31,7 @@ export function ProjectSidebar(props: Props) {
   const noFolder = sortedTasks.filter((task) => task.workspaceKind === 'none');
   const legacy = sortedTasks.filter((task) => !task.projectId && task.workspaceKind !== 'none');
 
-  return <aside className="sidebar">
+  return <aside className="sidebar" aria-label="Projects">
     <div className="sidebar-top">
       <button type="button" className="sidebar-new" onClick={() => onNew(null)}><span className="sidebar-plus" aria-hidden="true">+</span>New chat</button>
       <div className="projects-head"><h2>Projects</h2><button type="button" className="icon-button" aria-label="Add project" title={canAdd ? 'Add a local folder' : 'Upgrade the database to add projects'} disabled={!canAdd || adding} onClick={onAdd}>{adding ? '…' : '+'}</button></div>
