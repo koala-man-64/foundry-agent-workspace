@@ -77,6 +77,11 @@ describe('ApprovalCard', () => {
     expect(coordinatedCommand).not.toContain('Check outcome');
   });
 
+  it('shows a decision failure inside the card as an alert', () => {
+    const html = renderToStaticMarkup(createElement(ApprovalCard, { approval: { ...base, command: 'x' }, variant: 'task', complete: true, error: 'This approval could not be confirmed: busy', onDecide: () => undefined, onReconcile: () => undefined }));
+    expect(html).toContain('<p class="approval-error" role="alert">This approval could not be confirmed: busy</p>');
+  });
+
   it('renders handoff and integration evidence for coordinated approvals', () => {
     const html = render({
       tool: 'integrate_result', state: 'awaiting-approval',

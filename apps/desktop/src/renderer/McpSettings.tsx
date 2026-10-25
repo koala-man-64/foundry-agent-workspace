@@ -1,7 +1,8 @@
 import { FormEvent, useState } from 'react';
 import type { DesktopApi, McpServerStatus } from '../../../../packages/protocol/src/index';
+import { errorMessage, type SetNotice } from './feedback';
 
-interface Props { api: DesktopApi; servers: McpServerStatus[]; onChanged: () => void; setNotice: (value: string) => void }
+interface Props { api: DesktopApi; servers: McpServerStatus[]; onChanged: () => void; setNotice: SetNotice }
 
 interface Draft { id: string; key: string; name: string; command: string; argumentsText: string; cwd: string; environmentText: string; callTimeoutMs: number }
 
@@ -29,24 +30,24 @@ export function McpSettings({ api, servers, onChanged, setNotice }: Props) {
     setSaving(true);
     try {
       const result = await api.invoke('mcp.save', { id: draft.id, key: draft.key.trim(), name: draft.name.trim(), command: draft.command.trim(), arguments: draft.argumentsText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean), cwd: draft.cwd.trim(), environment: parseEnvironment(draft.environmentText), enabled: true, readOnlyTools: [], callTimeoutMs: draft.callTimeoutMs });
-      setNotice(result.tools.length ? `MCP server "${result.name}" connected and listed ${result.tools.length} tool(s). Mark read-only tools below; everything else requires approval per call.${result.lastError ? ` ${result.lastError}` : ''}` : `MCP server "${result.name}" saved with a problem: ${result.lastError ?? 'no tools were listed'}`);
+      setNotice(result.tools.length ? `MCP server "${result.name}" connected and listed ${result.tools.length} tool(s). Mark read-only tools below; everything else requires approval per call.${result.lastError ? ` ${result.lastError}` : ''}` : `MCP server "${result.name}" saved with a problem: ${result.lastError ?? 'no tools were listed'}`, result.tools.length ? 'success' : 'warning');
       setDraft(emptyDraft()); onChanged();
-    } catch (error) { setNotice(`Could not save MCP server: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not save MCP server: ${errorMessage(error)}`); }
     finally { setSaving(false); }
   };
   const update = async (server: McpServerStatus, changes: { enabled?: boolean; readOnlyTools?: string[]; reconnect?: boolean }) => {
     if (busy) return; setBusy(server.id);
     try {
       const result = await api.invoke('mcp.update', { serverId: server.id, ...changes });
-      if (result.lastError) setNotice(`MCP server "${result.name}": ${result.lastError}`);
+      if (result.lastError) setNotice(`MCP server "${result.name}": ${result.lastError}`, 'warning');
       onChanged();
-    } catch (error) { setNotice(`Could not update MCP server: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not update MCP server: ${errorMessage(error)}`); }
     finally { setBusy(undefined); }
   };
   const remove = async (server: McpServerStatus) => {
     if (busy) return; setBusy(server.id);
     try { await api.invoke('mcp.remove', { serverId: server.id }); onChanged(); }
-    catch (error) { setNotice(`Could not remove MCP server: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not remove MCP server: ${errorMessage(error)}`); }
     finally { setBusy(undefined); }
   };
 

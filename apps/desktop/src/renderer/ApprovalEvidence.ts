@@ -1,4 +1,5 @@
 import type { Approval, DesktopApi } from '../../../../packages/protocol/src/index';
+import { errorMessage } from './feedback';
 
 export interface ReviewedApproval { approval: Approval; complete: boolean; error?: string }
 
@@ -23,6 +24,6 @@ export async function readApprovalEvidence(api: DesktopApi, taskId: string, appr
     if (approval.id !== approvalId || approval.taskId !== taskId || approval.nonce !== read.approval.nonce || approval.fingerprint !== read.approval.fingerprint || approval.state !== read.approval.state) throw new Error('Approval evidence changed while loading. Refresh before deciding.');
     return { approval, complete: true };
   } catch (cause) {
-    return { approval: read.approval, complete: false, error: cause instanceof Error ? cause.message : String(cause) };
+    return { approval: read.approval, complete: false, error: errorMessage(cause) };
   }
 }

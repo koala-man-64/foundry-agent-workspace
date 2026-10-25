@@ -21,6 +21,8 @@ import { ApprovalCard } from './ApprovalCard';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
+import { decisionFailure, errorMessage, type NoticeState, type NoticeTone, type SetNotice } from './feedback';
+import { Notice } from './Notice';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -76,7 +78,12 @@ function App() {
   const manageDialogRef = useRef<HTMLDialogElement>(null);
   const [schema, setSchema] = useState<SchemaStatus>();
   const [composer, setComposer] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNoticeState] = useState<NoticeState>();
+  const [announcement, setAnnouncement] = useState({ polite: '', assertive: '' });
+  const [openDialog, setOpenDialog] = useState<'settings' | 'manage' | 'automation' | 'upgrade'>();
+  /** Screen-reader announcement through the always-mounted live regions; errors interrupt, everything else waits. */
+  const announce = useCallback((text: string, tone: NoticeTone = 'info') => setAnnouncement(tone === 'error' ? { polite: '', assertive: text } : { polite: text, assertive: '' }), []);
+  const setNotice: SetNotice = useCallback((text, tone = 'error') => { setNoticeState(text ? { text, tone } : undefined); if (text) announce(text, tone); }, [announce]);
   const [creating, setCreating] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [file, setFile] = useState<FileContent>();
@@ -92,6 +99,7 @@ function App() {
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile' | 'acknowledge'>>({});
+  const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
   const [upgrading, setUpgrading] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
@@ -207,7 +215,7 @@ function App() {
         setUsage(nextUsage); setPendingApprovalCount(read.pendingApprovals); setUnknownOutcomes(read.unknownOutcomes);
       }
     } catch (error) {
-      if (version === detailVersion.current && selectedRef.current === taskId) setNotice(`Could not load task: ${error instanceof Error ? error.message : String(error)}`);
+      if (version === detailVersion.current && selectedRef.current === taskId) setNotice(`Could not load task: ${errorMessage(error)}`);
     }
   }, [api]);
   detailWorker.current = performTaskDetail;
@@ -238,7 +246,7 @@ function App() {
       });
       if (messageCursor.current === messageNextBefore) { messageCursor.current = page.nextBefore; setMessageNextBefore(page.nextBefore); }
       requestAnimationFrame(() => { if (transcript) transcript.scrollTop += transcript.scrollHeight - previousHeight; });
-    } catch (error) { setNotice(`Could not load older messages: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load older messages: ${errorMessage(error)}`); }
     finally { olderMessagesActive.current = false; }
   };
 
@@ -256,9 +264,9 @@ function App() {
         return { ...current, approvals: sameTask ? (before === undefined ? [...incoming, ...(current.approvals ?? []).filter(item => !ids.has(item.id))] : [...(current.approvals ?? []).filter(item => !ids.has(item.id)), ...incoming]) : incoming };
       });
       approvalLoadedTask.current = taskId;
-      if (reads.some(read => !read.complete)) setNotice('Some approval evidence could not be loaded. Approval is disabled until the full evidence is available. Retry by reopening Approvals.');
+      if (reads.some(read => !read.complete)) setNotice('Some approval evidence could not be loaded. Approval is disabled until the full evidence is available. Retry by reopening Approvals.', 'warning');
       if (before !== undefined || !sameTask) setApprovalNextBefore(page.nextBefore);
-    } catch (error) { setNotice(`Could not load approvals: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load approvals: ${errorMessage(error)}`); }
   }, [api]);
   approvalWorker.current = taskId => fetchApprovals(taskId);
   const loadApprovals = useCallback((taskId: string, before?: number): Promise<void> => {
@@ -287,7 +295,7 @@ function App() {
       const approval = read.approval;
       setIncompleteApprovalIds(current => { const next = new Set(current); if (read.complete) next.delete(approval.id); else next.add(approval.id); return next; });
       setDetail(current => current?.task.id === selectedId ? { ...current, approvals: [approval, ...(current.approvals ?? []).filter(item => item.id !== approval.id)] } : current);
-    }, error => setNotice(`Could not open approval: ${error instanceof Error ? error.message : String(error)}`));
+    }, error => setNotice(`Could not open approval: ${errorMessage(error)}`));
   }, [api, focusAction, selectedId, detail?.task.id]);
   useEffect(() => {
     if (rightTab === 'approvals' && focusAction?.kind === 'approval' && detail?.approvals?.some(item => item.id === focusAction.sourceId)) document.querySelector(`[data-approval-id="${focusAction.sourceId}"]`)?.scrollIntoView({ block: 'nearest' });
@@ -299,7 +307,7 @@ function App() {
       const nextFiles = await api.invoke('files.list', { taskId, path });
       if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setFiles(nextFiles);
     } catch (error) {
-      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setNotice(`Could not load files: ${error instanceof Error ? error.message : String(error)}`);
+      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setNotice(`Could not load files: ${errorMessage(error)}`);
     }
   }, [api]);
 
@@ -314,7 +322,7 @@ function App() {
         setDiff(nextDiff);
       }
     } catch (error) {
-      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setNotice(`Could not refresh inspector: ${error instanceof Error ? error.message : String(error)}`);
+      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) setNotice(`Could not refresh inspector: ${errorMessage(error)}`);
     }
   }, [api]);
 
@@ -331,7 +339,7 @@ function App() {
       } while (after);
       if (version !== mcpVersion.current) return;
       setMcpServers(collected);
-    } catch (error) { if (version === mcpVersion.current) setNotice(`Could not load MCP servers: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === mcpVersion.current) setNotice(`Could not load MCP servers: ${errorMessage(error)}`); }
   }, [api]);
 
   const loadProfiles = useCallback(async (first?: WorkspaceSummary) => {
@@ -352,7 +360,7 @@ function App() {
       setSnapshot(current => ({ ...current, profiles: collected }));
       setProfilesError('');
     } catch (error) {
-      if (version === profilesVersion.current) setProfilesError(error instanceof Error ? error.message : String(error));
+      if (version === profilesVersion.current) setProfilesError(errorMessage(error));
     } finally { if (version === profilesVersion.current) setProfilesLoading(false); }
   }, [api]);
 
@@ -382,7 +390,7 @@ function App() {
             if (projectVersion === projectsVersion.current) setSnapshot(current => ({ ...current, projects: collected }));
           } catch (error) {
             projectsStarted.current = false;
-            setNotice(`Could not load saved projects: ${error instanceof Error ? error.message : String(error)}`);
+            setNotice(`Could not load saved projects: ${errorMessage(error)}`);
           }
         })();
       }
@@ -401,7 +409,7 @@ function App() {
         retriedSequenceRef.current = eventSequenceRef.current;
         snapshotDirty.current = true;
       }
-    } catch (error) { setNotice(`Could not refresh workspace: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not refresh workspace: ${errorMessage(error)}`); }
   }, [api, loadTaskDetail, loadApprovals, loadProfiles, rightTab]);
   const loadProjects = useCallback(async () => {
     const version = ++projectsVersion.current;
@@ -414,7 +422,7 @@ function App() {
         after = page.nextAfter ?? undefined;
       } while (after);
       if (version === projectsVersion.current) { projectsStarted.current = true; setSnapshot(current => ({ ...current, projects: collected })); }
-    } catch (error) { if (version === projectsVersion.current) setNotice(`Could not load saved projects: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === projectsVersion.current) setNotice(`Could not load saved projects: ${errorMessage(error)}`); }
   }, [api]);
   snapshotWorker.current = performRefresh;
   const refresh = useCallback((selection = selectedRef.current): Promise<void> => {
@@ -445,19 +453,19 @@ function App() {
     if (event.type === 'runtime.stopped') {
       setNotice('The local runtime stopped. Restart the desktop app to continue.');
     } else if (event.taskId === selectedRef.current && event.type === 'task.stopped') {
-      setNotice(payloadString(event.data, 'reason') ?? 'The task stopped before a response was completed.');
+      setNotice(payloadString(event.data, 'reason') ?? 'The task stopped before a response was completed.', 'info');
     } else if (event.taskId === selectedRef.current && event.type === 'task.budget-warning') {
       const charged = payloadNumber(event.data, 'usedTokens');
       const budget = payloadNumber(event.data, 'budget');
       setNotice(charged !== undefined && budget !== undefined
         ? `This task has charged or reserved ${charged.toLocaleString()} of ${budget.toLocaleString()} tokens (80% warning).`
-        : 'This task has reached 80% of its charged or reserved token budget.');
+        : 'This task has reached 80% of its charged or reserved token budget.', 'warning');
     } else if (event.taskId === selectedRef.current && event.type === 'task.context-warning') {
       const percent = payloadNumber(event.data, 'percent');
-      setNotice(`Context warning: the conservative request estimate is ${percent ?? 80}% of this profile's context limit. Compact the conversation from the Usage panel before it stops.`);
+      setNotice(`Context warning: the conservative request estimate is ${percent ?? 80}% of this profile's context limit. Compact the conversation from the Usage panel before it stops.`, 'warning');
     } else if (event.taskId === selectedRef.current && event.type === 'task.compacted') {
       const before = payloadNumber(event.data, 'estimatedTokensBefore'); const after = payloadNumber(event.data, 'estimatedTokensAfter'); const count = payloadNumber(event.data, 'compactedMessages');
-      setNotice(`Compacted ${count ?? 0} earlier messages into a retained summary (estimate ${before?.toLocaleString() ?? '?'} → ${after?.toLocaleString() ?? '?'}). Originals stay in local history.`);
+      setNotice(`Compacted ${count ?? 0} earlier messages into a retained summary (estimate ${before?.toLocaleString() ?? '?'} → ${after?.toLocaleString() ?? '?'}). Originals stay in local history.`, 'success');
     } else if (event.type === 'mcp.changed') {
       void loadMcp();
     } else if (event.type === 'profiles.changed') {
@@ -495,7 +503,7 @@ function App() {
       setDetail(current => current?.task.id === searchHit.rootTaskId ? { ...current, messages: mergeTranscriptPage(current.messages, result.items, messageOrdinals.current) } : current);
       if (messageCursor.current === null) { messageCursor.current = result.nextBefore; setMessageNextBefore(result.nextBefore); }
       requestAnimationFrame(() => document.querySelector(`[data-message-id="${searchHit.messageId}"]`)?.scrollIntoView({ block: 'center' }));
-    }, error => setNotice(`Could not open search result: ${error instanceof Error ? error.message : String(error)}`));
+    }, error => setNotice(`Could not open search result: ${errorMessage(error)}`));
     return () => { active = false; };
   }, [api, searchHit, selectedId, detail?.task.id, detail?.task.mode]);
 
@@ -509,16 +517,16 @@ function App() {
     if (!chosen) return;
     setAddingProject(true);
     try { const project = await api.invoke('project.add', { path: chosen }); await refresh(); selectDraft(project.id); }
-    catch (error) { setNotice(`Could not add project: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not add project: ${errorMessage(error)}`); }
     finally { setAddingProject(false); }
   };
   const updateProject = async (project: Project, patch: { name?: string; hidden?: boolean }) => {
     try { await api.invoke('project.update', { projectId: project.id, ...patch }); await refresh(); }
-    catch (error) { setNotice(`Could not update project: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not update project: ${errorMessage(error)}`); }
   };
   const savePreferences = async (patch: { profileId?: string; mode?: Mode; collapsedProjectIds?: string[] }) => {
     try { await api.invoke('workspace.preferences.save', patch); }
-    catch (error) { setNotice(`Could not save preferences: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not save preferences: ${errorMessage(error)}`); }
   };
   const toggleProject = (projectId: string) => {
     const next = collapsedProjectIds.includes(projectId) ? collapsedProjectIds.filter((id) => id !== projectId) : [...collapsedProjectIds, projectId];
@@ -527,17 +535,17 @@ function App() {
   const startDraft = async (event: FormEvent) => {
     event.preventDefault();
     if (!draft.content.trim() || creating || !schema || schema.version < 3) return;
-    if (!draft.unknown && (!configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt))) { setNotice('Choose a verified model profile in Model settings before sending.'); return; }
-    if (!draft.unknown && activeProject?.kind === 'unavailable') { setNotice('This folder is unavailable. Restore it before starting a chat.'); return; }
+    if (!draft.unknown && (!configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt))) { setNotice('Choose a verified model profile in Model settings before sending.', 'warning'); return; }
+    if (!draft.unknown && activeProject?.kind === 'unavailable') { setNotice('This folder is unavailable. Restore it before starting a chat.', 'warning'); return; }
     const mode: Mode = activeProject?.kind === 'git' ? taskMode : 'chat';
-    if (!draft.unknown && mode !== 'chat' && configuredProfile && !isProfileReady(configuredProfile)) { setNotice('Coding and coordinated modes require a verified profile with tools and continuation support.'); return; }
-    if (mode === 'coordinated' && !draft.requiredValidationCommand.trim() && !draft.unknown) { setNotice('Enter the required combined validation command.'); return; }
+    if (!draft.unknown && mode !== 'chat' && configuredProfile && !isProfileReady(configuredProfile)) { setNotice('Coding and coordinated modes require a verified profile with tools and continuation support.', 'warning'); return; }
+    if (mode === 'coordinated' && !draft.requiredValidationCommand.trim() && !draft.unknown) { setNotice('Enter the required combined validation command.', 'warning'); return; }
     const originKey = draftKey(draftProjectId ?? null);
     const originSelection = selectionVersion.current;
     const guidedContent = draft.scopeGuidance.length ? `${draft.content.trim()}\n\nScope guidance (does not grant access):\n${draft.scopeGuidance.map(item => `- ${item}`).join('\n')}` : draft.content.trim();
-    if (guidedContent.length > 64000) { setNotice('This draft exceeds the 64,000-character limit after scope guidance. Shorten it before sending.'); return; }
+    if (guidedContent.length > 64000) { setNotice('This draft exceeds the 64,000-character limit after scope guidance. Shorten it before sending.', 'warning'); return; }
     const budget = mode === 'coordinated' ? draft.coordinatedBudget : draft.tokenBudget;
-    if (!Number.isInteger(budget) || budget < 1024 || budget > 10000000) { setNotice('Choose a token budget from 1,024 to 10,000,000.'); return; }
+    if (!Number.isInteger(budget) || budget < 1024 || budget > 10000000) { setNotice('Choose a token budget from 1,024 to 10,000,000.', 'warning'); return; }
     const payload: StartPayload = draft.unknown && draft.startPayload ? draft.startPayload : { requestId: crypto.randomUUID(), projectId: draftProjectId ?? null, content: guidedContent, title: draft.title.trim() || undefined, profileId, mode,
       tokenBudget: budget,
       ...(mode === 'coordinated' ? { coordination: { childProfileIds: draft.childProfileIds, requiredValidation: { command: draft.requiredValidationCommand.trim(), cwd: '', timeoutMs: 600000 } } } : {}) };
@@ -550,30 +558,30 @@ function App() {
       else await refresh();
     } catch (error) {
       updateDraftFor(originKey, { pending: false, unknown: true });
-      if (originSelection === selectionVersion.current) setNotice(`Start outcome is unknown: ${error instanceof Error ? error.message : String(error)}. Your draft is preserved. Retry uses the same request ID.`);
+      if (originSelection === selectionVersion.current) setNotice(`Start outcome is unknown: ${errorMessage(error)}. Your draft is preserved. Retry uses the same request ID.`);
     } finally { setCreating(false); }
   };
   const send = async (event: FormEvent) => {
     event.preventDefault(); if (!selectedId || !composer.trim()) return;
     const content = composer.trim(); setComposer('');
     try { await api.invoke('task.send', { taskId: selectedId, content }); await refresh(selectedId); }
-    catch (error) { setComposer(content); setNotice(`Message was not sent: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setComposer(content); setNotice(`Message was not sent: ${errorMessage(error)}`); }
   };
-  const cancel = async () => { if (!selectedId) return; try { await api.invoke('task.cancel', { taskId: selectedId }); await refresh(selectedId); } catch (error) { setNotice(`Could not cancel: ${error instanceof Error ? error.message : String(error)}`); } };
+  const cancel = async () => { if (!selectedId) return; try { await api.invoke('task.cancel', { taskId: selectedId }); await refresh(selectedId); } catch (error) { setNotice(`Could not cancel: ${errorMessage(error)}`); } };
   const compact = async () => {
     if (!selectedId || compacting) return;
     setCompacting(true);
     try { await api.invoke('task.compact', { taskId: selectedId }); await loadTaskDetail(selectedId); }
-    catch (error) { setNotice(`Could not compact: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not compact: ${errorMessage(error)}`); }
     finally { setCompacting(false); }
   };
   const exportDiagnostics = async () => {
     if (exporting) return; setExporting(true);
-    try { const result = await api.invoke('diagnostics.export', {}); setNotice(`Sanitized diagnostics written to ${result.path} (${result.bytes.toLocaleString()} bytes, SHA-256 ${result.sha256.slice(0, 12)}…). Credentials, file contents and patches are excluded.`); }
-    catch (error) { setNotice(`Could not export diagnostics: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const result = await api.invoke('diagnostics.export', {}); setNotice(`Sanitized diagnostics written to ${result.path} (${result.bytes.toLocaleString()} bytes, SHA-256 ${result.sha256.slice(0, 12)}…). Credentials, file contents and patches are excluded.`, 'success'); }
+    catch (error) { setNotice(`Could not export diagnostics: ${errorMessage(error)}`); }
     finally { setExporting(false); }
   };
-  const openAutomation = () => { setAutomationOpen(true); setAppDialogOpen(true); automationDialogRef.current?.showModal(); };
+  const openAutomation = () => { setAutomationOpen(true); showDialog(automationDialogRef.current); };
   const openAction = (action: ActionItem) => {
     if (action.kind === 'draft') { openAutomation(); return; }
     if (!action.taskId) return;
@@ -581,11 +589,11 @@ function App() {
     setRightTab(action.kind === 'approval' ? 'approvals' : action.kind === 'intent' ? 'publish' : 'activity');
   };
   const useAutomationDraft = (draft: AutomationDraft) => {
-    if (draft.kind !== 'promptDraft') { setNotice('Only prompt drafts can be placed in the composer. Review proposed actions through Approvals.'); return; }
-    if (draft.taskId) void api.invoke('task.read', { taskId: draft.taskId }).then(read => selectTask(read.task.parentTaskId ?? read.task.id), error => setNotice(`Could not open draft task: ${error instanceof Error ? error.message : String(error)}`));
-    if (!draft.taskId && !selectedRef.current) { setNotice('Choose a task before using this workspace-wide draft.'); return; }
+    if (draft.kind !== 'promptDraft') { setNotice('Only prompt drafts can be placed in the composer. Review proposed actions through Approvals.', 'warning'); return; }
+    if (draft.taskId) void api.invoke('task.read', { taskId: draft.taskId }).then(read => selectTask(read.task.parentTaskId ?? read.task.id), error => setNotice(`Could not open draft task: ${errorMessage(error)}`));
+    if (!draft.taskId && !selectedRef.current) { setNotice('Choose a task before using this workspace-wide draft.', 'warning'); return; }
     setComposer(draft.body); automationDialogRef.current?.close();
-    setNotice('Draft placed in the composer. Review it and press Send when ready.');
+    setNotice('Draft placed in the composer. Review it and press Send when ready.', 'info');
   };
   const openPreparedApproval = async (draft: AutomationDraft, approvalId: string) => {
     if (!draft.taskId) return;
@@ -595,28 +603,28 @@ function App() {
       selectTask(rootId);
       setFocusAction({ id: approvalId, taskId: rootId, sourceTaskId: draft.taskId, taskTitle: read.task.title, archived: Boolean(read.task.archivedAt), tier: 0, kind: 'approval', state: 'awaiting-approval', sourceId: approvalId, createdAt: new Date().toISOString(), detail: 'Review proposed action' });
       setRightTab('approvals'); setInspectorOpen(true); automationDialogRef.current?.close();
-      setNotice('Action prepared for ordinary approval. Review the complete evidence before deciding.');
-    } catch (cause) { setNotice(`Could not open prepared approval: ${cause instanceof Error ? cause.message : String(cause)}`); }
+      setNotice('Action prepared for ordinary approval. Review the complete evidence before deciding.', 'info');
+    } catch (cause) { setNotice(`Could not open prepared approval: ${errorMessage(cause)}`); }
   };
   const commit = async () => {
     if (!selectedId || publishBusy || !commitMessage.trim()) return;
     setPublishBusy('commit');
-    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit.slice(0, 10)} on ${result.branch} (${result.changedPaths.length} paths).`); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current, 'git'); }
-    catch (error) { setNotice(`Could not commit: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const result = await api.invoke('task.commit', { taskId: selectedId, message: commitMessage.trim() }); setCommitMessage(''); setNotice(`Committed ${result.commit.slice(0, 10)} on ${result.branch} (${result.changedPaths.length} paths).`, 'success'); await loadTaskDetail(selectedId); void refreshInspector(selectedId, currentPathRef.current, 'git'); }
+    catch (error) { setNotice(`Could not commit: ${errorMessage(error)}`); }
     finally { setPublishBusy(undefined); }
   };
   const push = async () => {
     if (!selectedId || publishBusy) return;
     setPublishBusy('push'); setConfirmAction(undefined);
-    try { const result = await api.invoke('task.push', { taskId: selectedId, remote: pushRemote.trim() || 'origin', confirm: 'push' }); setNotice(`Pushed ${result.branch} to ${result.remote}. ${result.detail}`.trim()); }
-    catch (error) { setNotice(`Could not push: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const result = await api.invoke('task.push', { taskId: selectedId, remote: pushRemote.trim() || 'origin', confirm: 'push' }); setNotice(`Pushed ${result.branch} to ${result.remote}. ${result.detail}`.trim(), 'success'); }
+    catch (error) { setNotice(`Could not push: ${errorMessage(error)}`); }
     finally { setPublishBusy(undefined); }
   };
   const retire = async () => {
     if (!selectedId || publishBusy) return;
     setPublishBusy('retire'); setConfirmAction(undefined);
-    try { const result = await api.invoke('task.retire', { taskId: selectedId, confirm: 'retire' }); setNotice(`Retired ${result.removedWorktrees.length} clean worktree(s). Branch ${result.branch} and the task history are retained.`); await refresh(selectedId); }
-    catch (error) { setNotice(`Could not retire: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const result = await api.invoke('task.retire', { taskId: selectedId, confirm: 'retire' }); setNotice(`Retired ${result.removedWorktrees.length} clean worktree(s). Branch ${result.branch} and the task history are retained.`, 'success'); await refresh(selectedId); }
+    catch (error) { setNotice(`Could not retire: ${errorMessage(error)}`); }
     finally { setPublishBusy(undefined); }
   };
   const reconcilePublication = async () => {
@@ -624,11 +632,11 @@ function App() {
     setPublishBusy('reconcile');
     try {
       const result = await api.invoke('task.reconcilePublication', { taskId: selectedId });
-      setNotice(result.detail);
+      setNotice(result.detail, 'info');
       await loadTaskDetail(selectedId);
       void refreshInspector(selectedId, currentPathRef.current, 'git');
     } catch (error) {
-      setNotice(`Could not reconcile publication: ${error instanceof Error ? error.message : String(error)}`);
+      setNotice(`Could not reconcile publication: ${errorMessage(error)}`);
     } finally {
       setPublishBusy(undefined);
     }
@@ -638,15 +646,15 @@ function App() {
     try {
       const result = await api.invoke('workspace.upgrade', { confirm: 'backup-and-upgrade' });
       upgradeDialogRef.current?.close();
-      setNotice(`Database upgraded to v${result.version}. A verified backup was saved at ${result.backupPath}.`);
+      setNotice(`Database upgraded to v${result.version}. A verified backup was saved at ${result.backupPath}.`, 'success');
       await refresh();
-    } catch (error) { setNotice(`Could not upgrade the database: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not upgrade the database: ${errorMessage(error)}`); }
     finally { setUpgrading(false); }
   };
   const readFile = async (path: string) => {
     if (!selectedId) return; const taskId = selectedId; const version = ++fileVersion.current;
     try { const next = await api.invoke('files.read', { taskId, path }); if (version === fileVersion.current && selectedRef.current === taskId) setFile(next); }
-    catch (error) { if (version === fileVersion.current && selectedRef.current === taskId) setNotice(`Could not read file: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { if (version === fileVersion.current && selectedRef.current === taskId) setNotice(`Could not read file: ${errorMessage(error)}`); }
   };
   const browseDirectory = (path: string) => {
     if (!selectedId) return;
@@ -661,33 +669,23 @@ function App() {
     if (file) void readFile(file.path);
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
-  const decideApproval = async (approval: Approval, decision: 'approve' | 'reject') => {
+  /** One approval action. A failure is shown in the card, and the card stays disabled until approvals are re-read. */
+  const runApprovalAction = async (approval: Approval, action: 'approve' | 'reject' | 'reconcile' | 'acknowledge', run: (taskId: string) => Promise<unknown>) => {
     if (!selectedId || approvalInFlight[approval.id]) return;
-    setApprovalInFlight((current) => ({ ...current, [approval.id]: decision }));
+    const taskId = selectedId;
+    setApprovalInFlight((current) => ({ ...current, [approval.id]: action }));
+    setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
     try {
-      await api.invoke('approval.decide', { taskId: selectedId, approvalId: approval.id, nonce: approval.nonce, decision });
-      await refresh(selectedId); await loadTaskDetail(selectedId);
-    } catch (error) { setNotice(`Could not ${decision} this approval: ${error instanceof Error ? error.message : String(error)}`); }
-    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
+      await run(taskId);
+      await refresh(taskId); await loadTaskDetail(taskId);
+    } catch (error) {
+      setApprovalErrors((current) => ({ ...current, [approval.id]: decisionFailure(action, error) }));
+      await loadApprovals(taskId).catch(() => undefined);
+    } finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
-  const reconcileApproval = async (approval: Approval) => {
-    if (!selectedId || approvalInFlight[approval.id]) return;
-    setApprovalInFlight((current) => ({ ...current, [approval.id]: 'reconcile' }));
-    try {
-      await api.invoke('approval.reconcile', { taskId: selectedId, approvalId: approval.id });
-      await refresh(selectedId); await loadTaskDetail(selectedId);
-    } catch (error) { setNotice(`Could not check this approval outcome: ${error instanceof Error ? error.message : String(error)}`); }
-    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
-  };
-  const acknowledgeBrowserUnknown = async (approval: Approval) => {
-    if (!selectedId || !approval.browser || approvalInFlight[approval.id]) return;
-    setApprovalInFlight((current) => ({ ...current, [approval.id]: 'acknowledge' }));
-    try {
-      await api.invoke('browser.acknowledgeUnknown', { taskId: selectedId, approvalId: approval.id, confirm: 'inspected-unknown-result' });
-      await refresh(selectedId); await loadTaskDetail(selectedId);
-    } catch (error) { setNotice(`Could not acknowledge this browser outcome: ${error instanceof Error ? error.message : String(error)}`); }
-    finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
-  };
+  const decideApproval = (approval: Approval, decision: 'approve' | 'reject') => runApprovalAction(approval, decision, taskId => api.invoke('approval.decide', { taskId, approvalId: approval.id, nonce: approval.nonce, decision }));
+  const reconcileApproval = (approval: Approval) => runApprovalAction(approval, 'reconcile', taskId => api.invoke('approval.reconcile', { taskId, approvalId: approval.id }));
+  const acknowledgeBrowserUnknown = (approval: Approval) => approval.browser ? runApprovalAction(approval, 'acknowledge', taskId => api.invoke('browser.acknowledgeUnknown', { taskId, approvalId: approval.id, confirm: 'inspected-unknown-result' })) : Promise.resolve();
   const beginInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || browserExpanded) return;
     event.preventDefault();
@@ -711,8 +709,8 @@ function App() {
   const openSettings = async () => {
     setCredential(''); setProbe(undefined);
     try { setProfileDraft((await api.invoke('profile.read', { profileId })) ?? OFFLINE_PROFILE); }
-    catch (error) { setNotice(`Could not load profile for editing: ${error instanceof Error ? error.message : String(error)}`); return; }
-    void loadMcp(); setAppDialogOpen(true); dialogRef.current?.showModal();
+    catch (error) { setNotice(`Could not load profile for editing: ${errorMessage(error)}`); return; }
+    void loadMcp(); showDialog(dialogRef.current);
   };
   const newProfile = () => { setProfileDraft({ id: crypto.randomUUID(), name: 'New Azure profile', apiKind: 'responses', endpoint: '', deployment: '', contextLimit: 128000, outputLimit: 8192 }); setCredential(''); setProbe(undefined); };
   const saveProfile = async (event: FormEvent) => {
@@ -721,36 +719,46 @@ function App() {
       const saved = await api.invoke('profile.save', { ...profileDraft, name: profileDraft.name.trim(), endpoint: profileDraft.endpoint.trim(), deployment: profileDraft.deployment.trim() });
       if (credential) await api.saveCredential(saved.id, credential);
       setCredential(''); preferencesTouched.current = true; setProfileId(saved.id); await savePreferences({ profileId: saved.id }); await refresh(); dialogRef.current?.close();
-    } catch (error) { setCredential(''); setNotice(`Could not save profile: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setCredential(''); setNotice(`Could not save profile: ${errorMessage(error)}`); }
   };
-  const probeProfile = async () => { try { const saved = await api.invoke('profile.save', profileDraft); if (credential) await api.saveCredential(saved.id, credential); setCredential(''); setProbe(await api.invoke('profile.probe', { profileId: saved.id })); } catch (error) { setCredential(''); setProbe({ ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: error instanceof Error ? error.message : String(error), fingerprint: '' }); } };
+  const probeProfile = async () => { try { const saved = await api.invoke('profile.save', profileDraft); if (credential) await api.saveCredential(saved.id, credential); setCredential(''); setProbe(await api.invoke('profile.probe', { profileId: saved.id })); } catch (error) { setCredential(''); setProbe({ ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: errorMessage(error), fingerprint: '' }); } };
   const coordinatedTask = selectedTask?.mode === 'coordinated' ? selectedTask : undefined;
   const browserVisible = page === 'conversation' && !isDraft && !coordinatedTask && effectiveRightTab === 'browser';
-  const updateDialogVisibility = () => setAppDialogOpen(Boolean(dialogRef.current?.open || upgradeDialogRef.current?.open || manageDialogRef.current?.open || automationDialogRef.current?.open));
+  const updateDialogVisibility = () => {
+    const open = dialogRef.current?.open ? 'settings' : manageDialogRef.current?.open ? 'manage' : automationDialogRef.current?.open ? 'automation' : upgradeDialogRef.current?.open ? 'upgrade' : undefined;
+    setOpenDialog(open); setAppDialogOpen(Boolean(open));
+  };
+  const showDialog = (dialog: HTMLDialogElement | null) => { dialog?.showModal(); updateDialogVisibility(); };
+  // One notice at a time: inside the open dialog (so the backdrop never hides it), otherwise in the main column.
+  const noticeNode = <Notice notice={notice} onDismiss={() => setNotice('')} />;
+  const mainNotice = openDialog ? null : noticeNode;
+  const dialogNotice = (name: typeof openDialog) => openDialog === name ? noticeNode : null;
   const contextLine = usage ? ` · context ≈ ${usage.contextPercent}% of ${usage.contextLimit.toLocaleString()}` : '';
   const upgradeFeatures = schema && schema.version < 3 ? 'saved projects, new chats, detailed usage, and personal workspace history' : schema && schema.version < 4 ? 'detailed usage and personal workspace history' : 'search, archive, automation, and continuity';
 
   return <>
+    <div className="visually-hidden" aria-live="polite">{announcement.polite}</div>
+    <div className="visually-hidden" aria-live="assertive">{announcement.assertive}</div>
     {schema?.upgradeRequired && <div className="upgrade-banner" role="status">
       This database needs a verified, backed-up upgrade to v{schema.current} for {upgradeFeatures}{!schema.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain accessible.
-      <button type="button" className="secondary" onClick={() => { setAppDialogOpen(true); upgradeDialogRef.current?.showModal(); }}>Review upgrade</button>
+      <button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button>
     </div>}
     <main className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
       <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} onClick={() => setSidebarView('workspace')}>Inbox & history</button><button type="button" className={sidebarView === 'projects' ? 'selected' : ''} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
-      {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => { setAppDialogOpen(true); manageDialogRef.current?.showModal(); }} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
+      {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
       <nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button><button type="button" disabled={!schema || schema.version < 5} onClick={openAutomation}>Hooks and follow-ups</button>{sidebarView === 'workspace' && <><button type="button" onClick={() => void openSettings()}>Model settings</button><button type="button" disabled={exporting} onClick={() => void exportDiagnostics()}>Export diagnostics</button></>}</nav>
     </div>
-    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} /> : <section className="usage-gate"><h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => { setAppDialogOpen(true); upgradeDialogRef.current?.showModal(); }}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation">
+    {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} notice={mainNotice} /> : <section className="usage-gate">{mainNotice}<h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation">
       <header className="task-header"><div><p className="eyebrow">{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
-      {notice && <div className="notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
+      {mainNotice}
       <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
       {schema && schema.version >= 5 && <TemplatePicker api={api} current={{ prompt: draft.content, mode: activeProject?.kind === 'git' ? taskMode : 'chat', profileId, tokenBudget: taskMode === 'coordinated' ? draft.coordinatedBudget : draft.tokenBudget, scope: draft.scopeGuidance, ...(taskMode === 'coordinated' && activeProject?.kind === 'git' ? { coordination: { childProfileIds: draft.childProfileIds, requiredValidation: { command: draft.requiredValidationCommand, cwd: '', timeoutMs: 600000 } } } : {}) }} onApply={template => {
         updateDraft({ content: template.prompt, tokenBudget: template.tokenBudget, coordinatedBudget: template.tokenBudget, scopeGuidance: template.scope, childProfileIds: template.coordination?.childProfileIds ?? [], requiredValidationCommand: template.coordination?.requiredValidation.command ?? '', startPayload: undefined });
         if (profiles.some(profile => profile.id === template.profileId)) { setProfileId(template.profileId); void savePreferences({ profileId: template.profileId }); }
-        else setNotice('Template profile is unavailable. Choose a model before sending.');
+        else setNotice('Template profile is unavailable. Choose a model before sending.', 'warning');
         if (activeProject?.kind === 'git' || template.mode === 'chat') { setTaskMode(template.mode); void savePreferences({ mode: template.mode }); }
-        else setNotice('This folder supports chat mode only. Review the template prompt before sending.');
+        else setNotice('This folder supports chat mode only. Review the template prompt before sending.', 'warning');
         setMoreOptions(true);
       }} setNotice={setNotice} />}
       <form className="draft-compose" onSubmit={startDraft}>
@@ -767,10 +775,10 @@ function App() {
         {draft.unknown && <p className="draft-warning">The start outcome is unknown. Check the project chat list first. Retry uses the original message and settings. <button type="button" className="secondary" onClick={() => updateDraft({ startPayload: undefined, unknown: false })}>Start fresh draft</button></p>}
         <button type="submit" className="primary draft-send" disabled={!draft.content.trim() || creating || !schema || schema.version < 3 || (!draft.unknown && (activeProject?.kind === 'unavailable' || !configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt) || (activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim())))}>{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : 'Send'}</button>
       </form>
-    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
+    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
     <section className="conversation">
       <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
-      {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
+      {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
       <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
@@ -830,7 +838,7 @@ function App() {
       </div> : <div className="approvals-panel">
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}
-        {(detail?.approvals ?? []).map((approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />)}
+        {(detail?.approvals ?? []).map((approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />)}
         {!detail?.approvals?.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
         {approvalNextBefore !== null && <button type="button" className="quiet" onClick={() => selectedId && void loadApprovals(selectedId, approvalNextBefore)}>Older approvals</button>}
       </div>}
@@ -838,6 +846,7 @@ function App() {
     </>}
     <dialog ref={manageDialogRef} className="settings-dialog manage-dialog" aria-labelledby="manage-projects-title" onToggle={updateDialogVisibility}>
       <div className="dialog-head"><div><p className="eyebrow">SAVED FOLDERS</p><h2 id="manage-projects-title">Manage projects</h2></div><button type="button" className="secondary" onClick={() => manageDialogRef.current?.close()}>Close</button></div>
+      {dialogNotice('manage')}
       <div className="manage-list">{projects.map((project) => <form key={`${project.id}:${project.updatedAt}`} className="manage-project" onSubmit={(event) => { event.preventDefault(); const name = new FormData(event.currentTarget).get('name'); if (typeof name === 'string' && name.trim() && name.trim() !== project.name) void updateProject(project, { name: name.trim() }); }}><div><label>Name for {project.name}<input name="name" aria-label={`Name for ${project.name}`} defaultValue={project.name} maxLength={100} required /></label><small title={project.path}>{project.path}</small>{project.kind === 'unavailable' && <span className="project-unavailable-note">Folder unavailable</span>}</div><div className="manage-actions"><button type="submit" className="secondary">Save name</button><button type="button" className="secondary" onClick={() => void updateProject(project, { hidden: !project.hidden })}>{project.hidden ? `Restore ${project.name}` : `Hide ${project.name}`}</button></div></form>)}{!projects.length && <p className="muted">No saved projects yet.</p>}</div>
     </dialog>
     <dialog ref={dialogRef} className="settings-dialog" onToggle={updateDialogVisibility} onClose={() => setCredential('')}>
@@ -845,6 +854,7 @@ function App() {
         <div><p className="eyebrow">CONNECTIONS</p><h2>Model profile</h2></div>
         <div className="dialog-actions"><button type="button" className="secondary" onClick={newProfile}>New profile</button><button type="submit" className="secondary">Close settings</button></div>
       </form>
+      {dialogNotice('settings')}
       <form onSubmit={saveProfile} className="profile-form">
         <label>Name <input value={profileDraft.name} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} required maxLength={100} /></label>
         <label>API kind <select value={profileDraft.apiKind} disabled={isBuiltinProfile} onChange={(e) => { const apiKind = e.target.value as ModelProfile['apiKind']; setProfileDraft({ ...profileDraft, apiKind, effort: profileDraft.effort && supportedEfforts(apiKind).includes(profileDraft.effort) ? profileDraft.effort : undefined }); }}><option value="fake">Offline fake</option><option value="responses">Responses API</option><option value="chat-completions">Chat completions</option><option value="anthropic">Anthropic</option></select></label>
@@ -859,9 +869,10 @@ function App() {
       </form>
       <McpSettings api={api} servers={mcpServers} onChanged={() => void loadMcp()} setNotice={setNotice} />
     </dialog>
-    <dialog ref={automationDialogRef} className="settings-dialog automation-dialog" onClose={event => { if (event.target === event.currentTarget) { setAutomationOpen(false); updateDialogVisibility(); } }}><div className="dialog-actions"><button type="button" className="secondary" onClick={() => automationDialogRef.current?.close()}>Close hooks and follow-ups</button></div>{automationOpen && <AutomationSettings api={api} onDraft={useAutomationDraft} onPrepared={(draft, approvalId) => void openPreparedApproval(draft, approvalId)} setNotice={setNotice} />}</dialog>
+    <dialog ref={automationDialogRef} className="settings-dialog automation-dialog" onClose={event => { if (event.target === event.currentTarget) { setAutomationOpen(false); updateDialogVisibility(); } }}><div className="dialog-actions"><button type="button" className="secondary" onClick={() => automationDialogRef.current?.close()}>Close hooks and follow-ups</button></div>{dialogNotice('automation')}{automationOpen && <AutomationSettings api={api} onDraft={useAutomationDraft} onPrepared={(draft, approvalId) => void openPreparedApproval(draft, approvalId)} setNotice={setNotice} />}</dialog>
     <dialog ref={upgradeDialogRef} className="settings-dialog upgrade-dialog" onToggle={updateDialogVisibility}>
       <div className="dialog-head"><div><p className="eyebrow">DATABASE UPGRADE</p><h2>Back up and upgrade</h2></div></div>
+      {dialogNotice('upgrade')}
       <div className="profile-form">
         <p>This creates a verified SQLite backup, then upgrades the database to v{schema?.current ?? 5} for {upgradeFeatures}{!schema?.coordinatedAvailable ? ' and coordinated tasks' : ''}. Earlier chats remain available during the upgrade decision. Keep the backup to open the previous database with an older application.</p>
         <div className="dialog-actions">

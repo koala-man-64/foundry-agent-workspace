@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AgentChannelPanel } from './AgentChannel';
 import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, Message, ModelProfile, Task } from '../../../../packages/protocol/src/index';
 import type { CompactionSummary, SearchHit } from '../../../../packages/protocol/src/workspace';
@@ -16,13 +16,15 @@ import type { ActionItem } from '../../../../packages/protocol/src/workspace';
 import type {
   AgentRun, Assignment, AssignmentState, ChildDetail, IntegrationOperation, IntegrationState, OrchestrationView, RunOutcome
 } from '../../../../packages/protocol/src/orchestration';
+import { decisionFailure, errorMessage, type SetNotice } from './feedback';
 
 interface Props {
   api: DesktopApi;
   task: Task;
   profiles: ModelProfile[];
-  notice: string;
-  setNotice: (value: string) => void;
+  /** The app notice element, rendered here so it stays next to the coordinated conversation. */
+  notice: ReactNode;
+  setNotice: SetNotice;
   onWorkspaceRefresh: () => void;
   onTaskCreated: (task: Task) => void;
   focusAction?: ActionItem;
@@ -69,6 +71,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage' | 'handoff'>('orchestration');
   const [composer, setComposer] = useState('');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
+  const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
   const [reviseTarget, setReviseTarget] = useState<string>();
   const [reviseObjective, setReviseObjective] = useState('');
@@ -119,7 +122,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       if (searchHit.taskId === rootTaskId) { setRootMessages(current => mergeTranscriptPage(current, page.items, rootMessageOrdinals.current)); if (rootMessageCursor.current === null) { rootMessageCursor.current = page.nextBefore; setRootNextBefore(page.nextBefore); } }
       else { setChildDetail(current => current?.run.taskId === searchHit.taskId ? { ...current, messages: mergeTranscriptPage(current.messages, page.items.map(item => ({ ...item, message: { ...item.message, truncated: Boolean(item.message.truncated) } })), childMessageOrdinals.current) } : current); if (childMessageCursor.current === null) { childMessageCursor.current = page.nextBefore; setChildNextBefore(page.nextBefore); } }
       requestAnimationFrame(() => document.querySelector(`[data-message-id="${searchHit.messageId}"]`)?.scrollIntoView({ block: 'center' }));
-    }, error => { searchedMessage.current = ''; setNotice(`Could not open search result: ${error instanceof Error ? error.message : String(error)}`); });
+    }, error => { searchedMessage.current = ''; setNotice(`Could not open search result: ${errorMessage(error)}`); });
   }, [api, searchHit, rootTaskId, childDetail?.run.taskId, setNotice]);
   useEffect(() => {
     if (inspectorOpen) inspectorCloseRef.current?.focus();
@@ -139,7 +142,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       const { runs: _runs, runsCursor: _rc, events: _events, eventsCursor: _ec, ...rest } = next;
       setView(rest);
       setViewError('');
-    } catch (error) { if (version === viewVersion.current) setViewError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { if (version === viewVersion.current) setViewError(errorMessage(error)); }
   }, [api, rootTaskId]);
   viewWorker.current = performFetchLatest;
   const fetchLatest = useCallback((): Promise<void> => {
@@ -158,7 +161,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       if (version !== viewVersion.current || rootRef.current !== rootTaskId) return;
       setRunsById((current) => { const merged = { ...current }; for (const run of next.runs) merged[run.taskId] = run; return merged; });
       setRunsCursor(next.runsCursor);
-    } catch (error) { setNotice(`Could not load more agents: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load more agents: ${errorMessage(error)}`); }
   }, [api, rootTaskId, runsCursor, setNotice]);
 
   const loadOlderEvents = useCallback(async () => {
@@ -169,7 +172,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       if (version !== viewVersion.current || rootRef.current !== rootTaskId) return;
       setEventsById((current) => { const merged = { ...current }; for (const item of next.events) merged[item.sequence] = item; return merged; });
       setEventsCursor(next.eventsCursor);
-    } catch (error) { setNotice(`Could not load older events: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load older events: ${errorMessage(error)}`); }
   }, [api, rootTaskId, eventsCursor, setNotice]);
 
   const performLoadChild = useCallback(async (childTaskId: string) => {
@@ -190,7 +193,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         setChildNextBefore(childMessageCursor.current);
         childLatestThrough.current = page.through; setChildThrough(page.through);
       }
-    } catch (error) { if (version === childVersion.current && selectedChildRef.current === childTaskId) setNotice(`Could not load agent detail: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === childVersion.current && selectedChildRef.current === childTaskId) setNotice(`Could not load agent detail: ${errorMessage(error)}`); }
   }, [api, rootTaskId, setNotice]);
   childWorker.current = performLoadChild;
   const loadChild = useCallback((childTaskId: string): Promise<void> => {
@@ -211,7 +214,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       setChildDetail(current => current?.run.taskId === selectedChildId ? { ...current, messages: mergeTranscriptPage(current.messages, page.items.map(item => ({ ...item, message: { ...item.message, truncated: Boolean(item.message.truncated) } })), childMessageOrdinals.current) } : current);
       if (childMessageCursor.current === childNextBefore) { childMessageCursor.current = page.nextBefore; setChildNextBefore(page.nextBefore); }
       requestAnimationFrame(() => { if (transcript) transcript.scrollTop += transcript.scrollHeight - previousHeight; });
-    } catch (error) { setNotice(`Could not load older agent messages: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load older agent messages: ${errorMessage(error)}`); }
   };
 
   const performLoadApprovals = useCallback(async () => {
@@ -228,7 +231,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       setRootApprovals(rootReads.map(read => read.approval));
       setChildApprovals(Object.fromEntries(childLists.map(([id, reads]) => [id, reads.map(read => read.approval)])));
       setIncompleteApprovalIds(new Set([...rootReads, ...childLists.flatMap(([, reads]) => reads)].filter(read => !read.complete).map(read => read.approval.id)));
-    } catch (error) { if (version === approvalsVersion.current) setNotice(`Could not load approvals: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === approvalsVersion.current) setNotice(`Could not load approvals: ${errorMessage(error)}`); }
   }, [api, rootTaskId, runsById, setNotice]);
   approvalsWorker.current = performLoadApprovals;
   const loadApprovals = useCallback((): Promise<void> => {
@@ -253,7 +256,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       rootLatestThrough.current = page.through; setRootThrough(page.through);
       transcriptLoadedId.current = rootTaskId;
       setRootCompactions(usage.compactions);
-    } catch (error) { if (version === transcriptVersion.current) setNotice(`Could not load coordinator conversation: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === transcriptVersion.current) setNotice(`Could not load coordinator conversation: ${errorMessage(error)}`); }
   }, [api, rootTaskId, setNotice]);
   transcriptWorker.current = performLoadRootTranscript;
   const loadRootTranscript = useCallback((): Promise<void> => {
@@ -273,7 +276,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
       setRootMessages(current => mergeTranscriptPage(current, page.items, rootMessageOrdinals.current));
       if (rootMessageCursor.current === rootNextBefore) { rootMessageCursor.current = page.nextBefore; setRootNextBefore(page.nextBefore); }
       requestAnimationFrame(() => { if (transcript) transcript.scrollTop += transcript.scrollHeight - previousHeight; });
-    } catch (error) { setNotice(`Could not load older coordinator messages: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { setNotice(`Could not load older coordinator messages: ${errorMessage(error)}`); }
   };
 
   const refreshInspector = useCallback(async (path: string) => {
@@ -281,7 +284,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
     try {
       const [nextFiles, nextDiff] = await Promise.all([api.invoke('files.list', { taskId: rootTaskId, path }), api.invoke('task.diff', { taskId: rootTaskId })]);
       if (version === inspectorVersion.current && rootRef.current === rootTaskId) { setFiles(nextFiles); setDiff(nextDiff); }
-    } catch (error) { if (version === inspectorVersion.current) setNotice(`Could not refresh inspector: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { if (version === inspectorVersion.current) setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
   }, [api, rootTaskId, setNotice]);
 
   useEffect(() => {
@@ -339,7 +342,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
     try {
       await api.invoke('orchestration.decide', { rootTaskId, taskId: approval.taskId, approvalId: approval.id, nonce: approval.nonce, assignmentId: approval.assignmentId ?? null, generation: approval.generation ?? 1, fingerprint: approval.fingerprint, decision });
       await fetchLatest(); await loadApprovals(); if (selectedChildId) await loadChild(selectedChildId);
-    } catch (error) { setNotice(`Could not ${decision} this approval: ${error instanceof Error ? error.message : String(error)}`); }
+      setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: decisionFailure(decision, error) })); await loadApprovals().catch(() => undefined); }
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 
@@ -347,7 +351,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
     event.preventDefault(); if (!composer.trim()) return;
     const content = composer.trim(); setComposer('');
     try { await api.invoke('task.send', { taskId: rootTaskId, content }); await fetchLatest(); await loadRootTranscript(); }
-    catch (error) { setComposer(content); setNotice(`Message was not sent: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setComposer(content); setNotice(`Message was not sent: ${errorMessage(error)}`); }
   };
 
   const reconcileApproval = async (approval: Approval) => {
@@ -355,10 +359,11 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
     setApprovalInFlight(current => ({ ...current, [approval.id]: 'reconcile' }));
     try {
       const result = await api.invoke('approval.reconcile', { taskId: approval.taskId, approvalId: approval.id });
-      setNotice(result.result?.content ?? `File outcome: ${result.state}`);
+      setNotice(result.result?.content ?? `File outcome: ${result.state}`, 'info');
       await loadApprovals();
       await fetchLatest();
-    } catch (error) { setNotice(`Could not check this file outcome: ${error instanceof Error ? error.message : String(error)}`); }
+      setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: decisionFailure('reconcile', error) })); await loadApprovals().catch(() => undefined); }
     finally { setApprovalInFlight(current => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 
@@ -371,14 +376,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const cancelChild = async (run: AgentRun, key: string) => {
     setBusy(`cancel-${run.taskId}`);
     try { await api.invoke('orchestration.cancelChild', { rootTaskId, childTaskId: run.taskId, generation: run.generation }); await fetchLatest(); if (selectedChildId === run.taskId) await loadChild(run.taskId); }
-    catch (error) { setNotice(`Could not cancel ${key}: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not cancel ${key}: ${errorMessage(error)}`); }
     finally { setBusy(undefined); }
   };
 
   const cancelRoot = async () => {
     setBusy('cancel-root');
     try { await api.invoke('orchestration.cancelRoot', { rootTaskId }); await fetchLatest(); onWorkspaceRefresh(); }
-    catch (error) { setNotice(`Could not cancel the coordinated task: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not cancel the coordinated task: ${errorMessage(error)}`); }
     finally { setBusy(undefined); }
   };
 
@@ -386,30 +391,30 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const submitRevise = async (event: FormEvent) => {
     event.preventDefault(); if (!reviseTarget) return;
     const acceptance = reviseAcceptance.split('\n').map((line) => line.trim()).filter(Boolean);
-    if (!reviseObjective.trim() || !acceptance.length) { setNotice('An assignment revision needs an objective and at least one acceptance item.'); return; }
+    if (!reviseObjective.trim() || !acceptance.length) { setNotice('An assignment revision needs an objective and at least one acceptance item.', 'warning'); return; }
     setBusy(`revise-${reviseTarget}`);
     try { await api.invoke('orchestration.reviseAssignment', { rootTaskId, assignmentId: reviseTarget, objective: reviseObjective.trim(), acceptance }); setReviseTarget(undefined); await fetchLatest(); }
-    catch (error) { setNotice(`Could not revise this assignment: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not revise this assignment: ${errorMessage(error)}`); }
     finally { setBusy(undefined); }
   };
 
   const checkOutcome = async (operation: IntegrationOperation) => {
     setOperationInFlight((current) => ({ ...current, [operation.id]: 'check' }));
-    try { const result = await api.invoke('orchestration.reconcile', { rootTaskId, operationId: operation.id }); setNotice(`Reconciliation: ${result.kind} — ${result.detail}`); await fetchLatest(); }
-    catch (error) { setNotice(`Could not check this outcome: ${error instanceof Error ? error.message : String(error)}`); }
+    try { const result = await api.invoke('orchestration.reconcile', { rootTaskId, operationId: operation.id }); setNotice(`Reconciliation: ${result.kind} — ${result.detail}`, 'info'); await fetchLatest(); }
+    catch (error) { setNotice(`Could not check this outcome: ${errorMessage(error)}`); }
     finally { setOperationInFlight((current) => { const next = { ...current }; delete next[operation.id]; return next; }); }
   };
   const prepareContinuation = async (operation: IntegrationOperation) => {
     setOperationInFlight((current) => ({ ...current, [operation.id]: 'continue' }));
-    try { await api.invoke('orchestration.prepareContinue', { rootTaskId, operationId: operation.id }); setNotice('A continuation approval was prepared. Review it in Approvals.'); await fetchLatest(); }
-    catch (error) { setNotice(`Could not prepare a continuation: ${error instanceof Error ? error.message : String(error)}`); }
+    try { await api.invoke('orchestration.prepareContinue', { rootTaskId, operationId: operation.id }); setNotice('A continuation approval was prepared. Review it in Approvals.', 'info'); await fetchLatest(); }
+    catch (error) { setNotice(`Could not prepare a continuation: ${errorMessage(error)}`); }
     finally { setOperationInFlight((current) => { const next = { ...current }; delete next[operation.id]; return next; }); }
   };
 
   const browseDirectory = (path: string) => { setCurrentPath(path); setFile(undefined); void refreshInspector(path); };
   const readFile = async (path: string) => {
     try { setFile(await api.invoke('files.read', { taskId: rootTaskId, path })); }
-    catch (error) { setNotice(`Could not read file: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setNotice(`Could not read file: ${errorMessage(error)}`); }
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
 
@@ -432,7 +437,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         </div>
         <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspectorToggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
       </header>
-      {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
+      {notice}
       {viewError && <p className="muted inspector-empty">{viewError}</p>}
       <nav aria-label="Agent tree" className="agent-tree">
         <button type="button" className={`agent-row ${!selectedChildId ? 'selected' : ''}`} onClick={() => setSelectedChildId(undefined)}>
@@ -504,7 +509,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
+          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>

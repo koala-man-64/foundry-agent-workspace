@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserCommand, BrowserState, BrowserTab, DesktopApi } from '../../../../packages/protocol/src/index';
+import { errorMessage } from './feedback';
 
 type Confirmation = 'attach' | 'clearSite' | 'clearProfile' | null;
 const emptyState: BrowserState = { tabs: [], activeTabId: null };
@@ -42,7 +43,7 @@ export function BrowserPanel({ api, taskId, profileName, eligible, hidden, onNot
   useEffect(() => {
     let alive = true;
     const dispose = api.onBrowserState((next) => { if (alive) setState(next); });
-    void api.browser({ kind: 'state' }).then((next) => { if (alive) setState(next); }).catch((error) => onNotice(`Browser unavailable: ${error instanceof Error ? error.message : String(error)}`));
+    void api.browser({ kind: 'state' }).then((next) => { if (alive) setState(next); }).catch((error) => onNotice(`Browser unavailable: ${errorMessage(error)}`));
     return () => {
       alive = false;
       dispose();
@@ -64,7 +65,7 @@ export function BrowserPanel({ api, taskId, profileName, eligible, hidden, onNot
     const key = JSON.stringify(bounds);
     if (key === boundsRef.current) return;
     boundsRef.current = key;
-    void api.browser({ kind: 'bounds', bounds }).catch((error) => onNotice(`Could not position browser page: ${error instanceof Error ? error.message : String(error)}`));
+    void api.browser({ kind: 'bounds', bounds }).catch((error) => onNotice(`Could not position browser page: ${errorMessage(error)}`));
   }, [api, confirmation, hidden, onNotice, tabId]);
 
   useLayoutEffect(() => {
@@ -80,14 +81,14 @@ export function BrowserPanel({ api, taskId, profileName, eligible, hidden, onNot
     if (busy) return;
     setBusy(true);
     try { setState(await api.browser(input)); }
-    catch (error) { onNotice(`Browser: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { onNotice(`Browser: ${errorMessage(error)}`); }
     finally { setBusy(false); }
   };
   const navigate = (event: FormEvent) => {
     event.preventDefault();
     if (!tab || !address.trim()) return;
     try { void command({ kind: 'navigate', tabId: tab.id, url: normalizeBrowserAddress(address) }); setEditingAddress(false); }
-    catch (error) { onNotice(error instanceof Error ? error.message : String(error)); }
+    catch (error) { onNotice(errorMessage(error)); }
   };
   const confirm = () => {
     if (confirmation === 'attach' && tab && taskId) void command({ kind: 'attach', tabId: tab.id, taskId });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { DesktopApi, Message, ModelProfile, Task, WorkspaceEvent } from '../../../../packages/protocol/src/index';
 import type { ArtifactPreview, ContinuationPreview, ContinuityView, TranscriptExport } from '../../../../packages/protocol/src/continuity';
+import { errorMessage } from './feedback';
 
 const decode = (base64: string) => Uint8Array.from(atob(base64), character => character.charCodeAt(0));
 const concatenate = (first: Uint8Array, second: Uint8Array) => { const merged = new Uint8Array(first.length + second.length); merged.set(first); merged.set(second, first.length); return merged; };
@@ -38,7 +39,7 @@ export function ContinuityPanel({ api, taskId, messages, profiles, onCreated, se
 
   const reload = useCallback(async () => {
     try { setView(await api.invoke('continuity.get', { taskId })); setError(''); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    catch (cause) { setError(errorMessage(cause)); }
   }, [api, taskId]);
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +48,7 @@ export function ContinuityPanel({ api, taskId, messages, profiles, onCreated, se
     void Promise.all([api.invoke('task.timeline', { taskId, limit: 50 }), api.invoke('task.read', { taskId })]).then(([page, read]) => {
       if (cancelled) return;
       setEvents(page.events); setEventsBefore(page.nextBefore); setRetired(read.task.status === 'retired'); setEventsError('');
-    }, cause => { if (!cancelled) setEventsError(cause instanceof Error ? cause.message : String(cause)); });
+    }, cause => { if (!cancelled) setEventsError(errorMessage(cause)); });
     return () => { cancelled = true; };
   }, [api, taskId, reload]);
   const loadOlderEvents = async () => {
@@ -56,7 +57,7 @@ export function ContinuityPanel({ api, taskId, messages, profiles, onCreated, se
       const page = await api.invoke('task.timeline', { taskId, before: eventsBefore, limit: 50 });
       setEvents(current => [...current, ...page.events.filter(item => !current.some(known => known.sequence === item.sequence))]);
       setEventsBefore(page.nextBefore); setEventsError('');
-    } catch (cause) { setEventsError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { setEventsError(errorMessage(cause)); }
   };
   useEffect(() => {
     if (!artifact || !artifactBytes || !['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(artifact.mimeType) || artifact.nextOffset !== null) { setImageUrl(''); return; }
@@ -66,47 +67,47 @@ export function ContinuityPanel({ api, taskId, messages, profiles, onCreated, se
   const saveDecision = async (event: FormEvent) => {
     event.preventDefault(); if (busy) return; setBusy(true);
     try { await api.invoke('decision.save', { taskId, title: title.trim(), rationale: rationale.trim(), messageIds: selectedMessages, evidenceIds: selectedEvidence, supersedesId: supersedesId || null }); setTitle(''); setRationale(''); setSupersedesId(''); await reload(); }
-    catch (cause) { setNotice(`Could not save decision: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not save decision: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const loadOlderDecisions = async () => {
     if (!view?.nextBefore) return;
     try { const page = await api.invoke('continuity.get', { taskId, before: view.nextBefore }); setView(current => current && { ...current, decisions: [...current.decisions, ...page.decisions], nextBefore: page.nextBefore }); }
-    catch (cause) { setError(`Could not load older decisions: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setError(`Could not load older decisions: ${errorMessage(cause)}`); }
   };
   const loadMoreLineage = async () => {
     if (!view?.nextLineage) return;
     try { const page = await api.invoke('continuity.get', { taskId, lineageAfter: view.nextLineage }); setView(current => current && { ...current, lineage: [...current.lineage, ...page.lineage], nextLineage: page.nextLineage }); }
-    catch (cause) { setError(`Could not load more lineage: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setError(`Could not load more lineage: ${errorMessage(cause)}`); }
   };
   const previewContinuation = async () => {
     setBusy(true);
     try { setPreview(await api.invoke('task.continuationPreview', { taskId, messageIds: selectedMessages, evidenceIds: selectedEvidence, ...(retired && retainedCommit.trim() ? { sourceCommit: retainedCommit.trim() } : {}) })); }
-    catch (cause) { setNotice(`Could not prepare continuation: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not prepare continuation: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const createContinuation = async () => {
     if (!preview || busy) return; setBusy(true);
     try { const task = await api.invoke('task.continue', { previewId: preview.id, title: continuationTitle.trim(), profileId: continuationProfile, tokenBudget: continuationBudget, mode: continuationMode }); setPreview(undefined); onCreated(task); }
-    catch (cause) { setNotice(`Could not create continuation: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not create continuation: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const inspectArtifact = async () => {
     setBusy(true);
     try { const result = await api.invoke('artifact.preview', { taskId, path: artifactPath.trim() }); setArtifact(result); setArtifactBytes(decode(result.content)); }
-    catch (cause) { setNotice(`Could not preview artifact: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not preview artifact: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const loadArtifact = async () => {
     if (!artifact || artifact.nextOffset === null || !artifactBytes) return; setBusy(true);
     try { const chunk = await api.invoke('artifact.chunk', { previewId: artifact.id, offset: artifact.nextOffset }); setArtifactBytes(concatenate(artifactBytes, decode(chunk.content))); setArtifact({ ...artifact, nextOffset: chunk.nextOffset }); }
-    catch (cause) { setNotice(`Could not load more artifact content: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not load more artifact content: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const exportTranscript = async () => {
     setBusy(true);
     try { setExportResult(await api.invoke('task.exportTranscript', { taskId, includeChildren })); }
-    catch (cause) { setNotice(`Could not export transcript: ${cause instanceof Error ? cause.message : String(cause)}`); }
+    catch (cause) { setNotice(`Could not export transcript: ${errorMessage(cause)}`); }
     finally { setBusy(false); }
   };
   const text = artifactBytes && artifact && !artifact.mimeType.startsWith('image/') ? new TextDecoder().decode(artifactBytes) : '';

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DesktopApi, UsageReport } from '../../../../packages/protocol/src/index';
 import { UsageChart } from './UsageChart';
+import { errorMessage, type SetNotice } from './feedback';
 
 interface Props {
   api: DesktopApi;
@@ -12,7 +13,7 @@ interface Props {
   retirementReady: boolean;
   refreshToken: number;
   onRefresh: () => Promise<void>;
-  setNotice: (notice: string) => void;
+  setNotice: SetNotice;
 }
 
 const measuredMetric = (value: number | null, reported: number, known: number): string =>
@@ -30,7 +31,7 @@ export function CoordinatedTaskControls({ api, rootTaskId, taskId, label, active
     let current = true;
     void api.invoke('task.usage', { taskId }).then(result => {
       if (current) { setUsage(result); setError(''); }
-    }, reason => { if (current) setError(`Could not load usage: ${reason instanceof Error ? reason.message : String(reason)}`); });
+    }, reason => { if (current) setError(`Could not load usage: ${errorMessage(reason)}`); });
     return () => { current = false; };
   }, [api, taskId, refreshToken, revision]);
 
@@ -39,10 +40,10 @@ export function CoordinatedTaskControls({ api, rootTaskId, taskId, label, active
     setBusy('compact');
     try {
       await api.invoke('task.compact', { taskId });
-      setNotice(`Compacted ${label} context. Original messages remain in history.`);
+      setNotice(`Compacted ${label} context. Original messages remain in history.`, 'success');
       setRevision(value => value + 1);
       await onRefresh();
-    } catch (reason) { setNotice(`Could not compact ${label}: ${reason instanceof Error ? reason.message : String(reason)}`); }
+    } catch (reason) { setNotice(`Could not compact ${label}: ${errorMessage(reason)}`); }
     finally { setBusy(undefined); }
   };
 
@@ -51,9 +52,9 @@ export function CoordinatedTaskControls({ api, rootTaskId, taskId, label, active
     setBusy('retire'); setConfirmRetire(false);
     try {
       const result = await api.invoke('task.retire', { taskId: rootTaskId, confirm: 'retire' });
-      setNotice(`Retired ${result.removedWorktrees.length} clean worktree(s). Branches and task history are retained.`);
+      setNotice(`Retired ${result.removedWorktrees.length} clean worktree(s). Branches and task history are retained.`, 'success');
       await onRefresh();
-    } catch (reason) { setNotice(`Could not retire: ${reason instanceof Error ? reason.message : String(reason)}`); }
+    } catch (reason) { setNotice(`Could not retire: ${errorMessage(reason)}`); }
     finally { setBusy(undefined); }
   };
 

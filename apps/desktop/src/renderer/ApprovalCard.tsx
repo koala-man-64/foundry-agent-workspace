@@ -8,6 +8,8 @@ interface Props {
   variant: 'task' | 'coordinated';
   complete: boolean;
   busy?: ApprovalBusy;
+  /** Why the last decision or reconciliation on this card could not be confirmed; shown in the card, where the action is. */
+  error?: string;
   onDecide: (approval: Approval, decision: 'approve' | 'reject') => void;
   onReconcile: (approval: Approval) => void;
   onAcknowledgeBrowser?: (approval: Approval) => void;
@@ -16,13 +18,14 @@ interface Props {
 function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
 
 /** One reviewed tool action. Render-only: the caller owns the decision, reconciliation and evidence loading. */
-export function ApprovalCard({ approval, variant, complete, busy, onDecide, onReconcile, onAcknowledgeBrowser }: Props) {
+export function ApprovalCard({ approval, variant, complete, busy, error, onDecide, onReconcile, onAcknowledgeBrowser }: Props) {
   const coordinated = variant === 'coordinated';
   const fileReconcilable = approval.path && approval.resultingHash && !approval.handoff && !approval.integration;
   return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id}>
     <div className="approval-heading"><strong>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span>{approval.state}</span></div>
     {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
     <p>{approval.summary}</p>
+    {error && <p className="approval-error" role="alert">{error}</p>}
     {coordinated && !complete && <p role="alert">Full approval evidence is unavailable. Approval is disabled until it can be loaded.</p>}
     {approval.browser && <div className="command-evidence">
       <strong>Browser action</strong>

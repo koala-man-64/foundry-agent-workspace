@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { DesktopApi, Project, Task } from '../../../../packages/protocol/src/index';
 import type { ActionItem, ActionPage, SearchHit, SearchPage, TaskPage } from '../../../../packages/protocol/src/workspace';
 import { actionDetailLabel, actionStateLabel, formatDateTime, formatWhen, taskStatusLabel } from './labels';
+import { errorMessage } from './feedback';
 
 type View = 'inbox' | 'recent' | 'all' | 'archived';
 type Cursor = TaskPage['nextCursor'];
@@ -55,7 +56,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
     const version = ++requestVersion.current;
     setLoading(true);
     try {
-      const actionResult = await api.invoke('workspace.actions', { limit: 50 }).then(value => ({ value, error: '' }), error => ({ value: null, error: error instanceof Error ? error.message : String(error) }));
+      const actionResult = await api.invoke('workspace.actions', { limit: 50 }).then(value => ({ value, error: '' }), error => ({ value: null, error: errorMessage(error) }));
       if (version !== requestVersion.current) return;
       const failedActions = Boolean(actionResult.error);
       setActionError(actionResult.error);
@@ -77,7 +78,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
         const search = await api.invoke('workspace.search', { query: submittedQuery, visibility, limit: PAGE_SIZE, ...(mode ? { mode } : {}), ...(status ? { status } : {}), ...(projectPath.trim() ? { projectPath: projectPath.trim() } : {}), ...(projectId ? { projectId } : {}), ...(fromDate ? { from: new Date(`${fromDate}T00:00:00`).toISOString() } : {}), ...(toDate ? { to: new Date(`${toDate}T23:59:59.999`).toISOString() } : {}) });
         if (version === requestVersion.current) { setHits(search.hits); setSearchCursor(search.nextCursor); }
       }
-    } catch (error) { if (version === requestVersion.current) { setListError(error instanceof Error ? error.message : String(error)); setTasks([]); setCursor(null); } }
+    } catch (error) { if (version === requestVersion.current) { setListError(errorMessage(error)); setTasks([]); setCursor(null); } }
     finally { if (version === requestVersion.current) setLoading(false); }
   }, [api, view, cursor, mode, status, projectPath, projectId, fromDate, toDate, selectedId, onSelect, submittedQuery]);
   currentLoad.current = load;
@@ -105,7 +106,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
       if (version !== requestVersion.current) return;
       setActions(current => [...current, ...page.items.filter(item => !current.some(existing => existing.id === item.id))]);
       setActionMore(page.hasMore); setActionCursor(page.nextCursor); setActionCounts(page.counts);
-    } catch (error) { setActionError(`Could not load more actions: ${error instanceof Error ? error.message : String(error)}`); requestLoad(); }
+    } catch (error) { setActionError(`Could not load more actions: ${errorMessage(error)}`); requestLoad(); }
     finally { actionPageActive.current = false; setActionPageLoading(false); }
   };
   const loadMoreSearch = async () => {
@@ -117,7 +118,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
       if (version !== requestVersion.current) return;
       setHits(current => [...current, ...result.hits]); setSearchCursor(result.nextCursor);
     } catch (error) {
-      setListError(`Search results changed or could not load: ${error instanceof Error ? error.message : String(error)}. Refreshing from the first page.`);
+      setListError(`Search results changed or could not load: ${errorMessage(error)}. Refreshing from the first page.`);
       setSearchCursor(null);
       requestLoad();
     } finally { searchPageActive.current = false; setSearchPageLoading(false); }
@@ -125,7 +126,7 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
   const setArchived = async (task: Task) => {
     setBusyId(task.id);
     try { await api.invoke('task.setArchived', { taskId: task.id, archived: !task.archivedAt }); onChanged(); requestLoad(); }
-    catch (error) { setListError(`Could not ${task.archivedAt ? 'restore' : 'archive'} task: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { setListError(`Could not ${task.archivedAt ? 'restore' : 'archive'} task: ${errorMessage(error)}`); }
     finally { setBusyId(undefined); }
   };
 

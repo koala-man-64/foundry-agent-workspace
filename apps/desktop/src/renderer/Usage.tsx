@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DesktopApi, UsageBreakdownRow, UsageFilters, UsageGroup, UsageRequest, UsageSummary, UsageTotals } from '../../../../packages/protocol/src/index';
+import { errorMessage } from './feedback';
 
 type Period = 'today' | '7' | '30' | 'all' | 'custom';
 type Sort = 'tokens' | 'requests' | 'name';
@@ -48,7 +49,7 @@ function RequestRow({ record, onOpenTask }: { record: UsageRequest; onOpenTask: 
   </article>;
 }
 
-export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; refreshKey: number; onOpenTask: (taskId: string) => void }) {
+export function UsageView({ api, refreshKey, onOpenTask, notice }: { api: DesktopApi; refreshKey: number; onOpenTask: (taskId: string) => void; notice?: ReactNode }) {
   const [period, setPeriod] = useState<Period>('30');
   const [from, setFrom] = useState(localDate(new Date()));
   const [to, setTo] = useState(localDate(new Date()));
@@ -81,7 +82,7 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
       if (version !== queryVersion.current) return;
       setSummary(nextSummary); setRows(nextBreakdown.rows); setNextRowCursor(nextBreakdown.nextCursor);
       setRequests(nextRequests.records); setNextRequestCursor(nextRequests.nextCursor); setLoading(false);
-    }).catch(cause => { if (version === queryVersion.current) { setError(cause instanceof Error ? cause.message : String(cause)); setLoading(false); } });
+    }).catch(cause => { if (version === queryVersion.current) { setError(errorMessage(cause)); setLoading(false); } });
     return () => { ++queryVersion.current; };
   }, [api, filters, requestFilters, groupBy, sort, timeZone, refreshKey, validDates]);
 
@@ -89,13 +90,13 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
     if (!nextRowCursor) return;
     const version = queryVersion.current; const cursor = nextRowCursor; setNextRowCursor(null);
     try { const result = await api.invoke('usage.breakdown', { filters, groupBy, sort, cursor, limit: 25 }); if (version === queryVersion.current) { setRows(current => [...current, ...result.rows]); setNextRowCursor(result.nextCursor); } }
-    catch (cause) { if (version === queryVersion.current) { setNextRowCursor(cursor); setError(cause instanceof Error ? cause.message : String(cause)); } }
+    catch (cause) { if (version === queryVersion.current) { setNextRowCursor(cursor); setError(errorMessage(cause)); } }
   }
   async function loadMoreRequests() {
     if (!nextRequestCursor) return;
     const version = queryVersion.current; const cursor = nextRequestCursor; setNextRequestCursor(null);
     try { const result = await api.invoke('usage.requests', { filters: requestFilters, cursor, limit: 25 }); if (version === queryVersion.current) { setRequests(current => [...current, ...result.records]); setNextRequestCursor(result.nextCursor); } }
-    catch (cause) { if (version === queryVersion.current) { setNextRequestCursor(cursor); setError(cause instanceof Error ? cause.message : String(cause)); } }
+    catch (cause) { if (version === queryVersion.current) { setNextRequestCursor(cursor); setError(errorMessage(cause)); } }
   }
 
   const totals: UsageTotals | undefined = summary?.totals;
@@ -108,6 +109,7 @@ export function UsageView({ api, refreshKey, onOpenTask }: { api: DesktopApi; re
   const chartWidth = Math.max(320, Math.min(1200, chartSpan * 20));
   const chartStep = chartWidth / chartSpan;
   return <section className="usage-page" aria-label="Usage overview">
+    {notice}
     <header className="usage-page-header"><div><p className="eyebrow">LOCAL REQUEST HISTORY</p><h1>Usage</h1><p>Measured tokens from this workspace. Unknown usage and budget reservations are shown separately.</p></div><small>Calendar days in {timeZone}</small></header>
     <div className="usage-controls" role="group" aria-label="Date range">
       {([['today', 'Today'], ['7', '7 days'], ['30', '30 days'], ['all', 'All'], ['custom', 'Custom']] as const).map(([value, label]) => <button key={value} type="button" className={period === value ? 'active' : ''} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}

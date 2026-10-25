@@ -44,6 +44,8 @@ describe('design tokens', () => {
     expect(failures(['ink-inverse'], ['accent', 'accent-hover', 'danger', 'brand', 'brand-ink'], 4.5)).toEqual([]);
     expect(failures(['secondary-ink'], ['secondary-bg', 'secondary-bg-hover'], 4.5)).toEqual([]);
     expect(failures(['notice-error-ink'], ['notice-error-bg'], 4.5)).toEqual([]);
+    expect(failures(['notice-warning-ink'], ['notice-warning-bg'], 4.5)).toEqual([]);
+    expect(failures(['notice-success-ink'], ['notice-success-bg'], 4.5)).toEqual([]);
     expect(failures(['danger-ink'], ['danger-soft', 'accent-soft'], 4.5)).toEqual([]);
     expect(failures(['ok-ink'], ['ok-soft'], 4.5)).toEqual([]);
   });

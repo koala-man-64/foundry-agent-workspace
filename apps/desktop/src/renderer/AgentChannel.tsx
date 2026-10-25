@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ChannelView, DesktopApi } from '../../../../packages/protocol/src/index';
 import { CHANNEL_LIMITS } from '../../../../packages/protocol/src/limits';
+import { errorMessage } from './feedback';
 
 export function AgentChannelPanel({ api, taskId }: { api: DesktopApi; taskId: string }): React.JSX.Element {
   const [view, setView] = useState<ChannelView>();
@@ -13,7 +14,7 @@ export function AgentChannelPanel({ api, taskId }: { api: DesktopApi; taskId: st
   const refresh = useCallback(async () => {
     const current = ++version.current;
     try { const next = await api.invoke('channel.get', { taskId }); if (current === version.current) { setView(next); setError(''); } }
-    catch (failure) { if (current === version.current) setError(failure instanceof Error ? failure.message : String(failure)); }
+    catch (failure) { if (current === version.current) setError(errorMessage(failure)); }
   }, [api, taskId]);
   useEffect(() => {
     setView(undefined); setContent(''); setRecipient(''); request.current = undefined;
@@ -30,7 +31,7 @@ export function AgentChannelPanel({ api, taskId }: { api: DesktopApi; taskId: st
     try {
       await api.invoke('channel.send', { taskId, requestId: pending.id, content: pending.content, recipientTaskId: pending.recipient || null });
       setContent(''); request.current = undefined; await refresh();
-    } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    } catch (failure) { setError(errorMessage(failure)); }
     finally { setBusy(false); }
   };
   const more = async (agents: boolean): Promise<void> => {
@@ -41,7 +42,7 @@ export function AgentChannelPanel({ api, taskId }: { api: DesktopApi; taskId: st
       if (current !== version.current) return;
       setView(agents ? { ...view, participants: [...view.participants, ...next.participants], participantsCursor: next.participantsCursor } : { ...view, messages: next.messages, nextCursor: next.nextCursor });
       setError('');
-    } catch (failure) { if (current === version.current) setError(failure instanceof Error ? failure.message : String(failure)); }
+    } catch (failure) { if (current === version.current) setError(errorMessage(failure)); }
   };
   return <div className="channel-panel" data-testid="project-channel">
     <div className="channel-heading"><h3>Project channel</h3><button type="button" className="quiet" onClick={() => void refresh()}>Latest messages</button></div>
