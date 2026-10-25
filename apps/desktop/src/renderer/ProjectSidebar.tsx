@@ -1,6 +1,5 @@
-import type { Project, Task, TaskStatus } from '../../../../packages/protocol/src/index';
-
-const statusLabel: Record<TaskStatus, string> = { idle: 'Ready', running: 'Working', cancelled: 'Cancelled', interrupted: 'Interrupted', failed: 'Needs attention', retired: 'Retired' };
+import type { Project, Task } from '../../../../packages/protocol/src/index';
+import { formatDateTime, taskStatusLabel } from './labels';
 
 interface Props {
   projects: Project[];
@@ -22,7 +21,7 @@ interface Props {
 }
 
 function TaskRows({ tasks, selectedId, onSelect }: Pick<Props, 'selectedId' | 'onSelect'> & { tasks: Task[] }) {
-  return <>{tasks.map((task) => <button key={task.id} type="button" className={`task-row ${selectedId === task.id ? 'selected' : ''}`} aria-current={selectedId === task.id ? 'page' : undefined} title={`${statusLabel[task.status]} · ${new Date(task.updatedAt).toLocaleString()} · ${task.projectPath || 'No folder'}`} onClick={() => onSelect(task.id)}><span className={`status-dot ${task.status}`} aria-hidden="true" /><span className="task-row-title">{task.title}</span></button>)}</>;
+  return <>{tasks.map((task) => <button key={task.id} type="button" className={`task-row ${selectedId === task.id ? 'selected' : ''}`} aria-current={selectedId === task.id ? 'page' : undefined} title={`${taskStatusLabel[task.status]} · ${formatDateTime(task.updatedAt)} · ${task.projectPath || 'No folder'}`} onClick={() => onSelect(task.id)}><span className={`status-dot ${task.status}`} aria-hidden="true" /><span className="task-row-title">{task.title}</span></button>)}</>;
 }
 
 export function ProjectSidebar(props: Props) {

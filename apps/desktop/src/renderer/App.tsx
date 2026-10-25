@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, McpStatusPage, ModelProfile, ProbeResult, Project, SchemaStatus, Snapshot, TaskDetail, TaskStatus, UsageReport } from '../../../../packages/protocol/src/index';
+import type { Approval, DesktopApi, DiffResult, FileContent, FileEntry, McpServerStatus, McpStatusPage, ModelProfile, ProbeResult, Project, SchemaStatus, Snapshot, TaskDetail, UsageReport } from '../../../../packages/protocol/src/index';
 import { ORCHESTRATION_LIMITS, supportedEfforts } from '../../../../packages/protocol/src/limits';
 import { CoordinatedTaskView } from './Orchestration';
 import { AgentChannelPanel } from './AgentChannel';
@@ -17,6 +17,7 @@ import type { AutomationDraft } from '../../../../packages/protocol/src/automati
 import { TemplatePicker } from './TemplatePicker';
 import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
+import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
 
@@ -27,7 +28,6 @@ const OFFLINE_PROFILE: ModelProfile = {
   contextLimit: 128000, outputLimit: 8192
 };
 
-const statusLabel: Record<TaskStatus, string> = { idle: 'Ready', running: 'Working', cancelled: 'Cancelled', interrupted: 'Interrupted', failed: 'Needs attention', retired: 'Retired' };
 const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
 const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000 files / 1 GiB and 10,000 directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
 type Mode = 'chat' | 'coding' | 'coordinated';
@@ -35,11 +35,6 @@ interface StartPayload { requestId: string; projectId: string | null; content: s
 interface Draft { content: string; title: string; requiredValidationCommand: string; tokenBudget: number; coordinatedBudget: number; childProfileIds: string[]; scopeGuidance: string[]; startPayload?: StartPayload; pending?: boolean; unknown?: boolean; }
 const blankDraft = (): Draft => ({ content: '', title: '', requiredValidationCommand: '', tokenBudget: 100000, coordinatedBudget: 600000, childProfileIds: [], scopeGuidance: [] });
 const draftKey = (projectId: string | null) => projectId ?? 'none';
-
-function relativeTime(value: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
-  return minutes < 1 ? 'now' : minutes < 60 ? `${minutes}m` : minutes < 1440 ? `${Math.round(minutes / 60)}h` : `${Math.round(minutes / 1440)}d`;
-}
 
 function payloadString(payload: unknown, key: string): string | undefined {
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
@@ -773,7 +768,7 @@ function App() {
       </form>
     </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={notice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
     <section className="conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {statusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow">{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${selectedTask.status}`}>{taskModeLabel} · {taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notice">×</button></div>}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
@@ -830,7 +825,7 @@ function App() {
         <div className="approval-actions"><button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => void reconcilePublication()}>{publishBusy === 'reconcile' ? 'Checking…' : 'Check publication outcome'}</button><small>Verifies whether an interrupted or timed-out commit or push succeeded in Git, without retrying.</small></div>
         <h3>Retire worktree</h3>
         <div className="approval-actions">{confirmAction === 'retire' ? <><button type="button" className="danger" disabled={Boolean(publishBusy)} onClick={() => void retire()}>Confirm retire (clean worktrees only)</button><button type="button" className="secondary" onClick={() => setConfirmAction(undefined)}>Keep worktree</button></> : <button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => setConfirmAction('retire')}>{publishBusy === 'retire' ? 'Retiring…' : taskRetired ? 'Retired' : 'Retire worktree…'}</button>}<small>Removes the app-owned worktree directory only when Git proves it has no uncommitted or untracked files. The branch, commits, history and evidence remain.</small></div>
-        {taskRetired && <p className="muted">Retired {selectedTask?.retiredAt ? relativeTime(selectedTask.retiredAt) : ''} ago.</p>}
+        {taskRetired && <p className="muted">Retired{selectedTask?.retiredAt ? ` ${relativeTime(selectedTask.retiredAt)}` : ''}.</p>}
       </div> : <div className="approvals-panel">
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}

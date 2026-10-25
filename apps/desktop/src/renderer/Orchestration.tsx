@@ -9,10 +9,11 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
+import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
 import type {
-  AgentRun, Assignment, AssignmentState, ChildDetail, IntegrationOperation, IntegrationState, OrchestrationView, RunLifecycle, RunOutcome, WaitReason
+  AgentRun, Assignment, AssignmentState, ChildDetail, IntegrationOperation, IntegrationState, OrchestrationView, RunOutcome
 } from '../../../../packages/protocol/src/orchestration';
 
 interface Props {
@@ -27,13 +28,7 @@ interface Props {
   searchHit?: SearchHit;
 }
 
-const lifecycleLabel: Record<RunLifecycle, string> = { queued: 'Queued', preparing: 'Preparing', running: 'Running', waiting: 'Waiting', terminal: 'Terminal' };
 const outcomeLabel: Record<RunOutcome, string> = { succeeded: 'Succeeded', incomplete: 'Incomplete', failed: 'Failed', cancelled: 'Cancelled' };
-const waitReasonLabel: Record<WaitReason, string> = {
-  admission: 'Waiting for an admission slot', dependencies: 'Waiting on dependencies', children: 'Waiting on children',
-  approval: 'Waiting on approval', 'profile-quota': 'Waiting on profile availability', 'task-budget': 'Waiting on task budget',
-  conflict: 'Blocked on a conflict', reconciliation: 'Awaiting reconciliation', 'user-continuation': 'Waiting for you to continue'
-};
 const assignmentStateLabel: Record<AssignmentState, string> = {
   proposed: 'Proposed', admitted: 'Admitted', 'result-submitted': 'Result submitted', integrated: 'Integrated',
   incomplete: 'Incomplete', failed: 'Failed', cancelled: 'Cancelled', revoked: 'Revoked', superseded: 'Superseded'
@@ -605,7 +600,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
             {!combinedEvidence.length && <p className="muted">No combined validation evidence yet.</p>}
           </section>
           <section><h3>Events</h3>
-            <ul className="event-list">{eventsSorted.map((item) => <li key={item.sequence}>{item.createdAt} · {item.type}</li>)}</ul>
+            <ul className="event-list">{eventsSorted.map((item) => <li key={item.sequence}><time dateTime={item.createdAt} title={item.createdAt}>{formatDateTime(item.createdAt)}</time> · {humanize(item.type)}</li>)}</ul>
             {eventsCursor !== null && <button type="button" className="quiet" onClick={() => void loadOlderEvents()}>Older events</button>}
           </section>
           {view?.truncated && <p className="muted">(truncated)</p>}
