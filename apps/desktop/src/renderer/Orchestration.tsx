@@ -11,6 +11,7 @@ import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { approvalsTabLabel, useCompactLayout } from './layout';
+import { sendOnShortcut } from './composer';
 import { Hash, PatchText } from './Evidence';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
@@ -27,6 +28,9 @@ interface Props {
   /** The app notice element, rendered here so it stays next to the coordinated conversation. */
   notice: ReactNode;
   setNotice: SetNotice;
+  /** The coordinator composer text, held by the app per task so it cannot follow the user into another task. */
+  composer: string;
+  setComposer: (text: string) => void;
   onWorkspaceRefresh: () => void;
   onTaskCreated: (task: Task) => void;
   focusAction?: ActionItem;
@@ -47,7 +51,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 
 function full(sha: string | undefined | null): string { return sha || 'none'; }
 
-export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit }: Props) {
+export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit }: Props) {
   const rootTaskId = task.id;
   const [runsById, setRunsById] = useState<Record<string, AgentRun>>({});
   const [runsCursor, setRunsCursor] = useState<number | null>(null);
@@ -71,7 +75,6 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const inspectorWasOpen = useRef(false);
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
   const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage' | 'handoff'>('orchestration');
-  const [composer, setComposer] = useState('');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
   const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
@@ -353,7 +356,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   };
 
   const sendToCoordinator = async (event: FormEvent) => {
-    event.preventDefault(); if (!composer.trim()) return;
+    event.preventDefault(); if (!composer.trim() || task.status === 'retired' || coordinatorRun?.lifecycle === 'terminal') return;
     const content = composer.trim(); setComposer('');
     try { await api.invoke('task.send', { taskId: rootTaskId, content }); await fetchLatest(); await loadRootTranscript(); }
     catch (error) { setComposer(content); setNotice(`Message was not sent: ${errorMessage(error)}`); }
@@ -424,6 +427,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
 
   const awaitingCount = pendingApprovals.filter(item => item.state === 'awaiting-approval').length;
+  const canSendToCoordinator = Boolean(composer.trim()) && task.status !== 'retired' && coordinatorRun?.lifecycle !== 'terminal';
   const approvalsLabel = approvalsTabLabel(awaitingCount, pendingApprovals.filter(item => item.state === 'unknown').length, awaitingCount > 0 && runsCursor !== null);
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
@@ -467,8 +471,10 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
           {awaitingCount > 0 && !(tab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
           <form className="composer" onSubmit={sendToCoordinator}>
-            <textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={task.status === 'retired'} aria-label="Message coordinator" placeholder={task.status === 'retired' ? 'This task worktree is retired.' : 'Message the coordinator…'} />
-            <button className="primary" disabled={!composer.trim() || task.status === 'retired'}>Send <span>↵</span></button>
+            <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSendToCoordinator)} disabled={task.status === 'retired' || rootTerminal} aria-label="Message coordinator" aria-describedby={rootTerminal ? 'coordinator-finished' : undefined}
+              placeholder={task.status === 'retired' ? 'This task worktree is retired.' : rootTerminal ? 'This coordinated task has finished.' : 'Message the coordinator…'} />
+            <button className="primary" disabled={!canSendToCoordinator} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
+            {rootTerminal && task.status !== 'retired' && <p id="coordinator-finished" className="composer-note">The coordinator has finished, so it accepts no more messages. Start a continuation from the Continue tab to keep working.</p>}
           </form>
         </> : <div className="child-panel">
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>

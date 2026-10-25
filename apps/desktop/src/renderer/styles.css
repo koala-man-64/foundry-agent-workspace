@@ -351,9 +351,12 @@ dialog .notice { padding-inline: 20px 24px; }
 .empty-state { max-width: 440px; margin: 13vh auto; color: #4a5a50; text-align: center; }
 .empty-state h2 { font-size: var(--fs-2xl); font-weight: normal; }
 .empty-state p { margin-top: 10px; font-size: var(--fs-lg); line-height: 1.5; }
-.composer { display: grid; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 18px 32px; border-top: 1px solid var(--line-soft); background: var(--surface-sunken); }
-.composer textarea { height: 52px; resize: none; }
-.composer button span { padding-left: 5px; }
+.composer { display: grid; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 18px 32px; border-top: 1px solid var(--line-soft); background: var(--surface-sunken); }
+.composer textarea { min-height: 52px; max-height: 35vh; resize: none; field-sizing: content; line-height: 1.45; }
+.composer > .primary { min-height: 52px; }
+.composer-note { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--fs-sm); }
+.shortcut-hint { margin-left: 8px; padding-left: 8px; border-left: 1px solid currentColor; font-size: var(--fs-xs); font-weight: 400; letter-spacing: 0; opacity: .85; }
+.draft-send .shortcut-hint { opacity: .8; }
 .older-messages { flex: 0 0 auto; align-self: center; }
 .header-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 

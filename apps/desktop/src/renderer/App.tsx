@@ -20,6 +20,7 @@ import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
 import { approvalsTabLabel, useCompactLayout } from './layout';
+import { draftSendBlockReason, sendOnShortcut } from './composer';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
@@ -79,7 +80,7 @@ function App() {
   const [collapsedProjectIds, setCollapsedProjectIds] = useState<string[]>([]);
   const manageDialogRef = useRef<HTMLDialogElement>(null);
   const [schema, setSchema] = useState<SchemaStatus>();
-  const [composer, setComposer] = useState('');
+  const [composerDrafts, setComposerDrafts] = useState<Record<string, string>>({});
   const [notice, setNoticeState] = useState<NoticeState>();
   const [announcement, setAnnouncement] = useState({ polite: '', assertive: '' });
   const [openDialog, setOpenDialog] = useState<'settings' | 'manage' | 'automation' | 'upgrade'>();
@@ -168,6 +169,13 @@ function App() {
     inspectorWasOpen.current = inspectorOpen;
   }, [inspectorOpen, compactLayout]);
   selectedRef.current = selectedId;
+  // Unsent text belongs to the task it was typed in (memory only), so it can never be sent to a task switched to later.
+  const composer = selectedId ? composerDrafts[selectedId] ?? '' : '';
+  const setComposerFor = useCallback((taskId: string | undefined, text: string) => {
+    if (!taskId) return;
+    setComposerDrafts(current => { const { [taskId]: _previous, ...rest } = current; return text ? { ...rest, [taskId]: text } : rest; });
+  }, []);
+  const setComposer = (text: string) => setComposerFor(selectedRef.current, text);
   draftProjectRef.current = draftProjectId;
   currentPathRef.current = currentPath;
 
@@ -559,7 +567,11 @@ function App() {
     try {
       const task = await api.invoke('task.start', payload);
       setDrafts((current) => ({ ...current, [originKey]: blankDraft() }));
-      if (originSelection === selectionVersion.current) { setSnapshot((current) => ({ ...current, tasks: [...current.tasks.filter((existing) => existing.id !== task.id), task] })); draftProjectRef.current = undefined; selectedRef.current = task.id; setDraftProjectId(undefined); setSelectedId(task.id); setPage('conversation'); await refresh(task.id); }
+      if (originSelection === selectionVersion.current) {
+        setSnapshot((current) => ({ ...current, tasks: [...current.tasks.filter((existing) => existing.id !== task.id), task] })); draftProjectRef.current = undefined; selectedRef.current = task.id; setDraftProjectId(undefined); setSelectedId(task.id); setPage('conversation'); await refresh(task.id);
+        // The draft form unmounted with focus in it; continue in the new task's composer unless focus moved elsewhere.
+        requestAnimationFrame(() => { if (document.activeElement === document.body || !document.activeElement) document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus(); });
+      }
       else await refresh();
     } catch (error) {
       updateDraftFor(originKey, { pending: false, unknown: true });
@@ -567,10 +579,12 @@ function App() {
     } finally { setCreating(false); }
   };
   const send = async (event: FormEvent) => {
-    event.preventDefault(); if (!selectedId || !composer.trim()) return;
-    const content = composer.trim(); setComposer('');
-    try { await api.invoke('task.send', { taskId: selectedId, content }); await refresh(selectedId); }
-    catch (error) { setComposer(content); setNotice(`Message was not sent: ${errorMessage(error)}`); }
+    event.preventDefault();
+    const taskId = selectedId;
+    if (!taskId || !composer.trim() || taskBusy || taskRetired || publishBusy) return;
+    const content = composer.trim(); setComposerFor(taskId, '');
+    try { await api.invoke('task.send', { taskId, content }); await refresh(taskId); }
+    catch (error) { setComposerFor(taskId, content); setNotice(`Message was not sent: ${errorMessage(error)}`); }
   };
   const cancel = async () => { if (!selectedId) return; try { await api.invoke('task.cancel', { taskId: selectedId }); await refresh(selectedId); } catch (error) { setNotice(`Could not cancel: ${errorMessage(error)}`); } };
   const compact = async () => {
@@ -595,9 +609,10 @@ function App() {
   };
   const useAutomationDraft = (draft: AutomationDraft) => {
     if (draft.kind !== 'promptDraft') { setNotice('Only prompt drafts can be placed in the composer. Review proposed actions through Approvals.', 'warning'); return; }
-    if (draft.taskId) void api.invoke('task.read', { taskId: draft.taskId }).then(read => selectTask(read.task.parentTaskId ?? read.task.id), error => setNotice(`Could not open draft task: ${errorMessage(error)}`));
+    if (draft.taskId) void api.invoke('task.read', { taskId: draft.taskId }).then(read => { const target = read.task.parentTaskId ?? read.task.id; selectTask(target); setComposerFor(target, draft.body); }, error => setNotice(`Could not open draft task: ${errorMessage(error)}`));
     if (!draft.taskId && !selectedRef.current) { setNotice('Choose a task before using this workspace-wide draft.', 'warning'); return; }
-    setComposer(draft.body); automationDialogRef.current?.close();
+    if (!draft.taskId) setComposer(draft.body);
+    automationDialogRef.current?.close();
     setNotice('Draft placed in the composer. Review it and press Send when ready.', 'info');
   };
   const openPreparedApproval = async (draft: AutomationDraft, approvalId: string) => {
@@ -739,6 +754,9 @@ function App() {
   const noticeNode = <Notice notice={notice} onDismiss={() => setNotice('')} />;
   const mainNotice = openDialog ? null : noticeNode;
   const dialogNotice = (name: typeof openDialog) => openDialog === name ? noticeNode : null;
+  const draftReason = draftSendBlockReason({ schemaVersion: schema?.version, unknownOutcome: Boolean(draft.unknown), folderUnavailable: activeProject?.kind === 'unavailable', profileMissing: !configuredProfile, profileUnverified: Boolean(configuredProfile && configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt), coordinatedWithoutValidation: activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim() });
+  const draftSendDisabled = !draft.content.trim() || creating || !schema || schema.version < 3 || (!draft.unknown && (activeProject?.kind === 'unavailable' || !configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt) || (activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim())));
+  const canSend = Boolean(selectedId && composer.trim() && !taskBusy && !taskRetired && !publishBusy);
   const contextLine = usage ? ` · context ≈ ${usage.contextPercent}% of ${usage.contextLimit.toLocaleString()}` : '';
   const upgradeFeatures = schema && schema.version < 3 ? 'saved projects, new chats, detailed usage, and personal workspace history' : schema && schema.version < 4 ? 'detailed usage and personal workspace history' : 'search, archive, automation, and continuity';
 
@@ -768,7 +786,7 @@ function App() {
         setMoreOptions(true);
       }} setNotice={setNotice} />}
       <form className="draft-compose" onSubmit={startDraft}>
-        <textarea aria-label="Chat message" placeholder="Ask a question or describe the work…" value={draft.content} onChange={(event) => updateDraft({ content: event.target.value, startPayload: undefined })} disabled={creating || draft.unknown || activeProject?.kind === 'unavailable' || !schema || schema.version < 3} />
+        <textarea aria-label="Chat message" placeholder="Ask a question or describe the work…" onKeyDown={sendOnShortcut(!draftSendDisabled)} value={draft.content} onChange={(event) => updateDraft({ content: event.target.value, startPayload: undefined })} disabled={creating || draft.unknown || activeProject?.kind === 'unavailable' || !schema || schema.version < 3} />
         <div className="draft-toolbar"><label>Model<select aria-label="Model" value={draftDisplayProfileId} disabled={draft.unknown} onChange={(event) => { const next = event.target.value; preferencesTouched.current = true; setProfileId(next); void savePreferences({ profileId: next }); }}>{!profiles.some((profile) => profile.id === draftDisplayProfileId) && <option value={draftDisplayProfileId}>Unavailable profile</option>}{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label><label>Mode<select aria-label="Mode" value={draftDisplayMode} disabled={activeProject?.kind !== 'git' || draft.unknown} onChange={(event) => { const next = event.target.value as Mode; preferencesTouched.current = true; setTaskMode(next); void savePreferences({ mode: next }); }}><option value="chat">Chat</option><option value="coding" disabled={!codingReady}>Coding</option><option value="coordinated" disabled={!coordinatedReady}>Coordinated</option></select></label><button type="button" className="draft-more" aria-expanded={moreOptions} onClick={() => setMoreOptions(!moreOptions)}>More options {moreOptions ? '⌃' : '⌄'}</button></div>
         {moreOptions && <div className="draft-options"><label>Title (optional)<input value={draft.title} maxLength={160} disabled={draft.unknown} placeholder="From first message if empty" onChange={(event) => updateDraft({ title: event.target.value, startPayload: undefined })} /></label>{activeProject?.kind === 'git' && draftDisplayMode === 'coordinated' && <><label>Required validation command<textarea value={draft.requiredValidationCommand} maxLength={16384} disabled={draft.unknown} onChange={(event) => updateDraft({ requiredValidationCommand: event.target.value, startPayload: undefined })} /></label><label>Token budget<input type="number" min={1024} max={10000000} value={draft.coordinatedBudget} disabled={draft.unknown} onChange={(event) => updateDraft({ coordinatedBudget: Number(event.target.value), startPayload: undefined })} /></label><fieldset className="child-profiles" disabled={draft.unknown}><legend>Child profiles</legend>{availableChildProfiles.map((profile) => <label key={profile.id} className="checkbox-row"><input type="checkbox" checked={draft.childProfileIds.includes(profile.id)} disabled={!draft.childProfileIds.includes(profile.id) && draft.childProfileIds.length >= ORCHESTRATION_LIMITS.maxChildProfiles} onChange={(event) => updateDraft({ childProfileIds: event.target.checked ? [...draft.childProfileIds, profile.id] : draft.childProfileIds.filter((id) => id !== profile.id), startPayload: undefined })} />{profile.name}</label>)}{!availableChildProfiles.length && <p className="muted">Children reuse the coordinator profile.</p>}</fieldset></>}</div>}
         {draftDisplayMode === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}
@@ -776,19 +794,22 @@ function App() {
         {draft.scopeGuidance.length > 0 && <p className="draft-warning">Scope guidance appended to the prompt: {draft.scopeGuidance.join(', ')}. This grants no filesystem access.</p>}
         {profilesLoading && <p className="muted" role="status">Loading saved model profiles…</p>}
         {profilesError && <p className="draft-warning" role="alert">Could not load all model profiles: {profilesError}</p>}
-        {!configuredProfile && <p className="draft-warning">The saved model profile is unavailable. Choose a profile before sending.</p>}
-        {configuredProfile && configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt && <p className="draft-warning">Verify this profile in Model settings before sending.</p>}
+        {draftReason && <p id="draft-send-reason" className="draft-warning">{draftReason}</p>}
         {draft.unknown && <p className="draft-warning">The start outcome is unknown. Check the project chat list first. Retry uses the original message and settings. <button type="button" className="secondary" onClick={() => updateDraft({ startPayload: undefined, unknown: false })}>Start fresh draft</button></p>}
-        <button type="submit" className="primary draft-send" disabled={!draft.content.trim() || creating || !schema || schema.version < 3 || (!draft.unknown && (activeProject?.kind === 'unavailable' || !configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt) || (activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim())))}>{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : 'Send'}</button>
+        <button type="submit" className="primary draft-send" disabled={draftSendDisabled} aria-describedby={draftReason ? 'draft-send-reason' : undefined} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : <>Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></>}</button>
       </form>
-    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
+    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
     <section className="conversation">
       <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
       {awaitingApproval && !(effectiveRightTab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
-      <form className="composer" onSubmit={send}><textarea value={composer} onChange={(e) => setComposer(e.target.value)} disabled={!selectedId || taskBusy || taskRetired || Boolean(publishBusy)} placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. Approve or reject there, or cancel the task.' : 'The agent is working. Cancel to send a new direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} aria-label="Task message" /><button className="primary" disabled={!selectedId || !composer.trim() || taskBusy || taskRetired || Boolean(publishBusy)}>Send <span>↵</span></button></form>
+      <form className="composer" onSubmit={send}>
+        <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend)} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
+          placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. You can write your next message meanwhile.' : 'The agent is working. Write your next message; Send is available when it finishes, or cancel to change direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} />
+        <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
+      </form>
     </section>
     <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" onPointerDown={beginInspectorResize} />
     <aside className={`inspector${inspectorOpen ? ' open' : ''}`} role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} aria-label="Task inspector" onKeyDown={event => { if (event.key === 'Escape' && inspectorOpen) setInspectorOpen(false); }}>
