@@ -9,6 +9,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
+import { ApprovalCard } from './ApprovalCard';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -41,50 +42,6 @@ const REVISABLE: AssignmentState[] = ['proposed', 'incomplete', 'failed', 'cance
 const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'mismatch'];
 
 function short(sha: string | undefined | null): string { return sha ? sha.slice(0, 10) : 'none'; }
-
-function ApprovalCard({ approval, busy, complete, onDecide, onReconcile }: { approval: Approval; busy?: 'approve' | 'reject' | 'reconcile'; complete: boolean; onDecide: (approval: Approval, decision: 'approve' | 'reject') => void; onReconcile: (approval: Approval) => void }) {
-  return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id} key={approval.id}>
-    <div className="approval-heading"><strong>{approval.tool}</strong><span>{approval.state}</span></div>
-    {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
-    <p>{approval.summary}</p>
-    {!complete && <p role="alert">Full approval evidence is unavailable. Approval is disabled until it can be loaded.</p>}
-    {approval.path && <dl><dt>File</dt><dd>{approval.path}</dd></dl>}
-    {approval.before !== undefined && <dl><dt>Before</dt><dd><pre>{approval.before}</pre></dd></dl>}
-    {approval.after !== undefined && <dl><dt>After</dt><dd><pre>{approval.after}</pre></dd></dl>}
-    {approval.command && <div className="command-evidence"><strong>Command</strong><pre>{approval.command}</pre><small>Runs with your Windows privileges; approval is not sandboxing.</small></div>}
-    {approval.cwd && <dl><dt>Working directory</dt><dd>{approval.cwd}</dd></dl>}
-    {approval.timeoutMs !== undefined && <dl><dt>Timeout</dt><dd>{approval.timeoutMs.toLocaleString()} ms</dd></dl>}
-    {approval.handoff && <div className="orchestration-evidence">
-      <strong>Handoff</strong>
-      <dl><dt>Paths</dt><dd>{approval.handoff.paths.join(', ')}</dd></dl>
-      <dl><dt>Message</dt><dd>{approval.handoff.message}</dd></dl>
-      <dl><dt>Manifest SHA-256</dt><dd>{approval.handoff.manifestSha256}</dd></dl>
-      <dl><dt>Git</dt><dd>{approval.handoff.gitPath} ({short(approval.handoff.gitSha256)})</dd></dl>
-      <dl><dt>Expected HEAD</dt><dd>{short(approval.handoff.expectedHead)}</dd></dl>
-      <dl><dt>Patch</dt><dd><pre>{approval.handoff.patch}{approval.handoff.patchTruncated ? '\n(truncated)' : ''}</pre></dd></dl>
-    </div>}
-    {approval.integration && <div className="orchestration-evidence">
-      <strong>Integration</strong>
-      <dl><dt>Kind</dt><dd>{approval.integration.kind}</dd></dl>
-      <dl><dt>Source SHA</dt><dd>{short(approval.integration.sourceSha)}</dd></dl>
-      <dl><dt>Expected HEAD / tree</dt><dd>{short(approval.integration.expectedHead)} / {short(approval.integration.expectedTree)}</dd></dl>
-      <dl><dt>Manifest SHA-256</dt><dd>{approval.integration.manifestSha256}</dd></dl>
-      {approval.integration.resolvedTree && <dl><dt>Resolved tree (continuation)</dt><dd>{short(approval.integration.resolvedTree)}</dd></dl>}
-      <dl><dt>Changed paths</dt><dd>{approval.integration.changedPaths.join(', ') || 'none'}</dd></dl>
-      <dl><dt>Git</dt><dd>{approval.integration.gitPath} ({short(approval.integration.gitSha256)})</dd></dl>
-      <dl><dt>Patch</dt><dd><pre>{approval.integration.patch}{approval.integration.patchTruncated ? '\n(truncated)' : ''}</pre></dd></dl>
-    </div>}
-    {approval.result && <div className="approval-result"><strong>{approval.result.isError ? 'Redacted error result' : 'Redacted result'}</strong><pre>{approval.result.content}</pre>{approval.result.exitCode !== undefined && <small>Exit code {approval.result.exitCode}</small>}</div>}
-    {approval.state === 'awaiting-approval' && <div className="approval-actions">
-      <button type="button" className="primary" disabled={Boolean(busy) || !complete} onClick={() => onDecide(approval, 'approve')}>{busy === 'approve' ? 'Approving…' : 'Approve'}</button>
-      <button type="button" className="danger" disabled={Boolean(busy)} onClick={() => onDecide(approval, 'reject')}>{busy === 'reject' ? 'Rejecting…' : 'Reject'}</button>
-    </div>}
-    {approval.state === 'unknown' && approval.path && approval.resultingHash && !approval.handoff && !approval.integration && <div className="approval-actions">
-      <button type="button" className="secondary" disabled={Boolean(busy)} onClick={() => onReconcile(approval)}>{busy === 'reconcile' ? 'Checking…' : 'Check outcome'}</button>
-      <small>Read-only file reconciliation; this never retries the edit.</small>
-    </div>}
-  </article>;
-}
 
 export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit }: Props) {
   const rootTaskId = task.id;
@@ -547,7 +504,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, on
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p><pre>{diff?.patch}</pre></div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
+          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>
