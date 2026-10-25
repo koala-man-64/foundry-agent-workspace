@@ -24,7 +24,7 @@ describe('ApprovalCard', () => {
     const html = render({ command: "Write-Output 'x'", cwd: 'C:\\work', shell: 'powershell.exe', environment: { PATH: 'C:\\Windows' }, timeoutMs: 10000 });
     expect(html).toContain('class="approval-card awaiting-approval"');
     expect(html).toContain('data-approval-id="approval-1"');
-    expect(html).toContain('<div class="approval-heading"><strong>run_command</strong>');
+    expect(html).toContain('<div class="approval-heading"><strong class="approval-tool">run_command</strong>');
     expect(html).toContain('class="command-evidence"');
     expect(html).toContain('Runs with your Windows privileges; approval is not sandboxing.');
     expect(html).toContain('powershell.exe');
@@ -43,7 +43,7 @@ describe('ApprovalCard', () => {
 
   it('distinguishes an absent file from an existing empty file', () => {
     const created = render({ tool: 'write_file', path: 'src/new.txt', expectedHash: null, after: 'hello', resultingHash: HASH_B });
-    expect(created).toContain('<strong>Create file</strong>');
+    expect(created).toContain('<strong class="approval-kind">Create file</strong>');
     expect(created).toContain('File is absent. This approval creates a new file.');
     expect(created).toContain(`absent → ${HASH_B}`);
     const emptied = render({ tool: 'replace_text', path: 'src/empty.txt', expectedHash: HASH_A, before: '', after: 'x', resultingHash: HASH_B });

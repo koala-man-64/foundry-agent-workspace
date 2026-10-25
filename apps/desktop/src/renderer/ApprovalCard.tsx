@@ -35,7 +35,7 @@ export function ApprovalCard({ approval, variant, complete, busy, error, onDecid
   const coordinated = variant === 'coordinated';
   const fileReconcilable = approval.path && approval.resultingHash && !approval.handoff && !approval.integration;
   return <article className={`approval-card ${approval.state}`} data-approval-id={approval.id} tabIndex={-1} aria-label={`${approval.expectedHash === null ? 'Create file' : approval.tool}, ${approvalStateLabel[approval.state]}`}>
-    <div className="approval-heading"><strong>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span className={`approval-state ${approval.state}`}>{approvalStateLabel[approval.state]}</span></div>
+    <div className="approval-heading"><strong className={approval.expectedHash === null ? 'approval-kind' : 'approval-tool'}>{approval.expectedHash === null ? 'Create file' : approval.tool}</strong><span className={`approval-state ${approval.state}`}>{approvalStateLabel[approval.state]}</span></div>
     {approval.targetLabel && <p className="approval-target">{approval.targetLabel}{approval.generation !== undefined ? ` · generation ${approval.generation}` : ''}</p>}
     <p>{approval.summary}</p>
     {error && <p className="approval-error" role="alert">{error}</p>}

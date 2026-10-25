@@ -307,7 +307,8 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .usage-section h2 { font-size: var(--fs-xl); font-weight: normal; }
 .usage-section > .muted { margin: 12px 0; }
 .usage-section > button.secondary { margin-top: 12px; }
-.usage-section-head > div { display: flex; gap: 10px; }
+.usage-section-head { flex-wrap: wrap; }
+.usage-section-head > div { display: flex; flex-wrap: wrap; gap: 10px; }
 .usage-section-head label { color: var(--ink-muted); }
 .usage-section-head select { min-width: 120px; padding: 6px; }
 .usage-chart { margin: 12px 0; }
@@ -357,7 +358,7 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .task-header > div:first-child { flex: 1 1 260px; min-width: 0; }
 .task-header .eyebrow { overflow-wrap: anywhere; }
 .task-header h1 { margin-top: 7px; overflow-wrap: anywhere; font-size: var(--fs-3xl); font-weight: normal; line-height: 1.1; }
-.task-status { margin-top: 8px; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
+.task-status { margin-top: 8px; overflow-wrap: anywhere; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
 .task-status.running, .task-status.awaiting { color: var(--warn-ink); }
 .task-status.awaiting { font-weight: 650; }
 .notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 32px 9px 28px; color: var(--notice-error-ink); border-bottom: 1px solid #e6b8a5; border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.45; }
@@ -394,7 +395,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .shortcut-hint { margin-left: 8px; padding-left: 8px; border-left: 1px solid currentColor; font-size: var(--fs-xs); font-weight: 400; letter-spacing: 0; opacity: .85; }
 .draft-send .shortcut-hint { opacity: .8; }
 .older-messages { flex: 0 0 auto; align-self: center; }
-.header-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-left: auto; }
+.header-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; gap: 8px; justify-content: flex-end; min-width: 0; margin-left: auto; }
 @media (max-height: 720px) { .task-header { min-height: 0; padding-top: 16px; padding-bottom: 14px; } .task-header h1 { font-size: var(--fs-2xl); } }
 
 /* Inspector */
@@ -436,7 +437,8 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-card.unknown, .approval-card.failed { border-left: 3px solid var(--danger); background: #fbefe8; }
 .approval-card.complete { border-left: 3px solid #758c72; }
 .approval-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.approval-heading strong { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-md); }
+.approval-heading strong { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-md); }
+.approval-heading strong.approval-tool { font-family: var(--font-mono); }
 .approval-heading span { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .approval-state { padding: 2px 7px; border-radius: var(--radius-sm); background: var(--surface-well); }
 .approval-state.awaiting-approval, .approval-state.approved, .approval-state.executing { color: var(--danger-ink); background: var(--accent-soft); }
@@ -515,7 +517,8 @@ dialog .notice { padding-inline: 20px 24px; }
 .assignment-summary { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
 .assignment-summary dt { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .assignment-summary dd { margin: 2px 0 0; overflow-wrap: anywhere; }
-.orchestration-panel { display: grid; gap: 18px; padding: 14px; }
+.orchestration-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; padding: 14px; overflow-y: auto; }
+.orchestration-panel > section { min-width: 0; }
 .orchestration-panel h3 { margin: 0 0 8px; }
 .assignment-card { margin-bottom: 8px; padding: 10px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
 .assignment-card dl { margin: 6px 0 0; }

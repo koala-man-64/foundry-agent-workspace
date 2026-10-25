@@ -76,7 +76,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
   const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage' | 'handoff'>('orchestration');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
-  const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
+  const [approvalErrors, setApprovalErrors] = useState<Record<string, { text: string; state: Approval['state'] }>>({});
   const [operationInFlight, setOperationInFlight] = useState<Record<string, 'check' | 'continue'>>({});
   const [reviseTarget, setReviseTarget] = useState<string>();
   const [reviseObjective, setReviseObjective] = useState('');
@@ -297,7 +297,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useEffect(() => {
     setRunsById({}); setRunsCursor(null); setEventsById({}); setEventsCursor(null); setView(undefined);
     childLoadedId.current = ''; transcriptLoadedId.current = ''; childMessageOrdinals.current.clear(); rootMessageOrdinals.current.clear(); childLatestThrough.current = undefined; rootLatestThrough.current = undefined; childMessageCursor.current = null; rootMessageCursor.current = null;
-    setSelectedChildId(undefined); setChildDetail(undefined); setRootApprovals([]); setChildApprovals({}); setRootMessages([]); setRootCompactions([]); setRootNextBefore(null); setRootThrough(undefined);
+    setSelectedChildId(undefined); setChildDetail(undefined); setApprovalErrors({}); setRootApprovals([]); setChildApprovals({}); setRootMessages([]); setRootCompactions([]); setRootNextBefore(null); setRootThrough(undefined);
     setCurrentPath(''); setFiles([]); setFile(undefined); setDiff(undefined);
     void fetchLatest(); void refreshInspector(''); void loadRootTranscript();
   }, [rootTaskId, fetchLatest, refreshInspector, loadRootTranscript]);
@@ -351,7 +351,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       await fetchLatest(); await loadApprovals(); if (selectedChildId) await loadChild(selectedChildId);
       setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
       focusAfterDecision(approval.id);
-    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: decisionFailure(decision, error) })); await loadApprovals().catch(() => undefined); }
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure(decision, error), state: approval.state } })); await loadApprovals().catch(() => undefined); }
     finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 
@@ -371,7 +371,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       await loadApprovals();
       await fetchLatest();
       setApprovalErrors(({ [approval.id]: _previous, ...rest }) => rest);
-    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: decisionFailure('reconcile', error) })); await loadApprovals().catch(() => undefined); }
+    } catch (error) { setApprovalErrors(current => ({ ...current, [approval.id]: { text: decisionFailure('reconcile', error), state: approval.state } })); await loadApprovals().catch(() => undefined); }
     finally { setApprovalInFlight(current => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
 
@@ -470,7 +470,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         {!selectedChildId ? <>
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
-          {awaitingCount > 0 && !(tab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
+          {awaitingCount > 0 && !(tab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); if (compactLayout) setInspectorOpen(true); }}>Review pending actions</button></div>}
           <form className="composer" onSubmit={sendToCoordinator}>
             <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSendToCoordinator)} disabled={task.status === 'retired' || rootTerminal} aria-label="Message coordinator" aria-describedby={rootTerminal ? 'coordinator-finished' : undefined}
               placeholder={task.status === 'retired' ? 'This task worktree is retired.' : rootTerminal ? 'This coordinated task has finished.' : 'Message the coordinator…'} />
@@ -524,7 +524,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
+          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>

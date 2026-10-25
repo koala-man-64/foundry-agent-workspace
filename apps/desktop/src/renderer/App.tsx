@@ -89,7 +89,9 @@ function App() {
   const [announcement, setAnnouncement] = useState({ polite: '', assertive: '' });
   const [openDialog, setOpenDialog] = useState<'settings' | 'manage' | 'automation' | 'upgrade'>();
   /** Screen-reader announcement through the always-mounted live regions; errors interrupt, everything else waits. */
-  const announce = useCallback((text: string, tone: NoticeTone = 'info') => setAnnouncement(tone === 'error' ? { polite: '', assertive: text } : { polite: text, assertive: '' }), []);
+  const announcementTurn = useRef(false);
+  // Alternating a zero-width suffix makes a repeated message a text change, so screen readers read it again.
+  const announce = useCallback((text: string, tone: NoticeTone = 'info') => { announcementTurn.current = !announcementTurn.current; const spoken = `${text}${announcementTurn.current ? '\u200b' : ''}`; setAnnouncement(tone === 'error' ? { polite: '', assertive: spoken } : { polite: spoken, assertive: '' }); }, []);
   const setNotice: SetNotice = useCallback((text, tone = 'error') => { setNoticeState(text ? { text, tone } : undefined); if (text) announce(text, tone); }, [announce]);
   const [creating, setCreating] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -106,7 +108,8 @@ function App() {
   const [credential, setCredential] = useState('');
   const [probe, setProbe] = useState<ProbeResult>();
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile' | 'acknowledge'>>({});
-  const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
+  /** A failed action on a card, kept with the state it failed in so it disappears once the recorded state moves on. */
+  const [approvalErrors, setApprovalErrors] = useState<Record<string, { text: string; state: Approval['state'] }>>({});
   const [upgrading, setUpgrading] = useState(false);
   const [compacting, setCompacting] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
@@ -513,7 +516,7 @@ function App() {
     detailLoadedTask.current = undefined;
     messageOrdinals.current.clear(); latestMessageThrough.current = undefined; messageCursor.current = null;
     approvalLoadedTask.current = undefined;
-    setCurrentPath(''); setDetail(undefined); setUsage(undefined); setUsageError(''); setDiffError(''); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
+    setCurrentPath(''); setDetail(undefined); setUsage(undefined); setUsageError(''); setDiffError(''); setApprovalErrors({}); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
     void loadTaskDetail(selectedId);
     const kind = snapshot.tasks.find((task) => task.id === selectedId)?.workspaceKind;
     inspectorLoadedTask.current = kind ? selectedId : undefined;
@@ -717,7 +720,7 @@ function App() {
       await refresh(taskId); await loadTaskDetail(taskId);
       if (action === 'approve' || action === 'reject') { announce(`${action === 'approve' ? 'Approved' : 'Rejected'}: ${approval.expectedHash === null ? 'create file' : approval.tool}.`); focusAfterDecision(approval.id); }
     } catch (error) {
-      setApprovalErrors((current) => ({ ...current, [approval.id]: decisionFailure(action, error) }));
+      setApprovalErrors((current) => ({ ...current, [approval.id]: { text: decisionFailure(action, error), state: approval.state } }));
       await loadApprovals(taskId).catch(() => undefined);
     } finally { setApprovalInFlight((current) => { const next = { ...current }; delete next[approval.id]; return next; }); }
   };
@@ -813,7 +816,7 @@ function App() {
         {draft.scopeGuidance.length > 0 && <p className="draft-warning">Scope guidance appended to the prompt: {draft.scopeGuidance.join(', ')}. This grants no filesystem access.</p>}
         {profilesLoading && <p className="muted" role="status">Loading saved model profiles…</p>}
         {profilesError && <p className="draft-warning" role="alert">Could not load all model profiles: {profilesError}</p>}
-        {draftReason && <p id="draft-send-reason" className="draft-warning">{draftReason}</p>}
+        {draftReason && <p id="draft-send-reason" className={schema ? 'draft-warning' : 'muted'}>{draftReason}</p>}
         {draft.unknown && <p className="draft-warning">The start outcome is unknown. Check the project chat list first. Retry uses the original message and settings. <button type="button" className="secondary" onClick={() => updateDraft({ startPayload: undefined, unknown: false })}>Start fresh draft</button></p>}
         <button type="submit" className="primary draft-send" disabled={draftSendDisabled} aria-describedby={draftReason ? 'draft-send-reason' : undefined} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">{creating ? 'Starting…' : draft.unknown ? 'Retry same request' : <>Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></>}</button>
       </form>
@@ -834,9 +837,9 @@ function App() {
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
-      {awaitingApproval && !(effectiveRightTab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); setInspectorOpen(true); }}>Review pending actions</button></div>}
+      {awaitingApproval && !(effectiveRightTab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); if (compactLayout) setInspectorOpen(true); }}>Review pending actions</button></div>}
       <form className="composer" onSubmit={send}>
-        <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend)} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
+        <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend, () => announce(taskBusy ? awaitingApproval ? 'Send is unavailable until you decide the pending action or cancel the task.' : 'Send is available when the agent finishes, or cancel the task.' : 'Nothing to send yet.'))} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
           placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. You can write your next message meanwhile.' : 'The agent is working. Write your next message; Send is available when it finishes, or cancel to change direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} />
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
@@ -899,7 +902,7 @@ function App() {
       </div> : <div className="approvals-panel">
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
         {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}
-        {(detail?.approvals ?? []).map((approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />)}
+        {(detail?.approvals ?? []).map((approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />)}
         {!detail?.approvals?.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
         {approvalNextBefore !== null && <button type="button" className="quiet" onClick={() => selectedId && void loadApprovals(selectedId, approvalNextBefore)}>Older approvals</button>}
       </div>}

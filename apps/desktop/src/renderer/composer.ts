@@ -11,11 +11,12 @@ export function isSendShortcut(keys: ShortcutKeys): boolean {
  * Key handler for a composer textarea: the shortcut submits the form through the same guarded path as the Send
  * button, and only when that button is enabled.
  */
-export function sendOnShortcut(canSend: boolean) {
+export function sendOnShortcut(canSend: boolean, onUnavailable?: () => void) {
   return (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (!isSendShortcut({ key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey, isComposing: event.nativeEvent.isComposing })) return;
     event.preventDefault();
     if (canSend) event.currentTarget.form?.requestSubmit();
+    else onUnavailable?.();
   };
 }
 
