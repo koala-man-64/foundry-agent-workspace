@@ -14,12 +14,12 @@ export function AssignmentGraph({ assignments }: { assignments: Assignment[] }) 
     <svg role="img" aria-label="Assignment dependency map; the assignment list below has the full text" viewBox={`0 0 640 ${Math.max(90, nodes.length * 70 + 16)}`}>
       {nodes.flatMap(node => node.item.dependsOn.map(id => {
         const source = positions.get(id);
-        return source ? <path key={`${id}-${node.item.id}`} d={`M ${source.x + 136} ${source.y + 23} L ${node.x - 7} ${node.y + 23}`} fill="none" stroke="#8b9d88" strokeWidth="2" /> : null;
+        return source ? <path key={`${id}-${node.item.id}`} className="graph-edge" d={`M ${source.x + 136} ${source.y + 23} L ${node.x - 7} ${node.y + 23}`} fill="none" strokeWidth="2" /> : null;
       }))}
       {nodes.map(node => <g key={node.item.id} transform={`translate(${node.x} ${node.y})`}>
-        <rect width="136" height="48" rx="5" fill={node.item.state === 'integrated' ? '#dcebdc' : node.item.state === 'failed' || node.item.state === 'incomplete' ? '#f4d8cd' : '#f4ead7'} stroke="#8a9d8d" />
-        <text x="8" y="19" fontSize="12" fontWeight="bold" fill="#263e34">{node.item.key.slice(0, 17)} · r{node.item.revision}</text>
-        <text x="8" y="36" fontSize="11" fill="#455c50">{node.item.state}</text>
+        <rect className={`graph-node ${node.item.state === 'integrated' ? 'graph-node-done' : node.item.state === 'failed' || node.item.state === 'incomplete' ? 'graph-node-failed' : 'graph-node-open'}`} width="136" height="48" rx="5" />
+        <text className="graph-title" x="8" y="19" fontSize="12" fontWeight="bold">{node.item.key.slice(0, 17)} · r{node.item.revision}</text>
+        <text className="graph-state" x="8" y="36" fontSize="11">{node.item.state}</text>
       </g>)}
     </svg>
     <p className="muted">Arrows follow recorded assignment dependencies. Use the assignment list for objectives, revisions, evidence and blockers.</p>
