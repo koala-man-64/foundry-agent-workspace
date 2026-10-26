@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { applyTheme, readTheme, resolveTheme, saveTheme, THEME_STORAGE_KEY, THEMES, type ThemeHost } from './theme';
 
@@ -68,12 +69,28 @@ describe('applyTheme', () => {
     expect(page.meta.content).toBe('#e8e2d4');
   });
 
-  it('keeps the first-paint script on the same key, list and fallback', () => {
-    const boot = readFileSync(join(__dirname, 'public', 'theme-boot.js'), 'utf8');
-    expect(boot).toContain(`'${THEME_STORAGE_KEY}'`);
-    expect(THEMES).toEqual(['system', 'light', 'dark']);
-    expect(boot).toContain("stored === 'dark'");
-    expect(boot).toContain("stored === 'system'");
-    expect(boot).toContain("let theme = 'light'");
+});
+
+describe('first-paint script', () => {
+  const script = readFileSync(join(__dirname, 'public', 'theme-boot.js'), 'utf8');
+  // Runs the real file against a stand-in window, as the page head does before the module bundle.
+  function boot(read: () => Storage, prefersDark: boolean): string | undefined {
+    const root = { dataset: {} as Record<string, string> };
+    const fakeWindow = Object.defineProperty({ matchMedia: (query: string) => ({ matches: query === '(prefers-color-scheme: dark)' && prefersDark }) }, 'localStorage', { get: read });
+    runInNewContext(script, { window: fakeWindow, document: { documentElement: root } });
+    return root.dataset.theme;
+  }
+
+  it('paints with the theme the app applies for every stored value, Windows mode and blocked storage', () => {
+    const blocked = () => { throw new Error('storage blocked'); };
+    for (const prefersDark of [false, true]) {
+      for (const value of [...THEMES, 'paper', 'DARK', '', 'dark; color: red']) {
+        const stored = storage({ [THEME_STORAGE_KEY]: value });
+        expect(boot(() => stored, prefersDark), `${value}, Windows ${prefersDark ? 'dark' : 'light'}`).toBe(resolveTheme(readTheme(stored), prefersDark));
+      }
+      expect(boot(() => storage(), prefersDark)).toBe('light');
+      expect(boot(() => storage({}, true), prefersDark)).toBe('light');
+      expect(boot(blocked, prefersDark)).toBe('light');
+    }
   });
 });

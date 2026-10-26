@@ -105,6 +105,8 @@
   --control-accent: auto;
   --rail-error-scheme: dark;
   --placeholder: #707070;
+  /* A disabled field can explain itself in its placeholder (a retired task), so it stays readable on the disabled ground. */
+  --placeholder-disabled: #5c5c5c;
   --selection-bg: #3366cf;
   --selection-ink: #ffffff;
   /* Surfaces */
@@ -226,7 +228,8 @@
     /* Native controls */
     --color-scheme: dark;
     --control-accent: #78bda2;
-    --placeholder: #c0b7a8;
+    --placeholder: #b0b0b0;
+    --placeholder-disabled: var(--placeholder);
     --selection-bg: #8fcab0;
     --selection-ink: #101a15;
 
@@ -374,6 +377,7 @@
     --rail-button-ink: var(--secondary-ink);
     --rail-error-bg: var(--notice-error-bg);
     --rail-error-ink: #fdf0ec;
+    --rail-error-scheme: dark;
     --line-faint: var(--line-soft);
     --line-popup: var(--line-control);
     --line-emphasis: var(--line-strong);
@@ -817,7 +821,7 @@ dialog .notice { padding-inline: 20px 24px; }
 /* Appearance: the theme choice at the top of settings. */
 .appearance-settings { min-width: 0; margin: 0; padding: 16px 24px; border: 0; border-bottom: 1px solid var(--line-soft); }
 /* A floated legend flows like a label instead of sitting in the fieldset's border area. */
-.appearance-settings legend { float: left; width: 100%; margin: 0 0 var(--space-2); padding: 0; color: var(--ink-muted); font-size: var(--fs-sm); font-weight: 650; }
+.appearance-settings legend { float: left; width: 100%; margin: 0 0 var(--space-2); padding: 0; color: var(--ink-muted); font-size: var(--fs-xs); letter-spacing: .05em; text-transform: uppercase; }
 .appearance-options { display: flex; clear: both; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
 .appearance-options label { min-height: 24px; }
 .appearance-settings small { display: block; margin-top: var(--space-2); color: var(--ink-muted); font-size: var(--fs-xs); }
@@ -1039,6 +1043,7 @@ dialog .notice { padding-inline: 20px 24px; }
 /* Native surfaces: text selection and placeholders follow the theme. */
 ::selection { background-color: var(--selection-bg); color: var(--selection-ink); }
 ::placeholder { color: var(--placeholder); }
+:disabled::placeholder { color: var(--placeholder-disabled); }
 
 /* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {

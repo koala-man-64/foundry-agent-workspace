@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { THEMES as PREFERENCES } from './theme';
 
 // Every preset theme is a block of token values. This test reads the token block (Foundry Light) and every
 // :root[data-theme="..."] block, resolves aliases, and checks each theme against the same pair table and meaning rules,
@@ -83,6 +84,7 @@ const PAIRS: readonly Pair[] = [
   ['ok-ink', [...PAGE, 'ok-soft'], 4.5, 'text'],
   ['brand-ink', PAGE, 4.5, 'text'],
   ['placeholder', ['surface'], 4.5, 'text'],
+  ['placeholder-disabled', ['surface-disabled'], 4.5, 'text'],
   ['selection-ink', ['selection-bg'], 4.5, 'text'],
   ['on-accent', ['accent', 'accent-hover'], 4.5, 'text'],
   ['on-danger', ['danger', 'danger-hover'], 4.5, 'text'],
@@ -147,15 +149,17 @@ const NEEDS_YOU_FAMILY = ['accent', 'needs-you-ink', 'needs-you-line', 'rail-acc
 // under WCAG 1.4.11; outlining them is a look decision). A transparent ring anywhere else fails.
 const PENDING_DECISIONS = [{ theme: 'light', token: 'secondary-ring' }];
 const HEX6 = /^#[0-9a-f]{6}$/i;
+// A literal a theme must restate: opaque or translucent hex, transparent, or a colour scheme. Aliases follow the theme.
+const COLOUR_LITERAL = /^(?:#[0-9a-f]{6}(?:[0-9a-f]{2})?|transparent|light|dark)$/i;
 
 describe.each(THEMES)('theme %s', theme => {
   const values = tokens(theme);
   const colour = (name: string) => resolve(values, name);
 
-  it('sets every token that Foundry Light defines as a literal colour', () => {
+  it('sets every token that Foundry Light defines as a literal colour or scheme', () => {
     if (theme === 'light') return;
     const own = THEME_BLOCKS.get(theme)!;
-    const missing = [...ROOT].filter(([name, value]) => HEX6.test(value) && !own.has(name)).map(([name]) => name);
+    const missing = [...ROOT].filter(([name, value]) => COLOUR_LITERAL.test(value) && !own.has(name)).map(([name]) => name);
     expect(missing).toEqual([]);
   });
 
@@ -205,6 +209,10 @@ describe.each(THEMES)('theme %s', theme => {
 });
 
 describe('theme stylesheet', () => {
+  it('has a block for every theme the settings offer, and offers every block', () => {
+    expect(PREFERENCES.filter(preference => preference !== 'system').sort()).toEqual([...THEMES].sort());
+  });
+
   it('draws no colour literal outside the token block and the Windows contrast block', () => {
     const rules = stripped.slice(stripped.indexOf(rootBody) + rootBody.length).replace(/@media \(forced-colors: active\)\s*{[\s\S]*?\n}/, '').replace(/:root\[data-theme="[\w-]+"\]\s*{[^}]*}/g, '');
     expect(rules.match(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi) ?? []).toEqual([]);

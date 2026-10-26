@@ -14,6 +14,16 @@ async function launch() {
 const theme = (page: Page) => page.evaluate(() => document.documentElement.dataset.theme);
 const underlay = (page: Page) => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--canvas-deep').trim());
 const windowBackground = (app: ElectronApplication) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getBackgroundColor().toLowerCase());
+type Recorded = Window & { firstPaintTheme?: string; modeChanged?: Promise<void> };
+// data-theme when parsing ends: the deferred module bundle has not run yet, so only the first-paint script can have set it.
+const recordFirstPaint = (page: Page) => page.addInitScript(() => document.addEventListener('readystatechange', () => { if (document.readyState === 'interactive') (window as Recorded).firstPaintTheme = document.documentElement.dataset.theme; }));
+const firstPaintTheme = (page: Page) => page.evaluate(() => (window as Recorded).firstPaintTheme);
+// Switches the emulated Windows app mode and waits until the page has been told, so every listener has run.
+async function windowsMode(page: Page, colorScheme: 'light' | 'dark') {
+  await page.evaluate(() => { (window as Recorded).modeChanged = new Promise(done => matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(done), { once: true })); });
+  await page.emulateMedia({ colorScheme });
+  await page.evaluate(() => (window as Recorded).modeChanged);
+}
 
 test('the theme is a closed choice in settings that persists, follows Windows for System and colours the window', async () => {
   test.setTimeout(120_000);
@@ -21,7 +31,9 @@ test('the theme is a closed choice in settings that persists, follows Windows fo
   try {
     await page.emulateMedia({ colorScheme: 'light' });
     await waitForRuntimeReady(page);
-    expect(await theme(page)).toBe('light');
+    // A poll: without the first-paint script the bridge can be ready before React's first commit. The script itself
+    // is checked by firstPaintTheme after the reload below.
+    await expect.poll(() => theme(page)).toBe('light');
     await page.getByRole('button', { name: /Model settings/ }).first().click();
     const choices = page.getByRole('dialog').getByRole('group', { name: 'Theme' });
     await expect(choices.getByRole('radio')).toHaveCount(3);
@@ -35,22 +47,35 @@ test('the theme is a closed choice in settings that persists, follows Windows fo
     await expect.poll(() => windowBackground(app)).toBe(dark);
 
     // The first-paint script restores the choice before the app starts.
+    await recordFirstPaint(page);
     await page.reload();
     await waitForRuntimeReady(page);
+    expect(await firstPaintTheme(page)).toBe('dark');
     expect(await theme(page)).toBe('dark');
 
     await page.getByRole('button', { name: /Model settings/ }).first().click();
-    await page.getByRole('dialog').getByRole('group', { name: 'Theme' }).getByRole('radio', { name: 'System' }).check();
+    await choices.getByRole('radio', { name: 'System' }).check();
     await expect.poll(() => theme(page)).toBe('light');
-    await page.emulateMedia({ colorScheme: 'dark' });
+    await windowsMode(page, 'dark');
+    expect(await theme(page)).toBe('dark');
+    await windowsMode(page, 'light');
+    expect(await theme(page)).toBe('light');
+
+    // The arrow keys move the choice, and leaving System stops following Windows.
+    await choices.getByRole('radio', { name: 'System' }).focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(choices.getByRole('radio', { name: 'Dark' })).toBeChecked();
     await expect.poll(() => theme(page)).toBe('dark');
-    await page.emulateMedia({ colorScheme: 'light' });
-    await expect.poll(() => theme(page)).toBe('light');
+    await windowsMode(page, 'dark');
+    await windowsMode(page, 'light');
+    expect(await theme(page)).toBe('dark');
 
     // A stored value outside the list is ignored.
     await page.evaluate(() => localStorage.setItem('foundry.theme', 'paper'));
     await page.reload();
     await waitForRuntimeReady(page);
+    expect(await firstPaintTheme(page)).toBe('light');
     expect(await theme(page)).toBe('light');
     await expect.poll(() => windowBackground(app)).toBe('#e8e2d4');
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
