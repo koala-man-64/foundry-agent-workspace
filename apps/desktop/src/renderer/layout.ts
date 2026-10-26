@@ -1,6 +1,6 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type RefObject } from 'react';
 
-/** The slide-over breakpoint; styles.css uses the same 950px in its media queries (custom properties cannot). */
+/** The compact breakpoint; styles.css uses the same 950px in its media queries (custom properties cannot). */
 export const COMPACT_LAYOUT_QUERY = '(max-width: 950px)';
 
 function subscribe(onChange: () => void): () => void {
@@ -9,9 +9,57 @@ function subscribe(onChange: () => void): () => void {
   return () => query.removeEventListener('change', onChange);
 }
 
-/** True while the inspector is a slide-over rather than a column. */
+/** True in compact windows, where the sidebar narrows and the inspector becomes a slide-over. */
 export function useCompactLayout(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(COMPACT_LAYOUT_QUERY).matches, () => false);
+}
+
+/** Whether an inspector tab is on screen: selected, and the inspector either a column or an open slide-over. */
+export function inspectorTabInView(tabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
+  return tabSelected && (!overlay || overlayOpen);
+}
+
+export interface InspectorOverlay {
+  /** The inspector is a slide-over rather than a column. */
+  overlay: boolean;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  toggleRef: RefObject<HTMLButtonElement | null>;
+  closeRef: RefObject<HTMLButtonElement | null>;
+  asideProps: { ref: RefObject<HTMLElement | null>; role?: 'dialog'; 'aria-modal'?: true; onKeyDown: (event: KeyboardEvent<HTMLElement>) => void };
+}
+
+/**
+ * The inspector is a slide-over in compact windows and in Focus mode, unless the browser is expanded (then it stays a
+ * column so the native view keeps its place). The slide-over is a dialog only while open; Esc closes it and focus
+ * moves to its Close button and back to the Inspect task toggle. Leaving slide-over mode closes it, and focus never
+ * stays inside an inspector that has just been hidden.
+ */
+export function useInspectorOverlay(focus: boolean, suppressed = false): InspectorOverlay {
+  const compact = useCompactLayout();
+  const overlay = (compact || focus) && !suppressed;
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (!overlay) { setOpen(false); wasOpen.current = false; return; }
+    if (!open && asideRef.current?.contains(document.activeElement)) toggleRef.current?.focus();
+  }, [overlay]);
+  useEffect(() => {
+    if (!overlay) return;
+    if (open) closeRef.current?.focus();
+    else if (wasOpen.current) toggleRef.current?.focus();
+    wasOpen.current = open;
+  }, [open, overlay]);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || !overlay || !open) return;
+    // A dialog nested inside the inspector (the browser's confirm prompt) handles its own Escape.
+    if (event.target instanceof Element && event.target.closest('[role="dialog"], dialog') !== event.currentTarget) return;
+    setOpen(false);
+  };
+  return { overlay, open, setOpen, toggleRef, closeRef, asideProps: { ref: asideRef, role: overlay && open ? 'dialog' : undefined, 'aria-modal': overlay && open ? true : undefined, onKeyDown } };
 }
 
 /** Inspector tab label: the runtime's pending count, "+" when the loaded list may be partial, unknown outcomes named. */
@@ -75,4 +123,13 @@ export interface TaskFilters { mode: string; status: string; projectId: string; 
 /** How many sidebar task filters are set; a closed Filters disclosure shows this so no active filter is hidden. */
 export function activeFilterCount(filters: TaskFilters): number {
   return [filters.mode, filters.status, filters.projectId, filters.projectPath.trim(), filters.fromDate, filters.toDate].filter(Boolean).length;
+}
+
+/**
+ * The Inbox's Recent outcomes fold while something needs a decision or is in progress (fixed when the group first
+ * renders), and a stopped task's outcome forces them open: only finished outcomes ever fold away.
+ */
+export function recentOutcomesFold(counts: { needsDecision: number; inProgress: number } | undefined, actions: readonly { tier: number }[], rows: readonly { state: string }[]): { defaultOpen: boolean; forceOpen: boolean } {
+  const busy = counts ? counts.needsDecision + counts.inProgress > 0 : actions.some(action => action.tier < 2);
+  return { defaultOpen: !busy, forceOpen: rows.some(row => row.state !== 'task.completed') };
 }

@@ -19,13 +19,15 @@ interface Props {
 
 /**
  * After a decision the decided card's buttons unmount, which would drop focus to the document. Move it to the next
- * card still awaiting a decision, else to the decided card itself; never to a decision button.
+ * card still awaiting a decision, else to the decided card itself; never to a decision button. Cards live in the
+ * inspector's Approvals panel or, in Focus mode, in the Pending actions tray; folded (closed) cards are skipped.
  */
 export function focusAfterDecision(approvalId: string): void {
   requestAnimationFrame(() => {
     if (document.activeElement && document.activeElement !== document.body) return;
-    const next = document.querySelector<HTMLElement>('.approvals-panel article.approval-card.awaiting-approval')
-      ?? document.querySelector<HTMLElement>(`.approvals-panel [data-approval-id="${CSS.escape(approvalId)}"]`);
+    const visible = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].find(card => !card.closest('details:not([open])'));
+    const next = visible('.approval-tray article.approval-card.awaiting-approval, .approvals-panel article.approval-card.awaiting-approval')
+      ?? visible(`.approval-tray [data-approval-id="${CSS.escape(approvalId)}"], .approvals-panel [data-approval-id="${CSS.escape(approvalId)}"]`);
     next?.focus();
   });
 }
