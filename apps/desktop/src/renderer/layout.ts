@@ -124,3 +124,12 @@ export interface TaskFilters { mode: string; status: string; projectId: string; 
 export function activeFilterCount(filters: TaskFilters): number {
   return [filters.mode, filters.status, filters.projectId, filters.projectPath.trim(), filters.fromDate, filters.toDate].filter(Boolean).length;
 }
+
+/**
+ * The Inbox's Recent outcomes fold while something needs a decision or is in progress (fixed when the group first
+ * renders), and a stopped task's outcome forces them open: only finished outcomes ever fold away.
+ */
+export function recentOutcomesFold(counts: { needsDecision: number; inProgress: number } | undefined, actions: readonly { tier: number }[], rows: readonly { state: string }[]): { defaultOpen: boolean; forceOpen: boolean } {
+  const busy = counts ? counts.needsDecision + counts.inProgress > 0 : actions.some(action => action.tier < 2);
+  return { defaultOpen: !busy, forceOpen: rows.some(row => row.state !== 'task.completed') };
+}

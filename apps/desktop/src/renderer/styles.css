@@ -707,6 +707,8 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-tray:focus-visible { outline-offset: -3px; }
 .approval-tray > .approval-card:last-child { margin-bottom: 0; }
 .coordinator-detail > .approval-tray { margin: 0 -32px; }
+/* In Focus the coordinated detail already sits on the reading measure; the tray and banner align with its text. */
+.workspace[data-focus="on"] .coordinator-detail > .approval-tray, .workspace[data-focus="on"] .coordinator-detail > .approval-banner { margin-inline: 0; }
 
 /* While the open task needs a decision the sidebar's green selection fills recede to the rail surface; the amber
    selection and needs-decision marks, status dots and focus rings stay. Colour tokens only: no opacity, no movement. */

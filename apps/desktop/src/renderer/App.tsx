@@ -31,7 +31,7 @@ import { AttentionBannerView } from './AttentionBanner';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
 import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
-import { attentionBanner, decisionWhere, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
+import { attentionBanner, cardsShown, decisionWhere, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -228,7 +228,9 @@ function App() {
   // unknown-publication estimate come from the cards themselves.
   // Focus applies to the task and draft views; the Usage page keeps the sidebar, its only way back.
   const focusActive = focus && page === 'conversation';
-  const approvalsWanted = rightTab === 'approvals' || pendingApprovalCount > 0 || unknownOutcomes > 0 || focusActive;
+  // While a loaded card is approved or executing its outcome is still coming, so keep reading until it settles.
+  const approvalSettling = detail?.approvals?.some(approval => approval.state === 'approved' || approval.state === 'executing') ?? false;
+  const approvalsWanted = rightTab === 'approvals' || pendingApprovalCount > 0 || unknownOutcomes > 0 || approvalSettling;
   const approvalsWantedRef = useRef(approvalsWanted);
   approvalsWantedRef.current = approvalsWanted;
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
@@ -351,7 +353,8 @@ function App() {
     return run;
   }, [fetchApprovals]);
 
-  useEffect(() => { if (selectedId && approvalsWanted) void loadApprovals(selectedId); }, [selectedId, approvalsWanted, rightTab, loadApprovals]);
+  // Entering Focus reads the list once so its tray can show failed and anomalous cards; refreshes then follow approvalsWanted.
+  useEffect(() => { if (selectedId && (approvalsWanted || focusActive)) void loadApprovals(selectedId); }, [selectedId, approvalsWanted, focusActive, rightTab, loadApprovals]);
   useEffect(() => {
     if (focusAction?.kind !== 'approval' || !selectedId || focusAction.taskId !== selectedId || detail?.task.id !== selectedId || detail.task.mode === 'coordinated') return;
     void readApprovalEvidence(api, focusAction.sourceTaskId ?? selectedId, focusAction.sourceId).then(read => {
@@ -833,7 +836,7 @@ function App() {
   useAttentionAnnouncements({ taskId: detailLoaded ? selectedId : undefined, awaiting: attention.awaiting, unknown: attention.unknown, running: watchedStatus === undefined ? undefined : watchedStatus === 'running',
     finished: watchedStatus && watchedStatus !== 'running' ? watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.` : undefined }, decisionSurface, announce);
   // The banner names what needs a decision whenever neither the tray nor the tab that holds it is on screen.
-  const bannerCandidate = attentionBanner(attention, trayActive);
+  const bannerCandidate = attentionBanner(attention, trayActive ? cardsShown(approvalGroups.live) : undefined);
   const bannerTab = bannerCandidate?.target === 'publish' && workspaceKind === 'git' ? 'publish' : 'approvals';
   const banner = bannerCandidate && !inspectorTabInView(effectiveRightTab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
   const inboxLabel = inboxChipLabel(inboxCount);
@@ -975,10 +978,9 @@ function App() {
         {!trayActive && approvalGroups.live.map(renderApproval)}
         {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalNextBefore !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>
           {approvalGroups.decided.map(renderApproval)}
-          {olderApprovals}
         </Disclosure>}
         {!approvalCards.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
-        {!approvalGroups.decided.length && olderApprovals}
+        {olderApprovals}
       </div>}
     </aside>
     </>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attentionAnnouncement, attentionBanner, coordinatedAttention, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, windowTitle } from './attention';
+import { attentionAnnouncement, attentionBanner, cardsShown, coordinatedAttention, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, windowTitle } from './attention';
 
 const RECOVERY = 'Unknown does not mean success and is never retried automatically.';
 
@@ -48,9 +48,16 @@ describe('attentionBanner', () => {
   });
 
   it('names only what no on-screen card shows', () => {
-    const attention = taskAttention({ pendingApprovals: 1, unknownOutcomes: 2, approvals: [{ state: 'awaiting-approval' }, { state: 'unknown' }] });
-    expect(attentionBanner(attention, true)).toEqual({ lines: [`1 outcome needs inspection. ${RECOVERY}`], action: 'Review unknown outcomes', target: 'publish' });
-    expect(attentionBanner(taskAttention({ pendingApprovals: 1, unknownOutcomes: 1, approvals: [{ state: 'awaiting-approval' }, { state: 'unknown' }] }), true)).toBeUndefined();
+    const cards = [{ state: 'awaiting-approval' as const }, { state: 'unknown' as const }];
+    const attention = taskAttention({ pendingApprovals: 1, unknownOutcomes: 2, approvals: cards });
+    expect(cardsShown(cards)).toEqual({ awaiting: 1, unknown: 1 });
+    expect(attentionBanner(attention, cardsShown(cards))).toEqual({ lines: [`1 outcome needs inspection. ${RECOVERY}`], action: 'Review unknown outcomes', target: 'publish' });
+    expect(attentionBanner(taskAttention({ pendingApprovals: 1, unknownOutcomes: 1, approvals: cards }), cardsShown(cards))).toBeUndefined();
+  });
+
+  it('still names decisions the runtime reports beyond the cards on screen', () => {
+    const shown = [{ state: 'awaiting-approval' as const }];
+    expect(attentionBanner(taskAttention({ pendingApprovals: 2, unknownOutcomes: 0, approvals: shown }), cardsShown(shown))).toEqual({ lines: ['An action is waiting for your decision.'], action: 'Review pending actions', target: 'approvals' });
     expect(attentionBanner(taskAttention({ pendingApprovals: 0, unknownOutcomes: 0 }))).toBeUndefined();
   });
 });

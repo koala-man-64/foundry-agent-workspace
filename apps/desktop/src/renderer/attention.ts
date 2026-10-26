@@ -45,25 +45,31 @@ export function inspectLabel(attention: Attention): string {
   return `Inspect task${attention.awaiting > 0 ? ' · approval waiting' : ''}${attention.unknown > 0 ? ' · outcome unknown' : ''}`;
 }
 
+/** How many awaiting and unknown cards a rendered list shows (what the banner need not repeat). */
+export function cardsShown(cards: readonly Pick<Approval, 'state'>[]): { awaiting: number; unknown: number } {
+  return { awaiting: count(cards, 'awaiting-approval'), unknown: count(cards, 'unknown') };
+}
+
 export type AttentionTarget = 'approvals' | 'publish' | 'orchestration';
 
 export interface AttentionBanner { lines: string[]; action: 'Review pending actions' | 'Review unknown outcomes'; target: AttentionTarget }
 
 /**
  * The banner above the composer. Awaiting decisions come first and keep their existing sentences; unknown outcomes
- * reuse the Activity panel's recovery wording. When approval cards are already on screen (the Focus tray), only the
- * outcomes no card shows are named.
+ * reuse the Activity panel's recovery wording. Approval cards already on screen (the Focus tray) are not named again;
+ * whatever they do not show is.
  */
-export function attentionBanner(attention: Attention, cardsOnScreen = false): AttentionBanner | undefined {
-  const awaiting = cardsOnScreen ? 0 : attention.awaiting;
-  const unknownCards = attention.unknown - attention.unknownPublication - attention.unknownIntegrations;
-  const unknown = cardsOnScreen ? attention.unknown - unknownCards : attention.unknown;
+export function attentionBanner(attention: Attention, onScreen: { awaiting: number; unknown: number } = { awaiting: 0, unknown: 0 }): AttentionBanner | undefined {
+  // Only the cards actually shown (the Focus tray) are subtracted; counts the runtime reports beyond them still show.
+  const awaiting = Math.max(0, attention.awaiting - onScreen.awaiting);
+  const unknownCards = Math.max(0, attention.unknown - attention.unknownPublication - attention.unknownIntegrations - onScreen.unknown);
+  const unknown = Math.max(0, attention.unknown - onScreen.unknown);
   if (awaiting <= 0 && unknown <= 0) return undefined;
   const plus = attention.partial ? '+' : '';
   const lines: string[] = [];
   if (awaiting > 0) lines.push(awaiting > 1 ? `${awaiting}${plus} actions are waiting for your decision.` : 'An action is waiting for your decision.');
   if (unknown > 0) lines.push(`${unknown} outcome${unknown === 1 ? ' needs' : 's need'} inspection. Unknown does not mean success and is never retried automatically.`);
-  const target: AttentionTarget = awaiting > 0 || (unknownCards > 0 && !cardsOnScreen) ? 'approvals' : attention.unknownIntegrations > 0 ? 'orchestration' : 'publish';
+  const target: AttentionTarget = awaiting > 0 || unknownCards > 0 ? 'approvals' : attention.unknownIntegrations > 0 ? 'orchestration' : 'publish';
   return { lines, action: awaiting > 0 ? 'Review pending actions' : 'Review unknown outcomes', target };
 }
 

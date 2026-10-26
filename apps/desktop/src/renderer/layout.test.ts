@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeFilterCount, inspectorTabInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
+import { activeFilterCount, recentOutcomesFold, inspectorTabInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
 
 describe('inspectorTabInView', () => {
   it('is true only when the tab is selected and the inspector is on screen', () => {
@@ -72,5 +72,18 @@ describe('activeFilterCount', () => {
     const none = { mode: '', status: '', projectId: '', projectPath: '  ', fromDate: '', toDate: '' };
     expect(activeFilterCount(none)).toBe(0);
     expect(activeFilterCount({ ...none, mode: 'coding', fromDate: '2026-10-01' })).toBe(2);
+  });
+});
+
+describe('recentOutcomesFold', () => {
+  it('folds finished outcomes only while something needs a decision or is in progress', () => {
+    const finished = [{ state: 'task.completed' }];
+    expect(recentOutcomesFold({ needsDecision: 1, inProgress: 0 }, [], finished)).toEqual({ defaultOpen: false, forceOpen: false });
+    expect(recentOutcomesFold({ needsDecision: 0, inProgress: 0 }, [], finished)).toEqual({ defaultOpen: true, forceOpen: false });
+    expect(recentOutcomesFold(undefined, [{ tier: 1 }, { tier: 2 }], finished).defaultOpen).toBe(false);
+  });
+
+  it('never folds a stopped task away', () => {
+    expect(recentOutcomesFold({ needsDecision: 2, inProgress: 0 }, [], [{ state: 'task.completed' }, { state: 'task.stopped' }]).forceOpen).toBe(true);
   });
 });

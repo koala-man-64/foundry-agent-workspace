@@ -23,7 +23,7 @@ import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from '
 import { AttentionBannerView } from './AttentionBanner';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
-import { attentionBanner, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
+import { attentionBanner, cardsShown, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
 
 interface Props {
   api: DesktopApi;
@@ -74,6 +74,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [childNextBefore, setChildNextBefore] = useState<number | null>(null);
   const [childThrough, setChildThrough] = useState<number>();
   const [rootApprovals, setRootApprovals] = useState<Approval[]>([]);
+  /** Some task had more approvals than one page: decided counts are lower bounds. */
+  const [approvalsPartial, setApprovalsPartial] = useState(false);
   /** Approvals seen in a live state while this task has been open; they stay with the live cards. */
   const seenLiveApprovals = useRef(new Set<string>());
   const [incompleteApprovalIds, setIncompleteApprovalIds] = useState<Set<string>>(new Set());
@@ -235,11 +237,12 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       const childIds = Object.values(runsById).filter((run) => run.role === 'child').map((run) => run.taskId);
       const childLists = await Promise.all(childIds.map(async (childTaskId) => {
         const summaries = await api.invoke('task.approvals', { taskId: childTaskId, limit: 50 });
-        return [childTaskId, await Promise.all(summaries.approvals.map(item => readApprovalEvidence(api, item.taskId, item.id)))] as const;
+        return [childTaskId, await Promise.all(summaries.approvals.map(item => readApprovalEvidence(api, item.taskId, item.id))), summaries.nextBefore !== null] as const;
       }));
       if (version !== approvalsVersion.current || rootRef.current !== rootTaskId) return;
       setRootApprovals(rootReads.map(read => read.approval));
       setChildApprovals(Object.fromEntries(childLists.map(([id, reads]) => [id, reads.map(read => read.approval)])));
+      setApprovalsPartial(rootPage.nextBefore !== null || childLists.some(([, , more]) => more));
       setIncompleteApprovalIds(new Set([...rootReads, ...childLists.flatMap(([, reads]) => reads)].filter(read => !read.complete).map(read => read.approval.id)));
     } catch (error) { if (version === approvalsVersion.current) setNotice(`Could not load approvals: ${errorMessage(error)}`); }
   }, [api, rootTaskId, runsById, setNotice]);
@@ -301,6 +304,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
     setRunsById({}); setRunsCursor(null); setEventsById({}); setEventsCursor(null); setView(undefined);
     childLoadedId.current = ''; transcriptLoadedId.current = ''; childMessageOrdinals.current.clear(); rootMessageOrdinals.current.clear(); childLatestThrough.current = undefined; rootLatestThrough.current = undefined; childMessageCursor.current = null; rootMessageCursor.current = null;
     seenLiveApprovals.current = new Set();
+    setApprovalsPartial(false);
     setSelectedChildId(undefined); setChildDetail(undefined); setApprovalErrors({}); setRootApprovals([]); setChildApprovals({}); setRootMessages([]); setRootCompactions([]); setRootNextBefore(null); setRootThrough(undefined);
     setCurrentPath(''); setFiles([]); setFile(undefined); setDiff(undefined);
     void fetchLatest(); void refreshInspector(''); void loadRootTranscript();
@@ -310,10 +314,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useEffect(() => { if (selectedChildId) void loadChild(selectedChildId); }, [selectedChildId, loadChild]);
   // Approvals load while their tab is open and whenever an agent is waiting on one, so the banner and counts are real.
   const agentsWaitingOnApproval = Object.values(runsById).some(run => run.lifecycle === 'waiting' && run.waitReason === 'approval');
-  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval || focus;
+  const approvalSettling = [...rootApprovals, ...Object.values(childApprovals).flat()].some(approval => approval.state === 'approved' || approval.state === 'executing');
+  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval || approvalSettling;
   const approvalsWantedRef = useRef(approvalsWanted);
   approvalsWantedRef.current = approvalsWanted;
   useEffect(() => { if (approvalsWanted) void loadApprovals(); }, [approvalsWanted, runsById, loadApprovals]);
+  // Read once per agent set and on entering Focus, so unknown child outcomes count before any tab is opened.
+  const childCount = Object.values(runsById).filter(run => run.role === 'child').length;
+  useEffect(() => { if (view) void loadApprovals(); }, [rootTaskId, childCount, focus, Boolean(view), loadApprovals]);
   useEffect(() => {
     if (!focusAction || focusAction.taskId !== rootTaskId) return;
     setInspectorOpen(true);
@@ -444,7 +452,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const compactLayout = useCompactLayout();
   const liveCards = partitionApprovals(pendingApprovals, approval => foldableDecided(approval, !incompleteApprovalIds.has(approval.id), approvalErrors[approval.id]?.state === approval.state), seenLiveApprovals.current);
   const trayActive = focus && !compactLayout && !inspectorOpen && liveCards.live.length > 0;
-  const bannerCandidate = attentionBanner(attention, trayActive);
+  const bannerCandidate = attentionBanner(attention, trayActive ? cardsShown(liveCards.live) : undefined);
   const bannerTab = bannerCandidate?.target === 'orchestration' ? 'orchestration' : 'approvals';
   const banner = bannerCandidate && !inspectorTabInView(tab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
   const reviewBanner = () => { setTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); };
@@ -553,7 +561,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
           {!trayActive && approvalGroups.live.map(renderApproval)}
-          {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: runsCursor !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}
+          {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalsPartial, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>

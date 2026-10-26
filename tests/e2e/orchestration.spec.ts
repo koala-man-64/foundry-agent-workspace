@@ -563,3 +563,28 @@ test('legacy v1 database: history renders, coordinated mode stays disabled, and 
     await expect(page.getByText('Fake response: One more legacy message.', { exact: true })).toBeVisible();
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });
+
+test('Focus mode keeps coordinated child approvals on screen, one copy each', async () => {
+  test.setTimeout(180_000);
+  const fixture = await mkdtemp(join(tmpdir(), 'foundry-orchestration-focus-e2e-'));
+  const project = join(fixture, 'repository');
+  await initFixtureRepo(project);
+  const { app, page, errors } = await launch(join(fixture, 'state'));
+  try {
+    await createCoordinatedTask(page, project, 'Focused coordinated task');
+    await page.getByRole('button', { name: 'Focus mode', exact: true }).click();
+    await expect(page.locator('.sidebar-shell')).toBeHidden();
+    await page.getByLabel('Message coordinator').fill('/orchestrate-demo');
+    await page.getByRole('button', { name: /^Send/ }).click();
+    const tray = page.getByRole('region', { name: 'Pending actions' });
+    await expect(tray.locator('article.approval-card.awaiting-approval')).toHaveCount(2, { timeout: 30_000 });
+    await expect(page.getByLabel('Coordinated task inspector').locator('article.approval-card')).toHaveCount(0);
+    await expect(page.locator('.approval-banner')).toHaveCount(0);
+    const first = tray.locator('article.approval-card.awaiting-approval').first();
+    const id = await first.getAttribute('data-approval-id');
+    await first.getByRole('button', { name: 'Approve', exact: true }).click();
+    await expect(page.locator(`article.approval-card[data-approval-id="${id}"]`)).not.toHaveClass(/awaiting-approval/, { timeout: 30_000 });
+    await expect(tray.locator(`article.approval-card[data-approval-id="${id}"]`)).toHaveCount(1);
+    expect(errors).toEqual([]);
+  } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
+});
