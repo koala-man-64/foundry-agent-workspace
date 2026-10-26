@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Approval } from '../../../../packages/protocol/src/index';
-import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
+import { decidedSummaryDetail, foldableDecided, oldestFirst, partitionApprovals } from './approvalGroups';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
 
@@ -69,5 +69,13 @@ describe('ToolReadinessNotes', () => {
     const warning = render({ readiness: 'unavailable' });
     expect(warning.startsWith('<p class="tool-readiness">Tool execution unavailable until this profile is re-probed')).toBe(true);
     expect(render({ hasCards: false, commandDecisionOpen: true })).not.toContain('<details');
+  });
+});
+
+describe('oldestFirst', () => {
+  it('queues the tray oldest first and keeps ties in their order', () => {
+    const cards = [{ id: 'c', createdAt: '2026-10-25T10:02:00Z' }, { id: 'a', createdAt: '2026-10-25T10:00:00Z' }, { id: 'b1', createdAt: '2026-10-25T10:01:00Z' }, { id: 'b2', createdAt: '2026-10-25T10:01:00Z' }];
+    expect(oldestFirst(cards).map(card => card.id)).toEqual(['a', 'b1', 'b2', 'c']);
+    expect(cards.map(card => card.id)).toEqual(['c', 'a', 'b1', 'b2']);
   });
 });

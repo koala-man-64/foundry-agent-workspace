@@ -36,3 +36,8 @@ export function decidedSummaryDetail(decided: readonly Pick<Approval, 'state'>[]
   const rejected = decided.filter(item => item.state === 'rejected').length;
   return [complete ? `${complete} complete` : '', rejected ? `${rejected} rejected` : ''].filter(Boolean).join(', ');
 }
+
+/** Decision-queue order for the Focus tray: oldest first, ties kept, so later arrivals append below. */
+export function oldestFirst<T extends { createdAt: string }>(approvals: readonly T[]): T[] {
+  return approvals.map((approval, index) => ({ approval, index })).sort((a, b) => a.approval.createdAt.localeCompare(b.approval.createdAt) || a.index - b.index).map(item => item.approval);
+}

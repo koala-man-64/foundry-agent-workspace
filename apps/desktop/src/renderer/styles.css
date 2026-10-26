@@ -692,6 +692,9 @@ dialog .notice { padding-inline: 20px 24px; }
    slide-over above. Text and the composer keep one reading measure, centred, with the scrollbar at the edge. */
 .workspace[data-focus="on"], .workspace.coordinated-workspace[data-focus="on"], .workspace.wide-content-workspace[data-focus="on"] { grid-template-columns: minmax(0, 1fr); }
 .workspace[data-focus="on"] > .sidebar-shell { display: none; }
+/* The tray may take most of the column while a decision waits, but the transcript always keeps a few lines. */
+.workspace[data-focus="on"] > .conversation > .messages { min-height: 96px; }
+@media (max-width: 1050px) { .focus-toggle .shortcut-hint { display: none; } }
 .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] > .conversation > .composer, .workspace[data-focus="on"] > .conversation > .approval-tray,
 .workspace[data-focus="on"] > .conversation > .approval-banner, .workspace[data-focus="on"] > .conversation > .notice, .workspace[data-focus="on"] .agent-tree, .workspace[data-focus="on"] .agent-detail { padding-inline: max(32px, calc((100% - 860px) / 2)); }
 .workspace[data-focus="on"] > .conversation > .task-header { padding-inline: max(34px, calc((100% - 860px) / 2)); }
@@ -703,9 +706,8 @@ dialog .notice { padding-inline: 20px 24px; }
 
 /* Pending actions tray (Focus mode): the live approval cards above the composer, bounded so the transcript and
    composer stay usable; it scrolls on its own and is reachable by keyboard. */
-.approval-tray { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; max-height: 45vh; padding: 0 32px; border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
+.approval-tray { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; max-height: 60vh; padding: 0 32px; border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
 .tray-summary { flex: 0 0 auto; padding: 9px 0 7px; color: var(--warn-ink); font-size: var(--fs-sm); font-weight: 650; }
-.approval-tray > .tool-readiness, .approval-tray > .disclosure { flex: 0 0 auto; }
 .approval-tray-cards { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
 .approval-tray-cards:focus-visible { outline-offset: -3px; }
 .approval-tray-cards > .approval-card:last-child { margin-bottom: 0; }

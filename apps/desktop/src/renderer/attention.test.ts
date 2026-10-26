@@ -114,6 +114,6 @@ describe('traySummary', () => {
     expect(traySummary({ awaiting: 1, unknown: 0 })).toBe('Pending actions: 1 waiting for your decision');
     expect(traySummary({ awaiting: 2, unknown: 1 })).toBe('Pending actions: 2 waiting for your decision · 1 outcome unknown');
     expect(traySummary({ awaiting: 0, unknown: 2 })).toBe('Pending actions: 2 outcomes unknown');
-    expect(traySummary({ awaiting: 0, unknown: 0 })).toBe('Pending actions: nothing waiting for your decision');
+    expect(traySummary({ awaiting: 0, unknown: 0 })).toBe('Pending actions');
   });
 });

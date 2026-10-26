@@ -23,7 +23,7 @@ import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from '
 import { AttentionBannerView } from './AttentionBanner';
 import { ApprovalTray } from './ApprovalTray';
 import { Disclosure, disclosureLabel } from './Disclosure';
-import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
+import { decidedSummaryDetail, foldableDecided, oldestFirst, partitionApprovals } from './approvalGroups';
 import { attentionBanner, cardsShown, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
 
 interface Props {
@@ -316,7 +316,9 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   // Approvals load while their tab is open and whenever an agent is waiting on one, so the banner and counts are real.
   const agentsWaitingOnApproval = Object.values(runsById).some(run => run.lifecycle === 'waiting' && run.waitReason === 'approval');
   const approvalSettling = [...rootApprovals, ...Object.values(childApprovals).flat()].some(approval => approval.state === 'approved' || approval.state === 'executing');
-  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval || approvalSettling;
+  // In Focus the tray stands in for the Approvals tab, so it refreshes the same way: no runtime count covers child
+  // handoff and integration approvals that are not tied to an agent waiting on approval.
+  const approvalsWanted = tab === 'approvals' || focus || agentsWaitingOnApproval || approvalSettling;
   const approvalsWantedRef = useRef(approvalsWanted);
   approvalsWantedRef.current = approvalsWanted;
   useEffect(() => { if (approvalsWanted) void loadApprovals(); }, [approvalsWanted, runsById, loadApprovals]);
@@ -460,7 +462,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, trayActive ? 'tray' : inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
   const approvalGroups = liveCards;
   const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />;
-  const tray = trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)}>{approvalGroups.live.map(renderApproval)}</ApprovalTray>;
+  const tray = trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)}>{oldestFirst(approvalGroups.live).map(renderApproval)}</ApprovalTray>;
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;

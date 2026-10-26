@@ -31,7 +31,7 @@ import { AttentionBannerView } from './AttentionBanner';
 import { ApprovalTray } from './ApprovalTray';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
-import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
+import { decidedSummaryDetail, foldableDecided, oldestFirst, partitionApprovals } from './approvalGroups';
 import { attentionBanner, cardsShown, decisionWhere, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
 declare global { interface Window { workspace: DesktopApi; } }
@@ -912,7 +912,7 @@ function App() {
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? trayActive ? 'Review the proposed tool action in Pending actions, above the message box, before it can continue.' : 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
-      {trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)} notes={toolNotes}>{approvalGroups.live.map(renderApproval)}</ApprovalTray>}
+      {trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)} notes={toolNotes}>{oldestFirst(approvalGroups.live).map(renderApproval)}</ApprovalTray>}
       {banner && <AttentionBannerView banner={banner} onReview={() => { setRightTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); }} />}
       <form className="composer" onSubmit={send}>
         <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend, () => announce(taskBusy ? awaitingApproval ? 'Send is unavailable until you decide the pending action or cancel the task.' : 'Send is available when the agent finishes, or cancel the task.' : 'Nothing to send yet.'))} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"

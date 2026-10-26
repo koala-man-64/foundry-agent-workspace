@@ -53,7 +53,8 @@ export function cardsShown(cards: readonly Pick<Approval, 'state'>[]): { awaitin
 /** The Focus tray's fixed summary: what it holds that needs Rudy, so a card scrolled out of view is still counted. */
 export function traySummary(shown: { awaiting: number; unknown: number }): string {
   const parts = [shown.awaiting > 0 ? `${shown.awaiting} waiting for your decision` : '', shown.unknown > 0 ? `${shown.unknown} outcome${shown.unknown === 1 ? '' : 's'} unknown` : ''].filter(Boolean);
-  return parts.length ? `Pending actions: ${parts.join(' · ')}` : 'Pending actions: nothing waiting for your decision';
+  // With nothing awaiting or unknown on screen it names only the region: the runtime may still report decisions not loaded here.
+  return parts.length ? `Pending actions: ${parts.join(' · ')}` : 'Pending actions';
 }
 
 export type AttentionTarget = 'approvals' | 'publish' | 'orchestration';
