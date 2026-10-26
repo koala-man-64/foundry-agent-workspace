@@ -64,6 +64,8 @@ test('Focus mode keeps a pending decision and its evidence on screen, one copy, 
     await tray.locator('article.approval-card.awaiting-approval').first().getByRole('button', { name: 'Approve', exact: true }).click();
     const command = tray.locator('article.approval-card.awaiting-approval').filter({ has: page.locator('.command-evidence') });
     await expect(command).toBeVisible({ timeout: 60_000 });
+    // The edit decided a moment ago is older, but the card still waiting leads the tray, so Approve stays in reach.
+    await expect(tray.locator('article.approval-card').first()).toHaveClass(/awaiting-approval/);
     await expect(command).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
     // The command-review limits qualify the decision, so they stay on screen beside it, outside the scrolling cards.
     await expect(tray.getByTestId('command-review-limits')).toBeVisible();

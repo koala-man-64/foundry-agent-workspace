@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Approval } from '../../../../packages/protocol/src/index';
-import { decidedSummaryDetail, foldableDecided, oldestFirst, partitionApprovals } from './approvalGroups';
+import { decidedSummaryDetail, foldableDecided, partitionApprovals, trayOrder } from './approvalGroups';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
 
@@ -72,10 +72,27 @@ describe('ToolReadinessNotes', () => {
   });
 });
 
-describe('oldestFirst', () => {
-  it('queues the tray oldest first and keeps ties in their order', () => {
-    const cards = [{ id: 'c', createdAt: '2026-10-25T10:02:00Z' }, { id: 'a', createdAt: '2026-10-25T10:00:00Z' }, { id: 'b1', createdAt: '2026-10-25T10:01:00Z' }, { id: 'b2', createdAt: '2026-10-25T10:01:00Z' }];
-    expect(oldestFirst(cards).map(card => card.id)).toEqual(['a', 'b1', 'b2', 'c']);
-    expect(cards.map(card => card.id)).toEqual(['c', 'a', 'b1', 'b2']);
+describe('trayOrder', () => {
+  const at = (minute: number) => `2026-10-25T10:0${minute}:00Z`;
+
+  it('puts a card still waiting above an older card decided earlier (the regression)', () => {
+    const cards = [{ id: 'command', state: 'awaiting-approval' as const, createdAt: at(2) }, { id: 'edit', state: 'complete' as const, createdAt: at(1) }];
+    expect(trayOrder(cards).map(card => card.id)).toEqual(['command', 'edit']);
+  });
+
+  it('orders waiting, unknown, running, problem and settled cards, oldest first within each, ties kept', () => {
+    const cards = [
+      { id: 'done', state: 'complete' as const, createdAt: at(0) }, { id: 'failed', state: 'failed' as const, createdAt: at(1) },
+      { id: 'running', state: 'executing' as const, createdAt: at(2) }, { id: 'unknown', state: 'unknown' as const, createdAt: at(3) },
+      { id: 'wait-new', state: 'awaiting-approval' as const, createdAt: at(5) }, { id: 'wait-old', state: 'awaiting-approval' as const, createdAt: at(4) },
+      { id: 'wait-tie', state: 'awaiting-approval' as const, createdAt: at(5) }, { id: 'rejected', state: 'rejected' as const, createdAt: at(6) },
+    ];
+    expect(trayOrder(cards).map(card => card.id)).toEqual(['wait-old', 'wait-new', 'wait-tie', 'unknown', 'running', 'failed', 'done', 'rejected']);
+    expect(cards[0]!.id).toBe('done');
+  });
+
+  it('sorts a state from a newer runtime with the unknown outcomes, above anything settled', () => {
+    const future = { id: 'future', state: 'paused' as unknown as 'unknown', createdAt: at(9) };
+    expect(trayOrder([{ id: 'done', state: 'complete' as const, createdAt: at(0) }, future, { id: 'wait', state: 'awaiting-approval' as const, createdAt: at(8) }]).map(card => card.id)).toEqual(['wait', 'future', 'done']);
   });
 });

@@ -585,6 +585,9 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     await first.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect(page.locator(`article.approval-card[data-approval-id="${id}"]`)).not.toHaveClass(/awaiting-approval/, { timeout: 30_000 });
     await expect(tray.locator(`article.approval-card[data-approval-id="${id}"]`)).toHaveCount(1);
+    // The other child's approval is still waiting, so it leads the tray ahead of the card just decided.
+    await expect(tray.locator('article.approval-card').first()).toHaveClass(/awaiting-approval/);
+    await expect(tray.locator('article.approval-card').first()).not.toHaveAttribute('data-approval-id', id!);
     expect(errors).toEqual([]);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });

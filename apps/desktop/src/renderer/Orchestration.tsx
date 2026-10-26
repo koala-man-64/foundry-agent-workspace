@@ -23,7 +23,7 @@ import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from '
 import { AttentionBannerView } from './AttentionBanner';
 import { ApprovalTray } from './ApprovalTray';
 import { Disclosure, disclosureLabel } from './Disclosure';
-import { decidedSummaryDetail, foldableDecided, oldestFirst, partitionApprovals } from './approvalGroups';
+import { decidedSummaryDetail, foldableDecided, partitionApprovals, trayOrder } from './approvalGroups';
 import { attentionBanner, cardsShown, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
 
 interface Props {
@@ -462,7 +462,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, trayActive ? 'tray' : inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
   const approvalGroups = liveCards;
   const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />;
-  const tray = trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)}>{oldestFirst(approvalGroups.live).map(renderApproval)}</ApprovalTray>;
+  const tray = trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)}>{trayOrder(approvalGroups.live).map(renderApproval)}</ApprovalTray>;
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;
