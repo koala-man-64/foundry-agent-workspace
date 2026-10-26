@@ -654,15 +654,16 @@ dialog .notice { padding-inline: 20px 24px; }
   body { min-width: 0; }
   .sidebar-mode-tabs button { white-space: normal; }
   .workspace, .workspace.coordinated-workspace, .workspace.wide-content-workspace { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); }
-  .workspace .inspector, .workspace .inspector-resize { display: none; }
   .workspace.browser-expanded { grid-template-columns: minmax(260px, 1fr) var(--inspector-width, 360px); }
-  .workspace.browser-expanded > .inspector { display: flex; }
   .task-header { padding: 20px; }
   .draft-compose { width: calc(100% - 28px); margin-bottom: 14px; }
-  .inspector-open { display: inline-flex; }
-  .workspace .inspector.open { display: flex; position: fixed; z-index: 20; inset: 0 0 0 auto; width: min(440px, 100vw); height: 100vh; box-shadow: -10px 0 30px #14272355; }
-  .inspector-close { display: inline-flex; align-self: flex-end; margin: 8px; }
 }
+/* Slide-over inspector, in compact windows and in Focus mode. useInspectorOverlay (layout.ts) is the only source of
+   data-inspector, so the column and slide-over rules cannot disagree with the dialog semantics. */
+.workspace[data-inspector="overlay"] > .inspector, .workspace[data-inspector="overlay"] > .inspector-resize { display: none; }
+.workspace[data-inspector="overlay"] .inspector-open { display: inline-flex; }
+.workspace[data-inspector="overlay"] > .inspector.open { display: flex; position: fixed; z-index: 20; inset: 0 0 0 auto; width: min(440px, 100vw); height: 100vh; box-shadow: -10px 0 30px #14272355; }
+.workspace[data-inspector="overlay"] .inspector-close { display: inline-flex; align-self: flex-end; margin: 8px; }
 
 /* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {

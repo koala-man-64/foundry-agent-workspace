@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { activeFilterCount, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
+import { activeFilterCount, approvalsInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
+
+describe('approvalsInView', () => {
+  it('is true only when the Approvals tab is selected and the inspector is on screen', () => {
+    expect(approvalsInView(true, false, false)).toBe(true);
+    expect(approvalsInView(true, true, true)).toBe(true);
+    expect(approvalsInView(true, true, false)).toBe(false);
+    expect(approvalsInView(false, false, false)).toBe(false);
+    expect(approvalsInView(false, true, true)).toBe(false);
+  });
+});
 
 describe('approvalsTabLabel', () => {
   it('keeps the name starting with Approvals and shows real counts', () => {

@@ -10,7 +10,7 @@ import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
-import { approvalsTabLabel, useCompactLayout } from './layout';
+import { approvalsInView, approvalsTabLabel, useInspectorOverlay } from './layout';
 import { sendOnShortcut } from './composer';
 import { Hash, PatchText } from './Evidence';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
@@ -35,6 +35,8 @@ interface Props {
   onTaskCreated: (task: Task) => void;
   focusAction?: ActionItem;
   searchHit?: SearchHit;
+  /** Focus mode is on: the inspector is a slide-over at any width. */
+  focus?: boolean;
 }
 
 const outcomeLabel: Record<RunOutcome, string> = { succeeded: 'Succeeded', incomplete: 'Incomplete', failed: 'Failed', cancelled: 'Cancelled' };
@@ -51,7 +53,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 
 function full(sha: string | undefined | null): string { return sha || 'none'; }
 
-export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit }: Props) {
+export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit, focus = false }: Props) {
   const rootTaskId = task.id;
   const [runsById, setRunsById] = useState<Record<string, AgentRun>>({});
   const [runsCursor, setRunsCursor] = useState<number | null>(null);
@@ -69,10 +71,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [rootCompactions, setRootCompactions] = useState<CompactionSummary[]>([]);
   const [rootNextBefore, setRootNextBefore] = useState<number | null>(null);
   const [rootThrough, setRootThrough] = useState<number>();
-  const [inspectorOpen, setInspectorOpen] = useState(false);
-  const inspectorToggleRef = useRef<HTMLButtonElement>(null);
-  const inspectorCloseRef = useRef<HTMLButtonElement>(null);
-  const inspectorWasOpen = useRef(false);
+  const inspector = useInspectorOverlay(focus);
+  const { open: inspectorOpen, setOpen: setInspectorOpen } = inspector;
   const [childApprovals, setChildApprovals] = useState<Record<string, Approval[]>>({});
   const [tab, setTab] = useState<'files' | 'changes' | 'approvals' | 'orchestration' | 'activity' | 'continuity' | 'channel' | 'usage' | 'handoff'>('orchestration');
   const [approvalInFlight, setApprovalInFlight] = useState<Record<string, 'approve' | 'reject' | 'reconcile'>>({});
@@ -129,13 +129,6 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
       requestAnimationFrame(() => document.querySelector(`[data-message-id="${searchHit.messageId}"]`)?.scrollIntoView({ block: 'center' }));
     }, error => { searchedMessage.current = ''; setNotice(`Could not open search result: ${errorMessage(error)}`); });
   }, [api, searchHit, rootTaskId, childDetail?.run.taskId, setNotice]);
-  const compactLayout = useCompactLayout();
-  useEffect(() => {
-    if (!compactLayout) return;
-    if (inspectorOpen) inspectorCloseRef.current?.focus();
-    else if (inspectorWasOpen.current) inspectorToggleRef.current?.focus();
-    inspectorWasOpen.current = inspectorOpen;
-  }, [inspectorOpen, compactLayout]);
 
   const performFetchLatest = useCallback(async () => {
     const version = ++viewVersion.current;
@@ -447,7 +440,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
           </p>}
           {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         </div>
-        <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspectorToggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
+        <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
       </header>
       {notice}
       {viewError && <p className="muted inspector-empty">{viewError}</p>}
@@ -470,7 +463,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         {!selectedChildId ? <>
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
-          {awaitingCount > 0 && !(tab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); if (compactLayout) setInspectorOpen(true); }}>Review pending actions</button></div>}
+          {awaitingCount > 0 && !approvalsInView(tab === 'approvals', inspector.overlay, inspectorOpen) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); if (inspector.overlay) setInspectorOpen(true); }}>Review pending actions</button></div>}
           <form className="composer" onSubmit={sendToCoordinator}>
             <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSendToCoordinator)} disabled={task.status === 'retired' || rootTerminal} aria-label="Message coordinator" aria-describedby={rootTerminal ? 'coordinator-finished' : undefined}
               placeholder={task.status === 'retired' ? 'This task worktree is retired.' : rootTerminal ? 'This coordinated task has finished.' : 'Message the coordinator…'} />
@@ -501,8 +494,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         </div>}
       </div>
     </section>
-    <aside className={`inspector ${inspectorOpen ? 'open' : ''}`} id="coordinated-inspector" aria-label="Coordinated task inspector" role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} onKeyDown={event => { if (event.key === 'Escape') setInspectorOpen(false); }}>
-      <button ref={inspectorCloseRef} type="button" className="secondary inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
+    <aside className={`inspector ${inspectorOpen ? 'open' : ''}`} id="coordinated-inspector" aria-label="Coordinated task inspector" {...inspector.asideProps}>
+      <button ref={inspector.closeRef} type="button" className="secondary inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">
         <button type="button" className={tab === 'files' ? 'active' : ''} aria-pressed={tab === 'files'} onClick={() => setTab('files')}>Files</button>
         <button type="button" className={tab === 'changes' ? 'active' : ''} aria-pressed={tab === 'changes'} onClick={() => setTab('changes')}>Changes</button>

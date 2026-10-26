@@ -19,7 +19,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout } from './layout';
+import { approvalsInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useInspectorOverlay } from './layout';
 import { draftSendBlockReason, sendOnShortcut } from './composer';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
@@ -99,7 +99,6 @@ function App() {
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
   const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'activity' | 'continuity' | 'publish' | 'channel' | 'browser'>('files');
-  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage()));
   const [inspectorDragging, setInspectorDragging] = useState(false);
   const [browserExpanded, setBrowserExpanded] = useState(false);
@@ -125,9 +124,6 @@ function App() {
   const [searchHit, setSearchHit] = useState<SearchHit>();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const automationDialogRef = useRef<HTMLDialogElement>(null);
-  const inspectorToggleRef = useRef<HTMLButtonElement>(null);
-  const inspectorCloseRef = useRef<HTMLButtonElement>(null);
-  const inspectorWasOpen = useRef(false);
   const upgradeDialogRef = useRef<HTMLDialogElement>(null);
   const fileVersion = useRef(0);
   const inspectorVersion = useRef(0);
@@ -168,7 +164,6 @@ function App() {
   const eventSequenceRef = useRef(0);
   const retriedSequenceRef = useRef(0);
 
-  const compactLayout = useCompactLayout();
   // Announce, once per change on the open task, when it starts waiting for a decision and when a run finishes.
   const announcedState = useRef<{ taskId?: string; awaiting: boolean; status?: string }>({ awaiting: false });
   const watchedStatus = detail?.task.id === selectedId ? detail?.task.status : undefined;
@@ -181,12 +176,6 @@ function App() {
     }
     announcedState.current = { taskId: selectedId, awaiting: Boolean(watchedAwaiting), status: watchedStatus };
   }, [announce, selectedId, watchedAwaiting, watchedStatus]);
-  useEffect(() => {
-    if (!compactLayout) return;
-    if (inspectorOpen) inspectorCloseRef.current?.focus();
-    else if (inspectorWasOpen.current) inspectorToggleRef.current?.focus();
-    inspectorWasOpen.current = inspectorOpen;
-  }, [inspectorOpen, compactLayout]);
   selectedRef.current = selectedId;
   // Unsent text belongs to the task it was typed in (memory only), so it can never be sent to a task switched to later.
   const composer = selectedId ? composerDrafts[selectedId] ?? '' : '';
@@ -222,6 +211,11 @@ function App() {
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
   const taskRetired = selectedTask?.status === 'retired';
   const taskBusy = selectedTask?.status === 'running';
+  const browserTabShown = page === 'conversation' && !isDraft && selectedTask?.mode !== 'coordinated' && effectiveRightTab === 'browser';
+  const inspector = useInspectorOverlay(false, browserExpanded && browserTabShown);
+  const { open: inspectorOpen, setOpen: setInspectorOpen } = inspector;
+  // The native browser view follows the inspector: it is shown only while the inspector is on screen.
+  const browserVisible = browserTabShown && (!inspector.overlay || inspectorOpen);
 
   const performTaskDetail = useCallback(async (taskId: string) => {
     const version = ++detailVersion.current;
@@ -774,7 +768,6 @@ function App() {
   };
   const probeProfile = async () => { try { const saved = await api.invoke('profile.save', profileDraft); if (credential) await api.saveCredential(saved.id, credential); setCredential(''); setProbe(await api.invoke('profile.probe', { profileId: saved.id })); } catch (error) { setCredential(''); setProbe({ ok: false, capabilities: { streaming: false, tools: false, continuation: false, cancellation: false, usage: false }, detail: errorMessage(error), fingerprint: '' }); } };
   const coordinatedTask = selectedTask?.mode === 'coordinated' ? selectedTask : undefined;
-  const browserVisible = page === 'conversation' && !isDraft && !coordinatedTask && effectiveRightTab === 'browser';
   const updateDialogVisibility = () => {
     const open = dialogRef.current?.open ? 'settings' : manageDialogRef.current?.open ? 'manage' : automationDialogRef.current?.open ? 'automation' : upgradeDialogRef.current?.open ? 'upgrade' : undefined;
     setOpenDialog(open); setAppDialogOpen(Boolean(open));
@@ -798,7 +791,7 @@ function App() {
       <button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button>
     </div>}
     <button type="button" className="skip-link" onClick={() => document.querySelector<HTMLElement>('.composer textarea:not(:disabled), .draft-compose > textarea:not(:disabled), .messages')?.focus()}>Skip to message box</button>
-    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
+    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
       <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} aria-pressed={sidebarView === 'workspace'} onClick={() => setSidebarView('workspace')}>Inbox & history</button><button type="button" className={sidebarView === 'projects' ? 'selected' : ''} aria-pressed={sidebarView === 'projects'} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
       {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
@@ -834,11 +827,11 @@ function App() {
       </details>}
     </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
     <section className="conversation" role="main" aria-label="Conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspectorToggleRef} type="button" className="secondary inspector-open" onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="task-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
-      {awaitingApproval && !(effectiveRightTab === 'approvals' && (!compactLayout || inspectorOpen)) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); if (compactLayout) setInspectorOpen(true); }}>Review pending actions</button></div>}
+      {awaitingApproval && !approvalsInView(effectiveRightTab === 'approvals', inspector.overlay, inspectorOpen) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); if (inspector.overlay) setInspectorOpen(true); }}>Review pending actions</button></div>}
       <form className="composer" onSubmit={send}>
         <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend, () => announce(taskBusy ? awaitingApproval ? 'Send is unavailable until you decide the pending action or cancel the task.' : 'Send is available when the agent finishes, or cancel the task.' : 'Nothing to send yet.'))} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
           placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. You can write your next message meanwhile.' : 'The agent is working. Write your next message; Send is available when it finishes, or cancel to change direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} />
@@ -846,14 +839,14 @@ function App() {
       </form>
     </section>
     <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={inspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth)} aria-valuetext={`Inspector ${inspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
-    <aside className={`inspector${inspectorOpen ? ' open' : ''}`} role={compactLayout && inspectorOpen ? 'dialog' : undefined} aria-modal={compactLayout && inspectorOpen ? true : undefined} aria-label="Task inspector" onKeyDown={event => { if (event.key === 'Escape' && inspectorOpen) setInspectorOpen(false); }}>
-      <button ref={inspectorCloseRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
+    <aside id="task-inspector" className={`inspector${inspectorOpen ? ' open' : ''}`} aria-label="Task inspector" {...inspector.asideProps}>
+      <button ref={inspector.closeRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([
         ['files', 'Files', workspaceKind !== 'none'], ['changes', 'Changes', workspaceKind === 'git'], ['approvals', approvalsLabel, true], ['activity', 'Activity', true],
         ['continuity', 'Continue', true], ['usage', 'Usage', true], ['publish', 'Publish', workspaceKind === 'git'], ['browser', 'Browser', true]
       ] as const).filter(([, , shown]) => shown).map(([id, label]) => <button key={id} type="button" className={effectiveRightTab === id ? 'active' : ''} aria-pressed={effectiveRightTab === id} onClick={() => setRightTab(id)}>{label}</button>)}</div>
       {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} aria-pressed={effectiveRightTab === 'channel'} onClick={() => setRightTab('channel')}>Project channel</button>}
-      {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen || inspectorDragging} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'activity' ? <TaskActivity api={api} taskId={selectedId} refreshToken={navigationVersion} unknownOutcomes={unknownOutcomes} /> : effectiveRightTab === 'continuity' ? <ContinuityPanel api={api} taskId={selectedId} messages={detail?.messages ?? []} profiles={profiles} onCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks] })); selectTask(task.id); void refresh(task.id); }} setNotice={setNotice} /> : effectiveRightTab === 'files' ? <>
+      {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen || inspectorDragging || !browserVisible} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'activity' ? <TaskActivity api={api} taskId={selectedId} refreshToken={navigationVersion} unknownOutcomes={unknownOutcomes} /> : effectiveRightTab === 'continuity' ? <ContinuityPanel api={api} taskId={selectedId} messages={detail?.messages ?? []} profiles={profiles} onCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks] })); selectTask(task.id); void refresh(task.id); }} setNotice={setNotice} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
