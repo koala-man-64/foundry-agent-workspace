@@ -72,6 +72,44 @@ describe('design tokens', () => {
   });
 });
 
+// The size and spacing roles are the style axis: a style may set their values, so the floors are checked on the values.
+const uncommented = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '');
+const sizeBlock = uncommented(rootBlock.slice(rootBlock.indexOf('Size and spacing roles'), rootBlock.indexOf('/* Light surfaces */')));
+const sizeTokens = new Map([...sizeBlock.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
+const rootTokens = new Map([...uncommented(rootBlock).matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
+/** A token's value in px when it is one px length, following var() aliases. */
+function px(name: string): number | undefined {
+  let value = rootTokens.get(name);
+  for (let hop = 0; hop < 8 && value; hop++) {
+    const alias = /^var\(--([\w-]+)\)$/.exec(value);
+    if (!alias) return /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
+    value = rootTokens.get(alias[1]!);
+  }
+  return undefined;
+}
+
+describe('size tokens', () => {
+  it('holds the 24px pointer-target floor on every fixed control height and on dense rows', () => {
+    expect(rootTokens.get('target-min')).toBe('24px');
+    const heights = ['h-ctl', 'h-view', 'h-chrome', 'h-ctl-sm', 'h-decision', 'h-composer'].map(name => [name, px(name)] as const);
+    expect(heights.filter(([, value]) => value === undefined || value < 24)).toEqual([]);
+    expect([...uncommented(css).matchAll(/min-height:\s*max\(var\(--target-min\), var\(--h-dense\)\)/g)].length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('keeps every type role at its floor: 11px, conversation prose 14px', () => {
+    const roles = [...rootTokens.keys()].filter(name => name.startsWith('fs-')).map(name => [name, px(name)] as const);
+    expect(roles.filter(([, value]) => value === undefined || value < 11)).toEqual([]);
+    expect(px('fs-prose')).toBeGreaterThanOrEqual(14);
+  });
+
+  it('uses every size token and puts no colour in one', () => {
+    const rules = uncommented(css).replace(/:root\s*{[\s\S]*?\n}/, '');
+    const references = `${rules}\n${[...rootTokens.values()].join('\n')}`;
+    expect([...sizeTokens.keys()].filter(name => !references.includes(`var(--${name})`) && !references.includes(`var(--${name},`))).toEqual([]);
+    expect([...sizeTokens].filter(([, value]) => /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|color)\(/i.test(value))).toEqual([]);
+  });
+});
+
 describe('end-to-end hooks', () => {
   // Class names, test ids and accessible names the Playwright specs locate. They are also the contract the
   // WPF host's verbatim spec port relies on, so a rename has to be deliberate (and update the specs).
