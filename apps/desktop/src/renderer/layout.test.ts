@@ -60,9 +60,14 @@ describe('inspector width', () => {
   });
 
   it('takes the rail width from the stylesheet, so a style that changes it moves the limits too', () => {
-    const root = /:root\s*{([\s\S]*?)\n}/.exec(readFileSync(join(__dirname, 'styles.css'), 'utf8'))?.[1] ?? '';
+    const css = readFileSync(join(__dirname, 'styles.css'), 'utf8');
+    const root = /:root\s*{([\s\S]*?)\n}/.exec(css)?.[1] ?? '';
     const token = (name: string) => new RegExp(`--${name}:\\s*([^;]+);`).exec(root)?.[1]?.trim();
     expect([token('rail-w'), token('rail-w-narrow')]).toEqual([`${DEFAULT_RAIL_WIDTHS.wide}px`, `${DEFAULT_RAIL_WIDTHS.narrow}px`]);
+    // documentRailWidths reads px lengths only, so every block that sets the rail (a style included) must use one.
+    const railValues = [...css.matchAll(/--rail-w(?:-narrow)?:\s*([^;]+);/g)].map(match => match[1]!.trim());
+    expect(railValues.length).toBeGreaterThanOrEqual(2);
+    expect(railValues.filter(value => !/^\d+(\.\d+)?px$/.test(value))).toEqual([]);
     const narrowRail = { wide: 240, narrow: 224 };
     expect(maxInspectorWidth(1480, narrowRail)).toBe(1480 - 240 - 320 - 5);
     expect(maxInspectorWidth(1000, narrowRail)).toBe(1000 - 224 - 320 - 5);

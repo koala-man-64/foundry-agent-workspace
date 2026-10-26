@@ -88,12 +88,36 @@ function px(name: string): number | undefined {
   return undefined;
 }
 
+// Rows whose height comes from padding: each is clamped to the pointer-target floor, so a style can shrink the padding only.
+const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.inspector-tabs button', '.file-tree button', '.agent-row'];
+
 describe('size tokens', () => {
+  it('finds the size block, so the checks below cannot pass on nothing', () => {
+    expect(rootBlock.indexOf('Size and spacing roles')).toBeGreaterThanOrEqual(0);
+    expect(rootBlock.indexOf('/* Light surfaces */')).toBeGreaterThan(rootBlock.indexOf('Size and spacing roles'));
+    expect(sizeTokens.size).toBeGreaterThan(150);
+  });
+
   it('holds the 24px pointer-target floor on every fixed control height and on dense rows', () => {
     expect(rootTokens.get('target-min')).toBe('24px');
-    const heights = ['h-ctl', 'h-view', 'h-chrome', 'h-ctl-sm', 'h-decision', 'h-composer'].map(name => [name, px(name)] as const);
+    const heights = [...rootTokens.keys()].filter(name => /^h-(ctl|view|chrome|decision|composer)\b/.test(name)).map(name => [name, px(name)] as const);
+    expect(heights.length).toBeGreaterThanOrEqual(6);
     expect(heights.filter(([, value]) => value === undefined || value < 24)).toEqual([]);
-    expect([...uncommented(css).matchAll(/min-height:\s*max\(var\(--target-min\), var\(--h-dense\)\)/g)].length).toBeGreaterThanOrEqual(8);
+    const clamped = [...uncommented(css).matchAll(/([^{}]+)\{[^{}]*min-height:\s*max\(var\(--target-min\), var\(--h-dense\)\)/g)].map(match => match[1]!.replace(/\s+/g, ' ').trim());
+    expect(clamped.sort()).toEqual([...DENSE_ROWS].sort());
+  });
+
+  it('keeps Approve and Reject at their own size and the approval fields stacked by default', () => {
+    // The general button padding moved onto the ladder; the decision buttons keep 78x34 instead of following it.
+    expect(rootTokens.get('pad-decision')).toBe('9px 13px');
+    expect([rootTokens.get('field-layout'), rootTokens.get('field-columns'), rootTokens.get('field-col-gap')]).toEqual(['block', 'none', 'normal']);
+  });
+
+  it('defines every token a declaration uses', () => {
+    const defined = new Set([...uncommented(css).matchAll(/--([\w-]+)\s*:/g)].map(match => match[1]!));
+    const used = new Set([...uncommented(css).matchAll(/var\(--([\w-]+)/g)].map(match => match[1]!));
+    // --inspector-width is set inline on the workspace by App from the viewer's stored width.
+    expect([...used].filter(name => !defined.has(name) && name !== 'inspector-width')).toEqual([]);
   });
 
   it('keeps every type role at its floor: 11px, conversation prose 14px', () => {

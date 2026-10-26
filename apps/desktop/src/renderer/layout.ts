@@ -94,7 +94,10 @@ const INSPECTOR_WIDTH_KEY = 'foundry.inspectorWidth';
 export interface RailWidths { wide: number; narrow: number }
 export const DEFAULT_RAIL_WIDTHS: RailWidths = { wide: 270, narrow: 236 };
 
-/** The rail widths the page's tokens name now; a value that is not a plain px length keeps the default. */
+/**
+ * The rail widths the page's tokens name now. A style must set them as px lengths (layout.test.ts checks every block);
+ * anything else keeps the default. App reads them once, so a style that changes the rail at runtime must read again.
+ */
 export function documentRailWidths(style: Pick<CSSStyleDeclaration, 'getPropertyValue'> = getComputedStyle(document.documentElement)): RailWidths {
   const px = (name: string, fallback: number) => {
     const value = style.getPropertyValue(name).trim();

@@ -46,7 +46,7 @@ const OFFLINE_PROFILE: ModelProfile = {
 const APP_TITLE = 'Foundry Agent Workspace';
 const LIVE_APPROVAL_STATES: readonly Approval['state'][] = ['awaiting-approval', 'approved', 'executing', 'unknown', 'failed'];
 const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
-const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000 files / 1 GiB and 10,000 directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
+const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000\u00a0files / 1\u00a0GiB and 10,000\u00a0directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
 type Mode = 'chat' | 'coding' | 'coordinated';
 interface StartPayload { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: Mode; tokenBudget: number; coordination?: { childProfileIds: string[]; requiredValidation: { command: string; cwd: string; timeoutMs: number } }; }
 interface Draft { content: string; title: string; requiredValidationCommand: string; tokenBudget: number; coordinatedBudget: number; childProfileIds: string[]; scopeGuidance: string[]; startPayload?: StartPayload; pending?: boolean; unknown?: boolean; }
