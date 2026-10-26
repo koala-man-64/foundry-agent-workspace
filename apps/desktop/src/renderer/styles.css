@@ -54,16 +54,16 @@
   --accent: #a84d2d;
   --accent-hover: #8f3f23;
   --accent-soft: #f8ece2;
-  --danger: #994734;
-  --danger-ink: #8a3e2d;
-  --danger-soft: #f6e4d9;
-  --notice-error-ink: #70331f;
-  --notice-error-bg: #fff0e6;
+  --danger: #9b273a;
+  --danger-ink: #8b233b;
+  --danger-soft: #f7dee2;
+  --notice-error-ink: #661926;
+  --notice-error-bg: #fbe9ec;
   --notice-warning-ink: #5e3a12;
   --notice-warning-bg: #fff6e3;
   --notice-success-ink: #2f5440;
   --notice-success-bg: #e9f1e5;
-  --warn-ink: #8c4a1f;
+  --warn-ink: #7a5200;
   --warn-soft: #fff0df;
   --ok: #587f65;
   --ok-ink: #3d6a4c;
@@ -73,7 +73,7 @@
   --secondary-bg: #d9cfb8;
   --secondary-bg-hover: #cdc1a6;
   --secondary-ink: #224238;
-  --focus: #a64b1f;
+  --focus: #2557b3;
   /* Selection (the current tab, the selected agent): brand green, so terracotta means "needs you" and the primary action. */
   --select: #315044;
   --select-soft: #e3ecdd;
@@ -95,14 +95,16 @@
   --rail-muted: #a0a1a4;
   --rail-faint: #8d8f93;
   --rail-accent: #edbc79;
-  --rail-focus: #e08a5f;
+  --rail-focus: #7fb2ff;
 
-  /* Theme tokens (schema v2): roles the presets set; at these values the light theme looks as before. */
+  /* Theme tokens: the roles a preset theme sets. These are Foundry Light's values. The focus rings, needs-you family,
+     danger family, rail selection mark and the rail's error box and buttons were corrected so needs-you, danger and
+     warning are told apart and every focus ring reaches 3:1 (themes.test.ts checks each pair and rule). */
   /* Native controls */
   --color-scheme: light;
   --control-accent: auto;
-  --rail-error-scheme: var(--color-scheme);
-  --placeholder: #757575;
+  --rail-error-scheme: dark;
+  --placeholder: #707070;
   --selection-bg: #3366cf;
   --selection-ink: #ffffff;
   /* Surfaces */
@@ -122,29 +124,29 @@
   --upgrade-banner-bg: var(--accent-hover);
   --upgrade-banner-ink: var(--ink-inverse);
   /* Needs you (text and fills) */
-  --needs-you-ink: var(--warn-ink);
-  --needs-you-soft: var(--warn-soft);
-  --needs-you-soft-hover: var(--notice-warning-bg);
+  --needs-you-ink: #8f3f23;
+  --needs-you-soft: #f8e4d6;
+  --needs-you-soft-hover: #f0d2be;
   --needs-you-line: var(--needs-you-ink);
-  --needs-you-banner-bg: var(--notice-warning-bg);
-  --needs-you-banner-ink: var(--notice-warning-ink);
-  --needs-you-banner-line: var(--notice-warning-line);
+  --needs-you-banner-bg: #fae7da;
+  --needs-you-banner-ink: #5f2a16;
+  --needs-you-banner-line: #dfb199;
   /* On-fill inks */
   --on-accent: var(--ink-inverse);
   --on-danger: var(--ink-inverse);
   --on-brand: var(--ink-inverse);
   --brand-fill: var(--brand-ink);
   /* Danger */
-  --danger-hover: #7d321f;
-  --danger-ink-strong: #7d321f;
-  --danger-line: #b75a42;
+  --danger-hover: #7c1d2d;
+  --danger-ink-strong: #7c1d2d;
+  --danger-line: #bb3e53;
   /* Warning */
   --warn: #b9782a;
   --warn-line: #b77651;
   /* Success */
   --ok-line: #758c72;
   /* Notices */
-  --notice-error-line: #e6b8a5;
+  --notice-error-line: #e198a4;
   --notice-warning-line: #e3c38f;
   --notice-success-line: #bcd2b8;
   /* Brand and buttons */
@@ -153,8 +155,8 @@
   --mark-ink: #173c33;
   --secondary-ring: transparent;
   /* Focus and selection */
-  --choice: var(--accent);
-  --choice-soft: var(--accent-soft);
+  --choice: var(--select);
+  --choice-soft: var(--select-soft);
   /* Patch and evidence */
   --patch-add-bg: var(--ok-soft);
   --patch-add-bar: var(--ok);
@@ -164,7 +166,7 @@
   --viz-baseline: #bdc6b7;
   --viz-hatch-ground: #f3e3d4;
   /* Agent graph */
-  --graph-line: #8b9d88;
+  --graph-line: #6f836c;
   --graph-done: #dcebdc;
   --graph-failed: #f4d8cd;
   --graph-open: #f4ead7;
@@ -183,7 +185,7 @@
   --rail-line-strong: #494a4e;
   --rail-popover: #292a2e;
   --rail-popover-hover: #3b3c40;
-  --rail-line-control: var(--rail-line);
+  --rail-line-control: #6e6f75;
   --rail-plus-bg: var(--rail-line);
   /* Rail inks */
   --rail-ink-strong: #ffffff;
@@ -197,16 +199,16 @@
   /* Rail signals */
   --rail-dot: #9fa898;
   --rail-dot-running: #e9bd63;
-  --rail-dot-failed: #e17a5a;
+  --rail-dot-failed: #f2909a;
   --rail-dot-cancelled: #8caaa2;
   --rail-warn: #dca35b;
   --rail-warn-ink: #e4bb84;
-  --rail-accent-line: #6a5a3c;
-  --rail-button-bg: #dbcbaa;
-  --rail-button-ink: #243a30;
-  --rail-error-bg: #ffe3cd;
-  --rail-error-ink: #61291c;
-  --rail-select-mark: var(--rail-accent);
+  --rail-accent-line: #8a6f3c;
+  --rail-button-bg: #3b3c40;
+  --rail-button-ink: #f4efe2;
+  --rail-error-bg: #3b1c20;
+  --rail-error-ink: #fde8ea;
+  --rail-select-mark: #8fd9b0;
 
   color: var(--ink);
   background: var(--canvas-deep);
@@ -581,7 +583,8 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-heading span { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .approval-state { padding: 2px 7px; border-radius: var(--radius-sm); background: var(--surface-well); }
 .approval-state.awaiting-approval { color: var(--on-accent); background: var(--accent); }
-.approval-state.approved, .approval-state.executing { color: var(--danger-ink); background: var(--accent-soft); }
+/* Approved and executing are progress, not errors or a decision: a neutral chip beside the word. */
+.approval-state.approved, .approval-state.executing { color: var(--ink-2); background: var(--surface-well); }
 .approval-state.complete { color: var(--ok-ink); background: var(--ok-soft); }
 .approval-state.unknown, .approval-state.failed, .approval-state.rejected, .approval-state.revoked { color: var(--danger-ink); background: var(--danger-soft); box-shadow: inset 0 0 0 1px var(--danger); }
 .approval-card > p { line-height: 1.45; }
@@ -648,7 +651,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .agent-row.selected { border-color: var(--select); background: var(--select-soft); box-shadow: inset 0 -2px 0 var(--select); }
 .agent-key { overflow: hidden; font-size: var(--fs-sm); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .agent-lifecycle { color: var(--ink-muted); font-size: var(--fs-xs); letter-spacing: .03em; text-transform: uppercase; }
-.agent-pending { justify-self: start; padding: 0 6px; color: var(--danger-ink); border-radius: var(--radius-sm); background: var(--accent-soft); font-size: var(--fs-xs); font-weight: 650; }
+.agent-pending { justify-self: start; padding: 0 6px; color: var(--needs-you-ink); border-radius: var(--radius-sm); background: var(--needs-you-soft); font-size: var(--fs-xs); font-weight: 650; }
 .agent-detail { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 32px 20px; }
 .coordinator-detail { display: flex; flex-direction: column; overflow: hidden; }
 .coordinator-detail > .messages { padding: 18px 4%; }
@@ -768,7 +771,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .mcp-server { padding: 12px; border: 1px solid var(--line); background: var(--surface); font-size: var(--fs-sm); }
 .mcp-server .muted { overflow-wrap: anywhere; }
 .mcp-error { margin-top: 6px; color: var(--danger-ink); font-size: var(--fs-xs); }
-.chip-light { margin-left: 6px; padding: 0 6px; color: var(--danger-ink); border: 1px solid var(--danger); border-radius: var(--radius-sm); background: var(--accent-soft); font-size: var(--fs-xs); font-weight: 650; }
+.chip-light { margin-left: 6px; padding: 0 6px; color: var(--danger-ink); border: 1px solid var(--danger); border-radius: var(--radius-sm); background: var(--danger-soft); font-size: var(--fs-xs); font-weight: 650; }
 .mcp-server .checkbox-row { flex-wrap: wrap; }
 .mcp-server .checkbox-row small { flex-basis: 100%; padding-left: 20px; }
 .mcp-form { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
@@ -829,12 +832,12 @@ dialog .notice { padding-inline: 20px 24px; }
 /* In Focus the coordinated detail already sits on the reading measure; the tray and banner align with its text. */
 .workspace[data-focus="on"] .coordinator-detail > .approval-tray, .workspace[data-focus="on"] .coordinator-detail > .approval-banner { margin-inline: 0; }
 
-/* While the open task needs a decision the sidebar's green selection fills recede to the rail surface; the amber
-   selection and needs-decision marks, status dots and focus rings stay. Colour tokens only: no opacity, no movement. */
+/* While the open task needs a decision the sidebar's green selection fills recede to the rail surface and that task's
+   row is marked in the needs-decision amber in every rail list; tab and view selection keep the selection mark, and the
+   needs-decision marks, status dots and focus rings stay. Colour tokens only: no opacity, no movement. */
 .workspace:has(> [data-attention="decision"]) .sidebar-shell { --rail-selected: var(--rail-raised); }
-.workspace:has(> [data-attention="decision"]) .workspace-navigation .task-row.selected { box-shadow: inset 2px 0 0 var(--rail-accent); }
+.workspace:has(> [data-attention="decision"]) .sidebar-shell .task-row.selected { box-shadow: inset 2px 0 0 var(--rail-accent); }
 
-/* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 /* Agent graph: AssignmentGraph.tsx gives the edges, nodes and labels classes; the stylesheet owns their colours. */
 .assignment-map .graph-edge, .assignment-map .graph-node { stroke: var(--graph-line); }
 .assignment-map .graph-node-done { fill: var(--graph-done); }
@@ -846,6 +849,7 @@ dialog .notice { padding-inline: 20px 24px; }
 ::selection { background-color: var(--selection-bg); color: var(--selection-ink); }
 ::placeholder { color: var(--placeholder); }
 
+/* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {
   .primary, .secondary, .danger, .quiet, .inspector-tabs button, .sidebar-mode-tabs button, .workspace-views button, .task-row, .agent-row, .channel-tab { border: 1px solid ButtonText; }
   .inspector-tabs button.active, .sidebar-mode-tabs button.selected, .workspace-views button.active, .task-row.selected, .agent-row.selected, .channel-tab.active, .focus-toggle[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }

@@ -1,5 +1,54 @@
 # Implementation status
 
+## Theme tokens and Foundry Light corrections — 26 October 2026
+
+Rudy asked for "a handful of preset themes and styles" rather than custom configuration, then asked to proceed with the recommendations of the themes, density and minimalism proposals. This is the first step of that plan: the colour layer every preset builds on, with today's light theme corrected. Task id `ui-theme-tokens-20261026`, branch `claude/ui-theme-tokens-20261026` from `main` at `68a6e8b`. The proposals, prototypes and evidence are under `.local/verification/ui-themes-20261026/` and `ui-theme-tokens-20261026/`. No protocol, IPC channel, runtime, provider, schema or dependency change. One main-process change: the window underlay (below). Nothing is dual-landed in C#; the WPF host will need the same underlay rule when it hosts the renderer.
+
+Delivered:
+
+- **Tokens.** Every colour in `styles.css` outside the token block (107 literal uses) now reads a semantic token. So do the seven SVG colours of `AssignmentGraph.tsx`, which now uses classes. Rules that mixed two roles read separate tokens: needs-you is no longer the warning tokens, the rail selection bar is no longer the needs-decision colour, and each fill has its own ink. The first commit (`ff85c63`) is a no-op at the harness tolerance of 8 levels per channel. It is not bit-identical: 36 literal uses were merged into the nearest token, by at most 7 levels. With the previous stylesheet injected over the new build, every harness capture (12 screens, 4 sizes) and the states and coverage sheets differ by 0 pixels at that tolerance, with three exceptions:
+  - one anti-aliased pixel;
+  - the coordinated demo, whose state advances between captures; its one comparable approval card is identical, but the agent tree was never compared pixel for pixel;
+  - the agent graph, covered only by the coverage sheet.
+- **Light corrections** (second commit). These change pixels on purpose. The token defaults now fix the defects the themes audit measured:
+  - the focus rings are blue instead of needs-you terracotta;
+  - needs-you is one terracotta family (also the coordinated agent tree's "awaiting approval" chip), warnings are ochre, and danger is crimson, told apart by 25 degrees of hue and CIEDE2000 16. Danger covers Reject, Cancel task, failed and unknown cards, errors, and the MCP "Runs without approval" chip, now on the danger tint;
+  - chosen states (the pressed Activity filter, the chosen usage row, the resize handle and chart-bar hover) are brand green instead of needs-you terracotta;
+  - the placeholder is 4.83:1 (was 4.49), agent-graph lines 3.34:1 (was 2.36), and the failed dot on a selected rail row 3.56:1 (was 2.75);
+  - the rail's view buttons, action rows and search results have 3:1 borders (were 1.16 to 1.44:1), and the needs-decision row's outline is an ochre at 3.18 to 3.94:1 (was 2.26 to 2.8);
+  - the rail's error box and buttons are dark rail surfaces, so the rail focus ring reaches 7.08:1 and 5.10:1 on them (was 2.15 and 1.65), and the Chromium-drawn Retry button follows them through `--rail-error-scheme`;
+  - the rail's selection bar, tab underline and view-button bar are a mint selection mark, while the open task that needs a decision is marked amber in both rail lists;
+  - the APPROVED and EXECUTING chips are neutral instead of the danger ink, beside their word.
+- **Window underlay.** The window is created with Foundry Light's `--canvas-deep` (`#e8e2d4`) instead of `#142723`. `did-change-theme-color` on the UI window's own web contents applies the page's `<meta name="theme-color">` when it is a plain `#rrggbb` (`window-underlay.ts`). Browser pane tabs are separate web contents, so a website cannot set it.
+- **Tests.** `themes.test.ts` checks Foundry Light, and every `:root[data-theme]` block that a later step adds, against:
+  - the 66-row pair table: text at 4.5:1 and boundaries and rings at 3:1 on every surface they are drawn on (High contrast stricter);
+  - the meaning rules: needs-you, danger and warning told apart by hue and CIEDE2000; focus and rail selection outside the needs-you family; the colour scheme matching the canvas; the Retry button's scheme matching its box;
+  - completeness;
+  - a ratchet: no hex, functional or named colour in rules or component markup; every theme block wrapped in `@media (forced-colors: none)`; the Windows contrast block last, with only the status dots opting out of it; one underlay colour across `index.html`, the main process and the token block.
+
+  Each rule fails on a mutation of what it guards, and the CIEDE2000 maths matches the prototype checker (25 degrees and 16.1 for Light's accent and danger).
+
+Pending decision, recorded in the test rather than changed: Light's secondary buttons keep no drawn edge. WCAG 1.4.11 does not require one on a labelled button, and outlining them belongs to the open minimalism decision.
+
+Independent review: two read-only reviewers (security and trust, visual QA and refactor correctness, Sonnet high) both returned GO with no P0 or P1. Their P2 findings are fixed here:
+- the agent "awaiting approval" chip and the "Runs without approval" chip had been left on mixed tokens;
+- the needs-decision row's outline was too faint;
+- the rail selection rule differed between the two rail lists;
+- this entry's omissions.
+
+Known limits, not changed:
+- The skip link's focus ring is `--rail-focus` and reaches about 2:1 on the canvas when Focus mode hides the rail (it was about 2.5:1).
+- `--warn-line` still borders the recovery notice in today's rust brown.
+- The Windows status dots keep their author colours under a contrast theme (`forced-color-adjust: none`). The failed dot is 2.27:1 on a white forced canvas (was 2.94:1); the row's word carries the state.
+- Neutral APPROVED and EXECUTING chips are told apart from an unstyled state only by their word.
+
+Unverified:
+- the look under a real Windows contrast theme (only emulated);
+- `did-change-theme-color` in the packaged app (measured in a development build);
+- the installer.
+
+Next steps of the plan: the preference with Foundry Dark and System, then the size tokens with Compact, then High contrast, then the chosen minimalism and density look as Light's token values.
+
 ## Attention and Focus mode (renderer only) — 25 October 2026
 
 Rudy asked to "minimize what's shown to help direct attention" and chose three layers: progressive-disclosure defaults, a manual Focus mode, and state-driven emphasis, with the hard rule that approvals, privilege warnings, unknown outcomes and errors are never hidden. Task id `ui-focus-20261025`, branch `claude/ui-focus-20261025` from `main` at `6e9d3e9`. Renderer and CSS only: no protocol, IPC bridge, main-process, runtime, provider, schema or dependency change, so nothing is dual-landed in C#. Focus is renderer state in session memory (not a preference or protocol field); the WPF host carries it with the React UI and must mirror `document.title` and leave Ctrl+Shift+F unbound. Security wording is unchanged; the Activity recovery notice's first clause gained singular grammar ("1 outcome needs inspection") and its recovery sentence is verbatim.

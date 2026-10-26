@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { CredentialVault } from './credentials';
 import { RuntimeSupervisor } from './supervisor';
 import { NotificationPreferences, notificationTitle } from './notification-preferences';
+import { DEFAULT_UNDERLAY, underlayColor } from './window-underlay';
 
 let window: BrowserWindow | undefined;
 let runtime: RuntimeSupervisor | undefined;
@@ -30,11 +31,13 @@ else {
   void app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
-    window = new BrowserWindow({ width: 1480, height: 940, minWidth: 1000, minHeight: 680, show: false, backgroundColor: '#142723', title: 'Foundry Agent Workspace', webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true } });
+    window = new BrowserWindow({ width: 1480, height: 940, minWidth: 1000, minHeight: 680, show: false, backgroundColor: DEFAULT_UNDERLAY, title: 'Foundry Agent Workspace', webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true } });
     window.removeMenu();
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', event => event.preventDefault());
     window.webContents.on('will-attach-webview', event => event.preventDefault());
+    // The UI page names its theme's underlay through <meta name="theme-color">; Browser pane tabs are other web contents.
+    window.webContents.on('did-change-theme-color', (_event, color) => { const underlay = underlayColor(color); if (underlay && window && !window.isDestroyed()) window.setBackgroundColor(underlay); });
     const dataDirectory = app.getPath('userData');
     const vault = new CredentialVault(join(dataDirectory, 'credentials'));
     const notifications = new NotificationPreferences(join(dataDirectory, 'notification-preferences.json')); await notifications.load();
