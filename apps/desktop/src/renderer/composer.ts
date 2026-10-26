@@ -8,6 +8,14 @@ export function isSendShortcut(keys: ShortcutKeys): boolean {
 }
 
 /**
+ * Ctrl+Shift+F toggles Focus mode, also from a text field (that is its purpose; the chord types nothing). Matched by
+ * physical key so other layouts work; never while composing with an IME or on key repeat.
+ */
+export function isFocusShortcut(keys: Omit<ShortcutKeys, 'key'> & { code: string; repeat?: boolean }): boolean {
+  return keys.code === 'KeyF' && keys.ctrlKey && keys.shiftKey && !keys.altKey && !keys.metaKey && !keys.repeat && !keys.isComposing;
+}
+
+/**
  * Key handler for a composer textarea: the shortcut submits the form through the same guarded path as the Send
  * button, and only when that button is enabled.
  */

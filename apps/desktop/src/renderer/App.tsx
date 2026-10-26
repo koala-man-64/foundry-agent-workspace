@@ -19,8 +19,9 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useInspectorOverlay } from './layout';
-import { draftSendBlockReason, sendOnShortcut } from './composer';
+import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
+import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
+import { FocusControls } from './FocusControls';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
@@ -30,7 +31,7 @@ import { AttentionBannerView } from './AttentionBanner';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
 import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
-import { attentionBanner, decisionWhere, inboxChipLabel, inspectLabel, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
+import { attentionBanner, decisionWhere, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -79,6 +80,18 @@ function App() {
   const [approvalNextBefore, setApprovalNextBefore] = useState<number | null>(null);
   /** Approvals seen in a live state while the open task has been open; they stay with the live cards until a task switch. */
   const seenLiveApprovals = useRef(new Set<string>());
+  /** The Ctrl+Shift+F handler reads the latest toggle and whether it may act (not over a dialog or the open slide-over). */
+  const focusShortcut = useRef<{ blocked: boolean; toggle: () => void }>({ blocked: true, toggle: () => undefined });
+  const announcedInbox = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!isFocusShortcut({ code: event.code, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey, altKey: event.altKey, metaKey: event.metaKey, repeat: event.repeat, isComposing: event.isComposing }) || focusShortcut.current.blocked) return;
+      event.preventDefault();
+      focusShortcut.current.toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [incompleteApprovalIds, setIncompleteApprovalIds] = useState<Set<string>>(new Set());
   const [usage, setUsage] = useState<UsageReport>();
   const [usageError, setUsageError] = useState('');
@@ -111,6 +124,9 @@ function App() {
   const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage()));
   const [inspectorDragging, setInspectorDragging] = useState(false);
   const [browserExpanded, setBrowserExpanded] = useState(false);
+  /** Focus mode hides the sidebar and makes the inspector a slide-over. Session memory only: every launch starts with the full picture. */
+  const [focus, setFocus] = useState(false);
+  const [inboxRequest, setInboxRequest] = useState(0);
   const [appDialogOpen, setAppDialogOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<ModelProfile>(OFFLINE_PROFILE);
   const [credential, setCredential] = useState('');
@@ -210,27 +226,24 @@ function App() {
   const approvalsLabel = approvalsTabLabel(attention.awaiting, unknownApprovals, awaitingApproval && pendingApprovalCount === 0);
   // Approvals load whenever something may need a decision, not only while their tab is open, so the counts and the
   // unknown-publication estimate come from the cards themselves.
-  const approvalsWanted = rightTab === 'approvals' || pendingApprovalCount > 0 || unknownOutcomes > 0;
+  // Focus applies to the task and draft views; the Usage page keeps the sidebar, its only way back.
+  const focusActive = focus && page === 'conversation';
+  const approvalsWanted = rightTab === 'approvals' || pendingApprovalCount > 0 || unknownOutcomes > 0 || focusActive;
   const approvalsWantedRef = useRef(approvalsWanted);
   approvalsWantedRef.current = approvalsWanted;
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
   const taskRetired = selectedTask?.status === 'retired';
   const taskBusy = selectedTask?.status === 'running';
   const browserTabShown = page === 'conversation' && !isDraft && selectedTask?.mode !== 'coordinated' && effectiveRightTab === 'browser';
-  const inspector = useInspectorOverlay(false, browserExpanded && browserTabShown);
+  // An expanded browser keeps its column (and hides the sidebar itself), so it wins over Focus.
+  const browserHoldsColumn = browserExpanded && browserTabShown;
+  const focusLayout = focusActive && !browserHoldsColumn;
+  const inspector = useInspectorOverlay(focusActive, browserHoldsColumn);
   const { open: inspectorOpen, setOpen: setInspectorOpen } = inspector;
+  const compactLayout = useCompactLayout();
   // The native browser view follows the inspector: it is shown only while the inspector is on screen.
   const browserVisible = browserTabShown && (!inspector.overlay || inspectorOpen);
-  const decisionSurface: DecisionSurface = inspectorTabInView(effectiveRightTab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner';
-  // Announce, once per change on the open task, a new decision, a new unknown outcome and the end of a run.
-  const watchedStatus = detailLoaded ? detail?.task.status : undefined;
-  useAttentionAnnouncements({ taskId: detailLoaded ? selectedId : undefined, awaiting: attention.awaiting, unknown: attention.unknown, running: watchedStatus === undefined ? undefined : watchedStatus === 'running',
-    finished: watchedStatus && watchedStatus !== 'running' ? watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.` : undefined }, decisionSurface, announce);
   const statusWarningWords = selectedTask ? statusWarnings({ usedTokens: selectedTask.usedTokens, tokenBudget: selectedTask.tokenBudget, contextPercent: detailLoaded ? usage?.contextPercent : undefined, warningPercent: detailLoaded ? usage?.warningPercent : undefined }) : [];
-  // The banner names what needs a decision whenever the tab that holds it is not on screen.
-  const bannerCandidate = attentionBanner(attention);
-  const bannerTab = bannerCandidate?.target === 'publish' && workspaceKind === 'git' ? 'publish' : 'approvals';
-  const banner = bannerCandidate && !inspectorTabInView(effectiveRightTab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
   const unknownPublication = detailLoaded && attention.unknownPublication > 0;
   // Needs-decision work across every task (archived included), read on the same refresh as the sidebar; never a false zero.
   const [inboxCount, setInboxCount] = useState<InboxCount>();
@@ -811,6 +824,39 @@ function App() {
   const commandDecisionOpen = incompleteApprovalIds.size > 0 || approvalCards.some(approval => approval.command && LIVE_APPROVAL_STATES.includes(approval.state));
   const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />;
   const olderApprovals = approvalNextBefore !== null && <button type="button" className="quiet" onClick={() => selectedId && void loadApprovals(selectedId, approvalNextBefore)}>Older approvals</button>;
+  // In Focus mode (wide enough, slide-over closed) the live cards render above the composer, so a pending decision and
+  // its evidence stay on screen. Only one copy is ever rendered: the inspector shows them again once it is opened.
+  const trayActive = focusLayout && !compactLayout && !inspectorOpen && Boolean(selectedTask) && !isDraft && !coordinatedTask && approvalGroups.live.length > 0;
+  const decisionSurface: DecisionSurface = trayActive ? 'tray' : inspectorTabInView(effectiveRightTab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner';
+  // Announce, once per change on the open task, a new decision, a new unknown outcome and the end of a run.
+  const watchedStatus = detailLoaded ? detail?.task.status : undefined;
+  useAttentionAnnouncements({ taskId: detailLoaded ? selectedId : undefined, awaiting: attention.awaiting, unknown: attention.unknown, running: watchedStatus === undefined ? undefined : watchedStatus === 'running',
+    finished: watchedStatus && watchedStatus !== 'running' ? watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.` : undefined }, decisionSurface, announce);
+  // The banner names what needs a decision whenever neither the tray nor the tab that holds it is on screen.
+  const bannerCandidate = attentionBanner(attention, trayActive);
+  const bannerTab = bannerCandidate?.target === 'publish' && workspaceKind === 'git' ? 'publish' : 'approvals';
+  const banner = bannerCandidate && !inspectorTabInView(effectiveRightTab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
+  const inboxLabel = inboxChipLabel(inboxCount);
+  const toggleFocus = () => {
+    const next = !focus;
+    const fromHidden = next && document.activeElement instanceof HTMLElement && Boolean(document.activeElement.closest('.sidebar-shell'));
+    setFocus(next);
+    if (next && (needsYou(attention) || inboxLabel)) announce(['Focus mode on.', needsYou(attention) ? 'This task needs your decision.' : '', inboxLabel ? `Inbox: ${inboxLabel}.` : ''].filter(Boolean).join(' '));
+    if (fromHidden) requestAnimationFrame(() => document.querySelector<HTMLElement>('.focus-toggle')?.focus());
+  };
+  const showInbox = () => {
+    setFocus(false); setSidebarView('workspace'); setInboxRequest(current => current + 1);
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.workspace-views button')?.focus());
+  };
+  const focusControls = <FocusControls on={focusActive} onToggle={toggleFocus} needsYou={inboxLabel} onShowInbox={showInbox} />;
+  focusShortcut.current = { blocked: Boolean(openDialog) || page !== 'conversation' || (inspector.overlay && inspectorOpen), toggle: toggleFocus };
+  // Work elsewhere that newly needs a decision is announced only while Focus hides the Inbox.
+  useEffect(() => {
+    const count = inboxCount && inboxCount !== 'unavailable' ? inboxCount.needsDecision : undefined;
+    const previous = announcedInbox.current;
+    announcedInbox.current = count;
+    if (focusActive && previous !== undefined && count !== undefined && count > previous && inboxLabel) announce(`Inbox: ${inboxLabel}.`);
+  }, [inboxCount, focusActive]);
   const upgradeFeatures = schema && schema.version < 3 ? 'saved projects, new chats, detailed usage, and personal workspace history' : schema && schema.version < 4 ? 'detailed usage and personal workspace history' : 'search, archive, automation, and continuity';
 
   return <>
@@ -821,14 +867,14 @@ function App() {
       <button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button>
     </div>}
     <button type="button" className="skip-link" onClick={() => document.querySelector<HTMLElement>('.composer textarea:not(:disabled), .draft-compose > textarea:not(:disabled), .messages')?.focus()}>Skip to message box</button>
-    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
+    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} data-focus={focusLayout ? 'on' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
       <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} aria-pressed={sidebarView === 'workspace'} onClick={() => setSidebarView('workspace')}>Inbox & history</button>{sidebarView === 'projects' && inboxChipLabel(inboxCount) && <span className="mode-count">{inboxChipLabel(inboxCount)}</span>}<button type="button" className={sidebarView === 'projects' ? 'selected' : ''} aria-pressed={sidebarView === 'projects'} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
-      {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
+      {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} inboxRequest={inboxRequest} />}
       <nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button><button type="button" disabled={!schema || schema.version < 5} onClick={openAutomation}>Hooks and follow-ups</button>{sidebarView === 'workspace' && <><button type="button" onClick={() => void openSettings()}>Model settings</button><button type="button" disabled={exporting} onClick={() => void exportDiagnostics()}>Export diagnostics</button></>}</nav>
     </div>
     {page === 'usage' ? schema && schema.version >= 4 ? <UsageView api={api} refreshKey={usageRefreshKey} onOpenTask={selectTask} notice={mainNotice} /> : <section className="usage-gate" role="main" aria-label="Usage">{mainNotice}<h1>Usage</h1><p>Upgrade the database to v{schema?.current ?? 4} to view detailed request history.</p><button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button></section> : isDraft ? <section className="conversation draft-conversation" role="main" aria-label="New chat">
-      <header className="task-header"><div><p className="eyebrow" title={activeProject?.path}>{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div></header>
+      <header className="task-header"><div><p className="eyebrow" title={activeProject?.path}>{activeProject?.path ?? 'NO FOLDER'}</p><h1>New chat</h1><p className="task-status">{activeProject ? activeProject.name : 'No folder'}{activeProject?.kind === 'unavailable' ? ' · Folder unavailable' : ''}</p></div><div className="header-actions">{focusControls}</div></header>
       {mainNotice}
       <div className="draft-welcome"><span className="large-mark">F</span><h2>What would you like to work on?</h2><p>{activeProject ? 'This conversation will start in ' + activeProject.name + '.' : 'Start a conversation without folder access.'}</p></div>
       <form className="draft-compose" onSubmit={startDraft} onKeyDown={event => { if (event.key === 'Enter' && event.target instanceof HTMLInputElement) event.preventDefault(); }}>
@@ -855,12 +901,13 @@ function App() {
         setMoreOptions(true);
       }} setNotice={setNotice} />
       </details>}
-    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} announce={announce} /> : <>
+    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} announce={announce} focus={focusActive} focusControls={focusControls} /> : <>
     <section className="conversation" role="main" aria-label="Conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}${statusWarningWords.length ? ' warning' : ''}`}><span className="task-state">{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]}{attention.unknown > 0 ? ' · outcome unknown' : ''}</span> · <span className="task-metrics">{selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}{statusWarningWords.map(word => ` · ${word}`).join('')}</span></p></div><div className="header-actions"><button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="task-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className={statusWarningWords.includes('context warning') ? 'secondary' : 'secondary subdued'} disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}${statusWarningWords.length ? ' warning' : ''}`}><span className="task-state">{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]}{attention.unknown > 0 ? ' · outcome unknown' : ''}</span> · <span className="task-metrics">{selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}{statusWarningWords.map(word => ` · ${word}`).join('')}</span></p></div><div className="header-actions">{focusControls}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="task-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className={statusWarningWords.includes('context warning') ? 'secondary' : 'secondary subdued'} disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div><div className="header-actions">{focusControls}</div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
+      {trayActive && <section className="approval-tray" aria-label="Pending actions" tabIndex={0}>{approvalGroups.live.map(renderApproval)}</section>}
       {banner && <AttentionBannerView banner={banner} onReview={() => { setRightTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); }} />}
       <form className="composer" onSubmit={send}>
         <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend, () => announce(taskBusy ? awaitingApproval ? 'Send is unavailable until you decide the pending action or cancel the task.' : 'Send is available when the agent finishes, or cancel the task.' : 'Nothing to send yet.'))} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
@@ -925,7 +972,7 @@ function App() {
         {taskRetired && <p className="muted">Retired{selectedTask?.retiredAt ? ` ${relativeTime(selectedTask.retiredAt)}` : ''}.</p>}
       </div> : <div className="approvals-panel">
         {(selectedTask?.mode ?? 'chat') === 'coding' && <ToolReadinessNotes readiness={taskProfile?.apiKind === 'fake' ? 'offline' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'verified' : 'unavailable'} commandReviewHelp={COMMAND_REVIEW_HELP} hasCards={approvalCards.length > 0} commandDecisionOpen={commandDecisionOpen} />}
-        {approvalGroups.live.map(renderApproval)}
+        {!trayActive && approvalGroups.live.map(renderApproval)}
         {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalNextBefore !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>
           {approvalGroups.decided.map(renderApproval)}
           {olderApprovals}

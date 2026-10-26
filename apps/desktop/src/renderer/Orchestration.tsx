@@ -10,7 +10,7 @@ import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
-import { inspectorTabInView, approvalsTabLabel, useInspectorOverlay } from './layout';
+import { inspectorTabInView, approvalsTabLabel, useCompactLayout, useInspectorOverlay } from './layout';
 import { sendOnShortcut } from './composer';
 import { Hash, PatchText } from './Evidence';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
@@ -43,6 +43,8 @@ interface Props {
   announce?: (text: string, tone?: NoticeTone) => void;
   /** Focus mode is on: the inspector is a slide-over at any width. */
   focus?: boolean;
+  /** The Focus mode toggle (and its needs-you chip), rendered in this view's header. */
+  focusControls?: ReactNode;
 }
 
 const outcomeLabel: Record<RunOutcome, string> = { succeeded: 'Succeeded', incomplete: 'Incomplete', failed: 'Failed', cancelled: 'Cancelled' };
@@ -59,7 +61,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 
 function full(sha: string | undefined | null): string { return sha || 'none'; }
 
-export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit, focus = false, announce = () => undefined }: Props) {
+export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit, focus = false, focusControls, announce = () => undefined }: Props) {
   const rootTaskId = task.id;
   const [runsById, setRunsById] = useState<Record<string, AgentRun>>({});
   const [runsCursor, setRunsCursor] = useState<number | null>(null);
@@ -308,7 +310,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useEffect(() => { if (selectedChildId) void loadChild(selectedChildId); }, [selectedChildId, loadChild]);
   // Approvals load while their tab is open and whenever an agent is waiting on one, so the banner and counts are real.
   const agentsWaitingOnApproval = Object.values(runsById).some(run => run.lifecycle === 'waiting' && run.waitReason === 'approval');
-  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval;
+  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval || focus;
   const approvalsWantedRef = useRef(approvalsWanted);
   approvalsWantedRef.current = approvalsWanted;
   useEffect(() => { if (approvalsWanted) void loadApprovals(); }, [approvalsWanted, runsById, loadApprovals]);
@@ -438,13 +440,18 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const attention = coordinatedAttention({ approvals: pendingApprovals, runs: Object.values(runsById), integrations: view?.integrations ?? [], partial: runsCursor !== null });
   const approvalsLabel = approvalsTabLabel(attention.awaiting, pendingApprovals.filter(item => item.state === 'unknown').length, attention.awaiting > 0 && runsCursor !== null);
   // The banner shows in the coordinator and child views whenever the tab that holds the decision is not on screen.
-  const bannerCandidate = attentionBanner(attention);
+  // In Focus mode (wide enough, slide-over closed) live cards render in the conversation column, one copy only.
+  const compactLayout = useCompactLayout();
+  const liveCards = partitionApprovals(pendingApprovals, approval => foldableDecided(approval, !incompleteApprovalIds.has(approval.id), approvalErrors[approval.id]?.state === approval.state), seenLiveApprovals.current);
+  const trayActive = focus && !compactLayout && !inspectorOpen && liveCards.live.length > 0;
+  const bannerCandidate = attentionBanner(attention, trayActive);
   const bannerTab = bannerCandidate?.target === 'orchestration' ? 'orchestration' : 'approvals';
   const banner = bannerCandidate && !inspectorTabInView(tab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
   const reviewBanner = () => { setTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); };
-  useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
-  const approvalGroups = partitionApprovals(pendingApprovals, approval => foldableDecided(approval, !incompleteApprovalIds.has(approval.id), approvalErrors[approval.id]?.state === approval.state), seenLiveApprovals.current);
+  useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, trayActive ? 'tray' : inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
+  const approvalGroups = liveCards;
   const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />;
+  const tray = trayActive && <section className="approval-tray" aria-label="Pending actions" tabIndex={0}>{approvalGroups.live.map(renderApproval)}</section>;
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;
@@ -464,7 +471,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
           </p>}
           {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         </div>
-        <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button></div>
+        <div className="header-actions">{focusControls}{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button></div>
       </header>
       {notice}
       {viewError && <p className="muted inspector-empty">{viewError}</p>}
@@ -487,6 +494,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         {!selectedChildId ? <>
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
+          {tray}
           {banner && <AttentionBannerView banner={banner} onReview={reviewBanner} />}
           <form className="composer" onSubmit={sendToCoordinator}>
             <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSendToCoordinator)} disabled={task.status === 'retired' || rootTerminal} aria-label="Message coordinator" aria-describedby={rootTerminal ? 'coordinator-finished' : undefined}
@@ -495,6 +503,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
             {rootTerminal && task.status !== 'retired' && <p id="coordinator-finished" className="composer-note">The coordinator has finished, so it accepts no more messages. Start a continuation from the Continue tab to keep working.</p>}
           </form>
         </> : <div className="child-panel">
+          {tray}
           {banner && <AttentionBannerView banner={banner} onReview={reviewBanner} />}
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
           {/* Scope, results and Cancel lead the child view; its transcript follows, so the actions never sit below a long assignment message. */}
@@ -543,7 +552,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {approvalGroups.live.map(renderApproval)}
+          {!trayActive && approvalGroups.live.map(renderApproval)}
           {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: runsCursor !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">

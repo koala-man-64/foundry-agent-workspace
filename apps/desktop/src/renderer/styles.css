@@ -682,9 +682,30 @@ dialog .notice { padding-inline: 20px 24px; }
 .workspace[data-inspector="overlay"] > .inspector.open { display: flex; position: fixed; z-index: 20; inset: 0 0 0 auto; width: min(440px, 100vw); height: 100vh; box-shadow: -10px 0 30px #14272355; }
 .workspace[data-inspector="overlay"] .inspector-close { display: inline-flex; align-self: flex-end; margin: 8px; }
 
+/* Focus mode: the sidebar leaves the screen (it stays mounted, so its state survives) and the inspector is the
+   slide-over above. Text and the composer keep one reading measure, centred, with the scrollbar at the edge. */
+.workspace[data-focus="on"], .workspace.coordinated-workspace[data-focus="on"], .workspace.wide-content-workspace[data-focus="on"] { grid-template-columns: minmax(0, 1fr); }
+.workspace[data-focus="on"] > .sidebar-shell { display: none; }
+.workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] > .conversation > .composer, .workspace[data-focus="on"] > .conversation > .approval-tray,
+.workspace[data-focus="on"] > .conversation > .approval-banner, .workspace[data-focus="on"] > .conversation > .notice, .workspace[data-focus="on"] .agent-tree, .workspace[data-focus="on"] .agent-detail { padding-inline: max(32px, calc((100% - 860px) / 2)); }
+.workspace[data-focus="on"] > .conversation > .task-header { padding-inline: max(34px, calc((100% - 860px) / 2)); }
+.focus-toggle .shortcut-hint { opacity: 1; }
+.focus-toggle[aria-pressed="true"] { color: var(--ink-inverse); background: var(--brand-ink); }
+.focus-toggle[aria-pressed="true"]:hover:not(:disabled) { background: var(--brand); }
+.focus-chip { color: var(--warn-ink); background: var(--warn-soft); box-shadow: inset 0 0 0 1px var(--warn-ink); }
+.focus-chip:hover:not(:disabled) { background: var(--notice-warning-bg); }
+
+/* Pending actions tray (Focus mode): the live approval cards above the composer, bounded so the transcript and
+   composer stay usable; it scrolls on its own and is reachable by keyboard. */
+.approval-tray { flex: 0 1 auto; min-height: 0; max-height: 45vh; overflow-y: auto; padding: 12px 32px; border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
+.approval-tray:focus-visible { outline-offset: -3px; }
+.approval-tray > .approval-card:last-child { margin-bottom: 0; }
+.coordinator-detail > .approval-tray { margin: 0 -32px; }
+
 /* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {
   .primary, .secondary, .danger, .quiet, .inspector-tabs button, .sidebar-mode-tabs button, .workspace-views button, .task-row, .agent-row, .channel-tab { border: 1px solid ButtonText; }
-  .inspector-tabs button.active, .sidebar-mode-tabs button.selected, .workspace-views button.active, .task-row.selected, .agent-row.selected, .channel-tab.active { outline: 2px solid Highlight; outline-offset: -2px; }
+  .inspector-tabs button.active, .sidebar-mode-tabs button.selected, .workspace-views button.active, .task-row.selected, .agent-row.selected, .channel-tab.active, .focus-toggle[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .approval-tray, .focus-chip, .mode-count { border: 1px solid CanvasText; }
   .status-dot { forced-color-adjust: none; }
 }

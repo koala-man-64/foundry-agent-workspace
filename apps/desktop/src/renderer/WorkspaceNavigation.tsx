@@ -12,7 +12,7 @@ const PAGE_SIZE = 30;
 
 const actionGroup = (action: ActionItem) => action.tier === 0 ? 'Needs decision' : action.tier === 1 ? 'In progress' : 'Recent outcomes';
 
-export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAction, onSearchHit, onOpenAutomation, refreshToken, onChanged, canArchive = true }: {
+export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAction, onSearchHit, onOpenAutomation, refreshToken, onChanged, canArchive = true, inboxRequest = 0 }: {
   api: DesktopApi;
   projects: Project[];
   selectedId?: string;
@@ -23,8 +23,11 @@ export function WorkspaceNavigation({ api, projects, selectedId, onSelect, onAct
   refreshToken: number;
   onChanged: () => void;
   canArchive?: boolean;
+  /** Incremented when the user asks to see the Inbox from elsewhere (the Focus-mode "need you" chip). */
+  inboxRequest?: number;
 }) {
   const [view, setView] = useState<View>('inbox');
+  useEffect(() => { if (inboxRequest > 0) setView('inbox'); }, [inboxRequest]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [cursor, setCursor] = useState<Cursor>(null);
   const [actions, setActions] = useState<ActionItem[]>([]);
