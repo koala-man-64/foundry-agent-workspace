@@ -27,6 +27,9 @@ import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from 
 import { decisionFailure, errorMessage, type NoticeState, type NoticeTone, type SetNotice } from './feedback';
 import { Notice } from './Notice';
 import { AttentionBannerView } from './AttentionBanner';
+import { Disclosure, disclosureLabel } from './Disclosure';
+import { ToolReadinessNotes } from './ToolReadiness';
+import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
 import { attentionBanner, decisionWhere, inboxChipLabel, inspectLabel, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
 declare global { interface Window { workspace: DesktopApi; } }
@@ -37,6 +40,7 @@ const OFFLINE_PROFILE: ModelProfile = {
 };
 
 const APP_TITLE = 'Foundry Agent Workspace';
+const LIVE_APPROVAL_STATES: readonly Approval['state'][] = ['awaiting-approval', 'approved', 'executing', 'unknown', 'failed'];
 const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
 const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000 files / 1 GiB and 10,000 directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
 type Mode = 'chat' | 'coding' | 'coordinated';
@@ -73,6 +77,8 @@ function App() {
   const [messageNextBefore, setMessageNextBefore] = useState<number | null>(null);
   const [messageThrough, setMessageThrough] = useState<number>();
   const [approvalNextBefore, setApprovalNextBefore] = useState<number | null>(null);
+  /** Approvals seen in a live state while the open task has been open; they stay with the live cards until a task switch. */
+  const seenLiveApprovals = useRef(new Set<string>());
   const [incompleteApprovalIds, setIncompleteApprovalIds] = useState<Set<string>>(new Set());
   const [usage, setUsage] = useState<UsageReport>();
   const [usageError, setUsageError] = useState('');
@@ -527,7 +533,7 @@ function App() {
     currentPathRef.current = '';
     detailLoadedTask.current = undefined;
     messageOrdinals.current.clear(); latestMessageThrough.current = undefined; messageCursor.current = null;
-    approvalLoadedTask.current = undefined;
+    approvalLoadedTask.current = undefined; seenLiveApprovals.current = new Set();
     setCurrentPath(''); setDetail(undefined); setUsage(undefined); setUsageError(''); setDiffError(''); setApprovalErrors({}); setFile(undefined); setDiff(undefined); setConfirmAction(undefined);
     void loadTaskDetail(selectedId);
     const kind = snapshot.tasks.find((task) => task.id === selectedId)?.workspaceKind;
@@ -799,6 +805,12 @@ function App() {
   const draftSendDisabled = !draft.content.trim() || creating || !schema || schema.version < 3 || (!draft.unknown && (activeProject?.kind === 'unavailable' || !configuredProfile || (configuredProfile.apiKind !== 'fake' && !configuredProfile.verifiedAt) || (activeProject?.kind === 'git' && taskMode === 'coordinated' && !draft.requiredValidationCommand.trim())));
   const canSend = Boolean(selectedId && composer.trim() && !taskBusy && !taskRetired && !publishBusy);
   const contextLine = usage ? ` · context ≈ ${usage.contextPercent}% of ${usage.contextLimit.toLocaleString()}` : '';
+  // Approvals panel: live cards first, then the decided ones folded under a counted summary.
+  const approvalCards = detailLoaded ? detail?.approvals ?? [] : [];
+  const approvalGroups = partitionApprovals(approvalCards, approval => foldableDecided(approval, !incompleteApprovalIds.has(approval.id), approvalErrors[approval.id]?.state === approval.state), seenLiveApprovals.current);
+  const commandDecisionOpen = incompleteApprovalIds.size > 0 || approvalCards.some(approval => approval.command && LIVE_APPROVAL_STATES.includes(approval.state));
+  const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />;
+  const olderApprovals = approvalNextBefore !== null && <button type="button" className="quiet" onClick={() => selectedId && void loadApprovals(selectedId, approvalNextBefore)}>Older approvals</button>;
   const upgradeFeatures = schema && schema.version < 3 ? 'saved projects, new chats, detailed usage, and personal workspace history' : schema && schema.version < 4 ? 'detailed usage and personal workspace history' : 'search, archive, automation, and continuity';
 
   return <>
@@ -912,11 +924,14 @@ function App() {
         <div className="approval-actions">{confirmAction === 'retire' ? <><button type="button" className="danger" disabled={Boolean(publishBusy)} onClick={() => void retire()}>Confirm retire (clean worktrees only)</button><button type="button" className="secondary" onClick={() => setConfirmAction(undefined)}>Keep worktree</button></> : <button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => setConfirmAction('retire')}>{publishBusy === 'retire' ? 'Retiring…' : taskRetired ? 'Retired' : 'Retire worktree…'}</button>}<small>Removes the app-owned worktree directory only when Git proves it has no uncommitted or untracked files. The branch, commits, history and evidence remain.</small></div>
         {taskRetired && <p className="muted">Retired{selectedTask?.retiredAt ? ` ${relativeTime(selectedTask.retiredAt)}` : ''}.</p>}
       </div> : <div className="approvals-panel">
-        {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness">{taskProfile?.apiKind === 'fake' ? 'Offline deterministic coding demo. Type /demo to create reviewed sample actions.' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'Verified tool and continuation support. Each proposed action still needs review and approval.' : 'Tool execution unavailable until this profile is re-probed with tool and continuation support.'}</p>}
-        {(selectedTask?.mode ?? 'chat') === 'coding' && <p className="tool-readiness" data-testid="command-review-limits">{COMMAND_REVIEW_HELP}</p>}
-        {(detail?.approvals ?? []).map((approval) => <ApprovalCard key={approval.id} variant="task" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={(item, decision) => void decideApproval(item, decision)} onReconcile={item => void reconcileApproval(item)} onAcknowledgeBrowser={item => void acknowledgeBrowserUnknown(item)} />)}
-        {!detail?.approvals?.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
-        {approvalNextBefore !== null && <button type="button" className="quiet" onClick={() => selectedId && void loadApprovals(selectedId, approvalNextBefore)}>Older approvals</button>}
+        {(selectedTask?.mode ?? 'chat') === 'coding' && <ToolReadinessNotes readiness={taskProfile?.apiKind === 'fake' ? 'offline' : taskProfile?.verifiedAt && taskProfile.capabilities?.tools && taskProfile.capabilities?.continuation ? 'verified' : 'unavailable'} commandReviewHelp={COMMAND_REVIEW_HELP} hasCards={approvalCards.length > 0} commandDecisionOpen={commandDecisionOpen} />}
+        {approvalGroups.live.map(renderApproval)}
+        {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalNextBefore !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>
+          {approvalGroups.decided.map(renderApproval)}
+          {olderApprovals}
+        </Disclosure>}
+        {!approvalCards.length && <p className="muted inspector-empty">No reviewed tool actions are queued.</p>}
+        {!approvalGroups.decided.length && olderApprovals}
       </div>}
     </aside>
     </>}

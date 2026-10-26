@@ -21,6 +21,8 @@ import type {
 } from '../../../../packages/protocol/src/orchestration';
 import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from './feedback';
 import { AttentionBannerView } from './AttentionBanner';
+import { Disclosure, disclosureLabel } from './Disclosure';
+import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
 import { attentionBanner, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
 
 interface Props {
@@ -70,6 +72,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [childNextBefore, setChildNextBefore] = useState<number | null>(null);
   const [childThrough, setChildThrough] = useState<number>();
   const [rootApprovals, setRootApprovals] = useState<Approval[]>([]);
+  /** Approvals seen in a live state while this task has been open; they stay with the live cards. */
+  const seenLiveApprovals = useRef(new Set<string>());
   const [incompleteApprovalIds, setIncompleteApprovalIds] = useState<Set<string>>(new Set());
   const [rootMessages, setRootMessages] = useState<Message[]>([]);
   const [rootCompactions, setRootCompactions] = useState<CompactionSummary[]>([]);
@@ -294,6 +298,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useEffect(() => {
     setRunsById({}); setRunsCursor(null); setEventsById({}); setEventsCursor(null); setView(undefined);
     childLoadedId.current = ''; transcriptLoadedId.current = ''; childMessageOrdinals.current.clear(); rootMessageOrdinals.current.clear(); childLatestThrough.current = undefined; rootLatestThrough.current = undefined; childMessageCursor.current = null; rootMessageCursor.current = null;
+    seenLiveApprovals.current = new Set();
     setSelectedChildId(undefined); setChildDetail(undefined); setApprovalErrors({}); setRootApprovals([]); setChildApprovals({}); setRootMessages([]); setRootCompactions([]); setRootNextBefore(null); setRootThrough(undefined);
     setCurrentPath(''); setFiles([]); setFile(undefined); setDiff(undefined);
     void fetchLatest(); void refreshInspector(''); void loadRootTranscript();
@@ -438,6 +443,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const banner = bannerCandidate && !inspectorTabInView(tab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
   const reviewBanner = () => { setTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); };
   useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
+  const approvalGroups = partitionApprovals(pendingApprovals, approval => foldableDecided(approval, !incompleteApprovalIds.has(approval.id), approvalErrors[approval.id]?.state === approval.state), seenLiveApprovals.current);
+  const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />;
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;
@@ -490,8 +497,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         </> : <div className="child-panel">
           {banner && <AttentionBannerView banner={banner} onReview={reviewBanner} />}
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
-          <Transcript messages={childDetail?.messages ?? []} ordinals={childMessageOrdinals.current} api={api} taskId={selectedChildId} userLabel="Coordinator assignment" empty={<p className="muted">No child messages yet.</p>} />
-          {childNextBefore !== null && <button type="button" className="quiet" onClick={() => void loadOlderChildMessages()}>Load older agent messages</button>}
+          {/* Scope, results and Cancel lead the child view; its transcript follows, so the actions never sit below a long assignment message. */}
           {childDetail?.assignment && <div className="assignment-summary">
             <dl><dt>Objective</dt><dd>{childDetail.assignment.objective}</dd></dl>
             <dl><dt>Acceptance</dt><dd><ul>{childDetail.assignment.acceptance.map((item, index) => <li key={index}>{item}</li>)}</ul></dd></dl>
@@ -509,6 +515,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
           {childDetail && childDetail.run.lifecycle !== 'terminal' && <button type="button" className="danger" disabled={busy === `cancel-${childDetail.run.taskId}`} onClick={() => void cancelChild(childDetail.run, childDetail.assignment?.key ?? childDetail.run.title)}>
             {busy === `cancel-${childDetail.run.taskId}` ? 'Cancelling…' : `Cancel child ${childDetail.assignment?.key ?? childDetail.run.title}`}
           </button>}
+          <Transcript messages={childDetail?.messages ?? []} ordinals={childMessageOrdinals.current} api={api} taskId={selectedChildId} userLabel="Coordinator assignment" empty={<p className="muted">No child messages yet.</p>} />
+          {childNextBefore !== null && <button type="button" className="quiet" onClick={() => void loadOlderChildMessages()}>Load older agent messages</button>}
         </div>}
       </div>
     </section>
@@ -535,7 +543,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
       </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
-          {pendingApprovals.map((approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />)}
+          {approvalGroups.live.map(renderApproval)}
+          {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: runsCursor !== null, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}
           {!pendingApprovals.length && <p className="muted inspector-empty">No reviewed actions are queued.</p>}
         </div> : <div className="orchestration-panel">
           <section><h3>Dependency map</h3><AssignmentGraph assignments={view?.assignments ?? []} /></section>
@@ -587,9 +596,11 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
             </article>)}
             {!combinedEvidence.length && <p className="muted">No combined validation evidence yet.</p>}
           </section>
-          <section><h3>Events</h3>
-            <ul className="event-list">{eventsSorted.map((item) => <li key={item.sequence}><time dateTime={item.createdAt} title={item.createdAt}>{formatDateTime(item.createdAt)}</time> · {humanize(item.type)}</li>)}</ul>
-            {eventsCursor !== null && <button type="button" className="quiet" onClick={() => void loadOlderEvents()}>Older events</button>}
+          <section>
+            <Disclosure className="event-log" summary={disclosureLabel('Events', eventsSorted.length, { more: eventsCursor !== null })}>
+              <ul className="event-list">{eventsSorted.map((item) => <li key={item.sequence}><time dateTime={item.createdAt} title={item.createdAt}>{formatDateTime(item.createdAt)}</time> · {humanize(item.type)}</li>)}</ul>
+              {eventsCursor !== null && <button type="button" className="quiet" onClick={() => void loadOlderEvents()}>Older events</button>}
+            </Disclosure>
           </section>
           {view?.truncated && <p className="muted">(truncated)</p>}
         </div>}

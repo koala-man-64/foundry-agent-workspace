@@ -222,6 +222,19 @@ h3 { margin: var(--space-4) 0 var(--space-2); color: var(--ink-muted); font: 650
 .workspace-navigation .task-row strong { font-size: var(--fs-md); font-weight: 650; }
 .workspace-navigation .task-row small, .workspace-navigation .muted { color: #bdcbbd; font-size: var(--fs-xs); }
 
+/* Disclosure: the one pattern for folded detail. The summary always says what is inside and how much, keeps the
+   native marker (it survives forced colours) and is a 24px target. */
+.disclosure { min-width: 0; }
+.disclosure > summary { width: max-content; max-width: 100%; min-height: 24px; padding: 4px 6px; color: var(--ink-2); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--fs-sm); font-weight: 650; }
+.disclosure > summary:hover { background: var(--surface-well); }
+.disclosure[open] > summary { margin-bottom: 8px; }
+.approvals-panel > .disclosure { margin-bottom: 10px; }
+.sidebar-shell .disclosure > summary { color: var(--rail-ink-2); }
+.sidebar-shell .disclosure > summary:hover { color: #fff; background: var(--rail-hover); }
+.action-list .rail-disclosure > summary { margin: var(--space-3) 0 var(--space-1); padding-inline: 2px; color: var(--rail-muted); font-size: var(--fs-xs); letter-spacing: .05em; text-transform: uppercase; }
+.action-list .rail-disclosure[open] { display: grid; gap: 4px; }
+.orchestration-panel .event-log > summary { padding-inline: 0; color: var(--ink-muted); font-size: var(--fs-sm); letter-spacing: .05em; text-transform: uppercase; }
+
 /* Shared controls */
 label { display: grid; gap: 5px; color: inherit; font-size: var(--fs-xs); line-height: 1.2; letter-spacing: .05em; text-transform: uppercase; }
 input, select, textarea { width: 100%; padding: 9px; color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius-xs); background: var(--surface); font-size: var(--fs-md); letter-spacing: normal; text-transform: none; }

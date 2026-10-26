@@ -281,6 +281,9 @@ test('offline coding demo keeps review evidence, rejects safely, and applies onl
     await page.locator('.task-row', { hasText: 'Approve offline demo' }).click();
     await page.getByRole('button', { name: 'Approvals', exact: false }).click();
     await expect(page.locator('article.approval-card.complete')).toHaveCount(2);
+    // Decided approvals from an earlier session start folded under a counted summary; their evidence is one action away.
+    await expect(page.locator('details.decided-approvals > summary')).toHaveText('Decided approvals (2: 2 complete)');
+    await page.locator('details.decided-approvals > summary').click();
     await expect(page.getByText('Redacted result', { exact: false }).first()).toBeVisible();
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });
