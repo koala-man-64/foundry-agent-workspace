@@ -90,28 +90,43 @@ const SEPARATOR_WIDTH = 5;
 export const MIN_INSPECTOR_WIDTH = 300;
 const INSPECTOR_WIDTH_KEY = 'foundry.inspectorWidth';
 
+/** The sidebar rail's width: styles.css sets --rail-w, and --rail-w-narrow at <=1050px. A style may change both. */
+export interface RailWidths { wide: number; narrow: number }
+export const DEFAULT_RAIL_WIDTHS: RailWidths = { wide: 270, narrow: 236 };
+
+/**
+ * The rail widths the page's tokens name now. A style must set them as px lengths (layout.test.ts checks every block);
+ * anything else keeps the default. App reads them once, so a style that changes the rail at runtime must read again.
+ */
+export function documentRailWidths(style: Pick<CSSStyleDeclaration, 'getPropertyValue'> = getComputedStyle(document.documentElement)): RailWidths {
+  const px = (name: string, fallback: number) => {
+    const value = style.getPropertyValue(name).trim();
+    return /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : fallback;
+  };
+  return { wide: px('--rail-w', DEFAULT_RAIL_WIDTHS.wide), narrow: px('--rail-w-narrow', DEFAULT_RAIL_WIDTHS.narrow) };
+}
+
 /** The widest inspector that still leaves the conversation its minimum width (320px, 260px in compact windows). */
-export function maxInspectorWidth(viewportWidth: number): number {
-  // Mirrors the grid in styles.css: a 270px sidebar, 236px at <=1050px.
-  const sidebarWidth = viewportWidth <= 1050 ? 236 : 270;
+export function maxInspectorWidth(viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
+  const sidebarWidth = viewportWidth <= 1050 ? rail.narrow : rail.wide;
   const minConversation = viewportWidth <= 950 ? 260 : 320;
   return Math.max(MIN_INSPECTOR_WIDTH, viewportWidth - sidebarWidth - minConversation - SEPARATOR_WIDTH);
 }
 
-export function clampInspectorWidth(width: number, viewportWidth: number): number {
-  return Math.round(Math.max(MIN_INSPECTOR_WIDTH, Math.min(maxInspectorWidth(viewportWidth), width)));
+export function clampInspectorWidth(width: number, viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
+  return Math.round(Math.max(MIN_INSPECTOR_WIDTH, Math.min(maxInspectorWidth(viewportWidth, rail), width)));
 }
 
 /** 360px up to a 1480px window, then growing with the spare width to at most 480px. */
-export function defaultInspectorWidth(viewportWidth: number): number {
-  return clampInspectorWidth(Math.min(480, 360 + Math.max(0, viewportWidth - 1480) * 0.3), viewportWidth);
+export function defaultInspectorWidth(viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
+  return clampInspectorWidth(Math.min(480, 360 + Math.max(0, viewportWidth - 1480) * 0.3), viewportWidth, rail);
 }
 
 /** The remembered width (a per-viewer convenience in local storage), else the default; always clamped to the window. */
-export function initialInspectorWidth(viewportWidth: number, storage: Pick<Storage, 'getItem'> | undefined): number {
+export function initialInspectorWidth(viewportWidth: number, storage: Pick<Storage, 'getItem'> | undefined, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
   let stored: number | undefined;
   try { const value = Number(storage?.getItem(INSPECTOR_WIDTH_KEY)); stored = Number.isFinite(value) && value > 0 ? value : undefined; } catch { stored = undefined; }
-  return stored === undefined ? defaultInspectorWidth(viewportWidth) : clampInspectorWidth(stored, viewportWidth);
+  return stored === undefined ? defaultInspectorWidth(viewportWidth, rail) : clampInspectorWidth(stored, viewportWidth, rail);
 }
 
 export function rememberInspectorWidth(width: number, storage: Pick<Storage, 'setItem'> | undefined): void {

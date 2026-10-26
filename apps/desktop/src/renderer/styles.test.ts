@@ -72,6 +72,68 @@ describe('design tokens', () => {
   });
 });
 
+// The size and spacing roles are the style axis: a style may set their values, so the floors are checked on the values.
+const uncommented = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '');
+const sizeBlock = uncommented(rootBlock.slice(rootBlock.indexOf('Size and spacing roles'), rootBlock.indexOf('/* Light surfaces */')));
+const sizeTokens = new Map([...sizeBlock.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
+const rootTokens = new Map([...uncommented(rootBlock).matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
+/** A token's value in px when it is one px length, following var() aliases. */
+function px(name: string): number | undefined {
+  let value = rootTokens.get(name);
+  for (let hop = 0; hop < 8 && value; hop++) {
+    const alias = /^var\(--([\w-]+)\)$/.exec(value);
+    if (!alias) return /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
+    value = rootTokens.get(alias[1]!);
+  }
+  return undefined;
+}
+
+// Rows whose height comes from padding: each is clamped to the pointer-target floor, so a style can shrink the padding only.
+const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.inspector-tabs button', '.file-tree button', '.agent-row'];
+
+describe('size tokens', () => {
+  it('finds the size block, so the checks below cannot pass on nothing', () => {
+    expect(rootBlock.indexOf('Size and spacing roles')).toBeGreaterThanOrEqual(0);
+    expect(rootBlock.indexOf('/* Light surfaces */')).toBeGreaterThan(rootBlock.indexOf('Size and spacing roles'));
+    expect(sizeTokens.size).toBeGreaterThan(150);
+  });
+
+  it('holds the 24px pointer-target floor on every fixed control height and on dense rows', () => {
+    expect(rootTokens.get('target-min')).toBe('24px');
+    const heights = [...rootTokens.keys()].filter(name => /^h-(ctl|view|chrome|decision|composer)\b/.test(name)).map(name => [name, px(name)] as const);
+    expect(heights.length).toBeGreaterThanOrEqual(6);
+    expect(heights.filter(([, value]) => value === undefined || value < 24)).toEqual([]);
+    const clamped = [...uncommented(css).matchAll(/([^{}]+)\{[^{}]*min-height:\s*max\(var\(--target-min\), var\(--h-dense\)\)/g)].map(match => match[1]!.replace(/\s+/g, ' ').trim());
+    expect(clamped.sort()).toEqual([...DENSE_ROWS].sort());
+  });
+
+  it('keeps Approve and Reject at their own size and the approval fields stacked by default', () => {
+    // The general button padding moved onto the ladder; the decision buttons keep 78x34 instead of following it.
+    expect(rootTokens.get('pad-decision')).toBe('9px 13px');
+    expect([rootTokens.get('field-layout'), rootTokens.get('field-columns'), rootTokens.get('field-col-gap')]).toEqual(['block', 'none', 'normal']);
+  });
+
+  it('defines every token a declaration uses', () => {
+    const defined = new Set([...uncommented(css).matchAll(/--([\w-]+)\s*:/g)].map(match => match[1]!));
+    const used = new Set([...uncommented(css).matchAll(/var\(--([\w-]+)/g)].map(match => match[1]!));
+    // --inspector-width is set inline on the workspace by App from the viewer's stored width.
+    expect([...used].filter(name => !defined.has(name) && name !== 'inspector-width')).toEqual([]);
+  });
+
+  it('keeps every type role at its floor: 11px, conversation prose 14px', () => {
+    const roles = [...rootTokens.keys()].filter(name => name.startsWith('fs-')).map(name => [name, px(name)] as const);
+    expect(roles.filter(([, value]) => value === undefined || value < 11)).toEqual([]);
+    expect(px('fs-prose')).toBeGreaterThanOrEqual(14);
+  });
+
+  it('uses every size token and puts no colour in one', () => {
+    const rules = uncommented(css).replace(/:root\s*{[\s\S]*?\n}/, '');
+    const references = `${rules}\n${[...rootTokens.values()].join('\n')}`;
+    expect([...sizeTokens.keys()].filter(name => !references.includes(`var(--${name})`) && !references.includes(`var(--${name},`))).toEqual([]);
+    expect([...sizeTokens].filter(([, value]) => /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|color)\(/i.test(value))).toEqual([]);
+  });
+});
+
 describe('end-to-end hooks', () => {
   // Class names, test ids and accessible names the Playwright specs locate. They are also the contract the
   // WPF host's verbatim spec port relies on, so a rename has to be deliberate (and update the specs).

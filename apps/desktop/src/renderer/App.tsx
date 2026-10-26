@@ -19,7 +19,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
+import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
 import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
 import { FocusControls } from './FocusControls';
 import { relativeTime, taskStatusLabel } from './labels';
@@ -46,7 +46,7 @@ const OFFLINE_PROFILE: ModelProfile = {
 const APP_TITLE = 'Foundry Agent Workspace';
 const LIVE_APPROVAL_STATES: readonly Approval['state'][] = ['awaiting-approval', 'approved', 'executing', 'unknown', 'failed'];
 const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
-const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000 files / 1 GiB and 10,000 directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
+const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000\u00a0files / 1\u00a0GiB and 10,000\u00a0directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
 type Mode = 'chat' | 'coding' | 'coordinated';
 interface StartPayload { requestId: string; projectId: string | null; content: string; title?: string; profileId: string; mode: Mode; tokenBudget: number; coordination?: { childProfileIds: string[]; requiredValidation: { command: string; cwd: string; timeoutMs: number } }; }
 interface Draft { content: string; title: string; requiredValidationCommand: string; tokenBudget: number; coordinatedBudget: number; childProfileIds: string[]; scopeGuidance: string[]; startPayload?: StartPayload; pending?: boolean; unknown?: boolean; }
@@ -124,7 +124,9 @@ function App() {
   const [diff, setDiff] = useState<DiffResult>();
   const [currentPath, setCurrentPath] = useState('');
   const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'activity' | 'continuity' | 'publish' | 'channel' | 'browser'>('files');
-  const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage()));
+  // The rail width comes from the page's tokens, so the inspector's limits follow a style that changes it.
+  const [railWidths] = useState(() => documentRailWidths());
+  const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage(), railWidths));
   // The theme is a closed choice kept like the inspector width; public/theme-boot.js already applied it before the first paint.
   const [theme, setTheme] = useState<ThemePreference>(() => readTheme(viewerStorage()));
   useEffect(() => applyTheme(theme, documentThemeHost()), [theme]);
@@ -792,10 +794,10 @@ function App() {
   };
   const resizeInspectorByKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 64 : 16;
-    const next = event.key === 'ArrowLeft' ? inspectorWidth + step : event.key === 'ArrowRight' ? inspectorWidth - step : event.key === 'Home' ? MIN_INSPECTOR_WIDTH : event.key === 'End' ? maxInspectorWidth(window.innerWidth) : undefined;
+    const next = event.key === 'ArrowLeft' ? inspectorWidth + step : event.key === 'ArrowRight' ? inspectorWidth - step : event.key === 'Home' ? MIN_INSPECTOR_WIDTH : event.key === 'End' ? maxInspectorWidth(window.innerWidth, railWidths) : undefined;
     if (next === undefined) return;
     event.preventDefault();
-    const width = clampInspectorWidth(next, window.innerWidth);
+    const width = clampInspectorWidth(next, window.innerWidth, railWidths);
     setInspectorWidth(width); rememberInspectorWidth(width, viewerStorage());
   };
   const openSettings = async () => {
@@ -926,7 +928,7 @@ function App() {
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
     </section>
-    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={inspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth)} aria-valuetext={`Inspector ${inspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
+    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={inspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth, railWidths)} aria-valuetext={`Inspector ${inspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
     <aside id="task-inspector" className={`inspector${inspectorOpen ? ' open' : ''}`} aria-label="Task inspector" {...inspector.asideProps}>
       <button ref={inspector.closeRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([

@@ -1,5 +1,79 @@
 # Implementation status
 
+## Size and spacing tokens, normalised — 26 October 2026
+
+The third step of the preset themes plan and the prerequisite for a Compact style. Task id `ui-theme-space-20261026`. Renderer only: `styles.css`, `layout.ts` and a few lines of `App.tsx`. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.
+
+Delivered:
+
+- **Every size and spacing value is a role token** (the style axis), folded into `styles.css` in place from the themes round's layer.
+  - It is proven to change nothing on its own, against the previous stylesheet injected over the build:
+    - all 2021 re-expressed declarations compute identically;
+    - the 27 harness captures and the 6 states-sheet images match, apart from the coordinated demo, whose run state differs between captures.
+  - The fold also added properties at today's values, such as the 24px clamp on the eight dense rows. The declaration check cannot compare these, because the old rules never set them; the captures cover them.
+  - The prototype's separate padding for awaiting and decided approval cards was left out. Emphasis must not change a card's geometry, and a card that shrank once decided would move the next card's Approve under the pointer.
+  - The prototype's size container on approval cards (`container: approval-card / inline-size`), its `@container` rule and six narrow-card tokens were also left out. Only a label-beside-value Compact layout needs them, and containment makes every card a stacking context, which the injected-stylesheet proof cannot exclude. The Compact change adds them back with its own captures, including the Focus tray's keyboard focus ring.
+- **Normalised: a deliberate, reviewed change to the default look.**
+  - Spacing roles sit on the 2, 4, 6, 8, 12, 16, 24 and 32px ladder. The two half steps joined the `--space-*` scale.
+  - Roles that are one concept were merged, from 223 to 181 tokens.
+  - How it was chosen:
+    - two designers proposed a conservative map and a merge-heavy map;
+    - three judges compared them on real renders at four sizes and preferred the conservative base, two to one;
+    - the owner took that base, changed it per the judges' objections, and two verifiers checked the result.
+  - What changes on screen:
+    - the task header is 6px shorter at 1480×940 and 9px shorter at 200% zoom;
+    - the composer is 4px shorter;
+    - ordinary buttons are 2px smaller;
+    - rail rows are slightly tighter, so the Inbox shows one more row.
+  - What changes on the approval surfaces, all by 1 to 4px:
+    - the approval banner and notices pad 8px instead of 9 to 10px;
+    - the readiness note is 4px shorter;
+    - an awaiting card is about 3px shorter;
+    - field spacing goes from 9/3px to 8/4px;
+    - the evidence block's margin and padding are 8px instead of 10 and 9px;
+    - the privilege disclosure's inline padding is 8px instead of 9px;
+    - the state badge's padding is 2px 6px instead of 2px 7px.
+
+    Approve sits up to 5px higher or lower depending on the card above it, and is in view in the same captures as before.
+  - What does not change:
+    - Approve and Reject keep their exact size (78×34) and their 12px gap. `--pad-decision` stays off the ladder on purpose;
+    - control heights, type sizes, widths and measures;
+    - every pointer target is at least 24px;
+    - the awaiting rule still sets only colour, border and ring.
+  - Alignment:
+    - at 950px wide and below (including 200% zoom), the task header now sits on the page lane with the composer, banner and notices; before, it was 12 to 24px inside it;
+    - the readiness note's text lines up with the approval card text;
+    - the Projects-mode status dot stays under its project label.
+  - Merges were not taken where a Compact style would set the members differently: rail rows and inspector rows, the Usage section's margins, the compaction box, flat rows and bordered cards.
+- **`layout.ts` takes the rail width from the tokens.** The inspector's maximum, `aria-valuemax`, the End key and the clamp of a stored width followed a hard-coded 270/236px rail.
+  - App reads `--rail-w` and `--rail-w-narrow` once, at start. The tokens must be px lengths; anything else keeps the default.
+  - A style that changes the rail at runtime has to read them again. That is for the Compact change.
+- **The rail's Retry button reaches the 24px target floor** (it was about 20px).
+- **The readiness note keeps each limit with its unit:** "50,000 files", "1 GiB" and "10,000 directories" use non-breaking spaces, so "1" and "GiB" no longer wrap apart. The words are unchanged.
+
+Validation:
+- `styles.test.ts`:
+  - the size block is found and holds more than 150 tokens;
+  - the 24px floor on every control height and on the eight dense rows, listed by name;
+  - 11px for every type role and 14px for prose;
+  - Approve and Reject keep their own padding, and the approval fields stay stacked by default;
+  - every size token is in use, none holds a colour, and no declaration uses an undefined token.
+- `layout.test.ts` ties the stylesheet's rail tokens to `DEFAULT_RAIL_WIDTHS`, requires every rail value in the stylesheet to be a px length, and checks the limits follow other widths.
+- `inspector-width.spec.ts` (e2e): at 1480 and 1040px wide, the End key, `aria-valuemax` and a drag all stop at the same width, which leaves the conversation its 320px minimum.
+- Every new guard fails on a mutation of what it checks.
+- Harness: the contrast, overflow and 24×24 target lists are empty in all 27 captures and on the states sheet, before and after.
+
+Known limits:
+- 181 tokens, not the plan's estimate of about 150. The judges found the remaining merges would cross regions that a Compact style sets differently.
+- About 215 spacing declarations on secondary surfaces keep literal values: the manage, automation and review dialogs, browser chrome, MCP and channel panels.
+- In a window at most 950px wide and at most 720px tall, the narrow header rule wins, so the header's block padding is 16/16 rather than 16/12. The rule order is unchanged.
+- For the Compact change:
+  - `50-compact.css` is written against the old role names, 46 of which no longer exist; the review records the mapping;
+  - some trust surfaces share generic roles: the state badge with the rail count chips (`--pad-badge`), and the approval banner with notices (`--pad-strip-y`). Compact should name them separately or review them explicitly;
+  - handoff and integration evidence text and the "Read-only reconciliation" note are not on `--fs-evidence`.
+
+Not verified: the packaged app; the installer.
+
 ## Preset themes: Foundry Dark and System — 26 October 2026
 
 The second step of the preset themes plan, on top of `ui-theme-tokens-20261026`. Task id `ui-theme-presets-20261026`. No protocol, IPC channel, runtime, provider, schema or dependency change, and no main-process change beyond the underlay that step added.
