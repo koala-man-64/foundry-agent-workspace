@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { activeFilterCount, recentOutcomesFold, inspectorTabInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
+import { activeFilterCount, recentOutcomesFold, inspectorTabInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, DEFAULT_RAIL_WIDTHS, defaultInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
 
 describe('inspectorTabInView', () => {
   it('is true only when the tab is selected and the inspector is on screen', () => {
@@ -55,6 +57,24 @@ describe('inspector width', () => {
     expect(clampInspectorWidth(5000, 1480)).toBe(1480 - 270 - 320 - 5);
     expect(maxInspectorWidth(1000)).toBe(1000 - 236 - 320 - 5);
     expect(maxInspectorWidth(700)).toBe(MIN_INSPECTOR_WIDTH);
+  });
+
+  it('takes the rail width from the stylesheet, so a style that changes it moves the limits too', () => {
+    const root = /:root\s*{([\s\S]*?)\n}/.exec(readFileSync(join(__dirname, 'styles.css'), 'utf8'))?.[1] ?? '';
+    const token = (name: string) => new RegExp(`--${name}:\\s*([^;]+);`).exec(root)?.[1]?.trim();
+    expect([token('rail-w'), token('rail-w-narrow')]).toEqual([`${DEFAULT_RAIL_WIDTHS.wide}px`, `${DEFAULT_RAIL_WIDTHS.narrow}px`]);
+    const narrowRail = { wide: 240, narrow: 224 };
+    expect(maxInspectorWidth(1480, narrowRail)).toBe(1480 - 240 - 320 - 5);
+    expect(maxInspectorWidth(1000, narrowRail)).toBe(1000 - 224 - 320 - 5);
+    expect(clampInspectorWidth(5000, 1480, narrowRail)).toBe(maxInspectorWidth(1480, narrowRail));
+    expect(initialInspectorWidth(1000, { getItem: () => '900' }, narrowRail)).toBe(maxInspectorWidth(1000, narrowRail));
+  });
+
+  it('reads the rail widths from the page and keeps the default for anything but a px length', () => {
+    const style = (values: Record<string, string>) => ({ getPropertyValue: (name: string) => values[name] ?? '' });
+    expect(documentRailWidths(style({ '--rail-w': ' 240px', '--rail-w-narrow': '224px' }))).toEqual({ wide: 240, narrow: 224 });
+    expect(documentRailWidths(style({}))).toEqual(DEFAULT_RAIL_WIDTHS);
+    expect(documentRailWidths(style({ '--rail-w': 'calc(10px + 20%)', '--rail-w-narrow': '-4px' }))).toEqual(DEFAULT_RAIL_WIDTHS);
   });
 
   it('prefers a remembered width, clamped, and survives unavailable storage', () => {
