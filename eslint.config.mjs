@@ -6,6 +6,8 @@ export default ts.config(
   ...ts.configs.recommended,
   // These classic scripts are embedded into isolated WebView2 pages by the spike.
   { files: ['tests/Foundry.Spikes.BrowserSurface/Pages/*.js'], languageOptions: { sourceType: 'script', globals: { chrome: 'readonly', document: 'readonly', window: 'readonly', ResizeObserver: 'readonly', S4_NAME: 'readonly', s4Changed: 'readonly' } }, rules: { '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^setConfirmation$' }] } },
+  // The renderer's first-paint script is a classic script copied as is (public/), so it runs before the module bundle.
+  { files: ['apps/desktop/src/renderer/public/*.js'], languageOptions: { sourceType: 'script', globals: { document: 'readonly', window: 'readonly' } } },
   { files: ['**/*.ts', '**/*.tsx'], rules: { '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }] } },
   { files: ['scripts/**/*.mjs'], languageOptions: { globals: { AbortController: 'readonly', DOMException: 'readonly' } } },
   // The renderer takes values only from the zod-free limits module, so its bundle carries no validator
