@@ -10,9 +10,9 @@ interface Props {
 }
 
 /**
- * Focus mode's Pending actions: the live approval cards above the composer, oldest first, so a card that arrives
- * later joins below instead of pushing the one being read. The counted summary never scrolls away; the notes and cards
- * scroll inside a bounded, keyboard-reachable area, as they do in the inspector.
+ * Focus mode's Pending actions: the live approval cards above the composer, cards still waiting first (see trayOrder),
+ * so a decided card never pushes a waiting one below the fold. The counted summary never scrolls away; the notes and
+ * cards scroll inside a bounded, keyboard-reachable area, as they do in the inspector.
  */
 export function ApprovalTray({ shown, notes, children }: Props) {
   return <section className="approval-tray" aria-label="Pending actions">
