@@ -1,5 +1,64 @@
 # Implementation status
 
+## Compact style — 26 October 2026
+
+The fourth step of the preset themes plan. Task id `ui-theme-compact-20261026`. Renderer only. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.
+
+Delivered:
+
+- **The choice.** Settings now has a Style group under Theme: Comfortable or Compact.
+  - It is a closed list in `theme.ts`, kept in this viewer's `localStorage` under `foundry.style`. Anything missing, unknown or unreadable means Comfortable.
+  - `theme-boot.js` sets `data-style` before the first paint, as it does `data-theme`.
+  - Theme and style are independent, so any theme works with any style.
+- **Compact** is one block of size and spacing token values under `:root[data-style="compact"]`. It has no selector, no colour, no `--target-min` and no ladder change.
+  - It is not inside `forced-colors: none`, so it keeps its sizes under a Windows contrast theme.
+  - It ports the themes round's design onto the role names from the normalisation. Where merged roles had different Compact values, one value was chosen.
+  - The prototype's separate padding for awaiting and decided cards stays out: emphasis must not change a card's geometry.
+- **Label-beside-value approval fields.** In Compact, approval fields put the label beside the value in a wide list (the Focus tray, or a widened inspector), and stay stacked in a list under 504px wide, so paths, commands and hashes never break mid-token.
+  - The two lists that hold cards (`.approvals-panel` and `.approval-tray-cards`) are the size containers, not the cards, so a card is never its own stacking context.
+  - In Comfortable the narrow values equal the wide ones, so nothing changes.
+- **The rail.** Compact's rail is 240/224px. App reads the rail widths again when the style changes, and keeps the stored inspector width inside the new limits.
+
+Measured, with Comfortable first and Compact second:
+
+| | 1480×940 | 1000×680 |
+|---|---|---|
+| Task header | 121 → 74px | 173 → 131px |
+| Composer | 85 → 47px | — |
+| Approve in view, docked inspector | — | no → yes |
+| Approve in view, Focus | no → yes | no → yes |
+| Inbox rail rows | 6 → 8 | 2 → 4 |
+
+Validation:
+- `styles.test.ts` checks every style block:
+  - it sets only size-role names, which catches names that no longer exist;
+  - no colour, no `--target-min` and no ladder change;
+  - under it, every control height stays at least 24px, every type role at least 11px, prose at least 14px and evidence at least 12px;
+  - narrow approval fields stay stacked;
+  - it is not inside `forced-colors: none`;
+  - the Style list matches the blocks.
+
+  Each check fails on a mutation of what it guards.
+- `theme.test.ts`:
+  - the style list, the fallback and blocked storage;
+  - the first-paint script for every stored style;
+  - the theme and the style staying independent.
+- `style.spec.ts` (e2e):
+  - the Style group offers two choices;
+  - Compact and Dark apply together and survive a reload, from the first paint;
+  - the inspector's End key and `aria-valuemax` follow Compact's 240px rail (disabling the re-read fails this);
+  - Send stays under 80px and inside an 880px window;
+  - the rail footer stays inside the window at 1000×680 and 200% zoom;
+  - an unknown stored style means Comfortable.
+- Harness: the contrast, overflow and 24×24 target lists are empty for Compact, Compact on Dark and Compact under emulated Windows contrast, in all 27 captures and on the states sheet.
+
+Known limits:
+- About 215 spacing declarations on secondary surfaces keep Comfortable values in Compact: the manage, automation and review dialogs, browser chrome, MCP and channel panels.
+- Compact's one-line header, hanging transcript column and wider default inspector from the density round need markup or `layout.ts` changes. They are not included.
+- `style.spec.ts` checks the rail footer at 1000×680 and 200% zoom without the upgrade banner that `orchestration.spec.ts` uses.
+
+Not verified: the packaged app; the installer.
+
 ## Size and spacing tokens, normalised — 26 October 2026
 
 The third step of the preset themes plan and the prerequisite for a Compact style. Task id `ui-theme-space-20261026`. Renderer only: `styles.css`, `layout.ts` and a few lines of `App.tsx`. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.

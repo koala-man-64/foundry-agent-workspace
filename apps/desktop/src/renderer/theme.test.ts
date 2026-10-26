@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { applyTheme, readTheme, resolveTheme, saveTheme, THEME_STORAGE_KEY, THEMES, type ThemeHost } from './theme';
+import { applyStyle, applyTheme, readStyle, readTheme, resolveTheme, saveStyle, saveTheme, STYLE_STORAGE_KEY, STYLES, THEME_STORAGE_KEY, THEMES, type ThemeHost } from './theme';
 
 function storage(values: Record<string, string> = {}, failing = false): Storage {
   const fail = () => { throw new Error('storage blocked'); };
@@ -71,15 +71,38 @@ describe('applyTheme', () => {
 
 });
 
+describe('style preference', () => {
+  it('reads only a value from the closed list and falls back to Comfortable', () => {
+    expect(readStyle(storage({ [STYLE_STORAGE_KEY]: 'compact' }))).toBe('compact');
+    for (const value of ['dense', 'COMPACT', '', 'compact; x', 'comfortable ']) expect(readStyle(storage({ [STYLE_STORAGE_KEY]: value }))).toBe('comfortable');
+    expect(readStyle(storage())).toBe('comfortable');
+    expect(readStyle(storage({}, true))).toBe('comfortable');
+    expect(readStyle(undefined)).toBe('comfortable');
+  });
+
+  it('saves without throwing when storage is blocked, and sets data-style', () => {
+    const values: Record<string, string> = {};
+    saveStyle('compact', storage(values));
+    expect(values[STYLE_STORAGE_KEY]).toBe('compact');
+    expect(() => saveStyle('compact', storage({}, true))).not.toThrow();
+    const root = { dataset: {} } as HTMLElement;
+    applyStyle('compact', root);
+    expect(root.dataset.style).toBe('compact');
+    applyStyle('comfortable', root);
+    expect(root.dataset.style).toBe('comfortable');
+  });
+});
+
 describe('first-paint script', () => {
   const script = readFileSync(join(__dirname, 'public', 'theme-boot.js'), 'utf8');
   // Runs the real file against a stand-in window, as the page head does before the module bundle.
-  function boot(read: () => Storage, prefersDark: boolean): string | undefined {
+  function run(read: () => Storage, prefersDark: boolean): Record<string, string> {
     const root = { dataset: {} as Record<string, string> };
     const fakeWindow = Object.defineProperty({ matchMedia: (query: string) => ({ matches: query === '(prefers-color-scheme: dark)' && prefersDark }) }, 'localStorage', { get: read });
     runInNewContext(script, { window: fakeWindow, document: { documentElement: root } });
-    return root.dataset.theme;
+    return root.dataset;
   }
+  const boot = (read: () => Storage, prefersDark: boolean) => run(read, prefersDark).theme;
 
   it('paints with the theme the app applies for every stored value, Windows mode and blocked storage', () => {
     const blocked = () => { throw new Error('storage blocked'); };
@@ -92,5 +115,17 @@ describe('first-paint script', () => {
       expect(boot(() => storage({}, true), prefersDark)).toBe('light');
       expect(boot(blocked, prefersDark)).toBe('light');
     }
+  });
+
+  it('paints with the style the app applies for every stored value and blocked storage', () => {
+    for (const value of [...STYLES, 'dense', 'COMPACT', '']) {
+      const stored = storage({ [STYLE_STORAGE_KEY]: value });
+      expect(run(() => stored, false).style, value).toBe(readStyle(stored));
+    }
+    expect(run(() => storage(), false).style).toBe('comfortable');
+    expect(run(() => storage({}, true), false).style).toBe('comfortable');
+    expect(run(() => { throw new Error('storage blocked'); }, false).style).toBe('comfortable');
+    // The theme and the style are independent: one stored value never changes the other.
+    expect(run(() => storage({ [THEME_STORAGE_KEY]: 'dark', [STYLE_STORAGE_KEY]: 'compact' }), false)).toMatchObject({ theme: 'dark', style: 'compact' });
   });
 });

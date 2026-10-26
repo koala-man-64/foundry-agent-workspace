@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { STYLES } from './theme';
 
 const directory = __dirname;
 const css = readFileSync(join(directory, 'styles.css'), 'utf8');
@@ -88,6 +89,8 @@ function px(name: string): number | undefined {
   return undefined;
 }
 
+// Style blocks (:root[data-style="..."]): token values only, set on the size roles.
+const styleBlocks = new Map([...uncommented(css).matchAll(/:root\[data-style="([\w-]+)"\]\s*{([^}]*)}/g)].map(match => [match[1]!, new Map([...match[2]!.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(declaration => [declaration[1]!, declaration[2]!.trim()]))]));
 // Rows whose height comes from padding: each is clamped to the pointer-target floor, so a style can shrink the padding only.
 const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.inspector-tabs button', '.file-tree button', '.agent-row'];
 
@@ -111,6 +114,30 @@ describe('size tokens', () => {
     // The general button padding moved onto the ladder; the decision buttons keep 78x34 instead of following it.
     expect(rootTokens.get('pad-decision')).toBe('9px 13px');
     expect([rootTokens.get('field-layout'), rootTokens.get('field-columns'), rootTokens.get('field-col-gap')]).toEqual(['block', 'none', 'normal']);
+  });
+
+  it('keeps every style block to size token values, at the floors, outside forced-colors: none', () => {
+    expect(STYLES.filter(style => style !== 'comfortable').sort()).toEqual([...styleBlocks.keys()].sort());
+    for (const [style, block] of styleBlocks) {
+      const values = new Map([...rootTokens, ...block]);
+      const resolved = (name: string) => {
+        let value = values.get(name);
+        for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value); if (!alias) break; value = values.get(alias[1]!); }
+        return value;
+      };
+      const size = (name: string) => { const value = resolved(name); return value && /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined; };
+      expect([...block.keys()].filter(name => !sizeTokens.has(name)), `${style}: names outside the size roles`).toEqual([]);
+      expect([...block.keys()].filter(name => name === 'target-min' || name.startsWith('space-')), `${style}: floors and the ladder`).toEqual([]);
+      expect([...block].filter(([, value]) => /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|color)\(/i.test(value)), `${style}: colours`).toEqual([]);
+      const heights = [...values.keys()].filter(name => /^h-(ctl|view|chrome|decision|composer)\b/.test(name)).filter(name => (size(name) ?? 0) < 24);
+      expect(heights, `${style}: control heights under 24px`).toEqual([]);
+      const type = [...values.keys()].filter(name => name.startsWith('fs-')).filter(name => (size(name) ?? 0) < 11);
+      expect(type, `${style}: type roles under 11px`).toEqual([]);
+      expect([size('fs-prose')! >= 14, size('fs-evidence')! >= 12], `${style}: prose 14px, evidence 12px`).toEqual([true, true]);
+      // In a narrow approval list a label column would break paths, commands and hashes mid-token.
+      expect(resolved('field-layout-narrow'), `${style}: narrow approval fields`).toBe('block');
+      expect(new RegExp(`@media \\(forced-colors: none\\)\\s*{\\s*:root\\[data-style="${style}"\\]`).test(uncommented(css)), `${style}: inside forced-colors: none`).toBe(false);
+    }
   });
 
   it('defines every token a declaration uses', () => {
