@@ -1,5 +1,52 @@
 # Implementation status
 
+## Preset themes: Foundry Dark and System — 26 October 2026
+
+The second step of the preset themes plan, on top of `ui-theme-tokens-20261026`. Task id `ui-theme-presets-20261026`. No protocol, IPC channel, runtime, provider, schema or dependency change, and no main-process change beyond the underlay that step added.
+
+Delivered:
+
+- **The choice.** Settings opens with a Theme group: System, Light or Dark. These are radio buttons from a closed list (`theme.ts`); there is no colour or CSS setting.
+  - The choice is kept in this viewer's `localStorage` under `foundry.theme`, like the inspector width. Anything missing, unknown or unreadable means Light.
+  - System follows the Windows app mode through `matchMedia`, and keeps following it until another choice replaces it. `nativeTheme.themeSource` is never set, because it would also change how websites in the Browser pane render.
+- **Before the first paint.** `public/theme-boot.js`, a classic script in the page head that the CSP allows as a same-origin file, sets `data-theme` before the bundle runs. The bundle alone painted first in 1 of 12 measured loads. `theme.ts` then re-applies the choice and writes the theme's `--canvas-deep` into `<meta name="theme-color">`, which the window takes as its underlay.
+- **Foundry Dark.** One block of 146 token values under `:root[data-theme="dark"]`, inside `@media (forced-colors: none)`. It was designed in the themes round as warm graphite with the same meanings as Light:
+  - needs-you is copper-orange, with danger a crimson 29 degrees away (CIEDE2000 23);
+  - warnings are ochre and success a quiet green;
+  - the focus ring is ice blue and the rail selection mark green.
+
+  The needs-decision row's outline was raised to 3:1 for the pair rule added in the previous step.
+- **Changed after independent review:**
+  - Disabled fields have their own placeholder colour, `--placeholder-disabled`, at 4.5:1 or more on the disabled background in every theme. The composers explain themselves this way, for example "This task worktree is retired. Create a new task to continue.". In Light that text was 3.45:1 and is now 4.66:1; enabled placeholders keep their lighter grey.
+  - Dark's placeholder is a neutral grey (4.82:1), as Light's is. The warm tone read as a value.
+  - Dark states `--rail-error-scheme` itself instead of inheriting it.
+  - The Theme legend uses the dialog's field-label style.
+  - The helper text is tied to the group with `aria-describedby`. It now says the title bar follows Windows whatever you choose, and that a Windows contrast theme replaces these colours.
+
+Validation:
+- `themes.test.ts` checks Dark as it does Light: every literal colour and scheme token set, 67 pair rows, including the new disabled-placeholder row, the meaning rules and the wrapper. The settings list and the theme blocks must match.
+- `theme.test.ts`: the closed list, the fallback, blocked storage, the System listener and its stop, and the underlay value check. It also runs the real first-paint script for every stored value, both Windows modes and blocked storage, and expects the theme the module would apply.
+- `theme.spec.ts` (e2e):
+  - the Theme group offers three choices;
+  - Dark applies, colours the window underlay and survives a reload. `data-theme` is already dark when parsing ends, before the bundle runs;
+  - System follows emulated Windows light and dark modes;
+  - the arrow keys move the choice, and leaving System stops following Windows;
+  - a stored value outside the list falls back to Light, from the first paint on.
+- Harness on the built app:
+  - Dark is clean (contrast, overflow and 24×24 targets) in all 27 captures and on the states sheet;
+  - under emulated Windows contrast with the light app mode it is 0 pixels different from today.
+
+Known limits:
+- The Theme group sits in the dialog opened by "Model settings", the app's only settings surface.
+- Under a Windows contrast theme the theme blocks do not apply. The window underlay therefore stays Light's canvas colour.
+- The Dark chart colours were checked by the pair table, not rendered: the harness fixtures record no measured usage.
+
+Not verified:
+- a real Windows contrast theme;
+- the Windows title bar. It follows the Windows app mode, so explicit Dark on a light Windows has a light caption;
+- the packaged app;
+- the installer.
+
 ## Theme tokens and Foundry Light corrections — 26 October 2026
 
 Rudy asked for "a handful of preset themes and styles" rather than custom configuration, then asked to proceed with the recommendations of the themes, density and minimalism proposals. This is the first step of that plan: the colour layer every preset builds on, with today's light theme corrected. Task id `ui-theme-tokens-20261026`, branch `claude/ui-theme-tokens-20261026` from `main` at `68a6e8b`. The proposals, prototypes and evidence are under `.local/verification/ui-themes-20261026/` and `ui-theme-tokens-20261026/`. No protocol, IPC channel, runtime, provider, schema or dependency change. One main-process change: the window underlay (below). Nothing is dual-landed in C#; the WPF host will need the same underlay rule when it hosts the renderer.

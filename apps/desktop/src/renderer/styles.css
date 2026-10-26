@@ -105,6 +105,8 @@
   --control-accent: auto;
   --rail-error-scheme: dark;
   --placeholder: #707070;
+  /* A disabled field can explain itself in its placeholder (a retired task), so it stays readable on the disabled ground. */
+  --placeholder-disabled: #5c5c5c;
   --selection-bg: #3366cf;
   --selection-ink: #ffffff;
   /* Surfaces */
@@ -217,6 +219,192 @@
   color-scheme: var(--color-scheme);
   accent-color: var(--control-accent);
 }
+/* Foundry Dark (data-theme="dark"): token values only, designed rather than inverted. Warm graphite surfaces step up from
+   the window and rail (darkest) through the canvas, inspector and cards to the wells; ink is a warm off-white; needs-you is
+   one copper-orange family, danger a crimson 29 degrees away, warnings ochre, success a quiet green; selection and focus
+   never use the needs-you hue. Inside forced-colors: none, so a Windows contrast theme still wins. themes.test.ts checks it. */
+@media (forced-colors: none) {
+  :root[data-theme="dark"] {
+    /* Native controls */
+    --color-scheme: dark;
+    --control-accent: #78bda2;
+    --placeholder: #b0b0b0;
+    --placeholder-disabled: var(--placeholder);
+    --selection-bg: #8fcab0;
+    --selection-ink: #101a15;
+
+    /* Surfaces: window and rail darkest, then the canvas, the inspector, cards, fields and wells */
+    --canvas-deep: #141210;
+    --canvas: #2d2a27;
+    --surface-sunken: #242120;
+    --surface-inspector: #37332e;
+    --surface-card: #3d3935;
+    --surface: #433f3a;
+    --surface-well: #4a4640;
+    --surface-hover: #54504a;
+    --surface-disabled: #2f2c29;
+    --browser-ground: #262320;
+
+    /* Ink: warm off-white, never pure white */
+    --ink: #f2ede3;
+    --ink-2: #e0d9cd;
+    --ink-muted: #c8c0b2;
+    --ink-eyebrow: #c4bcad;
+    --ink-disabled: #8c857a;
+    --ink-inverse: #1c1511;
+
+    /* Lines */
+    --line-soft: #403c36;
+    --line: #4d4841;
+    --line-control: #5f5951;
+    --line-strong: #928a7d;
+    --hover-veil: #ffffff14;
+
+    /* Needs you and the primary action: terracotta lifted for dark */
+    --accent: #e4853e;
+    --accent-hover: #d0712b;
+    --accent-soft: #463120;
+    --on-accent: #1c1511;
+    --on-danger: #1c1511;
+    --upgrade-banner-bg: #d0712b;
+    --upgrade-banner-ink: #1c1511;
+
+    /* Needs you, v2: text, fills, lines and the banner are the same terracotta family as accent (hue 17 to 21) */
+    --needs-you-ink: #f0a46c;
+    --needs-you-soft: #463120;
+    --needs-you-soft-hover: #543b24;
+    --needs-you-line: var(--needs-you-ink);
+    --needs-you-banner-bg: #452e1d;
+    --needs-you-banner-ink: #fae3c9;
+    --needs-you-banner-line: #d0712b;
+
+    /* Danger: a clearly redder coral than needs-you, always beside a word */
+    --danger: #fa626b;
+    --danger-ink: #ffa4b0;
+    --danger-soft: #44272c;
+    --danger-hover: #e64a54;
+
+    /* Warning: ochre */
+    --warn-ink: #e3bf4a;
+    --warn-soft: #3c341f;
+    --warn: #cfa829;
+    --warn-line: #9e872c;
+
+    /* Success: quiet green */
+    --ok: #6faa84;
+    --ok-ink: #92d3a7;
+    --ok-soft: #243a2d;
+
+    /* Notices */
+    --notice-error-ink: #ffced0;
+    --notice-error-bg: #402328;
+    --notice-warning-ink: #f1db8b;
+    --notice-warning-bg: #38311a;
+    --notice-success-ink: #bde4c9;
+    --notice-success-bg: #203428;
+
+    /* Brand and buttons */
+    --brand: #38725a;
+    --brand-ink: #93c6af;
+    --brand-fill: #2f6b52;
+    --on-brand: #f6f1e7;
+    --brand-quiet: #4a6b5c;
+    --secondary-bg: #4e4a43;
+    --secondary-bg-hover: #5b564e;
+    --secondary-ink: #f3eee4;
+    --secondary-ring: #9d9588;
+    --mark-bg: #3d381e;
+    --mark-ink: #e7cd66;
+
+    /* Focus and selection: the ring is a pale cool neutral, selection keeps the green identity */
+    --focus: #d6e4f0;
+    --select: #6fbd9f;
+    --select-soft: #2c4a3c;
+
+    /* Charts and graph */
+    --viz-reported: #6fb08a;
+    --viz-unknown: #dba441;
+    --viz-unsent: #aaa699;
+    --viz-axis: #968e81;
+    --graph-done: #2b4636;
+    --graph-failed: #4c2a2e;
+    --graph-open: #3b3625;
+
+    /* Shadows and scrims */
+    --shadow-dialog: #000000b3;
+    --shadow-menu: #000000b3;
+    --shadow-popup: #000000b3;
+    --shadow-drawer: #00000099;
+    --shadow-card: #00000066;
+    --scrim: #0b0a0988;
+
+    /* Rail: the darkest surface, distinct from the canvas by tone and an edge */
+    --rail: #12100f;
+    --rail-line: #2c2824;
+    --rail-hover: #231f1c;
+    --rail-raised: #1b1815;
+    --rail-selected: #2f4b3f;
+    --rail-line-strong: #4a453e;
+    --rail-ink: #ebe5da;
+    --rail-ink-2: #cdc6ba;
+    --rail-muted: #aca599;
+    --rail-faint: #9d968a;
+    --rail-ink-strong: #f7f2e8;
+    --rail-accent: #eda34f;
+    --rail-select-mark: #6fbd9f;
+    --rail-line-control: #7a7468;
+    --rail-focus: #d6e4f0;
+
+    /* Tier B: aliases where the light meaning carries over, values where it does not */
+    --rail-ink-bright: var(--rail-ink-strong);
+    --rail-ink-list: var(--rail-ink);
+    --rail-ink-warm: var(--rail-ink-2);
+    --rail-ink-icon: var(--rail-ink-2);
+    --rail-ink-glyph: var(--rail-muted);
+    --rail-ink-meta: var(--rail-ink-2);
+    --rail-ink-meta-2: var(--rail-ink-2);
+    --rail-edge: var(--rail-line);
+    --rail-popover: var(--rail-hover);
+    --rail-popover-hover: var(--rail-line);
+    --rail-dot: var(--rail-faint);
+    --rail-dot-running: #e0bc46;
+    --rail-dot-failed: #ff7f91;
+    --rail-dot-cancelled: var(--rail-muted);
+    --rail-warn: #e0bc46;
+    --rail-warn-ink: #e8c963;
+    --rail-accent-line: #856640; /* the needs-decision row outline, 3:1 on the rail steps */
+    --rail-button-bg: var(--secondary-bg);
+    --rail-button-ink: var(--secondary-ink);
+    --rail-error-bg: var(--notice-error-bg);
+    --rail-error-ink: #fdf0ec;
+    --rail-error-scheme: dark;
+    --line-faint: var(--line-soft);
+    --line-popup: var(--line-control);
+    --line-emphasis: var(--line-strong);
+    --line-timeline: var(--line);
+    --line-compacted: var(--line-strong);
+    --ink-content: var(--ink-2);
+    --danger-ink-strong: var(--danger-ink);
+    --danger-line: var(--danger);
+    --ok-line: var(--ok);
+    --notice-error-line: var(--line-soft);
+    --notice-warning-line: var(--line-soft);
+    --notice-success-line: var(--line-soft);
+    --viz-baseline: var(--line);
+    --viz-hatch-ground: var(--accent-soft);
+    --graph-line: var(--viz-axis);
+    --graph-ink: var(--ink);
+    --graph-ink-2: var(--ink-2);
+    --scrim-light: var(--scrim);
+    --choice: var(--select);
+    --choice-soft: var(--select-soft);
+    --patch-add-bg: var(--ok-soft);
+    --patch-add-bar: var(--ok);
+    --patch-del-bg: var(--danger-soft);
+    --patch-del-bar: var(--danger);
+  }
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 880px; height: 100vh; overflow: hidden; }
 #root { display: flex; flex-direction: column; height: 100vh; min-height: 0; }
@@ -630,6 +818,13 @@ dialog .notice { padding-inline: 20px 24px; }
 .profile-form small { color: var(--ink-muted); font-size: var(--fs-xs); text-transform: none; letter-spacing: 0; }
 .limits { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .probe-note { color: var(--ink-muted); font-size: var(--fs-xs); line-height: 1.45; }
+/* Appearance: the theme choice at the top of settings. */
+.appearance-settings { min-width: 0; margin: 0; padding: 16px 24px; border: 0; border-bottom: 1px solid var(--line-soft); }
+/* A floated legend flows like a label instead of sitting in the fieldset's border area. */
+.appearance-settings legend { float: left; width: 100%; margin: 0 0 var(--space-2); padding: 0; color: var(--ink-muted); font-size: var(--fs-xs); letter-spacing: .05em; text-transform: uppercase; }
+.appearance-options { display: flex; clear: both; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.appearance-options label { min-height: 24px; }
+.appearance-settings small { display: block; margin-top: var(--space-2); color: var(--ink-muted); font-size: var(--fs-xs); }
 .probe { padding: 12px; border-left: 3px solid var(--ok-line); background: var(--ok-soft); font-size: var(--fs-sm); }
 .probe.failure { border-color: var(--danger-line); background: var(--danger-soft); }
 .probe p { margin: 5px 0; }
@@ -848,6 +1043,7 @@ dialog .notice { padding-inline: 20px 24px; }
 /* Native surfaces: text selection and placeholders follow the theme. */
 ::selection { background-color: var(--selection-bg); color: var(--selection-ink); }
 ::placeholder { color: var(--placeholder); }
+:disabled::placeholder { color: var(--placeholder-disabled); }
 
 /* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {
