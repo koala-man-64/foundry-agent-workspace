@@ -10,7 +10,7 @@ import { CoordinatedTaskControls } from './CoordinatedTaskControls';
 import { CoordinatedHandoffPanel } from './CoordinatedHandoffPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
-import { approvalsInView, approvalsTabLabel, useInspectorOverlay } from './layout';
+import { inspectorTabInView, approvalsTabLabel, useInspectorOverlay } from './layout';
 import { sendOnShortcut } from './composer';
 import { Hash, PatchText } from './Evidence';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
@@ -19,7 +19,9 @@ import type { ActionItem } from '../../../../packages/protocol/src/workspace';
 import type {
   AgentRun, Assignment, AssignmentState, ChildDetail, IntegrationOperation, IntegrationState, OrchestrationView, RunOutcome
 } from '../../../../packages/protocol/src/orchestration';
-import { decisionFailure, errorMessage, type SetNotice } from './feedback';
+import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from './feedback';
+import { AttentionBannerView } from './AttentionBanner';
+import { attentionBanner, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
 
 interface Props {
   api: DesktopApi;
@@ -35,6 +37,8 @@ interface Props {
   onTaskCreated: (task: Task) => void;
   focusAction?: ActionItem;
   searchHit?: SearchHit;
+  /** Screen-reader announcement through the app's live regions. */
+  announce?: (text: string, tone?: NoticeTone) => void;
   /** Focus mode is on: the inspector is a slide-over at any width. */
   focus?: boolean;
 }
@@ -53,7 +57,7 @@ const RECONCILABLE: IntegrationState[] = ['unknown', 'conflict', 'empty', 'misma
 
 function full(sha: string | undefined | null): string { return sha || 'none'; }
 
-export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit, focus = false }: Props) {
+export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, composer, setComposer, onWorkspaceRefresh, onTaskCreated, focusAction, searchHit, focus = false, announce = () => undefined }: Props) {
   const rootTaskId = task.id;
   const [runsById, setRunsById] = useState<Record<string, AgentRun>>({});
   const [runsCursor, setRunsCursor] = useState<number | null>(null);
@@ -297,7 +301,12 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
 
   useEffect(() => { void fetchLatest(); }, [fetchLatest]);
   useEffect(() => { if (selectedChildId) void loadChild(selectedChildId); }, [selectedChildId, loadChild]);
-  useEffect(() => { if (tab === 'approvals') void loadApprovals(); }, [tab, runsById, loadApprovals]);
+  // Approvals load while their tab is open and whenever an agent is waiting on one, so the banner and counts are real.
+  const agentsWaitingOnApproval = Object.values(runsById).some(run => run.lifecycle === 'waiting' && run.waitReason === 'approval');
+  const approvalsWanted = tab === 'approvals' || agentsWaitingOnApproval;
+  const approvalsWantedRef = useRef(approvalsWanted);
+  approvalsWantedRef.current = approvalsWanted;
+  useEffect(() => { if (approvalsWanted) void loadApprovals(); }, [approvalsWanted, runsById, loadApprovals]);
   useEffect(() => {
     if (!focusAction || focusAction.taskId !== rootTaskId) return;
     setInspectorOpen(true);
@@ -314,11 +323,11 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         void fetchLatest();
         void loadRootTranscript();
         if (selectedChildRef.current) void loadChild(selectedChildRef.current);
-        if (tab === 'approvals') void loadApprovals();
+        if (approvalsWantedRef.current) void loadApprovals();
       }, 250);
     });
     return () => { unsubscribe(); if (timer) clearTimeout(timer); };
-  }, [api, fetchLatest, loadRootTranscript, loadChild, loadApprovals, tab]);
+  }, [api, fetchLatest, loadRootTranscript, loadChild, loadApprovals]);
 
   const coordinatorRun = useMemo(() => Object.values(runsById).find((run) => run.role === 'coordinator'), [runsById]);
   const childRuns = useMemo(() => Object.values(runsById).filter((run) => run.role === 'child').sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [runsById]);
@@ -419,10 +428,16 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
 
-  const awaitingCount = pendingApprovals.filter(item => item.state === 'awaiting-approval').length;
   const waitingFor = (taskId: string) => pendingApprovals.filter(item => item.state === 'awaiting-approval' && item.taskId === taskId).length;
   const canSendToCoordinator = Boolean(composer.trim()) && task.status !== 'retired' && coordinatorRun?.lifecycle !== 'terminal';
-  const approvalsLabel = approvalsTabLabel(awaitingCount, pendingApprovals.filter(item => item.state === 'unknown').length, awaitingCount > 0 && runsCursor !== null);
+  const attention = coordinatedAttention({ approvals: pendingApprovals, runs: Object.values(runsById), integrations: view?.integrations ?? [], partial: runsCursor !== null });
+  const approvalsLabel = approvalsTabLabel(attention.awaiting, pendingApprovals.filter(item => item.state === 'unknown').length, attention.awaiting > 0 && runsCursor !== null);
+  // The banner shows in the coordinator and child views whenever the tab that holds the decision is not on screen.
+  const bannerCandidate = attentionBanner(attention);
+  const bannerTab = bannerCandidate?.target === 'orchestration' ? 'orchestration' : 'approvals';
+  const banner = bannerCandidate && !inspectorTabInView(tab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
+  const reviewBanner = () => { setTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); };
+  useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;
@@ -434,13 +449,15 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <div>
           <p className="eyebrow">{task.projectPath}</p>
           <h1>{task.title}</h1>
+          {needsYou(attention) && <p className="task-status awaiting"><span className="task-state">{[attention.awaiting > 0 ? 'Waiting for your approval' : '', attention.unknown > 0 ? 'Outcome unknown' : ''].filter(Boolean).join(' · ')}</span></p>}
           {budget && <p className={`task-status orchestration-budget ${budget.warning ? 'warning' : ''} ${budget.overrun ? 'overrun' : ''}`}>
             charged {budget.charged.toLocaleString()} · in flight {budget.inFlight.toLocaleString()} · held {budget.unusedHolds.toLocaleString()} · unallocated {budget.unallocated.toLocaleString()} of {budget.cap.toLocaleString()}
+            {budget.warning && !budget.overrun && ' · budget warning'}
             {budget.overrun && <span className="overrun-notice"> · budget overrun recorded</span>}
           </p>}
           {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         </div>
-        <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task</button></div>
+        <div className="header-actions">{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button></div>
       </header>
       {notice}
       {viewError && <p className="muted inspector-empty">{viewError}</p>}
@@ -463,7 +480,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         {!selectedChildId ? <>
           <Transcript messages={rootMessages} compactions={rootCompactions} ordinals={rootMessageOrdinals.current} api={api} taskId={rootTaskId} empty={<div className="empty-state"><h2>Coordinator conversation</h2><p>Messages to the coordinator and its replies will appear here.</p></div>} />
           {rootNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderRootMessages()}>Load older coordinator messages</button>}
-          {awaitingCount > 0 && !approvalsInView(tab === 'approvals', inspector.overlay, inspectorOpen) && <div className="approval-banner"><p>{awaitingCount > 1 ? `${awaitingCount}${runsCursor !== null ? '+' : ''} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setTab('approvals'); if (inspector.overlay) setInspectorOpen(true); }}>Review pending actions</button></div>}
+          {banner && <AttentionBannerView banner={banner} onReview={reviewBanner} />}
           <form className="composer" onSubmit={sendToCoordinator}>
             <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSendToCoordinator)} disabled={task.status === 'retired' || rootTerminal} aria-label="Message coordinator" aria-describedby={rootTerminal ? 'coordinator-finished' : undefined}
               placeholder={task.status === 'retired' ? 'This task worktree is retired.' : rootTerminal ? 'This coordinated task has finished.' : 'Message the coordinator…'} />
@@ -471,6 +488,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
             {rootTerminal && task.status !== 'retired' && <p id="coordinator-finished" className="composer-note">The coordinator has finished, so it accepts no more messages. Start a continuation from the Continue tab to keep working.</p>}
           </form>
         </> : <div className="child-panel">
+          {banner && <AttentionBannerView banner={banner} onReview={reviewBanner} />}
           <p className="child-note">Assignments define child scope. The project channel shares coordination messages without changing that scope.</p>
           <Transcript messages={childDetail?.messages ?? []} ordinals={childMessageOrdinals.current} api={api} taskId={selectedChildId} userLabel="Coordinator assignment" empty={<p className="muted">No child messages yet.</p>} />
           {childNextBefore !== null && <button type="button" className="quiet" onClick={() => void loadOlderChildMessages()}>Load older agent messages</button>}
@@ -505,8 +523,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <button type="button" className={tab === 'continuity' ? 'active' : ''} aria-pressed={tab === 'continuity'} onClick={() => setTab('continuity')}>Continue</button>
         <button type="button" className={tab === 'usage' ? 'active' : ''} aria-pressed={tab === 'usage'} onClick={() => setTab('usage')}>Usage</button>
         <button type="button" className={tab === 'handoff' ? 'active' : ''} aria-pressed={tab === 'handoff'} onClick={() => setTab('handoff')}>Handoff</button>
+        <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} aria-pressed={tab === 'channel'} onClick={() => setTab('channel')}>Project channel</button>
       </div>
-      <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} aria-pressed={tab === 'channel'} onClick={() => setTab('channel')}>Project channel</button>
       {tab === 'handoff' ? <CoordinatedHandoffPanel key={rootTaskId} api={api} rootTaskId={rootTaskId} /> : tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
         <div className="file-tree">

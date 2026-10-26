@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { activeFilterCount, approvalsInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
+import { activeFilterCount, inspectorTabInView, approvalsTabLabel, clampInspectorWidth, classifyPatchLines, defaultInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth } from './layout';
 
-describe('approvalsInView', () => {
-  it('is true only when the Approvals tab is selected and the inspector is on screen', () => {
-    expect(approvalsInView(true, false, false)).toBe(true);
-    expect(approvalsInView(true, true, true)).toBe(true);
-    expect(approvalsInView(true, true, false)).toBe(false);
-    expect(approvalsInView(false, false, false)).toBe(false);
-    expect(approvalsInView(false, true, true)).toBe(false);
+describe('inspectorTabInView', () => {
+  it('is true only when the tab is selected and the inspector is on screen', () => {
+    expect(inspectorTabInView(true, false, false)).toBe(true);
+    expect(inspectorTabInView(true, true, true)).toBe(true);
+    expect(inspectorTabInView(true, true, false)).toBe(false);
+    expect(inspectorTabInView(false, false, false)).toBe(false);
+    expect(inspectorTabInView(false, true, true)).toBe(false);
   });
 });
 

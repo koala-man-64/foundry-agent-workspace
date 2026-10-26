@@ -19,13 +19,15 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { approvalsInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useInspectorOverlay } from './layout';
+import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useInspectorOverlay } from './layout';
 import { draftSendBlockReason, sendOnShortcut } from './composer';
 import { relativeTime, taskStatusLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem, CompactionSummary, SearchHit, WorkspaceSummary } from '../../../../packages/protocol/src/workspace';
 import { decisionFailure, errorMessage, type NoticeState, type NoticeTone, type SetNotice } from './feedback';
 import { Notice } from './Notice';
+import { AttentionBannerView } from './AttentionBanner';
+import { attentionBanner, decisionWhere, inboxChipLabel, inspectLabel, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
 declare global { interface Window { workspace: DesktopApi; } }
 
@@ -34,6 +36,7 @@ const OFFLINE_PROFILE: ModelProfile = {
   contextLimit: 128000, outputLimit: 8192
 };
 
+const APP_TITLE = 'Foundry Agent Workspace';
 const emptySnapshot: Snapshot = { tasks: [], profiles: [], projects: [], preferences: { profileId: OFFLINE_PROFILE.id, mode: 'chat', collapsedProjectIds: [] }, lastSequence: 0, runtime: 'ready' };
 const COMMAND_REVIEW_HELP = 'Command review hashes regular files, including ignored dependencies, within limits of 50,000 files / 1 GiB and 10,000 directories + links. Link targets are recorded without traversal; freshness is checked again before execution.';
 type Mode = 'chat' | 'coding' | 'coordinated';
@@ -164,18 +167,6 @@ function App() {
   const eventSequenceRef = useRef(0);
   const retriedSequenceRef = useRef(0);
 
-  // Announce, once per change on the open task, when it starts waiting for a decision and when a run finishes.
-  const announcedState = useRef<{ taskId?: string; awaiting: boolean; status?: string }>({ awaiting: false });
-  const watchedStatus = detail?.task.id === selectedId ? detail?.task.status : undefined;
-  const watchedAwaiting = detail?.task.id === selectedId && (pendingApprovalCount > 0 || (detail?.approvals?.some(approval => approval.state === 'awaiting-approval') ?? false));
-  useEffect(() => {
-    const previous = announcedState.current;
-    if (previous.taskId === selectedId) {
-      if (watchedAwaiting && !previous.awaiting) announce('An action is waiting for your decision in Approvals.');
-      else if (previous.status === 'running' && watchedStatus && watchedStatus !== 'running') announce(watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.`);
-    }
-    announcedState.current = { taskId: selectedId, awaiting: Boolean(watchedAwaiting), status: watchedStatus };
-  }, [announce, selectedId, watchedAwaiting, watchedStatus]);
   selectedRef.current = selectedId;
   // Unsent text belongs to the task it was typed in (memory only), so it can never be sent to a task switched to later.
   const composer = selectedId ? composerDrafts[selectedId] ?? '' : '';
@@ -205,9 +196,17 @@ function App() {
   const coordinatedReady = coordinatedAvailable && codingReady;
   const availableChildProfiles = profiles.filter((profile) => profile.id !== profileId && isProfileReady(profile));
   const taskModeLabel = (selectedTask?.mode ?? 'chat') === 'coding' ? 'Coding with reviewed tools' : (selectedTask?.mode ?? 'chat') === 'coordinated' ? 'Coordinated' : 'Chat';
-  const awaitingApproval = pendingApprovalCount > 0 || (detail?.approvals?.some((approval) => approval.state === 'awaiting-approval') ?? false);
+  // Counts belong to the task they were read for; until the open task's read arrives nothing is claimed for it.
+  const detailLoaded = Boolean(selectedId && detail?.task.id === selectedId);
+  const attention = taskAttention(detailLoaded ? { pendingApprovals: pendingApprovalCount, unknownOutcomes, approvals: detail?.approvals } : { pendingApprovals: 0, unknownOutcomes: 0 });
+  const awaitingApproval = attention.awaiting > 0;
   const unknownApprovals = detail?.approvals?.filter(approval => approval.state === 'unknown').length ?? 0;
-  const approvalsLabel = approvalsTabLabel(Math.max(pendingApprovalCount, awaitingApproval ? 1 : 0), unknownApprovals, awaitingApproval && pendingApprovalCount === 0);
+  const approvalsLabel = approvalsTabLabel(attention.awaiting, unknownApprovals, awaitingApproval && pendingApprovalCount === 0);
+  // Approvals load whenever something may need a decision, not only while their tab is open, so the counts and the
+  // unknown-publication estimate come from the cards themselves.
+  const approvalsWanted = rightTab === 'approvals' || pendingApprovalCount > 0 || unknownOutcomes > 0;
+  const approvalsWantedRef = useRef(approvalsWanted);
+  approvalsWantedRef.current = approvalsWanted;
   const isBuiltinProfile = profileDraft.id === OFFLINE_PROFILE.id;
   const taskRetired = selectedTask?.status === 'retired';
   const taskBusy = selectedTask?.status === 'running';
@@ -216,6 +215,25 @@ function App() {
   const { open: inspectorOpen, setOpen: setInspectorOpen } = inspector;
   // The native browser view follows the inspector: it is shown only while the inspector is on screen.
   const browserVisible = browserTabShown && (!inspector.overlay || inspectorOpen);
+  const decisionSurface: DecisionSurface = inspectorTabInView(effectiveRightTab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner';
+  // Announce, once per change on the open task, a new decision, a new unknown outcome and the end of a run.
+  const watchedStatus = detailLoaded ? detail?.task.status : undefined;
+  useAttentionAnnouncements({ taskId: detailLoaded ? selectedId : undefined, awaiting: attention.awaiting, unknown: attention.unknown, running: watchedStatus === undefined ? undefined : watchedStatus === 'running',
+    finished: watchedStatus && watchedStatus !== 'running' ? watchedStatus === 'idle' ? 'Response complete.' : `Task ${taskStatusLabel[watchedStatus].toLowerCase()}.` : undefined }, decisionSurface, announce);
+  const statusWarningWords = selectedTask ? statusWarnings({ usedTokens: selectedTask.usedTokens, tokenBudget: selectedTask.tokenBudget, contextPercent: detailLoaded ? usage?.contextPercent : undefined, warningPercent: detailLoaded ? usage?.warningPercent : undefined }) : [];
+  // The banner names what needs a decision whenever the tab that holds it is not on screen.
+  const bannerCandidate = attentionBanner(attention);
+  const bannerTab = bannerCandidate?.target === 'publish' && workspaceKind === 'git' ? 'publish' : 'approvals';
+  const banner = bannerCandidate && !inspectorTabInView(effectiveRightTab === bannerTab, inspector.overlay, inspectorOpen) ? bannerCandidate : undefined;
+  const unknownPublication = detailLoaded && attention.unknownPublication > 0;
+  // Needs-decision work across every task (archived included), read on the same refresh as the sidebar; never a false zero.
+  const [inboxCount, setInboxCount] = useState<InboxCount>();
+  useEffect(() => {
+    let active = true;
+    void api.invoke('workspace.actions', { limit: 1 }).then(page => { if (active) setInboxCount({ needsDecision: page.counts.needsDecision }); }, () => { if (active) setInboxCount('unavailable'); });
+    return () => { active = false; };
+  }, [api, navigationVersion]);
+  useEffect(() => { document.title = windowTitle(APP_TITLE, inboxCount, detailLoaded ? attention : undefined); }, [inboxCount, detailLoaded, attention.awaiting, attention.unknown]);
 
   const performTaskDetail = useCallback(async (taskId: string) => {
     const version = ++detailVersion.current;
@@ -314,7 +332,7 @@ function App() {
     return run;
   }, [fetchApprovals]);
 
-  useEffect(() => { if (selectedId && rightTab === 'approvals') void loadApprovals(selectedId); }, [selectedId, rightTab, loadApprovals]);
+  useEffect(() => { if (selectedId && approvalsWanted) void loadApprovals(selectedId); }, [selectedId, approvalsWanted, rightTab, loadApprovals]);
   useEffect(() => {
     if (focusAction?.kind !== 'approval' || !selectedId || focusAction.taskId !== selectedId || detail?.task.id !== selectedId || detail.task.mode === 'coordinated') return;
     void readApprovalEvidence(api, focusAction.sourceTaskId ?? selectedId, focusAction.sourceId).then(read => {
@@ -430,14 +448,14 @@ function App() {
       }
       if (selection && selection === selectedRef.current) {
         void loadTaskDetail(selection);
-        if (rightTab === 'approvals') void loadApprovals(selection);
+        if (approvalsWantedRef.current) void loadApprovals(selection);
       }
       if (fresh.lastSequence < eventSequenceRef.current && retriedSequenceRef.current < eventSequenceRef.current) {
         retriedSequenceRef.current = eventSequenceRef.current;
         snapshotDirty.current = true;
       }
     } catch (error) { setNotice(`Could not refresh workspace: ${errorMessage(error)}`); }
-  }, [api, loadTaskDetail, loadApprovals, loadProfiles, rightTab]);
+  }, [api, loadTaskDetail, loadApprovals, loadProfiles]);
   const loadProjects = useCallback(async () => {
     const version = ++projectsVersion.current;
     try {
@@ -793,7 +811,7 @@ function App() {
     <button type="button" className="skip-link" onClick={() => document.querySelector<HTMLElement>('.composer textarea:not(:disabled), .draft-compose > textarea:not(:disabled), .messages')?.focus()}>Skip to message box</button>
     <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
-      <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} aria-pressed={sidebarView === 'workspace'} onClick={() => setSidebarView('workspace')}>Inbox & history</button><button type="button" className={sidebarView === 'projects' ? 'selected' : ''} aria-pressed={sidebarView === 'projects'} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
+      <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} aria-pressed={sidebarView === 'workspace'} onClick={() => setSidebarView('workspace')}>Inbox & history</button>{sidebarView === 'projects' && inboxChipLabel(inboxCount) && <span className="mode-count">{inboxChipLabel(inboxCount)}</span>}<button type="button" className={sidebarView === 'projects' ? 'selected' : ''} aria-pressed={sidebarView === 'projects'} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
       {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} />}
       <nav className="sidebar-usage" aria-label="Workspace views"><button type="button" className={page === 'usage' ? 'selected' : ''} aria-current={page === 'usage' ? 'page' : undefined} onClick={() => setPage('usage')}>Usage overview <span aria-hidden="true">↗</span></button><button type="button" disabled={!schema || schema.version < 5} onClick={openAutomation}>Hooks and follow-ups</button>{sidebarView === 'workspace' && <><button type="button" onClick={() => void openSettings()}>Model settings</button><button type="button" disabled={exporting} onClick={() => void exportDiagnostics()}>Export diagnostics</button></>}</nav>
     </div>
@@ -825,16 +843,16 @@ function App() {
         setMoreOptions(true);
       }} setNotice={setNotice} />
       </details>}
-    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} /> : <>
+    </section> : coordinatedTask ? <CoordinatedTaskView api={api} task={coordinatedTask} profiles={profiles} notice={mainNotice} setNotice={setNotice} composer={composerDrafts[coordinatedTask.id] ?? ''} setComposer={text => setComposerFor(coordinatedTask.id, text)} onWorkspaceRefresh={() => void refresh(coordinatedTask.id)} onTaskCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks.filter(item => item.id !== task.id)] })); void refresh(task.id); }} focusAction={focusAction} searchHit={searchHit} announce={announce} /> : <>
     <section className="conversation" role="main" aria-label="Conversation">
-      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}`}>{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]} · {selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}</p></div><div className="header-actions"><button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="task-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>Inspect task{awaitingApproval ? ' · approval waiting' : ''}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className="secondary" disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
+      <header className="task-header">{selectedTask ? <><div><p className="eyebrow" title={selectedTask.projectPath || undefined}>{selectedTask.projectPath || 'NO FOLDER'}</p><h1>{selectedTask.title}</h1><p className={`task-status ${awaitingApproval ? 'awaiting' : selectedTask.status}${statusWarningWords.length ? ' warning' : ''}`}><span className="task-state">{taskModeLabel} · {awaitingApproval ? 'Waiting for your approval' : taskStatusLabel[selectedTask.status]}{attention.unknown > 0 ? ' · outcome unknown' : ''}</span> · <span className="task-metrics">{selectedTask.usedTokens.toLocaleString()} / {selectedTask.tokenBudget.toLocaleString()} charged/reserved tokens{contextLine}{statusWarningWords.map(word => ` · ${word}`).join('')}</span></p></div><div className="header-actions"><button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="task-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button>{selectedTask.status === 'running' && <button className="danger" onClick={() => void cancel()}>Cancel task</button>}{!taskBusy && !taskRetired && <button type="button" className={statusWarningWords.includes('context warning') ? 'secondary' : 'secondary subdued'} disabled={compacting} onClick={() => void compact()}>{compacting ? 'Compacting…' : 'Compact context'}</button>}</div></> : <><div><p className="eyebrow">FOUNDATION</p><h1>A considered local workspace.</h1></div></>}</header>
       {mainNotice}
       <Transcript messages={detail?.messages ?? []} compactions={compactions} ordinals={messageOrdinals.current} awaitingApproval={awaitingApproval} api={api} taskId={selectedId} empty={!selectedTask ? <div className="empty-state"><span className="large-mark">F</span><h2>Start with a local project.</h2><p>Create a task to send a focused brief to a configured model. The default offline profile helps you explore the workspace; it does not execute tools or delegate work.</p></div> : <div className="empty-state"><h2>{awaitingApproval ? 'Awaiting approval.' : selectedTask.status === 'running' ? 'Receiving response…' : 'Set the direction.'}</h2><p>{awaitingApproval ? 'Review the proposed tool action in the Approvals panel before it can continue.' : selectedTask.status === 'running' ? 'The response is being checked locally before it is shown here.' : 'Describe the outcome, constraints, and the files or behavior that matter.'}</p></div>} />
       {messageNextBefore !== null && <button type="button" className="quiet older-messages" onClick={() => void loadOlderMessages()}>Load older messages</button>}
-      {awaitingApproval && !approvalsInView(effectiveRightTab === 'approvals', inspector.overlay, inspectorOpen) && <div className="approval-banner"><p>{pendingApprovalCount > 1 ? `${pendingApprovalCount} actions are waiting for your decision.` : 'An action is waiting for your decision.'}</p><button type="button" className="secondary" onClick={() => { setRightTab('approvals'); if (inspector.overlay) setInspectorOpen(true); }}>Review pending actions</button></div>}
+      {banner && <AttentionBannerView banner={banner} onReview={() => { setRightTab(bannerTab); if (inspector.overlay) setInspectorOpen(true); }} />}
       <form className="composer" onSubmit={send}>
         <textarea value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={sendOnShortcut(canSend, () => announce(taskBusy ? awaitingApproval ? 'Send is unavailable until you decide the pending action or cancel the task.' : 'Send is available when the agent finishes, or cancel the task.' : 'Nothing to send yet.'))} disabled={!selectedId || taskRetired || Boolean(publishBusy)} aria-label="Task message"
-          placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? 'Waiting for your decision in Approvals. You can write your next message meanwhile.' : 'The agent is working. Write your next message; Send is available when it finishes, or cancel to change direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} />
+          placeholder={selectedId ? taskRetired ? 'This task worktree is retired. Create a new task to continue.' : taskBusy ? awaitingApproval ? `Waiting for your decision${decisionWhere(decisionSurface)} You can write your next message meanwhile.` : 'The agent is working. Write your next message; Send is available when it finishes, or cancel to change direction.' : publishBusy ? 'Wait for the Git operation to finish…' : 'Message this task…' : 'Create or select a task to begin.'} />
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
     </section>
@@ -843,9 +861,9 @@ function App() {
       <button ref={inspector.closeRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([
         ['files', 'Files', workspaceKind !== 'none'], ['changes', 'Changes', workspaceKind === 'git'], ['approvals', approvalsLabel, true], ['activity', 'Activity', true],
-        ['continuity', 'Continue', true], ['usage', 'Usage', true], ['publish', 'Publish', workspaceKind === 'git'], ['browser', 'Browser', true]
-      ] as const).filter(([, , shown]) => shown).map(([id, label]) => <button key={id} type="button" className={effectiveRightTab === id ? 'active' : ''} aria-pressed={effectiveRightTab === id} onClick={() => setRightTab(id)}>{label}</button>)}</div>
-      {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} aria-pressed={effectiveRightTab === 'channel'} onClick={() => setRightTab('channel')}>Project channel</button>}
+        ['continuity', 'Continue', true], ['usage', 'Usage', true], ['publish', unknownPublication ? 'Publish (outcome unknown)' : 'Publish', workspaceKind === 'git'], ['browser', 'Browser', true]
+      ] as const).filter(([, , shown]) => shown).map(([id, label]) => <button key={id} type="button" className={effectiveRightTab === id ? 'active' : ''} aria-pressed={effectiveRightTab === id} onClick={() => setRightTab(id)}>{label}</button>)}
+      {workspaceKind === 'git' && <button type="button" className={`channel-tab ${effectiveRightTab === 'channel' ? 'active' : ''}`} aria-pressed={effectiveRightTab === 'channel'} onClick={() => setRightTab('channel')}>Project channel</button>}</div>
       {effectiveRightTab === 'browser' ? <><div className="browser-expand"><button type="button" onClick={() => setBrowserExpanded((current) => !current)}>{browserExpanded ? 'Reduce browser' : 'Expand browser'}</button></div><BrowserPanel api={api} taskId={selectedId} profileName={taskProfile?.name} eligible={Boolean(taskProfile && isProfileReady(taskProfile) && selectedTask?.mode !== 'coordinated' && selectedTask?.status !== 'retired')} hidden={appDialogOpen || inspectorDragging || !browserVisible} onNotice={setNotice} /></> : !selectedId ? <p className="muted inspector-empty">Select a chat to inspect it.</p> : effectiveRightTab === 'channel' ? <AgentChannelPanel key={selectedId} api={api} taskId={selectedId} /> : effectiveRightTab === 'activity' ? <TaskActivity api={api} taskId={selectedId} refreshToken={navigationVersion} unknownOutcomes={unknownOutcomes} /> : effectiveRightTab === 'continuity' ? <ContinuityPanel api={api} taskId={selectedId} messages={detail?.messages ?? []} profiles={profiles} onCreated={task => { setSnapshot(current => ({ ...current, tasks: [task, ...current.tasks] })); selectTask(task.id); void refresh(task.id); }} setNotice={setNotice} /> : effectiveRightTab === 'files' ? <>
         <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}>{currentPath || (workspaceKind === 'folder' ? 'Folder root' : 'Repository root')}</span><button type="button" onClick={refreshCurrentInspector}>Refresh</button></div>
         <div className="file-tree">
@@ -883,7 +901,7 @@ function App() {
           <label>Remote <input value={pushRemote} onChange={(e) => setPushRemote(e.target.value)} maxLength={64} disabled={Boolean(publishBusy) || taskBusy || taskRetired} /></label>
           <div className="approval-actions">{confirmAction === 'push' ? <><button type="button" className="danger" disabled={Boolean(publishBusy)} onClick={() => void push()}>Confirm push to {pushRemote || 'origin'}</button><button type="button" className="secondary" onClick={() => setConfirmAction(undefined)}>Keep local</button></> : <button type="button" className="secondary" disabled={Boolean(publishBusy) || taskBusy || taskRetired} onClick={() => setConfirmAction('push')}>{publishBusy === 'push' ? 'Pushing…' : 'Push branch…'}</button>}<small>Publishes {selectedTask?.branch} to the remote configured in the project repository.</small></div>
         </>}
-        {detail?.hasUnknownPublication && <div className="command-evidence">
+        {unknownPublication && <div className="command-evidence">
           <strong>Unknown publication outcome</strong>
           <p>A Git commit or push ended with an unknown outcome. Reconcile publication state before continuing.</p>
           <div className="approval-actions"><button type="button" className="primary" disabled={Boolean(publishBusy)} onClick={() => void reconcilePublication()}>{publishBusy === 'reconcile' ? 'Checking…' : 'Check publication outcome'}</button></div>

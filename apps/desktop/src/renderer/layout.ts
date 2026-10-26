@@ -14,9 +14,9 @@ export function useCompactLayout(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(COMPACT_LAYOUT_QUERY).matches, () => false);
 }
 
-/** Whether the inspector's Approvals list is on screen: selected, and either a column or an open slide-over. */
-export function approvalsInView(approvalsTabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
-  return approvalsTabSelected && (!overlay || overlayOpen);
+/** Whether an inspector tab is on screen: selected, and the inspector either a column or an open slide-over. */
+export function inspectorTabInView(tabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
+  return tabSelected && (!overlay || overlayOpen);
 }
 
 export interface InspectorOverlay {

@@ -132,6 +132,7 @@ h3 { margin: var(--space-4) 0 var(--space-2); color: var(--ink-muted); font: 650
 .sidebar-mode-tabs button { flex: 1 1 auto; min-width: 0; min-height: 28px; padding: 6px 5px; color: var(--rail-ink-2); border: 0; border-radius: var(--radius-sm); background: transparent; font-size: var(--fs-sm); line-height: 1.15; white-space: nowrap; }
 .sidebar-mode-tabs button:hover { color: #fff; background: var(--rail-hover); }
 .sidebar-mode-tabs button.selected { color: #fff; background: var(--rail-selected); box-shadow: inset 0 -2px 0 var(--rail-accent); }
+.sidebar-mode-tabs .mode-count { flex: 0 0 auto; align-self: center; padding: 1px 6px; color: var(--rail-accent); border: 1px solid var(--rail-accent); border-radius: var(--radius-sm); font-size: var(--fs-xs); white-space: nowrap; }
 .sidebar { display: flex; flex-direction: column; gap: 0; min-width: 0; min-height: 0; overflow: hidden; padding: 18px 9px 9px; color: #e9e9e7; background: var(--rail); border-right: 1px solid #28292c; }
 .sidebar-top { flex: 0 0 auto; }
 .sidebar-new { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; color: #f3f3f1; border: 0; border-radius: 7px; background: none; text-align: left; font-size: var(--fs-md); }
@@ -360,7 +361,12 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .task-header h1 { margin-top: 7px; overflow-wrap: anywhere; font-size: var(--fs-3xl); font-weight: normal; line-height: 1.1; }
 .task-status { margin-top: 8px; overflow-wrap: anywhere; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
 .task-status.running, .task-status.awaiting { color: var(--warn-ink); }
-.task-status.awaiting { font-weight: 650; }
+.task-status.awaiting .task-state { font-weight: 650; }
+/* The state reads first; the token and context figures stay on the line but recede until a threshold is crossed. */
+.task-status .task-metrics { color: var(--ink-muted); font-weight: 400; }
+.task-status.warning .task-metrics { color: var(--warn-ink); font-weight: 650; }
+.header-actions .secondary.subdued { color: var(--ink-2); background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.header-actions .secondary.subdued:hover:not(:disabled) { background: var(--surface-well); }
 .notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 32px 9px 28px; color: var(--notice-error-ink); border-bottom: 1px solid #e6b8a5; border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.45; }
 .notice p { min-width: 0; overflow-wrap: anywhere; }
 .notice button { flex: 0 0 auto; min-width: 24px; min-height: 24px; margin: -3px -8px -3px 0; color: inherit; border: 0; border-radius: var(--radius-sm); background: none; font-size: 18px; line-height: 1; }
@@ -465,6 +471,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-card .danger:hover:not(:disabled), .header-actions .danger:hover:not(:disabled) { background: var(--danger-soft); }
 .approval-card .danger:disabled, .header-actions .danger:disabled { color: var(--ink-disabled); background: var(--surface-disabled); box-shadow: none; }
 .approval-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 32px; color: var(--notice-warning-ink); border-top: 1px solid #e3c38f; background: var(--notice-warning-bg); font-size: var(--fs-sm); font-weight: 650; }
+.approval-banner > div { display: grid; flex: 1 1 260px; gap: 2px; min-width: 0; }
 .coordinator-detail > .approval-banner { margin: 0 -32px; }
 .hash { font-family: var(--font-mono); font-size: .95em; overflow-wrap: anywhere; }
 .patch-line { display: block; padding-left: 6px; }
@@ -633,9 +640,6 @@ dialog .notice { padding-inline: 20px 24px; }
 .mcp-server .checkbox-row small { flex-basis: 100%; padding-left: 20px; }
 .mcp-form { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid #ded6c4; }
 .mcp-form textarea { min-height: 48px; }
-.channel-tab { flex: 0 0 auto; margin: 8px 12px; padding: 9px 10px; color: var(--ink-2); border: 1px solid var(--line-control); background: var(--canvas); text-align: left; font-size: var(--fs-sm); }
-.channel-tab:hover { background: var(--surface-card); }
-.channel-tab.active { border-left: 3px solid var(--accent); background: #e0e8dc; }
 .channel-panel { padding: 12px; overflow-y: auto; font-size: var(--fs-sm); }
 .channel-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .channel-heading h3 { margin: 0; }
