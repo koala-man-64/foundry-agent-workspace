@@ -21,6 +21,7 @@ import type {
 } from '../../../../packages/protocol/src/orchestration';
 import { decisionFailure, errorMessage, type NoticeTone, type SetNotice } from './feedback';
 import { AttentionBannerView } from './AttentionBanner';
+import { ApprovalTray } from './ApprovalTray';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { decidedSummaryDetail, foldableDecided, partitionApprovals } from './approvalGroups';
 import { attentionBanner, cardsShown, coordinatedAttention, inspectLabel, needsYou, useAttentionAnnouncements } from './attention';
@@ -459,7 +460,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   useAttentionAnnouncements({ taskId: view ? rootTaskId : undefined, awaiting: attention.awaiting, unknown: attention.unknown }, trayActive ? 'tray' : inspectorTabInView(tab === 'approvals', inspector.overlay, inspectorOpen) ? 'approvals' : 'banner', announce);
   const approvalGroups = liveCards;
   const renderApproval = (approval: Approval) => <ApprovalCard key={approval.id} variant="coordinated" approval={approval} complete={!incompleteApprovalIds.has(approval.id)} busy={approvalInFlight[approval.id]} error={approvalErrors[approval.id]?.state === approval.state ? approvalErrors[approval.id]!.text : undefined} onDecide={decideApproval} onReconcile={reconcileApproval} />;
-  const tray = trayActive && <section className="approval-tray" aria-label="Pending actions" tabIndex={0}>{approvalGroups.live.map(renderApproval)}</section>;
+  const tray = trayActive && <ApprovalTray shown={cardsShown(approvalGroups.live)}>{approvalGroups.live.map(renderApproval)}</ApprovalTray>;
   const rootLifecycle = coordinatorRun?.lifecycle;
   const rootTerminal = rootLifecycle === 'terminal';
   const budget = view?.budget;

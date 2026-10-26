@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attentionAnnouncement, attentionBanner, cardsShown, coordinatedAttention, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, windowTitle } from './attention';
+import { attentionAnnouncement, attentionBanner, cardsShown, coordinatedAttention, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, traySummary, windowTitle } from './attention';
 
 const RECOVERY = 'Unknown does not mean success and is never retried automatically.';
 
@@ -106,5 +106,14 @@ describe('attentionAnnouncement', () => {
   it('announces the end of a run only after seeing it run', () => {
     expect(attentionAnnouncement({ ...quiet, running: true }, { ...quiet, running: false, finished: 'Response complete.' }, 'banner')).toEqual({ text: 'Response complete.', tone: 'info' });
     expect(attentionAnnouncement({ ...quiet, running: undefined }, { ...quiet, running: false, finished: 'Response complete.' }, 'banner')).toBeUndefined();
+  });
+});
+
+describe('traySummary', () => {
+  it('counts what needs Rudy above the scrolling cards', () => {
+    expect(traySummary({ awaiting: 1, unknown: 0 })).toBe('Pending actions: 1 waiting for your decision');
+    expect(traySummary({ awaiting: 2, unknown: 1 })).toBe('Pending actions: 2 waiting for your decision · 1 outcome unknown');
+    expect(traySummary({ awaiting: 0, unknown: 2 })).toBe('Pending actions: 2 outcomes unknown');
+    expect(traySummary({ awaiting: 0, unknown: 0 })).toBe('Pending actions: nothing waiting for your decision');
   });
 });

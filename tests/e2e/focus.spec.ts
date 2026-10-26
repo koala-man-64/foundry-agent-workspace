@@ -65,6 +65,10 @@ test('Focus mode keeps a pending decision and its evidence on screen, one copy, 
     const command = tray.locator('article.approval-card.awaiting-approval').filter({ has: page.locator('.command-evidence') });
     await expect(command).toBeVisible({ timeout: 60_000 });
     await expect(command).toContainText('Runs with your Windows privileges; approval is not sandboxing.');
+    // The command-review limits qualify the decision, so they stay on screen beside it, outside the scrolling cards.
+    await expect(tray.getByTestId('command-review-limits')).toBeVisible();
+    await expect(tray.getByTestId('command-review-limits')).toContainText('including ignored dependencies');
+    await expect(tray.locator('.tray-summary')).toHaveText('Pending actions: 1 waiting for your decision');
     await command.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, task.id), { timeout: 60_000 }).toBe('idle');
     // Cards decided here stay where they were until the task is switched.

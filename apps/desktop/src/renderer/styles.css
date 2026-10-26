@@ -703,9 +703,12 @@ dialog .notice { padding-inline: 20px 24px; }
 
 /* Pending actions tray (Focus mode): the live approval cards above the composer, bounded so the transcript and
    composer stay usable; it scrolls on its own and is reachable by keyboard. */
-.approval-tray { flex: 0 1 auto; min-height: 0; max-height: 45vh; overflow-y: auto; padding: 12px 32px; border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
-.approval-tray:focus-visible { outline-offset: -3px; }
-.approval-tray > .approval-card:last-child { margin-bottom: 0; }
+.approval-tray { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; max-height: 45vh; padding: 0 32px; border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
+.tray-summary { flex: 0 0 auto; padding: 9px 0 7px; color: var(--warn-ink); font-size: var(--fs-sm); font-weight: 650; }
+.approval-tray > .tool-readiness, .approval-tray > .disclosure { flex: 0 0 auto; }
+.approval-tray-cards { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.approval-tray-cards:focus-visible { outline-offset: -3px; }
+.approval-tray-cards > .approval-card:last-child { margin-bottom: 0; }
 .coordinator-detail > .approval-tray { margin: 0 -32px; }
 /* In Focus the coordinated detail already sits on the reading measure; the tray and banner align with its text. */
 .workspace[data-focus="on"] .coordinator-detail > .approval-tray, .workspace[data-focus="on"] .coordinator-detail > .approval-banner { margin-inline: 0; }

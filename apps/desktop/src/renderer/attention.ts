@@ -50,6 +50,12 @@ export function cardsShown(cards: readonly Pick<Approval, 'state'>[]): { awaitin
   return { awaiting: count(cards, 'awaiting-approval'), unknown: count(cards, 'unknown') };
 }
 
+/** The Focus tray's fixed summary: what it holds that needs Rudy, so a card scrolled out of view is still counted. */
+export function traySummary(shown: { awaiting: number; unknown: number }): string {
+  const parts = [shown.awaiting > 0 ? `${shown.awaiting} waiting for your decision` : '', shown.unknown > 0 ? `${shown.unknown} outcome${shown.unknown === 1 ? '' : 's'} unknown` : ''].filter(Boolean);
+  return parts.length ? `Pending actions: ${parts.join(' · ')}` : 'Pending actions: nothing waiting for your decision';
+}
+
 export type AttentionTarget = 'approvals' | 'publish' | 'orchestration';
 
 export interface AttentionBanner { lines: string[]; action: 'Review pending actions' | 'Review unknown outcomes'; target: AttentionTarget }
