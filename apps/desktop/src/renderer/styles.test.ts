@@ -48,6 +48,8 @@ describe('design tokens', () => {
     expect(failures(['notice-success-ink'], ['notice-success-bg'], 4.5)).toEqual([]);
     expect(failures(['danger-ink'], ['danger-soft', 'accent-soft'], 4.5)).toEqual([]);
     expect(failures(['ok-ink'], ['ok-soft'], 4.5)).toEqual([]);
+    expect(failures(['ink'], ['select-soft'], 4.5)).toEqual([]);
+    expect(failures(['warn-ink'], ['warn-soft'], 4.5)).toEqual([]);
   });
 
   it('keeps rail text at AA on the rail surfaces it is drawn on', () => {
@@ -58,6 +60,8 @@ describe('design tokens', () => {
   it('keeps control boundaries, focus rings and chart marks at 3:1 (WCAG 1.4.11)', () => {
     expect(failures(['line-strong'], ['canvas', 'surface', 'surface-card', 'surface-inspector'], 3)).toEqual([]);
     expect(failures(['focus'], LIGHT_SURFACES.filter(surface => surface !== 'surface-well'), 3)).toEqual([]);
+    expect(failures(['select', 'accent', 'danger'], LIGHT_SURFACES, 3)).toEqual([]);
+    expect(failures(['select'], ['select-soft'], 3)).toEqual([]);
     expect(failures(['rail-focus'], [...RAIL_SURFACES, 'rail-selected'], 3)).toEqual([]);
     expect(failures(['viz-reported', 'viz-unknown', 'viz-unsent', 'viz-axis'], ['surface', 'surface-card', 'surface-inspector'], 3)).toEqual([]);
   });
@@ -74,10 +78,12 @@ describe('end-to-end hooks', () => {
   const sources = readdirSync(directory).filter(file => file.endsWith('.tsx')).map(file => readFileSync(join(directory, file), 'utf8')).join('\n');
   const classHooks = ['notice', 'approval-card', 'approval-heading', 'composer', 'inspector-resize', 'patch', 'file-tree', 'file-content',
     'command-evidence', 'approval-result', 'approval-target', 'task-row', 'upgrade-banner', 'sidebar-shell', 'browser-content', 'usage-request',
-    'automation-dialog', 'automation-form', 'agent-row', 'compaction-summary', 'compacted', 'orchestration-panel', 'assignment-card'];
+    'automation-dialog', 'automation-form', 'agent-row', 'compaction-summary', 'compacted', 'orchestration-panel', 'assignment-card',
+    'approval-banner', 'approval-tray', 'decided-approvals', 'focus-toggle'];
   const testIds = ['publish-panel', 'usage-panel', 'project-channel', 'mcp-settings', 'mcp-server-', 'command-review-limits', 'coordinated-task-controls'];
   const names = ['Agent tree', 'Conversation transcript', 'Task message', 'Message coordinator', 'Chat message', 'Task history', 'Global action center',
-    'Resize inspector', 'Task inspector', 'Coordinated task inspector', 'Dismiss notice', 'MCP key', 'MCP name', 'MCP command', 'MCP arguments', 'MCP environment'];
+    'Resize inspector', 'Task inspector', 'Coordinated task inspector', 'Dismiss notice', 'MCP key', 'MCP name', 'MCP command', 'MCP arguments', 'MCP environment',
+    'Pending actions'];
 
   it('keeps every class hook the specs use', () => {
     // Collect the class tokens of every className expression: string literals inside it, split on whitespace.
@@ -105,5 +111,31 @@ describe('end-to-end hooks', () => {
   it('keeps every test id and accessible name the specs use', () => {
     expect(testIds.filter(id => !sources.includes(`data-testid="${id}`) && !sources.includes(`data-testid={\`${id}`))).toEqual([]);
     expect(names.filter(name => !sources.includes(`"${name}"`) && !sources.includes(`'${name}'`))).toEqual([]);
+  });
+});
+
+describe('attention styles', () => {
+  // Rules as [selector, body] pairs; nested at-rule bodies are flattened, which is enough for these checks.
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => [match[1]!.trim(), match[2]!] as const);
+  const forcedColors = /@media \(forced-colors: active\)\s*{([\s\S]*?)\n}/.exec(css)?.[1] ?? '';
+
+  it('recedes and emphasises by colour, border and ring only: never opacity, visibility or display', () => {
+    const offending = rules.filter(([selector, body]) => selector.includes('[data-attention') && /\b(opacity|visibility|display|filter)\s*:/.test(body));
+    expect(offending).toEqual([]);
+  });
+
+  it('adds no motion outside a prefers-reduced-motion: no-preference guard', () => {
+    const unguarded = css.replace(/@media \(prefers-reduced-motion: no-preference\)\s*{[\s\S]*?\n}/g, '');
+    expect(unguarded.match(/(?:^|[;{\s])(?:transition|animation)(?:-[a-z-]+)?\s*:/gm) ?? []).toEqual([]);
+  });
+
+  it('keeps the decision emphasis and Focus state visible in forced colours', () => {
+    for (const selector of ['.approval-card.awaiting-approval', '.approval-card.unknown', '.approval-banner', '.focus-toggle[aria-pressed="true"]', '.approval-tray']) expect(forcedColors).toContain(selector);
+  });
+
+  it('draws the decision ring inside the border, so emphasis never changes geometry', () => {
+    const awaiting = rules.find(([selector]) => selector.endsWith('.approval-card.awaiting-approval'))?.[1] ?? '';
+    expect(awaiting).toContain('box-shadow: inset');
+    expect(awaiting).not.toMatch(/\b(margin|padding|outline)\s*:/);
   });
 });

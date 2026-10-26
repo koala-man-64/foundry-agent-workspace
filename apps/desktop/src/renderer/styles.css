@@ -74,6 +74,9 @@
   --secondary-bg-hover: #cdc1a6;
   --secondary-ink: #224238;
   --focus: #a64b1f;
+  /* Selection (the current tab, the selected agent): brand green, so terracotta means "needs you" and the primary action. */
+  --select: #315044;
+  --select-soft: #e3ecdd;
 
   /* Data visualisation */
   --viz-reported: #587f65;
@@ -429,7 +432,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .inspector-tabs button { flex: 0 0 auto; min-width: 0; padding: 11px 9px; color: var(--ink-muted); border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: var(--fs-sm); }
 .inspector-tabs button:hover { color: var(--ink); background: var(--surface-well); }
 .inspector-tabs button:focus-visible { outline-offset: -3px; }
-.inspector-tabs button.active { color: var(--ink); font-weight: 650; border-bottom-color: var(--accent); }
+.inspector-tabs button.active { color: var(--ink); font-weight: 650; border-bottom-color: var(--select); }
 .inspector-tools { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
 .inspector-tools button { min-height: 26px; padding: 4px 8px; color: var(--ink-2); border: 1px solid var(--line-strong); background: var(--canvas); font-size: var(--fs-xs); }
 .inspector-tools button:hover:not(:disabled) { background: var(--surface-card); }
@@ -447,21 +450,24 @@ dialog .notice { padding-inline: 20px 24px; }
 .file-content > p, .patch > p { color: var(--ink-muted); font-size: var(--fs-xs); }
 .file-content pre, .patch pre { margin: 10px 0 0; color: #34453b; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.5; }
 .approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px; }
-.tool-readiness { padding: 10px; margin-bottom: 10px; color: var(--ink-2); border-left: 3px solid var(--accent); background: var(--surface-well); font-size: var(--fs-sm); line-height: 1.45; }
+.tool-readiness { padding: 10px; margin-bottom: 10px; color: var(--ink-2); border-left: 3px solid var(--line-strong); background: var(--surface-well); font-size: var(--fs-sm); line-height: 1.45; }
 .tool-readiness + .tool-readiness { margin-top: -10px; padding-top: 0; }
 
 /* Approval cards */
 .approval-card { margin-bottom: 12px; padding: 12px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
 .approval-card:focus-visible { outline-offset: 1px; }
-.approval-card.awaiting-approval { border-left: 3px solid var(--accent); }
-.approval-card.unknown, .approval-card.failed { border-left: 3px solid var(--danger); background: #fbefe8; }
+/* The one card that needs a decision carries the only ring and filled badge on screen; unknown and failed outcomes
+   carry an equal-weight danger ring. Rings are drawn inside the border, so nothing moves when a state changes. */
+.approval-card.awaiting-approval { border-color: var(--accent); border-left: 3px solid var(--accent); background: var(--surface); box-shadow: inset 0 0 0 1px var(--accent); }
+.approval-card.unknown, .approval-card.failed { border-color: var(--danger); border-left: 3px solid var(--danger); background: #fbefe8; box-shadow: inset 0 0 0 1px var(--danger); }
 .approval-card.complete { border-left: 3px solid #758c72; }
 .approval-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .approval-heading strong { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-md); }
 .approval-heading strong.approval-tool { font-family: var(--font-mono); }
 .approval-heading span { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .approval-state { padding: 2px 7px; border-radius: var(--radius-sm); background: var(--surface-well); }
-.approval-state.awaiting-approval, .approval-state.approved, .approval-state.executing { color: var(--danger-ink); background: var(--accent-soft); }
+.approval-state.awaiting-approval { color: var(--ink-inverse); background: var(--accent); }
+.approval-state.approved, .approval-state.executing { color: var(--danger-ink); background: var(--accent-soft); }
 .approval-state.complete { color: var(--ok-ink); background: var(--ok-soft); }
 .approval-state.unknown, .approval-state.failed, .approval-state.rejected, .approval-state.revoked { color: var(--danger-ink); background: var(--danger-soft); box-shadow: inset 0 0 0 1px var(--danger); }
 .approval-card > p { line-height: 1.45; }
@@ -525,7 +531,7 @@ dialog .notice { padding-inline: 20px 24px; }
 .agent-tree { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; padding: 14px 32px; border-bottom: 1px solid var(--line-soft); background: #f2ede0; }
 .agent-row { display: grid; gap: 2px; max-width: 260px; padding: 8px 11px; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; background: var(--surface); text-align: left; }
 .agent-row:hover { border-color: var(--line-strong); }
-.agent-row.selected { border-color: var(--accent); background: var(--accent-soft); }
+.agent-row.selected { border-color: var(--select); background: var(--select-soft); box-shadow: inset 0 -2px 0 var(--select); }
 .agent-key { overflow: hidden; font-size: var(--fs-sm); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .agent-lifecycle { color: var(--ink-muted); font-size: var(--fs-xs); letter-spacing: .03em; text-transform: uppercase; }
 .agent-pending { justify-self: start; padding: 0 6px; color: var(--danger-ink); border-radius: var(--radius-sm); background: var(--accent-soft); font-size: var(--fs-xs); font-weight: 650; }
@@ -702,10 +708,17 @@ dialog .notice { padding-inline: 20px 24px; }
 .approval-tray > .approval-card:last-child { margin-bottom: 0; }
 .coordinator-detail > .approval-tray { margin: 0 -32px; }
 
+/* While the open task needs a decision the sidebar's green selection fills recede to the rail surface; the amber
+   selection and needs-decision marks, status dots and focus rings stay. Colour tokens only: no opacity, no movement. */
+.workspace:has(> [data-attention="decision"]) .sidebar-shell { --rail-selected: var(--rail-raised); }
+.workspace:has(> [data-attention="decision"]) .workspace-navigation .task-row.selected { box-shadow: inset 2px 0 0 var(--rail-accent); }
+
 /* Windows High Contrast: keep control boundaries and selection visible when author colours are replaced. */
 @media (forced-colors: active) {
   .primary, .secondary, .danger, .quiet, .inspector-tabs button, .sidebar-mode-tabs button, .workspace-views button, .task-row, .agent-row, .channel-tab { border: 1px solid ButtonText; }
   .inspector-tabs button.active, .sidebar-mode-tabs button.selected, .workspace-views button.active, .task-row.selected, .agent-row.selected, .channel-tab.active, .focus-toggle[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
   .approval-tray, .focus-chip, .mode-count { border: 1px solid CanvasText; }
+  .approval-card.awaiting-approval, .approval-card.unknown, .approval-card.failed, .approval-banner { outline: 2px solid Highlight; outline-offset: -2px; }
+  .approval-state { border: 1px solid CanvasText; }
   .status-dot { forced-color-adjust: none; }
 }
