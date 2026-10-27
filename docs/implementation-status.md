@@ -6,7 +6,7 @@ Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel
 
 - **The failure.** Granting trust with the default 30 days was refused now and then with "Grant must expire within 30 days."
   - The review dialog asked for its own clock plus exactly 30 days. The runtime refuses any expiry past its own clock plus 30 days (`grant` in `packages/runtime/src/automation.ts`).
-  - The two clocks are read in different processes. The runtime reads its clock later, yet the reading can be behind the renderer's, and then the request is past the limit.
+  - The two clocks are read in different processes. The refusal means the runtime's reading was behind the renderer's, though it was taken later, so the request was past the limit. Why the two readings differ was not established; the margin below covers any skew under a minute, whatever its cause.
   - `personal-workspace.spec.ts` ("pinned script remains untrusted until explicit reviewed grant") failed this way once in a full `pnpm test:e2e` run on 27 October, during the default-look work, and then passed 5 of 5 alone.
 - **The fix.** The dialog asks for the chosen days less one minute (`grantExpiresAt`, `GRANT_EXPIRY_MARGIN_MS` in `AutomationSettings.tsx`). A default grant now expires 29 days, 23 hours and 59 minutes after the click. The dialog never shows the exact expiry.
   - The runtime check is unchanged. No grant can expire later than 30 days after the runtime's own clock when it checks the request, and a request over 30 days is still refused.
