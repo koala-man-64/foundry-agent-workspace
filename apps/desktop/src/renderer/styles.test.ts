@@ -142,6 +142,8 @@ describe('size tokens', () => {
   it('keeps Approve and Reject at their own size and the approval fields stacked by default', () => {
     // The general button padding moved onto the ladder; the decision buttons keep 78x34 instead of following it.
     expect(rootTokens.get('pad-decision')).toBe('9px 13px');
+    // Approve and Reject keep a 32px minimum above the 28px general controls.
+    expect([px('h-decision'), px('h-ctl')]).toEqual([32, 28]);
     expect([rootTokens.get('field-layout'), rootTokens.get('field-columns'), rootTokens.get('field-col-gap')]).toEqual(['block', 'none', 'normal']);
   });
 
@@ -172,6 +174,63 @@ describe('size tokens', () => {
       expect([size('fs-prose')! >= 14, size('fs-evidence')! >= 12, Number(resolved('lh-evidence')) >= 1.35], `${style}: prose 14px, evidence 12px at 1.35 or more`).toEqual([true, true, true]);
       // In a narrow approval list a label column would break paths, commands and hashes mid-token.
       expect(resolved('field-layout-narrow'), `${style}: narrow approval fields`).toBe('block');
+    }
+  });
+
+  it('keeps Compact the denser style: no size role larger than Comfortable, apart from named widths', () => {
+    // Compared component by component wherever both values are px lengths or unitless numbers (shorthands expanded).
+    const ALLOWED = new Map([
+      ['h-dense', 'Comfortable sizes dense rows by their padding (0px means no minimum); Compact pins them at 26px'],
+      ['measure-focus', 'a width: the Focus column fits more per line'],
+      ['w-dialog', 'a width: the settings dialog fits more per line'],
+      ['pad-decision', 'Approve and Reject are shorter in Compact, with 1px more inline padding'],
+    ]);
+    const compact = styleBlocks.get('compact')!;
+    const values = new Map([...rootTokens, ...compact]);
+    const follow = (map: Map<string, string>, value: string | undefined) => {
+      for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value.trim()); if (!alias) return value.trim(); value = map.get(alias[1]!); }
+      return value?.trim();
+    };
+    const lengths = (map: Map<string, string>, value: string | undefined) => {
+      const parts = (follow(map, value)?.match(/var\(--[\w-]+\)|\S+/g) ?? []).map(part => {
+        const resolved = follow(map, part);
+        // px lengths, and unitless numbers (line heights); a bare zero counts as 0.
+        return resolved && /^-?\d+(\.\d+)?(px)?$/.test(resolved) ? Number.parseFloat(resolved) : undefined;
+      });
+      // A one- to four-value shorthand, expanded to its four sides (or a gap's two axes, twice).
+      const [a, b = a, c = a, d = b] = parts;
+      return parts.length >= 1 && parts.length <= 4 ? [a, b, c, d] : parts;
+    };
+    const compared: string[] = [], skipped: string[] = [], looser: string[] = [];
+    for (const name of compact.keys()) {
+      const comfortable = lengths(rootTokens, rootTokens.get(name)), dense = lengths(values, compact.get(name));
+      if (comfortable.some(part => part === undefined) || dense.some(part => part === undefined) || comfortable.length !== dense.length) { skipped.push(name); continue; }
+      compared.push(name);
+      if (!ALLOWED.has(name) && dense.some((part, index) => part! > comfortable[index]!)) looser.push(name);
+    }
+    expect(looser).toEqual([]);
+    expect(compared.length).toBeGreaterThanOrEqual(140);
+    // Only roles that are not px lengths are skipped: percentages, viewport and character units, keywords and grid templates.
+    const NOT_LENGTH = /%|vh|vw|ch\b|rem|\bnone\b|\bauto\b|\bblock\b|\bgrid\b|\bnormal\b|minmax|calc\(|clamp\(|max\(|min\(|fr\b|^\d+(\.\d+)?$/;
+    expect(skipped.filter(name => !NOT_LENGTH.test(`${follow(rootTokens, rootTokens.get(name))} ${follow(values, compact.get(name))}`))).toEqual([]);
+    // The exceptions are still real: Compact is larger there, so a stale entry cannot hide a future inversion.
+    expect([...ALLOWED.keys()].filter(name => {
+      const comfortable = lengths(rootTokens, rootTokens.get(name)), dense = lengths(values, compact.get(name));
+      return dense.some((part, index) => part !== undefined && comfortable[index] !== undefined && part > comfortable[index]!);
+    })).toEqual([...ALLOWED.keys()]);
+  });
+
+  it('lays the task header out as rows of its own children, with the short-window roles only in their query', () => {
+    const plain = uncommented(css);
+    for (const [selector, declarations] of [['.task-header > .eyebrow', 'order: 1; flex: 0 0 100%;'], ['.task-header h1', 'order: 2;'], ['.task-header > .header-actions', 'order: 3;'], ['.task-header > .task-status', 'order: 4; flex: 0 0 100%;']] as const) {
+      const start = plain.indexOf(`\n${selector} {`);
+      expect(start >= 0 && plain.slice(start, plain.indexOf('}', start)).includes(declarations), selector).toBe(true);
+    }
+    expect(/@container task-header \(max-width: 640px\)\s*{\s*\.task-header > \.header-actions \{ order: 5; \}/.test(plain)).toBe(true);
+    const short = /@media \(max-height: 760px\)\s*{([\s\S]*?)\n}/.exec(plain)?.[1] ?? '';
+    const outside = plain.replace(/@media \(max-height: 760px\)\s*{[\s\S]*?\n}/, '').replace(/:root[^{]*{[^}]*}/g, '');
+    for (const name of ['header-pad-top-short', 'header-pad-bottom-short', 'fs-title-short', 'pad-composer-y-short', 'h-composer-short']) {
+      expect(short.includes(`var(--${name})`) && !outside.includes(`var(--${name})`), name).toBe(true);
     }
   });
 

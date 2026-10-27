@@ -17,6 +17,79 @@ Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel
 - **C#.** Nothing to land. The native runtime has no automation handler: `automation.script.grant` reaches the `NotSupportedException` default in `DevelopmentChat.Dispatch`. Its future port must keep the same strict check, with no tolerance, and port the runtime test above.
 - **Found, not changed.** The dialog's "Days until expiry" field accepts up to 365. The runtime refuses anything over 30 with the message above.
 
+## Default look, part 2: Balanced sizes for the shell — 27 October 2026
+
+Task id `ui-look-balanced-20261027`, the second of five slices of the default look Rudy chose on 27 October. It builds on part 1 (the hybrid's colours and structure) and lands Balanced's sizes for the shell:
+- the control heights and the 24px lane;
+- the task header;
+- the composer and strips;
+- the rail;
+- one short-window tier;
+- the Compact retune.
+
+The transcript (rhythm, measure and the hanging author and time column), the panels and the inspector width, two-pane Focus, and the documentation screenshots follow as separate PRs. The decisions are in `.local/verification/ui-look-20261027/decisions.md`.
+
+Renderer CSS plus the header markup only: no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.
+
+**What changed**
+- **Controls.**
+  - Buttons and rail views are 28px.
+  - Approve and Reject keep their own 32px minimum and 34px rendered size.
+  - The page lane is 24px.
+  - Inputs are padded 6px 8px.
+- **Task header.** It is one block of rows: the path, the title with its actions beside it, then the status, full width.
+  - The wrapper div is gone in the chat, draft, empty and coordinated headers. CSS `order` sets the visual order.
+  - The DOM keeps path, title, status, actions. A header narrower than 640px (its actions on their own row) returns to that order, so the status stays under its title.
+  - The title is 24px, with 12px and 10px padding and no minimum height. At 1480×940 the header is 85px, down from 126px.
+- **Composer and strips.**
+  - The composer sits on the canvas under a hairline and is 61px tall.
+  - Notices and the approval and upgrade banners are 6px strips. The approval banner has its own gap.
+- **Rail.**
+  - One edge, drawn on the shell.
+  - Mode tabs and the view switch keep one row, with 11px labels at 1050px and below. A view label that still cannot fit is cut with an ellipsis; its accessible name stays whole.
+  - The view switch is segmented, with a bottom selection bar. The pending-Inbox stripe follows the bar.
+  - Inbox rows have two lines, with 13px titles that wrap.
+  - Rows, the footer and Projects spacing are tighter.
+  - A long needs-you chip wraps inside itself.
+  - At 1480×940 the rail shows 11 Inbox rows, up from 6.
+- **Short windows.** One tier at 760px tall (it was 720px): header padding, a 20px title, and a 34px composer (61px total at 1000×680 becomes 47px). The narrow-window header rule, which cancelled the tier, is gone.
+- **Compact** stays the denser style on every role this PR changed. A new test holds it there.
+
+**Validation** (local, Windows, isolated fixtures, at `8472ce1`)
+- **`pnpm check`.** Typecheck and lint pass. Vitest passes 832 of 834. The 2 failures are load timeouts in runtime git and publish tests this PR does not touch; those files pass serially, 47 of 47. New tests:
+  - **Compact ordering.** It compares every length and unitless number of each role, with shorthands expanded and bare zeros counted. At least 140 roles are compared. Only genuinely non-length roles may be skipped, and each of the four named exceptions is checked as real.
+  - **Size and layout.** `--h-decision` is pinned at 32px. The header's child order and the short-window roles' placement are checked.
+  - **Mutants.** Nine mutants all fail.
+- **`pnpm test:e2e`.** 30 of 30 passed at `a567f4a`. At `8472ce1`, 29 of 30 passed. The failure was `personal-workspace.spec.ts`'s script grant, which the runtime refused with "Grant must expire within 30 days." That test passes 5 of 5 alone.
+  - The renderer sends `Date.now() + 30 days` as the expiry, and the runtime refuses anything later than its own `now() + 30 days`. So the default sits exactly on the limit: a race this PR does not touch.
+  - The e2e check that Compact's Send is shorter now uses 40px, under Comfortable's new 44px minimum.
+- **Harness** (`.local/verification/ui-look-balanced-20261027/render2`).
+  - All seven presets (Light, Dark, High contrast, Compact, Dark with Compact, and Light and Dark under forced colours) and all four sheets have empty contrast, overflow and 24×24 target lists. The state sheets now use the wrapper-less header.
+  - High contrast has no app text below 7:1.
+  - Under forced colours, Light and Dark render identically, 29 of 29.
+- **Density at 1480×940.**
+
+  | | Before | After | Balanced's target |
+  |---|---|---|---|
+  | Header | 126 | 85 | 89 |
+  | Composer | 89 | 61 | 61 |
+  | Inbox rows | 6 | 11 | 11 |
+- **Density at 1000×680.** The header is 115px (target 127 to 148) and the composer 47px. The Inbox shows 6 rows in Comfortable and 8 in Compact, against a target of 7.
+- **Independent review.** Three reviewers (Sonnet, high, from their agent definitions) covered density, trust and accessibility, and code and tests. All said GO with no P0 or P1. Their P2s and P3s are fixed or recorded in the decisions file:
+  - the view switch wrapping at the narrowest rail;
+  - the mode-tab strip's 1px slack;
+  - the ordering test's skipped roles;
+  - the cancelled short tier;
+  - the status separated from its title in narrow headers;
+  - the untested header rules;
+  - the stale state-sheet header.
+- **Not run.** `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed.
+
+**Known limits**
+- **Approve below the fold.** Approve is out of view at 1000×680 and 200% zoom in the docked inspector, and in Comfortable's Focus. Two-pane Focus, in part 4, addresses Focus.
+- **Inbox rows at 1000×680.** Comfortable shows 6 Inbox rows, one short of Balanced's 7. The count depends on the fixture's titles.
+- **Forced colours.** The pending-Inbox mark and the open view's outline coincide when the Inbox is open. The count, the needs-decision group and its outlined row still carry the cue.
+
 ## Default look, part 1: the minimal hybrid as Foundry Light — 27 October 2026
 
 Task id `ui-look-hybrid-20261027`. On 27 October Rudy chose the minimalism round's hybrid, combined with the density round's Balanced, as the default look, with a dark rail, a hanging author and time column and two-pane Focus. This first of five slices lands the hybrid's colours, type grammar and flat structure on the token system. Balanced's sizes and shell, the transcript column and panels, two-pane Focus and the documentation screenshots follow as separate PRs.
