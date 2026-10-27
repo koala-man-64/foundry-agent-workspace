@@ -110,6 +110,12 @@ internal sealed class Rig : IAsyncDisposable
             core.Navigate(uri);
             return await completed.Task.WaitAsync(TimeSpan.FromSeconds(30));
         }
+        catch (TimeoutException error)
+        {
+            // Which stage stalled: the trail shows whether the navigation started, committed or lost a process.
+            var processes = string.Join(", ", Environment.GetProcessInfos().Select(info => $"{info.Kind} {info.ProcessId}"));
+            throw new TimeoutException($"Timed out navigating to {uri}. Processes: {processes}. Observed: {Trail()}", error);
+        }
         finally
         {
             core.NavigationCompleted -= OnCompleted;
@@ -171,7 +177,7 @@ internal sealed class Rig : IAsyncDisposable
             var remaining = deadline - DateTime.UtcNow;
             if (remaining <= TimeSpan.Zero)
             {
-                throw new TimeoutException($"Timed out waiting for {description}. Observed: {string.Join(" | ", observations.Select(item => $"{item.Kind}@{item.Source}:{Shorten(item.Text)}"))}");
+                throw new TimeoutException($"Timed out waiting for {description}. Observed: {Trail()}");
             }
             await arrived.WaitAsync(remaining, TestContext.Current.CancellationToken);
         }
@@ -342,7 +348,9 @@ internal sealed class Rig : IAsyncDisposable
             }
             OnNavigation?.Invoke(e);
         };
+        core.ContentLoading += (_, e) => Record(new Observation("content-loading", core.Source, e.IsErrorPage ? "error page" : null, false));
         core.NavigationCompleted += (_, e) => Record(new Observation("navigated", core.Source, $"{e.IsSuccess} {e.WebErrorStatus} {e.HttpStatusCode}", false));
+        core.ProcessFailed += (_, e) => Record(new Observation("process-failed", core.Source, $"{e.ProcessFailedKind} {e.Reason} {e.ExitCode}", false));
         core.DownloadStarting += (_, e) =>
         {
             Record(new Observation("download", core.Source, e.DownloadOperation.Uri, false));
@@ -414,6 +422,8 @@ internal sealed class Rig : IAsyncDisposable
     private Task OnThread(Func<Task> action) => dispatcher.InvokeAsync(action).Task.Unwrap();
 
     private Task<T> OnThread<T>(Func<Task<T>> action) => dispatcher.InvokeAsync(action).Task.Unwrap();
+
+    private string Trail() => string.Join(" | ", observations.Select(item => $"{item.Kind}@{item.Source}:{Shorten(item.Text)}"));
 
     private static string Shorten(string? text) => text is null ? "" : text.Length > 60 ? text[..60] + "…" : text;
 }
