@@ -182,7 +182,6 @@ describe('size tokens', () => {
     const ALLOWED = new Map([
       ['h-dense', 'Comfortable sizes dense rows by their padding (0px means no minimum); Compact pins them at 26px'],
       ['measure-focus', 'a width: the Focus column fits more per line'],
-      ['w-dialog', 'a width: the settings dialog fits more per line'],
       ['pad-decision', 'Approve and Reject are shorter in Compact, with 1px more inline padding'],
     ]);
     const compact = styleBlocks.get('compact')!;
@@ -254,6 +253,34 @@ describe('size tokens', () => {
     expect(/@container approval-list \(min-width: 508px\)\s*{[^@]*\.approval-card dl\.field-long \{ display: block; \}/.test(plain)).toBe(true);
     expect(/@container approval-list \(min-width: 600px\)\s*{\s*\.approval-card \.environment-list \{ columns: 2;/.test(plain)).toBe(true);
     expect([rootTokens.get('card-field-layout'), rootTokens.get('label-col')]).toEqual(['grid', '7.5rem']);
+  });
+
+  it('puts each Usage figure beside its label, with Balanced\'s chart heights', () => {
+    const plain = uncommented(css);
+    const rule = (selector: string) => { const start = plain.indexOf(`\n${selector} {`); return start < 0 ? '' : plain.slice(start, plain.indexOf('}', start)); };
+    // The label track is auto, so a long figure wraps right-aligned instead of squeezing the label.
+    expect(rule('.usage-cards > div')).toContain('grid-template-columns: auto minmax(0, 1fr); align-items: baseline;');
+    expect([rule('.usage-cards span'), rule('.usage-cards strong'), rule('.usage-cards small')].map(body => /grid-column: ([^;]+); grid-row: (\d)/.exec(body)?.slice(1))).toEqual([['1', '1'], ['2', '1'], ['1 / -1', '2']]);
+    expect([px('h-chart'), px('h-chart-request')]).toEqual([88, 96]);
+  });
+
+  it('lays the settings form out in label-left rows in every style, with the MCP form\'s labels kept above their fields', () => {
+    const plain = uncommented(css);
+    expect([px('w-dialog'), rootTokens.get('form-columns')]).toEqual([780, 'var(--form-label-col) minmax(0, 1fr)']);
+    // Compact keeps the rows (it sets only the label column, never the template) and a narrower column.
+    expect(styleBlocks.get('compact')!.has('form-columns')).toBe(false);
+    expect(Number.parseFloat(styleBlocks.get('compact')!.get('form-label-col')!)).toBeLessThanOrEqual(px('form-label-col')!);
+    expect(/\n\.profile-form > label, \.profile-form > \.limits label \{[^}]*grid-template-columns: var\(--form-columns\);/.test(plain)).toBe(true);
+    // A descendant selector would also turn the MCP form (nested inside the profile form's dialog) label-left.
+    expect(/\n\.profile-form label \{[^}]*grid-template-columns/.test(plain)).toBe(false);
+  });
+
+  it('marks the selected agent by a bar and a border as well as a fill, and restates it for Windows contrast themes', () => {
+    const plain = uncommented(css);
+    const selected = /\n\.agent-row\.selected \{([^}]*)\}/.exec(plain)?.[1] ?? '';
+    expect(['box-shadow: inset 0 -2px 0 var(--select);', 'border-color: var(--select);', 'background: var(--select-chip-bg);'].every(part => selected.includes(part))).toBe(true);
+    // Windows contrast themes drop the box-shadow bar, so the forced-colours block restates the selection.
+    expect(/@media \(forced-colors: active\)\s*{([\s\S]*?)\n}/.exec(css)?.[1] ?? '').toContain('.agent-row.selected');
   });
 
   it('defines every token a declaration uses', () => {

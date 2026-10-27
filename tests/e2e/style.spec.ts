@@ -112,3 +112,47 @@ test('Compact is a closed style choice that persists, composes with Dark and kee
     expect(await style(page)).toBe('comfortable');
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+// The settings form is label-left rows in both styles: every field, the two limits and the Theme and Style radios start
+// at one edge beside their labels, nothing overflows the 780px dialog sideways, and the MCP form keeps its long labels
+// above their fields. The dialog still scrolls at 940px tall (it holds the profile and the MCP servers), so no height is
+// claimed.
+test('the settings dialog lays its fields out in label-left rows in both styles', async () => {
+  test.setTimeout(120_000);
+  const root = await mkdtemp(join(tmpdir(), 'foundry-settings-e2e-'));
+  const env: Record<string, string> = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
+  env.FOUNDRY_WORKSPACE_TEST_DATA = join(root, 'state'); delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: [resolve('out/main/index.js')], env });
+  try {
+    const page = await app.firstWindow();
+    await waitForRuntimeReady(page);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1480, 940));
+    await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(1480);
+    await page.getByRole('button', { name: /Model settings/ }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('group', { name: 'Theme' })).toBeVisible();
+    const measure = () => page.evaluate(() => {
+      const dialog = document.querySelector('dialog[open]')!;
+      const textBox = (label: Element) => { const range = document.createRange(); range.selectNodeContents(label.firstChild!); return range.getBoundingClientRect(); };
+      const field = (label: string) => [...dialog.querySelectorAll('.profile-form > label, .profile-form > .limits label')].find(element => element.firstChild?.textContent?.trim() === label)!;
+      const rows = ['Name', 'Context limit', 'Credential'].map(label => {
+        const element = field(label); const input = element.querySelector('input')!.getBoundingClientRect(); const text = textBox(element);
+        return { label, inputLeft: Math.round(input.left), beside: text.right <= input.left && text.top < input.bottom && text.bottom > input.top };
+      });
+      const options = [...dialog.querySelectorAll('.appearance-settings')].map(fieldset => Math.round(fieldset.querySelector('.appearance-options')!.getBoundingClientRect().left));
+      const key = document.querySelector('[aria-label="MCP key"]')!; const keyLabel = key.closest('label')!;
+      return { width: Math.round(dialog.getBoundingClientRect().width), sideways: dialog.scrollWidth > dialog.clientWidth, rows, options, mcpStacked: key.getBoundingClientRect().top >= textBox(keyLabel).bottom };
+    });
+    for (const choice of ['Comfortable', 'Compact'] as const) {
+      await dialog.getByRole('group', { name: 'Style' }).getByRole('radio', { name: choice }).check();
+      await expect.poll(() => style(page)).toBe(choice.toLowerCase());
+      const layout = await measure();
+      expect(layout.width, choice).toBe(Math.min(780, 1480 - 48));
+      expect(layout.sideways, `${choice}: no sideways scroll`).toBe(false);
+      expect(layout.rows.map(row => row.beside), `${choice}: each label beside its field`).toEqual([true, true, true]);
+      const edges = [...layout.rows.map(row => row.inputLeft), ...layout.options];
+      expect(Math.max(...edges) - Math.min(...edges), `${choice}: fields and radios share one edge ${JSON.stringify(edges)}`).toBeLessThanOrEqual(1);
+      expect(layout.mcpStacked, `${choice}: the MCP form keeps its labels above`).toBe(true);
+    }
+  } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
+});

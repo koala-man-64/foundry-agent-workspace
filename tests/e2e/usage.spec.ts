@@ -115,6 +115,13 @@ test('seeded usage shows sparse days, partial metrics, pagination, and child dri
     await expect(overview.getByText('1/55 reported').first()).toBeVisible();
     await expect(overview.getByRole('region', { name: 'Request details' }).getByText('Not dispatched', { exact: true })).toBeVisible();
     await expect(overview.getByText('100 not dispatched', { exact: false })).toBeVisible();
+    // Each figure sits beside its label, and a breakdown row is one line where it fits.
+    const card = await overview.locator('.usage-cards > div').filter({ has: page.locator('span', { hasText: /^Measured tokens$/ }) }).first().evaluate(div => {
+      const [label, figure] = [div.querySelector('span')!, div.querySelector('strong')!].map(element => element.getBoundingClientRect());
+      return { beside: figure!.left >= label!.right, sameRow: figure!.top < label!.bottom && figure!.bottom > label!.top };
+    });
+    expect(card).toEqual({ beside: true, sameRow: true });
+    expect(await overview.getByRole('region', { name: 'Usage breakdown' }).getByRole('listitem').first().evaluate(item => item.getBoundingClientRect().height)).toBeLessThan(40);
     await overview.getByRole('button', { name: 'Custom' }).click();
     await overview.getByLabel('From').fill(localDate(noon(-3)));
     await overview.getByLabel('Through').fill(localDate(noon(0)));
