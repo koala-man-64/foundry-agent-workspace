@@ -14,6 +14,25 @@ export function useCompactLayout(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(COMPACT_LAYOUT_QUERY).matches, () => false);
 }
 
+function subscribeResize(onChange: () => void): () => void {
+  window.addEventListener('resize', onChange);
+  return () => window.removeEventListener('resize', onChange);
+}
+
+/**
+ * The chosen inspector width clamped to the window as it is now, so narrowing the window never pushes the inspector off
+ * screen and widening it again restores the chosen width. It re-renders only when the clamped width changes, not on
+ * every resize.
+ */
+export function useShownInspectorWidth(width: number, rail: RailWidths): number {
+  return useSyncExternalStore(subscribeResize, () => clampInspectorWidth(width, window.innerWidth, rail), () => width);
+}
+
+/** The widest inspector the window allows now; a component that uses it re-renders when that changes. */
+export function useMaxInspectorWidth(rail: RailWidths): number {
+  return useSyncExternalStore(subscribeResize, () => maxInspectorWidth(window.innerWidth, rail), () => MIN_INSPECTOR_WIDTH);
+}
+
 /** Whether an inspector tab is on screen: selected, and the inspector either a column or an open slide-over. */
 export function inspectorTabInView(tabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
   return tabSelected && (!overlay || overlayOpen);
@@ -117,16 +136,23 @@ export function clampInspectorWidth(width: number, viewportWidth: number, rail: 
   return Math.round(Math.max(MIN_INSPECTOR_WIDTH, Math.min(maxInspectorWidth(viewportWidth, rail), width)));
 }
 
-/** 360px up to a 1480px window, then growing with the spare width to at most 480px. */
+/**
+ * The width a viewer who never dragged the separator gets: 360px at the 1000px minimum window, 400px at 1480px and 640px
+ * from about 1920px, read when the app starts. A remembered (dragged) width always wins. Either is the chosen width, which
+ * useShownInspectorWidth clamps to the current window.
+ */
 export function defaultInspectorWidth(viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
-  return clampInspectorWidth(Math.min(480, 360 + Math.max(0, viewportWidth - 1480) * 0.3), viewportWidth, rail);
+  return clampInspectorWidth(Math.min(640, Math.max(360, 0.5455 * viewportWidth - 407)), viewportWidth, rail);
 }
 
-/** The remembered width (a per-viewer convenience in local storage), else the default; always clamped to the window. */
+/**
+ * The chosen width at start: the remembered width (a per-viewer convenience in local storage), else the default. It is
+ * not clamped to the start window, so a window that starts narrow and is widened shows the remembered width again.
+ */
 export function initialInspectorWidth(viewportWidth: number, storage: Pick<Storage, 'getItem'> | undefined, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
   let stored: number | undefined;
   try { const value = Number(storage?.getItem(INSPECTOR_WIDTH_KEY)); stored = Number.isFinite(value) && value > 0 ? value : undefined; } catch { stored = undefined; }
-  return stored === undefined ? defaultInspectorWidth(viewportWidth, rail) : clampInspectorWidth(stored, viewportWidth, rail);
+  return stored === undefined ? defaultInspectorWidth(viewportWidth, rail) : Math.round(Math.max(MIN_INSPECTOR_WIDTH, stored));
 }
 
 export function rememberInspectorWidth(width: number, storage: Pick<Storage, 'setItem'> | undefined): void {
