@@ -14,6 +14,20 @@ export function useCompactLayout(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(COMPACT_LAYOUT_QUERY).matches, () => false);
 }
 
+function subscribeResize(onChange: () => void): () => void {
+  window.addEventListener('resize', onChange);
+  return () => window.removeEventListener('resize', onChange);
+}
+
+/**
+ * The chosen inspector width clamped to the window as it is now, so narrowing the window never pushes the inspector off
+ * screen and widening it again restores the chosen width. It re-renders only when the clamped width changes, not on
+ * every resize.
+ */
+export function useShownInspectorWidth(width: number, rail: RailWidths): number {
+  return useSyncExternalStore(subscribeResize, () => clampInspectorWidth(width, window.innerWidth, rail), () => width);
+}
+
 /** Whether an inspector tab is on screen: selected, and the inspector either a column or an open slide-over. */
 export function inspectorTabInView(tabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
   return tabSelected && (!overlay || overlayOpen);
@@ -119,7 +133,8 @@ export function clampInspectorWidth(width: number, viewportWidth: number, rail: 
 
 /**
  * The width a viewer who never dragged the separator gets: 360px at the 1000px minimum window, 400px at 1480px and 640px
- * from about 1920px, read when the app starts. A remembered (dragged) width always wins.
+ * from about 1920px, read when the app starts. A remembered (dragged) width always wins. Either is the chosen width, which
+ * useShownInspectorWidth clamps to the current window.
  */
 export function defaultInspectorWidth(viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
   return clampInspectorWidth(Math.min(640, Math.max(360, 0.5455 * viewportWidth - 407)), viewportWidth, rail);

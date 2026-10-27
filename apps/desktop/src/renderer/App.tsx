@@ -19,7 +19,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
+import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay, useShownInspectorWidth } from './layout';
 import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
 import { FocusControls } from './FocusControls';
 import { relativeTime, taskStatusLabel } from './labels';
@@ -127,6 +127,7 @@ function App() {
   // The rail width comes from the page's tokens, so the inspector's limits follow a style that changes it.
   const [railWidths, setRailWidths] = useState(() => documentRailWidths());
   const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage(), railWidths));
+  const shownInspectorWidth = useShownInspectorWidth(inspectorWidth, railWidths);
   // The theme is a closed choice kept like the inspector width; public/theme-boot.js already applied it before the first paint.
   const [theme, setTheme] = useState<ThemePreference>(() => readTheme(viewerStorage()));
   useEffect(() => applyTheme(theme, documentThemeHost()), [theme]);
@@ -787,7 +788,7 @@ function App() {
     const startX = event.clientX;
     const separator = event.currentTarget;
     const workspace = separator.parentElement;
-    const startWidth = separator.nextElementSibling?.getBoundingClientRect().width ?? inspectorWidth;
+    const startWidth = separator.nextElementSibling?.getBoundingClientRect().width ?? shownInspectorWidth;
     const sidebarWidth = workspace?.querySelector('.sidebar-shell')?.getBoundingClientRect().width ?? 0;
     const minConversation = window.innerWidth <= 950 ? 260 : 320;
     const maxWidth = Math.max(300, (workspace?.getBoundingClientRect().width ?? window.innerWidth) - sidebarWidth - minConversation - separator.getBoundingClientRect().width);
@@ -804,7 +805,7 @@ function App() {
   };
   const resizeInspectorByKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 64 : 16;
-    const next = event.key === 'ArrowLeft' ? inspectorWidth + step : event.key === 'ArrowRight' ? inspectorWidth - step : event.key === 'Home' ? MIN_INSPECTOR_WIDTH : event.key === 'End' ? maxInspectorWidth(window.innerWidth, railWidths) : undefined;
+    const next = event.key === 'ArrowLeft' ? shownInspectorWidth + step : event.key === 'ArrowRight' ? shownInspectorWidth - step : event.key === 'Home' ? MIN_INSPECTOR_WIDTH : event.key === 'End' ? maxInspectorWidth(window.innerWidth, railWidths) : undefined;
     if (next === undefined) return;
     event.preventDefault();
     const width = clampInspectorWidth(next, window.innerWidth, railWidths);
@@ -890,7 +891,7 @@ function App() {
       <button type="button" className="secondary" onClick={() => showDialog(upgradeDialogRef.current)}>Review upgrade</button>
     </div>}
     <button type="button" className="skip-link" onClick={() => document.querySelector<HTMLElement>('.composer textarea:not(:disabled), .draft-compose > textarea:not(:disabled), .messages')?.focus()}>Skip to message box</button>
-    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} data-focus={focusLayout ? 'on' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${inspectorWidth}px` } as React.CSSProperties}>
+    <div className={`workspace${page === 'usage' || isDraft ? ' wide-content-workspace' : coordinatedTask ? ' coordinated-workspace' : ''}${browserExpanded && browserVisible ? ' browser-expanded' : ''}`} data-inspector={inspector.overlay ? 'overlay' : undefined} data-focus={focusLayout ? 'on' : undefined} style={{ '--inspector-width': browserExpanded && browserVisible ? 'min(74vw, calc(100vw - 325px))' : `${shownInspectorWidth}px` } as React.CSSProperties}>
     <div className="sidebar-shell">
       <nav className="sidebar-mode-tabs" aria-label="Sidebar sections"><button type="button" className={sidebarView === 'workspace' ? 'selected' : ''} aria-pressed={sidebarView === 'workspace'} onClick={() => setSidebarView('workspace')}>Inbox & history</button>{sidebarView === 'projects' && inboxChipLabel(inboxCount) && <span className="mode-count">{inboxChipLabel(inboxCount)}</span>}<button type="button" className={sidebarView === 'projects' ? 'selected' : ''} aria-pressed={sidebarView === 'projects'} onClick={() => setSidebarView('projects')}>Projects</button>{sidebarView === 'workspace' && <button type="button" onClick={() => selectDraft(null)}>New chat</button>}</nav>
       {sidebarView === 'projects' ? <ProjectSidebar projects={projects} tasks={snapshot.tasks} selectedId={page === 'usage' ? undefined : selectedId} draftProjectId={page === 'usage' ? undefined : draftProjectId} collapsedProjectIds={collapsedProjectIds} canAdd={Boolean(schema && schema.version >= 3)} adding={addingProject} exporting={exporting} onNew={selectDraft} onSelect={selectTask} onAdd={() => void addProject()} onManage={() => showDialog(manageDialogRef.current)} onToggle={toggleProject} onHide={(project) => void updateProject(project, { hidden: true })} onSettings={() => void openSettings()} onExport={() => void exportDiagnostics()} /> : <WorkspaceNavigation api={api} projects={projects} selectedId={selectedId} onSelect={selectTask} onAction={openAction} onSearchHit={hit => { setSearchHit(hit); selectTask(hit.rootTaskId); }} onOpenAutomation={openAutomation} canArchive={Boolean(schema && schema.version >= 5)} refreshToken={navigationVersion} onChanged={() => void refresh(selectedRef.current)} inboxRequest={inboxRequest} />}
@@ -938,7 +939,7 @@ function App() {
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
     </section>
-    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={inspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth, railWidths)} aria-valuetext={`Inspector ${inspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
+    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={shownInspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth, railWidths)} aria-valuetext={`Inspector ${shownInspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
     <aside id="task-inspector" className={`inspector${inspectorOpen ? ' open' : ''}`} aria-label="Task inspector" {...inspector.asideProps}>
       <button ref={inspector.closeRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([

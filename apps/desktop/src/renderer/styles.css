@@ -1472,7 +1472,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
   .approval-card dt { margin-bottom: 0; overflow-wrap: anywhere; }
   .approval-card dl.field-long { display: block; }
   .approval-card dl.field-long dt { margin-bottom: var(--gap-field-label-narrow); }
-  .approval-card pre { margin: var(--m-pre-card); }
+  .approval-card dd pre { margin: var(--m-pre-card); }
   .approval-card dl.field-long pre { margin: var(--m-pre-card-narrow); }
 }
 @container approval-list (min-width: 600px) {
