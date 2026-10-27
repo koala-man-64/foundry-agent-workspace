@@ -17,6 +17,76 @@ Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel
 - **C#.** Nothing to land. The native runtime has no automation handler: `automation.script.grant` reaches the `NotSupportedException` default in `DevelopmentChat.Dispatch`. Its future port must keep the same strict check, with no tolerance, and port the runtime test above.
 - **Found, not changed.** The dialog's "Days until expiry" field accepts up to 365. The runtime refuses anything over 30 with the message above.
 
+## Default look, part 4a: Balanced's inspector — 27 October 2026
+
+Task id `ui-look-inspector-20261027`, the first half of the fourth slice of the default look Rudy chose on 27 October.
+- **Scope.** Renderer CSS, class names in `ApprovalCard.tsx`, the default width in `layout.ts`, and the width the inspector shows in `App.tsx`. There is no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.
+
+**What changed**
+- **Approval fields beside their labels.** In an approval list at least 508px wide (about 480px of a boxed card):
+  - Short fields put their label in a 7.5rem column. Compact uses 88–112px.
+  - Long evidence (a pre, a patch, the environment) keeps its label above and the full width, with the stacked layout's gaps. So does the Command block.
+  - From 600px, the environment takes two columns and never splits an entry.
+  - Narrower lists keep the stacked layout, and the inspector's Usage grid is unchanged.
+- **A tighter inspector.**
+  - Tabs are 28px rows with an even 8px gap.
+  - Tools, file rows and panels tighten: 8px around approval and orchestration cards, 8px 12px elsewhere.
+  - Files sizes to its rows, at most 40% of the inspector, and a long open file never squeezes it.
+  - Activity is two-line ruled rows, with the time right-aligned beside the event and the evidence below. The timeline rule and its colour role (`--line-timeline`) are gone.
+- **The default width follows the window.** It is 360px at 1000px, 400px at 1480px, 520px at 1700px and 640px from about 1920px, read at start.
+  - A remembered (dragged) width always wins.
+  - Either one is the chosen width, and the inspector shows it clamped to the window as it is now.
+- **Narrowing the window.**
+  - **The fix.** Narrowing the window no longer pushes the inspector off screen. Before, nothing re-clamped on a resize, so a wide default or a drag followed by a narrower window left the inspector past the window edge: 885px stayed in a 1100px window where 505px fits.
+  - **What keeps the chosen width.** Widening the window shows the chosen width again. A style switch, a narrow start and a key press that changes nothing on screen no longer lower it.
+  - **Arrow keys and the separator.** The keys step from the width on screen. The separator's maximum follows the window without re-rendering the app on every resize.
+
+**Validation** (local, Windows, isolated fixtures)
+- **`pnpm check`** (at `8968346`): typecheck and lint pass. Vitest: 823 of 835 in the parallel run.
+  - **The 12 failures.** They are timeouts and EBUSY cleanup errors in six runtime and integration files: continuity, git-operations, projects, repository-preview, orchestration and publish. This change does not touch them, and serially they pass, 89 of 89.
+  - **An earlier run.** At `d4c6db0`, git-operations' two cherry-pick tests timed out even alone, while another worktree's suites ran beside them.
+  - **New unit checks.**
+    - Stylesheet: the 508px container rule with the card field tokens, the long-field block and the 600px environment rule.
+    - `layout.test.ts`: pins the width defaults (360, 400, 520 and 640px) and a remembered width that is not clamped to the start window.
+- **`pnpm test:e2e`**: 33 of 33 pass.
+  - **New `inspector-layout.spec.ts`.** In Comfortable and Compact, at 507, 508, 599 and 600px of list, it checks:
+    - short fields beside their label;
+    - long evidence stacked;
+    - the environment's columns;
+    - the gaps under a long field's label, the Command label and the Environment label.
+    - It also checks the Activity row, and the file list beside a 4,000-line file.
+  - **`inspector-width.spec.ts`.**
+    - It narrows a window after a keyboard End to the limit. Before the fix, 885px stayed in a 1100px window.
+    - It checks that the inspector ends inside the window and that the conversation keeps 320px.
+    - It checks that a no-op key and a style switch keep the chosen width, that keys step from the shown width, and that the separator's maximum follows the window.
+  - **`transcript.spec.ts`.** It checks that a clean profile opens at the window-relative default.
+  - **Mutants.** Twelve mutants each fail their check, and the unmutated controls pass (`logs/mutants-review*.log`).
+- **Harness** (`.local/verification/ui-look-inspector-20261027/render3`):
+  - **The 189 captures in 7 presets.** Their contrast, overflow and 24×24 target lists are empty, and so are the sheets in every preset.
+  - **High contrast.** No app text is below 7:1 in 25 captures. On the sheets, only the rail "+" glyph is below (5.5:1, as before). Under forced colours, Light and Dark match in 29 of 29 captures.
+  - **The wide start (`render3-wide`).** The app started in a 1920×1080 window, with the inspector and the approval list at 640px. The 48 captures in 4 presets have empty lists.
+    - Real command, edit and coordinated cards show the label column and the two-column environment.
+    - Hashes and paths wrap, and the security line is verbatim.
+- **Independent review.** Reviewers were Sonnet at high effort, from their agent definitions, in four rounds. All said GO, with no P0 or P1.
+  - **Round 1** (layout and code, on `8fc2aa2`). Fixed:
+    - the file list collapsing beside a long file (P2);
+    - Compact's long-evidence gaps;
+    - the environment threshold, from 608 to 600px;
+    - regex-only tests.
+  - **Round 2** (code and rendered layout, on `d4c6db0`). Fixed the Compact Command gap and the untested Compact gaps. The owner then found the inspector pushed off screen in a narrowed window (`3498f91`).
+  - **Round 3** (React and tests, on `3498f91`). Fixed:
+    - style switches, narrow starts and no-op keys lowering the chosen width;
+    - the untested keyboard step after narrowing;
+    - a stale separator maximum.
+  - **Round 4** (on `8968346`). GO. Its one P3, Home while the window hides a larger width, cannot occur at the 1000px minimum window.
+- **Not run**: `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed.
+
+**Known limits**
+- **Layout switches with the list's width.** Approval cards change layout at the approval list's width, so dragging the inspector moves cards between the stacked and the label-column layouts. The 600px environment threshold clears the 640px default inspector with a scrollbar by about 7px.
+- **Tab rows.** A coordinated task's inspector has more tabs, which wrap to a second even row at 640px (as the narrow inspector's already did).
+- **The default is read at start.** A viewer who starts in a narrow window and widens it keeps the narrow window's default until they drag or restart. A remembered width is kept as chosen.
+- **Live resizing.** While the window is narrower than the chosen width, the shown width changes on every resize event, so the app re-renders as the window is dragged narrower. It is correct but its cost is unmeasured.
+
 ## Default look, part 3: the transcript on the lane, with a hanging author column — 27 October 2026
 
 Task id `ui-look-transcript-20261027`, the third slice of the default look Rudy chose on 27 October. Rudy picked the hanging author and time column explicitly. Renderer CSS plus one span in `Transcript.tsx`: no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.

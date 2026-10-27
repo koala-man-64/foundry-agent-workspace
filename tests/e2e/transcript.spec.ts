@@ -25,6 +25,10 @@ test('the transcript hangs the author and time beside the text when wide, and ab
     await page.getByLabel('Chat message', { exact: true }).fill('Lay out the transcript');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.getByText('Fake response: Lay out the transcript', { exact: true })).toBeVisible();
+    // A clean profile opens the inspector at the window-relative default for the window it started in (nothing dragged).
+    const started = await page.evaluate(() => window.innerWidth);
+    const expected = Math.round(Math.min(640, Math.max(360, 0.5455 * started - 407)));
+    expect(Math.round((await page.locator('#task-inspector').boundingBox())!.width)).toBe(expected);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1480, 940));
     await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(1480);
     const transcript = page.getByLabel('Conversation transcript');

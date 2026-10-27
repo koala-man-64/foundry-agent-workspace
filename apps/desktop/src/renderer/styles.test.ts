@@ -121,7 +121,7 @@ const styleBlocks = new Map([...uncommented(css).matchAll(/:root\[data-style="([
 // Fixed heights held at the 24px floor. --h-dense is exempt: dense rows clamp it with max(var(--target-min), var(--h-dense)).
 const FIXED_HEIGHTS = /^h-(ctl|view|chrome|decision|composer|compose-text|browser-tabs)\b/;
 // Rows whose height comes from padding: each is clamped to the pointer-target floor, so a style can shrink the padding only.
-const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.inspector-tabs button', '.file-tree button', '.agent-row'];
+const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.file-tree button', '.agent-row'];
 
 describe('size tokens', () => {
   it('finds the size block, so the checks below cannot pass on nothing', () => {
@@ -249,7 +249,11 @@ describe('size tokens', () => {
     const plain = uncommented(css);
     for (const list of ['approvals-panel', 'approval-tray-cards']) expect(new RegExp(`\\.${list} \\{[^}]*container: approval-list / inline-size;`).test(plain), list).toBe(true);
     for (const name of ['field-layout', 'field-columns', 'field-col-gap', 'gap-field', 'gap-field-label', 'm-pre-card']) expect(rootTokens.get(`${name}-narrow`), name).toBe(`var(--${name})`);
-    expect(/@container approval-list \(min-width: 560px\)\s*{\s*\.approval-card dl \{[^}]*display: var\(--field-layout\);/.test(plain)).toBe(true);
+    expect(/@container approval-list \(min-width: 508px\)\s*{\s*\.approval-card dl \{[^}]*display: var\(--card-field-layout\);/.test(plain)).toBe(true);
+    // Long evidence keeps its label above and the full width; the environment takes two columns only in a wider list.
+    expect(/@container approval-list \(min-width: 508px\)\s*{[^@]*\.approval-card dl\.field-long \{ display: block; \}/.test(plain)).toBe(true);
+    expect(/@container approval-list \(min-width: 600px\)\s*{\s*\.approval-card \.environment-list \{ columns: 2;/.test(plain)).toBe(true);
+    expect([rootTokens.get('card-field-layout'), rootTokens.get('label-col')]).toEqual(['grid', '7.5rem']);
   });
 
   it('defines every token a declaration uses', () => {
