@@ -46,8 +46,8 @@ test('Compact is a closed style choice that persists, composes with Dark and kee
     await page.keyboard.press('End');
     await expect(separator).toHaveAttribute('aria-valuemax', String(1480 - rail - 320 - 5));
     await expect.poll(async () => Math.round((await page.locator('#task-inspector').boundingBox())!.width)).toBe(1480 - rail - 320 - 5);
-    // Compact's composer: Send is shorter than Comfortable's 52px minimum.
-    expect((await page.getByRole('button', { name: 'Send' }).boundingBox())!.height).toBeLessThan(48);
+    // Compact's composer: Send is shorter than Comfortable's 44px minimum.
+    expect((await page.getByRole('button', { name: 'Send' }).boundingBox())!.height).toBeLessThan(40);
 
     // Approval fields put the label beside the value in a wide list and stack in a narrow one (the stylesheet's container rule).
     const layout = await page.evaluate(() => {
