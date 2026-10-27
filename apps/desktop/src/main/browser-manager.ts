@@ -12,7 +12,7 @@ const MAX_CHECKED_FRAMES = 64;
 const FILE_CHECK_TIMEOUT_MS = 5_000;
 const MAX_PREPARED_PER_TAB = 32;
 const PREPARED_TTL_MS = 10 * 60_000;
-type Tab = { id: string; view: WebContentsView; contents: WebContents; generation: number; attachmentId: string | null; taskId: string | null; attaching: { id: string; taskId: string; cancelled: boolean } | null; lastTaskId: string | null; authorizedOrigin: string | null; pendingOrigin: string | null; error: string | null; snapshot: BrowserSnapshot | null; fingerprints: Map<string, string>; prepared: Set<string>; downloads: Set<DownloadItem>; contextId: number | null; busy: Promise<void> };
+type Tab = { id: string; view: WebContentsView; contents: WebContents; generation: number; attachmentId: string | null; taskId: string | null; attaching: { id: string; taskId: string; cancelled: boolean } | null; lastTaskId: string | null; authorizedOrigin: string | null; pendingOrigin: string | null; error: string | null; snapshot: BrowserSnapshot | null; fingerprints: Map<string, string>; prepared: Set<string>; downloads: Set<DownloadItem>; contextId: number | null; busy: Promise<void>; blanking: boolean };
 type PreparedRecord = { value: BrowserPrepared; fingerprint?: string; consumed: boolean };
 const originOf = (url: string): string => { try { const parsed = new URL(url); return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : 'null'; } catch { return 'null'; } };
 const safeUrl = (url: string): string => { const parsed = new URL(url); if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new BrowserHostError('failed', 'Only HTTP and HTTPS pages are supported.'); return parsed.href; };
@@ -111,7 +111,7 @@ export class BrowserManager {
     if (this.tabs.size >= MAX_TABS) throw new BrowserHostError('failed', 'Browser tab limit reached.');
     const view = new WebContentsView({ ...(popupContents ? { webContents: popupContents } : {}), webPreferences: { partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true } });
     const contents = view.webContents;
-    const tab: Tab = { id: randomUUID(), view, contents, generation: 0, attachmentId: null, taskId: null, attaching: null, lastTaskId: null, authorizedOrigin: null, pendingOrigin: null, error: null, snapshot: null, fingerprints: new Map(), prepared: new Set(), downloads: new Set(), contextId: null, busy: Promise.resolve() };
+    const tab: Tab = { id: randomUUID(), view, contents, generation: 0, attachmentId: null, taskId: null, attaching: null, lastTaskId: null, authorizedOrigin: null, pendingOrigin: null, error: null, snapshot: null, fingerprints: new Map(), prepared: new Set(), downloads: new Set(), contextId: null, busy: Promise.resolve(), blanking: false };
     this.tabs.set(tab.id, tab);
     contents.on('destroyed', () => {
       if (this.stopped || !this.tabs.has(tab.id)) return;
@@ -143,6 +143,8 @@ export class BrowserManager {
         tab.authorizedOrigin = null;
       }
     });
+    // A clear the user confirmed replaces the page even when the page asks to stay.
+    contents.on('will-prevent-unload', event => { if (tab.blanking) event.preventDefault(); });
     contents.on('did-start-navigation', () => { if (tab.attaching) { tab.attaching.cancelled = true; contents.stop(); } this.invalidate(tab); this.emit(); });
     contents.on('did-navigate', () => {
       this.invalidate(tab);
@@ -296,8 +298,9 @@ export class BrowserManager {
   }
 
   private closeTab(tab: Tab): void { this.detach(tab); this.tabs.delete(tab.id); if (!this.window.isDestroyed() && this.window.contentView.children.includes(tab.view)) this.window.contentView.removeChildView(tab.view); if (!tab.contents.isDestroyed()) tab.contents.close(); if (this.activeId === tab.id) this.activeId = this.tabs.keys().next().value ?? null; if (!this.activeId && !this.stopped && !this.window.isDestroyed()) this.createTab(); this.syncViews(); }
-  private async clearSite(tab: Tab): Promise<void> { const origin = originOf(tab.contents.getURL()); if (origin === 'null') throw new BrowserHostError('failed', 'Open a website before clearing its data.'); for (const candidate of this.tabs.values()) if (originOf(candidate.contents.getURL()) === origin) { this.detach(candidate); candidate.contents.stop(); await candidate.contents.loadURL('about:blank'); } await this.profile.clearStorageData({ origin, storages: ['cookies', 'localstorage', 'indexdb', 'cachestorage', 'serviceworkers'] }); await this.profile.clearCache(); await this.profile.cookies.flushStore(); await this.profile.flushStorageData(); }
-  private async clearProfile(): Promise<void> { for (const tab of this.tabs.values()) { this.detach(tab); tab.contents.stop(); await tab.contents.loadURL('about:blank'); } await this.profile.clearStorageData(); await this.profile.clearCache(); await this.profile.cookies.flushStore(); await this.profile.flushStorageData(); }
+  private async blank(tab: Tab): Promise<void> { this.detach(tab); tab.contents.stop(); tab.blanking = true; try { await tab.contents.loadURL('about:blank'); } finally { tab.blanking = false; } }
+  private async clearSite(tab: Tab): Promise<void> { const origin = originOf(tab.contents.getURL()); if (origin === 'null') throw new BrowserHostError('failed', 'Open a website before clearing its data.'); for (const candidate of this.tabs.values()) if (originOf(candidate.contents.getURL()) === origin) await this.blank(candidate); await this.profile.clearStorageData({ origin, storages: ['cookies', 'localstorage', 'indexdb', 'cachestorage', 'serviceworkers'] }); await this.profile.clearCache(); await this.profile.cookies.flushStore(); await this.profile.flushStorageData(); }
+  private async clearProfile(): Promise<void> { for (const tab of this.tabs.values()) await this.blank(tab); await this.profile.clearStorageData(); await this.profile.clearCache(); await this.profile.cookies.flushStore(); await this.profile.flushStorageData(); }
 
   private async evaluate(tab: Tab, expression: string): Promise<unknown> { const debuggerApi = tab.contents.debugger; if (!debuggerApi.isAttached()) debuggerApi.attach('1.3'); if (tab.contextId === null) { const tree = await debuggerApi.sendCommand('Page.getFrameTree') as { frameTree: { frame: { id: string } } }; const world = await debuggerApi.sendCommand('Page.createIsolatedWorld', { frameId: tree.frameTree.frame.id, worldName: 'Foundry Browser Host', grantUniveralAccess: false }) as { executionContextId: number }; tab.contextId = world.executionContextId; } const result = await debuggerApi.sendCommand('Runtime.evaluate', { expression, contextId: tab.contextId, returnByValue: true, awaitPromise: true }) as { result?: { value?: unknown }; exceptionDetails?: unknown }; if (result.exceptionDetails) throw new BrowserHostError('failed', 'Page evaluation failed.'); return result.result?.value; }
   private async hasSelectedFiles(tab: Tab): Promise<boolean> {

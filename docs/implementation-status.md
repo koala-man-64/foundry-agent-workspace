@@ -1,8 +1,12 @@
 # Implementation status
 
-## Clear site data wait in `browser.spec` — 26 October 2026
+## Clear site data: the `browser.spec` wait, and pages that ask to stay — 26–27 October 2026
 
-Task id `browser-clear-wait-20261026`. Test only: no product, protocol, IPC, main-process, runtime, schema or dependency change. Nothing is dual-landed in C#, which has no browser host yet.
+Task id `browser-clear-wait-20261026`. Two parts:
+- a test-only fix for a flake;
+- a main-process and renderer fix for clears that a page's `beforeunload` blocked.
+
+No protocol, IPC channel, runtime, schema or dependency change. Nothing is dual-landed in C#, which has no browser host yet. What its host must do is under the second part.
 
 - **The flake.** The persistence test failed in 2 of 3 full `pnpm test:e2e` runs on a busy machine. Both failures were at the clear assertion, which still read the seeded cookie, `localStorage` and IndexedDB values.
   - The test clicked Clear data and waited on `tabs.every(!attachedTaskId)`, which was already true. It then sent `navigate` while the clear was still in flight.
@@ -19,10 +23,21 @@ Task id `browser-clear-wait-20261026`. Test only: no product, protocol, IPC, mai
   - Clear site data reports success only after these resolve: `clearStorageData` (cookies, `localStorage`, IndexedDB, Cache Storage, service workers), `clearCache` and both flushes.
   - It does not reload; same-origin tabs stay on `about:blank`.
   - While it runs, the panel's busy state disables the address bar and Go, so the user's own panel cannot overtake it.
-- **Found but not changed.**
-  - Two things make Clear site data fail with a raw `ERR_ABORTED` notice, clearing nothing: a navigation during the blanking, or a page that cancels `beforeunload` after a user gesture. Clear browser data uses the same blank-first loop. Neither case reports a clear that did not happen. A retry after closing that tab is safe.
-  - The C# host's per-origin clearing should not inherit the cancelled-unload case.
-  - Under artificial full CPU saturation (a busy loop per core), earlier steps of the same test timed out in 2 of 10 runs, at the inspector resize and the manual navigation after restart. This change does not touch those steps.
+- **Pages that ask to stay (fixed 27 October).** A page that cancels `beforeunload` after the user has interacted with it made both clears fail with a raw `ERR_ABORTED` notice. Neither clear touched storage, though neither reported success.
+  - Both clears now replace their tabs through one helper, `blank`. While its `loadURL('about:blank')` is pending, the tab's `will-prevent-unload` handler calls `preventDefault`, so the page cannot keep that one navigation from happening.
+  - Manual navigation, back, forward and reload still honour a page's request to stay, with no prompt, as before.
+  - The confirmations now say that open pages are replaced with a blank page and unsaved changes are discarded, because the clear overrides the page's own prompt.
+  - **Test.** `site and profile clears replace a page that asks to stay` seeds a page, adds a cancelling `beforeunload` and clicks the page, then runs each clear through the panel.
+    - Before the change it failed at the `about:blank` check, with the tab still on `/seed`.
+    - After it, both clears blank the tab, and the next page reads no cookie, `localStorage` or IndexedDB value.
+    - Each clear must also raise exactly one `beforeunload` dialog, so the test cannot pass on a page that never asked to stay. With the page's handler removed, it fails at that check.
+    - Electron settles `beforeunload` before Playwright hears of the dialog, so Playwright's default dismissal fails the test with "No dialog is showing". The test records and dismisses dialogs itself and ignores that error.
+    - An independent review (Sonnet, high, from its definition) returned GO with minor findings. It suggested the dialog check above, which was added.
+    - Not tested: a tab attached to a chat, whose debugger has `Page` enabled. The test's own Playwright session also has `Page` enabled on the page, and the override works there.
+  - **C# host.** When the WebView2 browser host is built, its clears must override the prompt in the same way, for their own blanking navigation only. With `AreDefaultScriptDialogsEnabled` off, that means calling `Accept()` on a `ScriptDialogOpening` of kind `Beforeunload`.
+- **Still not changed.**
+  - A navigation during the blanking still makes a clear fail with a raw `ERR_ABORTED` notice, with nothing cleared. Only the API can send one, since the panel is busy. A retry is safe.
+  - Under artificial full CPU saturation (a busy loop per core), earlier steps of the persistence test timed out in 2 of 10 runs, at the inspector resize and the manual navigation after restart. Neither fix touches those steps.
 
 ## High contrast theme — 26 October 2026
 

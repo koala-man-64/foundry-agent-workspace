@@ -157,6 +157,44 @@ test('persistent browser storage, blank restart, manual navigation, popup and is
   } finally { await running?.app.close(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(directory, { recursive: true, force: true }); }
 });
 
+test('site and profile clears replace a page that asks to stay', async () => {
+  test.setTimeout(240000);
+  const directory = await mkdtemp(join(tmpdir(), 'foundry-browser-guarded-clear-'));
+  const { server, base } = await startServer();
+  const stored = "({cookie:document.cookie,stored:localStorage.getItem('fixture-value'),indexed:window.storedValue})";
+  let running: Awaited<ReturnType<typeof launch>> | undefined;
+  try {
+    running = await launch(directory); const { app, page } = running;
+    // Electron settles beforeunload before Playwright hears of it, so Playwright's default dismissal fails the test.
+    const dialogs: string[] = [];
+    app.context().on('dialog', dialog => { dialogs.push(dialog.type()); void dialog.dismiss().catch(() => {}); });
+    await startChat(page, 'Guarded clear');
+    await page.getByRole('button', { name: 'Browser', exact: true }).click();
+    for (const action of ['Clear site data…', 'Clear browser data…']) {
+      await page.getByLabel('Website address').fill(`${base}/seed`);
+      await page.getByRole('button', { name: 'Go', exact: true }).click();
+      await browserValue(app, `${base}/seed`, 'window.storageReady');
+      expect(await browserValue(app, `${base}/seed`, stored)).toEqual({ cookie: 'fixture-login=remembered', stored: 'persisted', indexed: 'indexed-persisted' });
+      // A page can cancel its unload only after the user has interacted with it.
+      const fixturePage = app.context().pages().find(candidate => candidate.url() === `${base}/seed`)!;
+      await fixturePage.evaluate(() => addEventListener('beforeunload', event => { event.preventDefault(); event.returnValue = ''; }));
+      await fixturePage.locator('h1').click();
+      dialogs.length = 0;
+      await page.getByRole('button', { name: action, exact: true }).click();
+      await page.getByRole('button', { name: 'Clear data', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Confirm browser action' })).toBeHidden();
+      await expect(page.getByLabel('Website address')).toBeEnabled();
+      await expect.poll(async () => (await state(page)).tabs.map(tab => [tab.url, tab.loading])).toEqual([['about:blank', false]]);
+      // The page did ask to stay, so the clear overrode it rather than finding nothing to override.
+      await expect.poll(() => dialogs).toEqual(['beforeunload']);
+      const current = (await state(page)).activeTabId!;
+      await page.evaluate(input => window.workspace.browser({ kind: 'navigate', tabId: input.id, url: input.url }), { id: current, url: `${base}/read` });
+      await browserValue(app, `${base}/read`, 'window.storageReady');
+      expect(await browserValue(app, `${base}/read`, stored)).toEqual({ cookie: '', stored: null, indexed: null });
+    }
+  } finally { await running?.app.close(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(directory, { recursive: true, force: true }); }
+});
+
 test('ordinary chat reads an attached page and executes only the approved browser action', async () => {
   test.setTimeout(120000);
   const directory = await mkdtemp(join(tmpdir(), 'foundry-browser-approval-'));
