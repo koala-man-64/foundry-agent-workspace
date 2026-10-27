@@ -471,17 +471,15 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   return <>
     <section className="conversation orchestration-conversation" role="main" aria-label="Coordinated conversation" data-attention={needsYou(attention) ? 'decision' : undefined}>
       <header className="task-header orchestration-header">
-        <div>
-          <p className="eyebrow">{task.projectPath}</p>
-          <h1>{task.title}</h1>
-          {needsYou(attention) && <p className="task-status awaiting"><span className="task-state">{[attention.awaiting > 0 ? 'Waiting for your approval' : '', attention.unknown > 0 ? 'Outcome unknown' : ''].filter(Boolean).join(' · ')}</span></p>}
-          {budget && <p className={`task-status orchestration-budget ${budget.warning ? 'warning' : ''} ${budget.overrun ? 'overrun' : ''}`}>
-            charged {budget.charged.toLocaleString()} · in flight {budget.inFlight.toLocaleString()} · held {budget.unusedHolds.toLocaleString()} · unallocated {budget.unallocated.toLocaleString()} of {budget.cap.toLocaleString()}
-            {budget.warning && !budget.overrun && ' · budget warning'}
-            {budget.overrun && <span className="overrun-notice"> · budget overrun recorded</span>}
-          </p>}
-          {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
-        </div>
+        <p className="eyebrow">{task.projectPath}</p>
+        <h1>{task.title}</h1>
+        {needsYou(attention) && <p className="task-status awaiting"><span className="task-state">{[attention.awaiting > 0 ? 'Waiting for your approval' : '', attention.unknown > 0 ? 'Outcome unknown' : ''].filter(Boolean).join(' · ')}</span></p>}
+        {budget && <p className={`task-status orchestration-budget ${budget.warning ? 'warning' : ''} ${budget.overrun ? 'overrun' : ''}`}>
+          charged {budget.charged.toLocaleString()} · in flight {budget.inFlight.toLocaleString()} · held {budget.unusedHolds.toLocaleString()} · unallocated {budget.unallocated.toLocaleString()} of {budget.cap.toLocaleString()}
+          {budget.warning && !budget.overrun && ' · budget warning'}
+          {budget.overrun && <span className="overrun-notice"> · budget overrun recorded</span>}
+        </p>}
+        {completion && <p className="task-status">{completion.complete ? `Completed on ${full(latestCombined?.head)}` : completion.completedAt ? `Completion recorded ${new Date(completion.completedAt).toLocaleString()}; current state unverified: ${completion.blockers[0] ?? 'no current verification available'}` : `Incomplete: ${completion.blockers[0] ?? 'no blockers reported yet'}`}</p>}
         <div className="header-actions">{focusControls}{!rootTerminal && <button className="danger" disabled={busy === 'cancel-root'} onClick={() => void cancelRoot()}>{busy === 'cancel-root' ? 'Cancelling…' : 'Cancel coordinated task'}</button>}<button ref={inspector.toggleRef} type="button" className="secondary inspector-open" aria-controls="coordinated-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(true)}>{inspectLabel(attention)}</button></div>
       </header>
       {notice}

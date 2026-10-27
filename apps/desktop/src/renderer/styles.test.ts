@@ -175,6 +175,32 @@ describe('size tokens', () => {
     }
   });
 
+  it('keeps Compact the denser style: no size role larger than Comfortable, apart from named widths', () => {
+    // Compared component by component wherever both values are px lengths (shorthands included).
+    const ALLOWED = new Map([
+      ['h-dense', 'Comfortable sizes dense rows by their padding (0px means no minimum); Compact pins them at 26px'],
+      ['measure-focus', 'a width: the Focus column fits more per line'],
+      ['w-dialog', 'a width: the settings dialog fits more per line'],
+      ['pad-decision', 'Approve and Reject are shorter in Compact, with 1px more inline padding'],
+    ]);
+    const compact = styleBlocks.get('compact')!;
+    const values = new Map([...rootTokens, ...compact]);
+    const follow = (map: Map<string, string>, value: string | undefined) => {
+      for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value.trim()); if (!alias) return value.trim(); value = map.get(alias[1]!); }
+      return value?.trim();
+    };
+    const lengths = (map: Map<string, string>, value: string | undefined) => (follow(map, value)?.match(/var\(--[\w-]+\)|\S+/g) ?? [])
+      .map(part => { const resolved = follow(map, part); return resolved && /^-?\d+(\.\d+)?px$/.test(resolved) ? Number.parseFloat(resolved) : undefined; });
+    const looser = [...compact.keys()].filter(name => !ALLOWED.has(name)).filter(name => {
+      const comfortable = lengths(rootTokens, rootTokens.get(name)), dense = lengths(values, compact.get(name));
+      return comfortable.length === dense.length && comfortable.every(part => part !== undefined) && dense.every(part => part !== undefined)
+        && dense.some((part, index) => part! > comfortable[index]!);
+    });
+    expect(looser).toEqual([]);
+    // The exceptions are still real (a stale entry would hide a future inversion).
+    expect([...ALLOWED.keys()].filter(name => compact.has(name))).toEqual([...ALLOWED.keys()]);
+  });
+
   it('lets a style put approval labels beside values only in a wide list, never in a narrow one', () => {
     const plain = uncommented(css);
     for (const list of ['approvals-panel', 'approval-tray-cards']) expect(new RegExp(`\\.${list} \\{[^}]*container: approval-list / inline-size;`).test(plain), list).toBe(true);

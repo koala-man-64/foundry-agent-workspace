@@ -35,8 +35,8 @@
   --fs-heading: var(--fs-lg);                        /* h2 */
   --fs-prose: var(--fs-lg);                          /* transcript text, draft textarea, empty state. Floor 14px */
   --lh-prose: 1.55;                                  /* transcript line height */
-  --fs-title: var(--fs-3xl);                         /* task header h1 */
-  --fs-title-short: var(--fs-2xl);                   /* task header h1 in windows <= 720px tall */
+  --fs-title: var(--fs-2xl);                         /* task header h1 */
+  --fs-title-short: var(--fs-xl);                   /* task header h1 in windows <= 760px tall */
   --fs-page-title: var(--fs-3xl);                    /* Usage page and gate h1 */
   --fs-section: var(--fs-xl);                        /* section, dialog and blank-state h2 */
   --fs-figure: var(--fs-2xl);                        /* Usage card figures */
@@ -47,15 +47,15 @@
   --fs-plus: 21px;                                   /* "+" in the rail's New chat row */
 
   /* ---- Row and control heights (min-height) ---- */
-  --h-ctl: 32px;                                     /* buttons (.primary .secondary .danger), Usage and draft controls */
-  --h-view: 30px;                                    /* rail view switch */
+  --h-ctl: 28px;                                     /* buttons (.primary .secondary .danger), Usage and draft controls */
+  --h-view: 28px;                                    /* rail view switch */
   --h-chrome: 28px;                                  /* rail mode tabs */
   --h-ctl-sm: 26px;                                  /* inspector tools, filter chips, browser chrome buttons */
   --h-dense: 0px;                                    /* list and tab rows: their height comes from padding; clamped to --target-min below */
-  --h-decision: var(--h-ctl);                        /* Approve / Reject (follows --h-ctl unless a style sets it) */
-  --h-composer: 52px;                                /* composer textarea and Send */
+  --h-decision: 32px;                        /* Approve / Reject (follows --h-ctl unless a style sets it) */
+  --h-composer: 44px;                                /* composer textarea and Send */
   --h-compose-text: 82px;                            /* draft textarea */
-  --h-header-min: 118px;                             /* task header */
+  --h-header-min: 0px;                             /* task header */
   --h-tray-max: 60vh;                                /* Focus tray */
   --h-focus-messages-min: 96px;                      /* transcript floor while the Focus tray is open */
   --h-chart: 138px;                                  /* Usage daily chart */
@@ -76,11 +76,11 @@
   --w-dialog: 580px;                                 /* settings dialog */
   --w-dialog-btn: 120px;                             /* dialog action buttons */
   --file-tree-share: 30%;                            /* flex-basis of the file list against the preview */
-  --size-plus: 25px;                                 /* rail "+" disc */
+  --size-plus: 24px;                                 /* rail "+" disc */
   --size-mark: 48px;                                 /* large mark */
 
   /* ---- Gutters: the page lane ---- */
-  --gutter: var(--space-6);                          /* left and right edge of composer, banner, tray, notices, agent tree */
+  --gutter: var(--space-5);                          /* left and right edge of composer, banner, tray, notices, agent tree */
   --pad-messages: var(--space-6) 13%;                /* transcript */
   --pad-messages-x-narrow: 8%;                       /* transcript inline padding at <= 1050px */
   --pad-coordinator-messages: var(--space-4) 4%;
@@ -89,21 +89,23 @@
   --usage-pad-bottom: 64px;
 
   /* ---- Header, composer, banner, notices, tray ---- */
-  --header-pad-top: var(--space-5);
-  --header-pad-bottom: var(--space-4);
-  --header-pad-top-short: var(--space-4);            /* windows <= 720px tall */
-  --header-pad-bottom-short: var(--space-3);
-  --header-pad-narrow: var(--space-4) var(--gutter); /* windows <= 950px wide: the page lane inline */
-  --gap-header: var(--space-2) var(--space-4);       /* task header and approval banner: rows, then items */
-  --gap-header-stack: var(--space-2);                /* eyebrow to title to status */
-  --pad-composer-y: var(--space-4);
+  --header-pad-top: var(--space-3);
+  --header-pad-bottom: 10px;
+  --header-pad-top-short: var(--space-1-5);          /* windows <= 760px tall */
+  --header-pad-bottom-short: 5px;
+  --header-pad-narrow: var(--space-3) var(--gutter) 10px; /* windows <= 950px wide: the page lane inline */
+  --gap-header: var(--space-0-5) var(--space-4);     /* task header: the path, title and status rows, then the title and its actions */
+  --gap-banner: var(--space-1) var(--space-4);       /* the approval banner: rows, then items */
+  --pad-composer-y: var(--space-2);
+  --pad-composer-y-short: var(--space-1-5);         /* windows <= 760px tall */
+  --h-composer-short: 34px;                          /* composer textarea and Send in windows <= 760px tall */
   --gap-composer: var(--space-2);
   --gap-hint: var(--space-2);                        /* margin and padding either side of the shortcut hint's rule */
-  --pad-strip-y: var(--space-2);                     /* approval banner and notices: full-width strips */
-  --gap-notice: var(--space-3);
-  --pad-notice-dialog: var(--space-5);               /* inline padding of a notice inside a dialog */
+  --pad-strip-y: var(--space-1-5);                     /* approval banner and notices: full-width strips */
+  --gap-notice: var(--space-2);
+  --pad-notice-dialog: var(--space-4) 20px;               /* inline padding of a notice inside a dialog */
   --gap-usage-notice: var(--space-4);
-  --pad-upgrade: var(--space-2) var(--space-5);
+  --pad-upgrade: var(--space-1-5) var(--gutter);
   --pad-tray-summary: var(--space-2) 0;
 
   /* ---- Transcript ---- */
@@ -115,39 +117,39 @@
   --m-empty: 13vh auto;                              /* empty state */
 
   /* ---- Rail ---- */
-  --pad-rail: var(--space-4) var(--space-2) var(--space-2);
-  --pad-tabs: var(--space-2);                        /* mode tab strip */
-  --gap-segments: var(--space-1);                    /* rail mode tabs and view switch */
-  --pad-mode-tab: var(--space-1-5) var(--space-1);
+  --pad-rail: var(--space-2) var(--space-2) var(--space-1-5);
+  --pad-tabs: var(--space-1) var(--space-1-5) 0;                        /* mode tab strip */
+  --gap-segments: var(--space-0-5);                    /* rail mode tabs and view switch */
+  --pad-mode-tab: var(--space-1) var(--space-1-5);
   --pad-badge: var(--space-0-5) var(--space-1-5);    /* count and compacted chips */
-  --pad-rail-row: var(--space-2);                    /* flat rail rows: New chat, drafts, history, footer, usage */
-  --gap-rail-new: var(--space-3);
-  --m-projects-head: var(--space-6) var(--space-2) var(--space-2);
-  --gap-project-group: var(--space-3);
-  --pad-project-toggle: var(--space-2) var(--space-1-5);
-  --pad-project-legacy: var(--space-2) var(--space-3);
+  --pad-rail-row: 5px var(--space-2);                    /* flat rail rows: New chat, drafts, history, footer, usage */
+  --gap-rail-new: var(--space-2);
+  --m-projects-head: var(--space-3) var(--space-2) var(--space-1);
+  --gap-project-group: var(--space-2);
+  --pad-project-toggle: var(--space-1) var(--space-1-5);
+  --pad-project-legacy: var(--space-1) var(--space-2);
   --gap-rows: var(--space-0-5);                      /* between task rows */
   --gap-row: var(--space-2);                         /* dot to title inside a task row */
-  --pad-task-row: var(--space-2) var(--space-2) var(--space-2) 20px; /* the 20px inset puts the status dot under the project label */
-  --gap-footer: var(--space-0-5);
-  --pad-footer-top: var(--space-2);
-  --pad-rail-usage: 0 var(--space-2) var(--space-2);
+  --pad-task-row: 5px var(--space-2) 5px 20px; /* the 20px inset puts the status dot under the project label */
+  --gap-footer: 0px;
+  --pad-footer-top: var(--space-1);
+  --pad-rail-usage: 0 var(--space-2) var(--space-1);
   --radius-rail-row: var(--radius-md);
-  --rail-heading-margin: var(--space-3) 0 var(--space-1);
+  --rail-heading-margin: var(--space-2) 0 var(--space-0-5);
 
   /* ---- Inbox and history ---- */
-  --pad-nav: var(--space-2);
-  --gap-nav: var(--space-2);
-  --pad-view: var(--space-1-5) var(--space-2);
-  --gap-actions: var(--space-1);                     /* an open Inbox group's rows */
-  --gap-action-row: var(--space-1);
-  --pad-action-row: var(--space-2);
-  --pad-nav-error: var(--space-2);
+  --pad-nav: var(--space-1-5);
+  --gap-nav: var(--space-1-5);
+  --pad-view: var(--space-1) var(--space-1-5);
+  --gap-actions: var(--space-0-5);                     /* an open Inbox group's rows */
+  --gap-action-row: 0px;
+  --pad-action-row: var(--space-1-5) var(--space-2) 7px;
+  --pad-nav-error: var(--space-1-5) var(--space-2);
   --gap-filters-open: var(--space-1-5);
 
   /* ---- Controls and disclosures ---- */
-  --pad-btn: var(--space-2) var(--space-3);
-  --pad-input: var(--space-2);
+  --pad-btn: 5px var(--space-3);
+  --pad-input: var(--space-1-5) var(--space-2);
   --gap-label: var(--space-1);                       /* label text to its control */
   --gap-inline: var(--space-2);                      /* control to its label, icon to text, title to badge */
   --pad-disclosure: var(--space-1) var(--space-1-5);
@@ -851,7 +853,7 @@
   --fs-evidence: var(--fs-sm);
   --fs-mark: 22px;
   --fs-plus: 18px;
-  --h-ctl: 28px;
+  --h-ctl: 26px;
   --h-view: 26px;
   --h-chrome: 26px;
   --h-ctl-sm: 24px;
@@ -889,20 +891,22 @@
   --usage-pad-bottom: 32px;
   --header-pad-top: 8px;
   --header-pad-bottom: 8px;
-  --header-pad-top-short: 6px;
-  --header-pad-bottom-short: 6px;
+  --header-pad-top-short: 4px;
+  --header-pad-bottom-short: 4px;
   --header-pad-narrow: 8px 16px;
-  --gap-header: 4px var(--space-3);
-  --gap-header-stack: 2px;
+  --gap-header: var(--space-0-5) var(--space-3);
+  --gap-banner: var(--space-0-5) var(--space-3);
   --gap-btn-row: 6px;
   --pad-composer-y: 6px;
+  --pad-composer-y-short: var(--space-1);
+  --h-composer-short: 30px;
   --gap-composer: 8px;
   --gap-hint: 6px;
-  --pad-strip-y: var(--space-1-5);
-  --gap-notice: var(--space-2);
+  --pad-strip-y: var(--space-1);
+  --gap-notice: 6px;
   --pad-notice-dialog: 12px 16px;
   --gap-usage-notice: 10px;
-  --pad-upgrade: 6px var(--space-4);
+  --pad-upgrade: var(--space-1) var(--gutter);
   --pad-tray-summary: 4px 0 2px;
   --gap-card: var(--space-2);
   --gap-message: var(--space-3);
@@ -912,36 +916,36 @@
   --pad-message-rule: 10px;
   --pad-compaction: 8px 10px;
   --m-empty: 6vh auto;
-  --pad-rail: 10px 6px 6px;
-  --pad-tabs: 6px 5px;
+  --pad-rail: 6px 6px 4px;
+  --pad-tabs: 2px var(--space-1) 0;
   --gap-segments: var(--space-0-5);
-  --pad-mode-tab: 4px 4px;
+  --pad-mode-tab: 2px var(--space-1);
   --pad-badge: 1px var(--space-1-5);
-  --pad-rail-row: 4px var(--space-2);
+  --pad-rail-row: 3px var(--space-2);
   --gap-rail-new: var(--space-2);
-  --m-projects-head: 14px 6px 4px;
+  --m-projects-head: 10px 6px 4px;
   --gap-project-group: 6px;
   --pad-project-toggle: 4px 4px;
   --pad-project-legacy: 4px var(--space-2);
   --gap-rows: 1px;
   --gap-row: var(--space-2);
-  --pad-task-row: 4px 8px 4px 17px;
+  --pad-task-row: 3px 8px 3px 20px;
   --gap-footer: 0px;
   --pad-footer-top: var(--space-1);
-  --pad-rail-usage: 0 6px 6px;
+  --pad-rail-usage: 0 6px 2px;
   --radius-rail-row: var(--radius-sm);
-  --rail-heading-margin: var(--space-2) 0 var(--space-0-5);
-  --pad-nav: 6px;
-  --gap-nav: 6px;
-  --pad-view: 3px 6px;
-  --gap-actions: 3px;
-  --gap-action-row: 1px;
-  --pad-action-row: 5px 8px;
-  --pad-nav-error: 6px;
+  --rail-heading-margin: 6px 0 var(--space-0-5);
+  --pad-nav: var(--space-1);
+  --gap-nav: var(--space-1);
+  --pad-view: 3px var(--space-1);
+  --gap-actions: 1px;
+  --gap-action-row: 0px;
+  --pad-action-row: var(--space-1) var(--space-2) 5px;
+  --pad-nav-error: var(--space-1) 6px;
   --gap-filters-open: var(--space-1);
-  --pad-btn: 4px var(--space-3);
+  --pad-btn: 3px var(--space-3);
   --pad-ctl-sm: 2px var(--space-2);
-  --pad-input: 4px var(--space-2);
+  --pad-input: var(--space-1) var(--space-2);
   --gap-label: 3px;
   --pad-disclosure: 2px 6px;
   --gap-disclosure-open: var(--space-1);
@@ -1057,15 +1061,15 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .workspace.browser-expanded > .inspector-resize { display: none; }
 
 /* Sidebar rail */
-.sidebar-shell { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--rail); }
-.sidebar-shell > .sidebar { flex: 1 1 auto; border-right: 0; }
+.sidebar-shell { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--rail-edge); background: var(--rail); }
+.sidebar-shell > .sidebar { flex: 1 1 auto; }
 .sidebar-shell h3 { margin: var(--rail-heading-margin); color: var(--rail-muted); font-size: var(--fs-sm); }
 .sidebar-mode-tabs { display: flex; flex: 0 0 auto; gap: var(--gap-segments); padding: var(--pad-tabs); border-bottom: 1px solid var(--rail-line); }
 .sidebar-mode-tabs button { flex: 1 1 auto; min-width: 0; min-height: var(--h-chrome); padding: var(--pad-mode-tab); color: var(--rail-ink-2); border: 0; border-radius: var(--radius-sm); background: transparent; font-size: var(--fs-sm); line-height: 1.15; white-space: nowrap; }
 .sidebar-mode-tabs button:hover { color: var(--rail-ink-strong); background: var(--rail-hover); }
 .sidebar-mode-tabs button.selected { color: var(--rail-ink-strong); background: var(--rail-selected); font-weight: 600; box-shadow: inset 0 -2px 0 var(--rail-select-mark); }
 .sidebar-mode-tabs .mode-count { flex: 0 0 auto; align-self: center; padding: var(--pad-badge); color: var(--rail-accent); border: 1px solid var(--rail-accent); border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
-.sidebar { display: flex; flex-direction: column; gap: 0; min-width: 0; min-height: 0; overflow: hidden; padding: var(--pad-rail); color: var(--rail-ink); background: var(--rail); border-right: 1px solid var(--rail-edge); }
+.sidebar { display: flex; flex-direction: column; gap: 0; min-width: 0; min-height: 0; overflow: hidden; padding: var(--pad-rail); color: var(--rail-ink); background: var(--rail); }
 .sidebar-top { flex: 0 0 auto; }
 .sidebar-new { display: flex; align-items: center; gap: var(--gap-rail-new); width: 100%; padding: var(--pad-rail-row); color: var(--rail-ink-bright); border: 0; border-radius: var(--radius-rail-row); background: none; text-align: left; font-size: var(--fs-md); min-height: max(var(--target-min), var(--h-dense)); }
 .sidebar-new:hover, .sidebar-footer button:hover, .project-toggle:hover, .icon-button:hover, .project-menu summary:hover { background: var(--rail-hover); }
@@ -1099,7 +1103,7 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .sidebar-footer { display: grid; flex: 0 0 auto; gap: var(--gap-footer); padding-top: var(--pad-footer-top); border-top: 1px solid var(--rail-line); }
 .sidebar-footer button { width: 100%; padding: var(--pad-rail-row); color: var(--rail-ink-2); border: 0; border-radius: var(--radius-md); background: none; text-align: left; font-size: var(--fs-sm); min-height: max(var(--target-min), var(--h-dense)); }
 .sidebar-footer button:disabled { cursor: not-allowed; color: var(--rail-faint); }
-.sidebar-usage { flex: 0 0 auto; padding: var(--pad-rail-usage); border-right: 1px solid var(--rail-edge); }
+.sidebar-usage { flex: 0 0 auto; padding: var(--pad-rail-usage); }
 .sidebar-usage button { display: flex; justify-content: space-between; width: 100%; padding: var(--pad-rail-row); color: var(--rail-ink-2); border: 0; border-top: 1px solid var(--rail-line); border-radius: var(--radius-md); background: none; text-align: left; font-size: var(--fs-sm); min-height: max(var(--target-min), var(--h-dense)); }
 .sidebar-usage button:hover, .sidebar-usage button.selected { color: var(--rail-ink-strong); background: var(--rail-hover); }
 .sidebar-usage button.selected { background: var(--rail-selected); font-weight: 600; box-shadow: inset 2px 0 0 var(--rail-select-mark); }
@@ -1110,12 +1114,12 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .status-dot.cancelled { background: var(--rail-dot-cancelled); }
 
 /* Workspace navigation (Inbox & history) */
-.workspace-navigation { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; gap: var(--gap-nav); overflow-y: auto; padding: var(--pad-nav); color: var(--rail-ink-list); border-right: 1px solid var(--rail-edge); scrollbar-color: var(--rail-line-strong) transparent; }
+.workspace-navigation { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; gap: var(--gap-nav); overflow-y: auto; padding: var(--pad-nav); color: var(--rail-ink-list); scrollbar-color: var(--rail-line-strong) transparent; }
 .workspace-navigation .task-list { display: grid; flex: 1 1 auto; align-content: start; gap: var(--gap-rows); min-height: var(--h-nav-list-min); overflow-y: auto; }
-.workspace-views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-segments); }
-.workspace-views button { min-height: var(--h-view); padding: var(--pad-view); color: var(--rail-ink-2); border: 0; border-bottom: 1px solid var(--rail-line); border-radius: 0; background: transparent; text-align: left; font-size: var(--fs-sm); }
+.workspace-views { display: flex; flex-wrap: wrap; gap: 0; }
+.workspace-views button { min-height: var(--h-view); padding: var(--pad-view); flex: 1 1 auto; color: var(--rail-ink-2); border: 0; border-bottom: 1px solid var(--rail-line); border-radius: 0; background: transparent; text-align: center; font-size: var(--fs-sm); white-space: nowrap; }
 .workspace-views button:hover { color: var(--rail-ink); background: var(--rail-hover); }
-.workspace-views button.active { color: var(--rail-ink-strong); background: var(--rail-selected); font-weight: 600; box-shadow: inset 2px 0 0 var(--rail-select-mark); }
+.workspace-views button.active { color: var(--rail-ink-strong); background: var(--rail-selected); font-weight: 600; box-shadow: inset 0 -2px 0 var(--rail-select-mark); }
 .task-search { display: grid; gap: 5px; }
 .task-search label { color: var(--rail-muted); }
 .task-search > div { display: flex; }
@@ -1138,10 +1142,11 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .task-archive:hover { background: var(--rail-hover); text-decoration: underline; }
 .task-archive:disabled { cursor: not-allowed; color: var(--rail-faint); text-decoration: none; background: none; }
 .action-list, .search-results { display: grid; align-content: start; gap: 0; }
-.action-row, .search-results > button { display: grid; width: 100%; gap: var(--gap-action-row); padding: var(--pad-action-row); color: var(--rail-ink-list); border: 0; border-top: 1px solid var(--rail-line); border-radius: 0; background: transparent; text-align: left; }
+.action-row, .search-results > button { display: flex; flex-wrap: wrap; align-items: baseline; width: 100%; gap: var(--gap-action-row) var(--space-2); padding: var(--pad-action-row); color: var(--rail-ink-list); border: 0; border-top: 1px solid var(--rail-line); border-radius: 0; background: transparent; text-align: left; }
+.action-row strong, .search-results > button > strong { flex: 1 0 100%; overflow-wrap: anywhere; line-height: 1.3; }
 .action-row strong { font-weight: 400; }
 .action-row:hover, .search-results > button:hover { background: var(--rail-hover); }
-.action-row span, .action-row small, .search-results small { color: var(--rail-ink-meta); font-size: var(--fs-xs); }
+.action-row span, .action-row small, .search-results small { color: var(--rail-ink-meta); font-size: var(--fs-xs); line-height: 1.35; }
 /* The row that needs a decision is the only boxed, tinted, weighted row, with a terracotta rule. */
 .action-row.tier-0 { border: 1px solid var(--rail-accent-line); border-radius: var(--radius-sm); background: var(--rail-needs-bg); box-shadow: inset 3px 0 0 var(--rail-accent); }
 .action-row.tier-0 strong { font-weight: 600; }
@@ -1151,7 +1156,7 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
    alone: closed, the Inbox label is in the needs-you ink beside its count; open, a terracotta stripe joins the bar (the label
    stays rail ink, which keeps its contrast on a theme's selection fill). */
 .workspace-views[data-decisions="pending"] > button:first-child:not(.active) { color: var(--rail-accent); font-weight: 600; }
-.workspace-views[data-decisions="pending"] > button:first-child.active { box-shadow: inset 2px 0 0 var(--rail-select-mark), inset 5px 0 0 var(--rail-accent); }
+.workspace-views[data-decisions="pending"] > button:first-child.active { box-shadow: inset 0 -2px 0 var(--rail-select-mark), inset 0 -5px 0 var(--rail-accent); }
 .navigation-error { padding: var(--pad-nav-error); color: var(--rail-error-ink); background: var(--rail-error-bg); font-size: var(--fs-xs); line-height: 1.4; }
 .navigation-error button { min-height: var(--target-min); padding: 0 var(--space-2); color: inherit; border: 1px solid currentColor; border-radius: var(--radius-sm); background: transparent; color-scheme: var(--rail-error-scheme); }
 .workspace-navigation .task-row { display: grid; grid-template-columns: 10px 1fr; gap: var(--gap-row); padding: var(--pad-rail-row); color: var(--rail-ink-list); border: 0; background: transparent; text-align: left; }
@@ -1311,11 +1316,13 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 
 /* Conversation */
 .conversation { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--line-soft); }
-.task-header { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-header); min-height: var(--h-header-min); padding: var(--header-pad-top) var(--gutter) var(--header-pad-bottom); border-bottom: 1px solid var(--line-soft); }
-.task-header > div:first-child { flex: 1 1 260px; min-width: 0; }
-.task-header .eyebrow { overflow-wrap: anywhere; }
-.task-header h1 { margin-top: var(--gap-header-stack); overflow-wrap: anywhere; font-size: var(--fs-title); font-weight: normal; line-height: 1.1; }
-.task-status { margin-top: var(--gap-header-stack); overflow-wrap: anywhere; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
+.task-header { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: var(--gap-header); min-height: var(--h-header-min); padding: var(--header-pad-top) var(--gutter) var(--header-pad-bottom); border-bottom: 1px solid var(--line-soft); }
+/* Visual order: the path, the title beside its actions, then the status. The DOM keeps path, title, status, actions. */
+.task-header > .eyebrow { order: 1; flex: 0 0 100%; overflow-wrap: anywhere; }
+.task-header > .header-actions { order: 3; }
+.task-header > .task-status { order: 4; flex: 0 0 100%; }
+.task-header h1 { order: 2; flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-title); font-weight: normal; line-height: 1.15; }
+.task-status { overflow-wrap: anywhere; color: var(--ink-muted); font-size: var(--fs-sm); font-variant-numeric: lining-nums; }
 .task-status.running { color: var(--warn-ink); }
 .task-status.awaiting { color: var(--needs-you-ink); }
 .task-status.awaiting .task-state { font-weight: 600; }
@@ -1325,7 +1332,7 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .header-actions .secondary.subdued { color: var(--ink-2); background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
 .header-actions .secondary.subdued:hover:not(:disabled) { background: var(--surface-well); }
 .header-actions .secondary.subdued:disabled { color: var(--ink-disabled); box-shadow: none; }
-.notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: var(--gap-notice); padding: var(--pad-strip-y) var(--gutter) var(--pad-strip-y) calc(var(--gutter) - 4px); color: var(--notice-error-ink); border-bottom: 1px solid var(--notice-error-line); border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.45; }
+.notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: var(--gap-notice); padding: var(--pad-strip-y) var(--gutter) var(--pad-strip-y) calc(var(--gutter) - 4px); color: var(--notice-error-ink); border-bottom: 1px solid var(--notice-error-line); border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.4; }
 .notice p { min-width: 0; overflow-wrap: anywhere; }
 .notice button { flex: 0 0 auto; min-width: var(--target-min); min-height: var(--target-min); margin: -3px -8px -3px 0; color: inherit; border: 0; border-radius: var(--radius-sm); background: none; font-size: 18px; line-height: 1; }
 .notice button:hover { background: var(--hover-veil); }
@@ -1352,15 +1359,20 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .empty-state { max-width: 440px; margin: var(--m-empty); color: var(--ink-muted); text-align: center; }
 .empty-state h2 { font-size: var(--fs-welcome); font-weight: normal; }
 .empty-state p { margin-top: 10px; font-size: var(--fs-prose); line-height: 1.5; }
-.composer { display: grid; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gap-composer); padding: var(--pad-composer-y) var(--gutter); border-top: 1px solid var(--line-soft); background: var(--surface-sunken); }
-.composer textarea { min-height: var(--h-composer); max-height: 35vh; resize: none; field-sizing: content; line-height: 1.45; }
+.composer { display: grid; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gap-composer); padding: var(--pad-composer-y) var(--gutter); border-top: 1px solid var(--line); background: var(--canvas); }
+.composer textarea { min-height: var(--h-composer); max-height: 35vh; resize: none; field-sizing: content; line-height: 1.4; }
 .composer > .primary { min-height: var(--h-composer); }
 .composer-note { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--fs-sm); }
-.shortcut-hint { margin-left: var(--gap-hint); padding-left: var(--gap-hint); border-left: 1px solid currentColor; font-size: var(--fs-xs); font-weight: 400; opacity: .85; }
-.draft-send .shortcut-hint { opacity: .8; }
+.shortcut-hint { margin-left: var(--gap-hint); padding-left: var(--gap-hint); border-left: 1px solid currentColor; font-size: var(--fs-xs); font-weight: 400; }
 .older-messages { flex: 0 0 auto; align-self: center; }
 .header-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; gap: var(--gap-btn-row); justify-content: flex-end; min-width: 0; margin-left: auto; }
-@media (max-height: 720px) { .task-header { min-height: 0; padding-top: var(--header-pad-top-short); padding-bottom: var(--header-pad-bottom-short); } .task-header h1 { font-size: var(--fs-title-short); } }
+/* Short windows: the header and composer tighten; evidence, the banner's text and the decision controls never shrink. */
+@media (max-height: 760px) {
+  .task-header { padding-top: var(--header-pad-top-short); padding-bottom: var(--header-pad-bottom-short); }
+  .task-header h1 { font-size: var(--fs-title-short); }
+  .composer { padding-block: var(--pad-composer-y-short); }
+  .composer textarea, .composer > .primary { min-height: var(--h-composer-short); }
+}
 
 /* Inspector */
 .inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface-inspector); }
@@ -1446,7 +1458,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-card .danger:hover:not(:disabled), .header-actions .danger:hover:not(:disabled) { background: var(--danger-soft); }
 .approval-card .danger:disabled, .header-actions .danger:disabled { color: var(--ink-disabled); background: transparent; box-shadow: none; }
 /* Needs you: a 2px terracotta rule over a tint, in terracotta ink. */
-.approval-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-header); padding: var(--pad-strip-y) var(--gutter); color: var(--needs-you-banner-ink); border-top: 2px solid var(--needs-you-banner-line); background: var(--needs-you-banner-bg); font-size: var(--fs-sm); font-weight: 600; }
+.approval-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-banner); padding: var(--pad-strip-y) var(--gutter); color: var(--needs-you-banner-ink); border-top: 2px solid var(--needs-you-banner-line); background: var(--needs-you-banner-bg); font-size: var(--fs-sm); font-weight: 600; }
 .approval-banner > div { display: grid; flex: 1 1 260px; gap: 2px; min-width: 0; }
 .coordinator-detail > .approval-banner { margin: 0 calc(-1 * var(--gutter)); }
 .hash { font-family: var(--font-mono); font-size: max(.95em, var(--fs-evidence)); overflow-wrap: anywhere; }
@@ -1490,7 +1502,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 
 /* Coordinated view */
 .orchestration-conversation { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-.orchestration-header { align-items: flex-start; min-height: auto; }
+.orchestration-header { min-height: auto; }
 .orchestration-budget.warning { color: var(--warn-ink); }
 .orchestration-budget .overrun-notice { color: var(--danger-ink); font-weight: 600; }
 .agent-tree { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: var(--gap-agent-tree); padding: var(--pad-agent-tree-y) var(--gutter); border-bottom: 1px solid var(--line-soft); background: var(--surface-sunken); }
@@ -1640,7 +1652,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 @media (max-width: 1050px) { .workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) 5px var(--inspector-width, 360px); } .workspace.coordinated-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) var(--inspector-width, 360px); } .workspace.wide-content-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr); } .messages { padding-inline: var(--pad-messages-x-narrow); } }
 @media (max-width: 950px) {
   body { min-width: 0; }
-  .sidebar-mode-tabs button { white-space: normal; }
+  .sidebar-mode-tabs button, .workspace-views button { font-size: var(--fs-xs); }
   .workspace, .workspace.coordinated-workspace, .workspace.wide-content-workspace { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); }
   .workspace.browser-expanded { grid-template-columns: minmax(260px, 1fr) var(--inspector-width, 360px); }
   .task-header { padding: var(--header-pad-narrow); }
@@ -1659,11 +1671,10 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .workspace[data-focus="on"] > .sidebar-shell { display: none; }
 /* The tray may take most of the column while a decision waits, but the transcript always keeps a few lines. */
 .workspace[data-focus="on"] > .conversation > .messages { min-height: var(--h-focus-messages-min); }
-@media (max-width: 1050px) { .focus-toggle .shortcut-hint { display: none; } }
+@media (max-width: 1050px) { .focus-toggle .shortcut-hint { display: none; } .workspace-views button { padding-inline: var(--space-1); } }
 .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] > .conversation > .composer, .workspace[data-focus="on"] > .conversation > .approval-tray,
 .workspace[data-focus="on"] > .conversation > .approval-banner, .workspace[data-focus="on"] > .conversation > .notice, .workspace[data-focus="on"] .agent-tree, .workspace[data-focus="on"] .agent-detail { padding-inline: max(var(--gutter), calc((100% - var(--measure-focus)) / 2)); }
 .workspace[data-focus="on"] > .conversation > .task-header { padding-inline: max(var(--gutter), calc((100% - var(--measure-focus)) / 2)); }
-.focus-toggle .shortcut-hint { opacity: 1; }
 /* Focus "on" is underlined like any selection; the needs-you chip is the only filled header control. */
 .focus-toggle[aria-pressed="true"] { color: var(--ink); background: transparent; box-shadow: inset 0 -3px 0 var(--select); }
 .focus-toggle[aria-pressed="true"]:hover:not(:disabled) { background: var(--surface-well); }
@@ -1708,7 +1719,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
   .approval-tray, .focus-chip, .mode-count, .agent-pending, .compacted-tag { border: 1px solid CanvasText; }
   .approval-tray { border-top-width: 2px; }
   .action-row.tier-0 { border: 1px solid Highlight; border-left: 4px solid Highlight; }
-  .workspace-views[data-decisions="pending"] > button:first-child { border-left: 3px solid Highlight; }
+  .workspace-views[data-decisions="pending"] > button:first-child { border-bottom: 3px solid Highlight; }
   .approval-card.awaiting-approval, .approval-card.unknown, .approval-card.failed, .approval-banner { outline: 2px solid Highlight; outline-offset: -2px; }
   .approval-state { border: 1px solid CanvasText; }
   .status-dot { forced-color-adjust: none; }
