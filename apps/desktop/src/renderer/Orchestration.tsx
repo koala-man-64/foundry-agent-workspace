@@ -13,6 +13,7 @@ import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { inspectorTabInView, approvalsTabLabel, useCompactLayout, useInspectorOverlay } from './layout';
 import { sendOnShortcut } from './composer';
 import { Hash, PatchText } from './Evidence';
+import { diffSummaryText, mayChangeWorktree } from './worktree';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -96,6 +97,8 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [reviseAcceptance, setReviseAcceptance] = useState('');
   const [busy, setBusy] = useState<string>();
   const [currentPath, setCurrentPath] = useState('');
+  const currentPathRef = useRef(currentPath);
+  currentPathRef.current = currentPath;
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [file, setFile] = useState<FileContent>();
   const [diff, setDiff] = useState<DiffResult>();
@@ -333,8 +336,10 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let worktreeChanged = false;
     const unsubscribe = api.onEvent((event) => {
       if (event.type === 'runtime.stopped' || event.type === 'task.progress') return;
+      if (event.taskId === rootTaskId && mayChangeWorktree(event)) worktreeChanged = true;
       if (timer) return;
       timer = setTimeout(() => {
         timer = undefined;
@@ -342,10 +347,11 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         void loadRootTranscript();
         if (selectedChildRef.current) void loadChild(selectedChildRef.current);
         if (approvalsWantedRef.current) void loadApprovals();
+        if (worktreeChanged) { worktreeChanged = false; void refreshInspector(currentPathRef.current); }
       }, 250);
     });
     return () => { unsubscribe(); if (timer) clearTimeout(timer); };
-  }, [api, fetchLatest, loadRootTranscript, loadChild, loadApprovals]);
+  }, [api, rootTaskId, fetchLatest, loadRootTranscript, loadChild, loadApprovals, refreshInspector]);
 
   const coordinatorRun = useMemo(() => Object.values(runsById).find((run) => run.role === 'coordinator'), [runsById]);
   const childRuns = useMemo(() => Object.values(runsById).filter((run) => run.role === 'child').sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [runsById]);
@@ -561,7 +567,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
+      </> : tab === 'changes' ? <div className="patch"><p>{diffSummaryText(diff)}</p>{diff?.patch && <PatchText patch={diff.patch} />}</div>
         : tab === 'approvals' ? <div className="approvals-panel">
           {!trayActive && approvalGroups.live.map(renderApproval)}
           {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalsPartial, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}

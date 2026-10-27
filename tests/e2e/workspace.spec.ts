@@ -44,17 +44,21 @@ test('offline create demo clearly reviews an absent file and creates only the ap
       expect(await after.textContent()).toBe(content);
       await expect(card).toContainText(`absent → ${resultingHash}`);
       await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+      // An unchanged worktree is said in words, not left blank.
+      await page.getByRole('button', { name: 'Changes', exact: true }).click();
+      await expect(page.locator('.patch')).toHaveText('No uncommitted changes to show.');
+      await page.getByRole('button', { name: /^Approvals/ }).click();
       await card.getByRole('button', { name: decision === 'approve' ? 'Approve' : 'Reject', exact: true }).click();
       await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, task.id), { timeout: 60_000 }).toBe('idle');
       if (decision === 'reject') {
         await expect(page.locator('article.approval-card.rejected')).toContainText('Create file');
         await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+        await page.getByRole('button', { name: 'Changes', exact: true }).click();
+        await expect(page.locator('.patch')).toHaveText('No uncommitted changes to show.');
       } else {
         await expect(page.locator('article.approval-card.complete')).toContainText('Create file');
         expect(await readFile(destination)).toEqual(Buffer.from(content, 'utf8'));
-        await page.getByRole('button', { name: 'Files', exact: true }).click();
-        await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
-        // Inspect the refreshed diff before directory navigation invalidates an in-flight inspector read.
+        // The finished approval re-reads the worktree, so the new file is listed without pressing Refresh.
         await page.getByRole('button', { name: 'Changes', exact: true }).click();
         await expect(page.locator('.patch')).toContainText('src/created-demo.txt');
         await expect(page.locator('.patch')).toContainText('+Created by the reviewed offline demo.');
@@ -111,11 +115,17 @@ test('isolated task, offline conversation, file inspection and restart history',
     const worktree = createdTask.worktreePath;
     await writeFile(join(worktree, 'hello.txt'), 'Changed in the task worktree.\n');
     await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(page.getByText('Changed in the task worktree.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Changes', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Changes', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('+Changed in the task worktree.', { exact: false })).toBeVisible();
+    // Browsing a folder while Refresh is still reading supersedes the listing, not the worktree diff.
+    await writeFile(join(worktree, 'hello.txt'), 'Changed again in the task worktree.\n');
     await page.getByRole('button', { name: 'Files', exact: true }).click();
-    await expect(page.getByText('Changed in the task worktree.', { exact: true })).toBeVisible();
+    await page.locator('aside.inspector').getByRole('button', { name: 'Refresh', exact: true }).click();
+    await page.getByRole('button', { name: /▸ src$/ }).click();
+    await page.getByRole('button', { name: 'Changes', exact: true }).click();
+    await expect(page.getByText('+Changed again in the task worktree.', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: /Model settings/ }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('button', { name: 'Close settings' }).click();

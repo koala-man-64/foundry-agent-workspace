@@ -182,6 +182,10 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);
     // The runtime rejects messages to a finished coordinator, so the composer says so instead of accepting them.
     await expect(page.getByLabel('Message coordinator')).toBeDisabled();
+    // Integration committed every change, and the root's Changes tab says so in words.
+    const inspector = page.getByLabel('Coordinated task inspector');
+    await inspector.getByRole('button', { name: 'Changes', exact: true }).click();
+    await expect(inspector.locator('.patch')).toHaveText('No uncommitted changes to show.');
     const rootHistory = await page.evaluate(taskId => window.workspace.invoke('task.messages', { taskId, limit: 50 }), created.id);
     const finalReply = rootHistory.items.map(item => item.message).filter(message => message.role === 'assistant' && message.status === 'complete').at(-1)?.content;
     expect(finalReply).toBeTruthy();

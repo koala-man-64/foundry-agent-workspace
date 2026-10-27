@@ -18,6 +18,7 @@ import { TemplatePicker } from './TemplatePicker';
 import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
+import { diffSummaryText, mayChangeWorktree } from './worktree';
 import { PatchText } from './Evidence';
 import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
 import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
@@ -171,6 +172,7 @@ function App() {
   const upgradeDialogRef = useRef<HTMLDialogElement>(null);
   const fileVersion = useRef(0);
   const inspectorVersion = useRef(0);
+  const diffVersion = useRef(0);
   const inspectorLoadedTask = useRef<string | undefined>(undefined);
   const detailVersion = useRef(0);
   const detailLoadedTask = useRef<string | undefined>(undefined);
@@ -187,6 +189,7 @@ function App() {
   const snapshotDirty = useRef(false);
   const snapshotSelection = useRef<string | undefined>(undefined);
   const snapshotWorker = useRef<(selection?: string) => Promise<void>>(async () => undefined);
+  const inspectorWorker = useRef<(taskId: string) => void>(() => undefined);
   const approvalFlight = useRef<Promise<void> | null>(null);
   const approvalDirty = useRef(false);
   const approvalRequestedTask = useRef<string | undefined>(undefined);
@@ -397,18 +400,17 @@ function App() {
   }, [api]);
 
   const refreshInspector = useCallback(async (taskId: string, path: string, kind: 'git' | 'folder' | 'none') => {
-    const version = ++inspectorVersion.current;
+    // Browsing a folder supersedes this listing but not the diff, which covers the whole worktree.
+    const version = ++inspectorVersion.current; const diffRun = ++diffVersion.current;
     if (kind === 'none') { setFiles([]); setDiff(undefined); return; }
     try {
       const nextFiles = await api.invoke('files.list', { taskId, path });
       const nextDiff = kind === 'git' ? await api.invoke('task.diff', { taskId }) : undefined;
-      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) {
-        setFiles(nextFiles);
-        setDiff(nextDiff);
-        setDiffError('');
-      }
+      if (selectedRef.current !== taskId) return;
+      if (version === inspectorVersion.current && currentPathRef.current === path) setFiles(nextFiles);
+      if (diffRun === diffVersion.current) { setDiff(nextDiff); setDiffError(''); }
     } catch (error) {
-      if (version === inspectorVersion.current && selectedRef.current === taskId && currentPathRef.current === path) { setDiffError(errorMessage(error)); setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
+      if (selectedRef.current === taskId && diffRun === diffVersion.current) { setDiffError(errorMessage(error)); setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
     }
   }, [api]);
 
@@ -529,6 +531,7 @@ function App() {
   useEffect(() => api.onEvent((event) => {
     eventSequenceRef.current = Math.max(eventSequenceRef.current, event.sequence);
     if (event.type === 'usage.changed' || event.type === 'task.completed' || event.type === 'task.stopped' || event.type === 'profiles.changed') setUsageRefreshKey(value => value + 1);
+    if (event.taskId && event.taskId === selectedRef.current && mayChangeWorktree(event)) inspectorWorker.current(event.taskId);
     if (event.type === 'notification.open') {
       if (event.taskId) {
         draftProjectRef.current = undefined; setDraftProjectId(undefined); setPage('conversation'); setSelectedId(event.taskId); setInspectorOpen(true);
@@ -761,6 +764,7 @@ function App() {
     void refreshInspector(selectedId, currentPathRef.current, workspaceKind);
     if (file) void readFile(file.path);
   };
+  inspectorWorker.current = taskId => { if (taskId === selectedId) refreshCurrentInspector(); };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
   /** One approval action. A failure is shown in the card, and Approve stays disabled until a complete read of that approval succeeds. */
   const runApprovalAction = async (approval: Approval, action: 'approve' | 'reject' | 'reconcile' | 'acknowledge', run: (taskId: string) => Promise<unknown>) => {
@@ -954,7 +958,7 @@ function App() {
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : effectiveRightTab === 'changes' ? <div className="patch">{!diff && diffError ? <div className="load-error" role="alert"><p>Could not load changes: {diffError}</p><button type="button" className="secondary" onClick={refreshCurrentInspector}>Retry</button></div> : <p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>}{diff && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
+      </> : effectiveRightTab === 'changes' ? <div className="patch">{!diff && diffError ? <div className="load-error" role="alert"><p>Could not load changes: {diffError}</p><button type="button" className="secondary" onClick={refreshCurrentInspector}>Retry</button></div> : <p>{diffSummaryText(diff)}</p>}{diff?.patch && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
         {usage ? <>
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>
