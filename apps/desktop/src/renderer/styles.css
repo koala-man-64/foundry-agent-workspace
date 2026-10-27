@@ -56,8 +56,9 @@
   --h-composer: 44px;                                /* composer textarea and Send */
   --h-compose-text: 82px;                            /* draft textarea */
   --h-header-min: 0px;                             /* task header */
-  --h-tray-max: 60vh;                                /* Focus tray */
-  --h-focus-messages-min: 96px;                      /* transcript floor while the Focus tray is open */
+  --h-tray-max: 70vh;                                /* Focus tray, stacked under the transcript */
+  --h-focus-messages-min: 92px;                      /* transcript floor while the Focus tray is open */
+  --h-focus-messages-min-short: 84px;                /* ... in windows <= 760px tall */
   --h-chart: 88px;                                   /* Usage daily chart */
   --h-chart-request: 96px;                           /* Usage request chart */
   --h-browser-tabs: 35px;                            /* browser tab strip */
@@ -75,7 +76,8 @@
   --measure-draft: 760px;                            /* draft composer and template disclosure */
   --inset-draft: 48px;                               /* page margin around them */
   --inset-draft-narrow: 28px;                        /* ... at <= 950px */
-  --measure-focus: 860px;                            /* Focus reading column */
+  --measure-focus: 1100px;                           /* Focus reading column */
+  --measure-note: 80ch;                              /* the limits note in the Focus tray's own pane, from 1180px */
   --w-dialog: 780px;                                 /* settings dialog */
   --w-dialog-btn: 120px;                             /* dialog action buttons */
   --file-tree-share: auto;                           /* flex-basis of the file list against the preview */
@@ -108,6 +110,7 @@
   --gap-usage-notice: var(--space-3);
   --pad-upgrade: var(--space-1-5) var(--gutter);
   --pad-tray-summary: var(--space-2) 0;
+  --pad-tray-summary-short: var(--space-0-5) 0 0;    /* windows <= 760px tall */
 
   /* ---- Transcript ---- */
   --gap-message: var(--space-3);                     /* after each message */
@@ -186,15 +189,21 @@
   --gap-h3-activity: var(--space-2);
   --gap-orchestration: var(--space-3);
   --pad-readiness: var(--space-2) var(--space-3);
+  --pad-readiness-short: var(--space-1) var(--space-3); /* the limits note in the Focus tray, in windows <= 760px tall */
   --gap-panel-note: var(--space-2);                  /* Approvals panel: the readiness note and review notes to the next card */
+  --gap-panel-note-short: var(--space-1);            /* the Focus tray's notes to what follows, in windows <= 760px tall */
 
   /* ---- Approval cards and their fields ---- */
   --gap-card: var(--space-3);                        /* between cards */
+  --gap-card-short: var(--space-1);                  /* above the first live card in the Focus tray, in windows <= 760px tall */
   --pad-card: var(--space-3);                        /* cards that need a decision or carry an unknown or failed outcome */
   --pad-card-decided: var(--space-3) var(--space-1); /* decided cards: flat rows on a hairline, inset just enough for the focus ring */
   --gap-card-heading: var(--space-2);
+  --gap-card-heading-short: var(--space-0-5);        /* ... in the Focus tray, in windows <= 760px tall */
   --gap-field: var(--space-2);                       /* above each field */
+  --gap-field-short: var(--space-1);                 /* ... in the Focus tray, in windows <= 760px tall */
   --gap-evidence: var(--space-2);                    /* above command evidence and results */
+  --gap-evidence-short: var(--space-1);              /* ... command evidence in the Focus tray, in windows <= 760px tall */
   --gap-field-label: var(--space-1);                 /* label to value when stacked */
   --field-layout: block;                             /* approval fields and the Usage grid: block = label above value; grid = label column (with --field-columns) */
   --field-columns: none;                             /* e.g. 96px minmax(0, 1fr) */
@@ -221,6 +230,7 @@
   --pad-result-pre: var(--space-1-5);
   --gap-btn-row: var(--space-2);                     /* between buttons in a row: header, card, dialog and draft toolbar */
   --gap-actions-top: var(--space-3);
+  --gap-actions-top-short: var(--space-1-5);         /* ... in the Focus tray, in windows <= 760px tall */
   --gap-decision: var(--space-3);                    /* Approve to Reject */
   --pad-decision: 9px 13px;                          /* Approve / Reject: today's exact size, not the general button padding */
 
@@ -878,6 +888,7 @@
   --h-header-min: 0px;
   --h-tray-max: 68vh;
   --h-focus-messages-min: 72px;
+  --h-focus-messages-min-short: 64px;
   --h-chart: 72px;
   --h-chart-request: 80px;
   --h-browser-tabs: 30px;
@@ -891,7 +902,7 @@
   --measure-draft: 680px;
   --inset-draft: 32px;
   --inset-draft-narrow: 20px;
-  --measure-focus: 1040px;
+  --measure-focus: 1180px;
   --w-dialog-btn: 96px;
   --file-tree-share: auto;
   --size-plus: 22px;
@@ -991,6 +1002,7 @@
   --gap-h3-activity: 6px;
   --gap-orchestration: var(--space-2);
   --pad-readiness: 6px;
+  --pad-readiness-short: var(--space-1) var(--space-1-5);
   --pad-card: 8px 10px;
   --pad-card-decided: var(--space-2) var(--space-1);
   --lh-evidence: 1.35;
@@ -1734,8 +1746,10 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
    slide-over above. Text and the composer keep one reading measure, centred, with the scrollbar at the edge. */
 .workspace[data-focus="on"], .workspace.coordinated-workspace[data-focus="on"], .workspace.wide-content-workspace[data-focus="on"] { grid-template-columns: minmax(0, 1fr); }
 .workspace[data-focus="on"] > .sidebar-shell { display: none; }
-/* The tray may take most of the column while a decision waits, but the transcript always keeps a few lines. */
-.workspace[data-focus="on"] > .conversation > .messages { min-height: var(--h-focus-messages-min); }
+/* The tray may take most of the column while a decision waits, but the transcript always keeps a few lines. The transcript starts
+   from a flex basis of 0, not its content height: sized by its content, a long transcript took space from the tray in proportion
+   to its length and squeezed a pending decision to a strip, whatever the floor. */
+.workspace[data-focus="on"] > .conversation > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }
 @media (max-width: 1050px) { .focus-toggle .shortcut-hint { display: none; } .workspace-views button { padding-inline: var(--space-1); } .sidebar-mode-tabs button, .workspace-views button { font-size: var(--fs-xs); } }
 .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] > .conversation > .composer, .workspace[data-focus="on"] > .conversation > .approval-tray,
 .workspace[data-focus="on"] > .conversation > .approval-banner, .workspace[data-focus="on"] > .conversation > .notice, .workspace[data-focus="on"] .agent-tree, .workspace[data-focus="on"] .agent-detail { padding-inline: max(var(--gutter), calc((100% - var(--measure-focus)) / 2)); }
@@ -1757,6 +1771,51 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 /* In Focus the coordinated detail already sits on the reading measure; the tray and banner align with its text. */
 .workspace[data-focus="on"] .coordinator-detail > .approval-tray, .workspace[data-focus="on"] .coordinator-detail > .approval-banner,
 .workspace[data-focus="on"] .child-panel > .approval-tray, .workspace[data-focus="on"] .child-panel > .approval-banner { margin-inline: 0; }
+
+/* Two panes from 1180px, in Focus while the tray is on screen. data-tray on the section says where the tray sits: "conversation"
+   (the chat view: the section is the grid) or "detail" (the coordinated view: its coordinator detail is the grid). Placement only:
+   the DOM order (header, notice, transcript, older messages, tray, banner, composer) is still the reading and Tab order, and the
+   areas read the left pane, the right pane, then the rows below in that order. The banner takes a full row of its own so it never
+   sits beside the tray ahead of it. Below 1180px the tray stays stacked above the composer. */
+@media (min-width: 1180px) {
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; grid-template-areas: "head head" "notice notice" "msgs tray" "older tray" "banner banner" "composer composer"; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > :is(.task-header, .notice, .messages, .approval-tray, .approval-banner, .composer) { padding-inline: var(--gutter); }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .task-header { grid-area: head; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .notice { grid-area: notice; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .messages { grid-area: msgs; min-height: 0; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .older-messages { grid-area: older; justify-self: center; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .approval-tray { grid-area: tray; max-height: none; border-left: 1px solid var(--line-soft); }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .approval-banner { grid-area: banner; }
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .composer { grid-area: composer; }
+  /* In a pane as wide as 1120px the limits note would run to about 130 characters a line. */
+  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > .approval-tray .tool-readiness { max-width: var(--measure-note); }
+  /* The coordinated view: its header, notice and agent tree take the lane so the tray can reach the window edge. The coordinator
+     detail is the grid; its tray and banner are already flush in Focus. The child view stays stacked on the lane, at the Focus
+     measure, so the header and agent tree do not move when a chip is chosen while a tray is open. */
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > :is(.task-header, .notice, .agent-tree, .agent-detail) { padding-inline: var(--gutter); }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .agent-detail.coordinator-detail { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: minmax(0, 1fr) auto auto auto; grid-template-areas: "msgs tray" "older tray" "banner banner" "composer composer"; padding-inline: 0; }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .coordinator-detail > .messages { grid-area: msgs; min-height: 0; padding-inline: var(--gutter); }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .coordinator-detail > .older-messages { grid-area: older; justify-self: center; }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .coordinator-detail > .approval-tray { grid-area: tray; max-height: none; border-left: 1px solid var(--line-soft); }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .coordinator-detail > .approval-banner { grid-area: banner; }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] > .coordinator-detail > .composer { grid-area: composer; padding-inline: var(--gutter); }
+  .workspace[data-focus="on"] > .conversation[data-tray="detail"] .child-panel { max-width: var(--measure-focus); }
+}
+
+/* Short windows, the stacked tray: the pending Approve stays in view at 1000x680. Chrome spacing pays for it, never evidence
+   text, a card's padding, the decision buttons or the limits note's wording. These rules only read *-short roles and set none,
+   so a style keeps its own, denser values. After the tray and card rules, which they override at equal specificity. */
+@media (max-height: 760px) {
+  .workspace[data-focus="on"] > .conversation > .messages { min-height: var(--h-focus-messages-min-short); }
+  .tray-summary { padding: var(--pad-tray-summary-short); }
+  .approval-tray-cards > .tool-readiness { margin-bottom: var(--gap-panel-note-short); padding: var(--pad-readiness-short); }
+  .approval-tray-cards > .tool-readiness + .tool-readiness { margin-top: calc(-1 * var(--gap-panel-note-short)); padding-top: 0; }
+  .approval-tray-cards > .approval-card:first-of-type:is(.awaiting-approval, .unknown, .failed) { margin-top: var(--gap-card-short); }
+  .approval-tray .approval-heading { margin-bottom: var(--gap-card-heading-short); }
+  .approval-tray .approval-card dl { margin-top: var(--gap-field-short); }
+  .approval-tray .approval-card .command-evidence { margin-top: var(--gap-evidence-short); }
+  .approval-tray .approval-actions { margin-top: var(--gap-actions-top-short); }
+}
 
 /* While the open task needs a decision the sidebar's selection fills (Dark and High contrast) recede to the rail and that task's
    row is marked in the needs-decision amber in every rail list; tab and view selection keep the selection mark, and the
