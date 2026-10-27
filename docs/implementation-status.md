@@ -1,5 +1,56 @@
 # Implementation status
 
+## Default look, part 4b: Balanced's Usage page, Settings dialog and coordinated view — 27 October 2026
+
+Task id `ui-look-panels-20261027`, the second half of the fourth slice of the default look Rudy chose on 27 October.
+- **Scope.** Renderer CSS only. There is no markup, protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.
+- **Source.** Three read-only analysts turned the look map into exact specs against the current stylesheet. The owner accepted their recommendations.
+
+**What changed**
+- **Usage page.**
+  - **Figures.** Each figure sits right-aligned beside its label. The label track is `auto`, so a long figure wraps in its own column and never squeezes the label. The figure keeps 24px Georgia: type is unchanged.
+  - **Charts.** The daily trend is 88px and the request chart 96px. Compact is 72px and 80px.
+  - **Rows and controls.** Breakdown rows are one line where they fit. Date inputs and selects get a 28px floor to match the period buttons.
+  - **Spacing.** The page and section spacing is Balanced's, and Compact steps below it.
+  - **Hairlines.** The trend's baseline is a `--line-strong` hairline, so the cool `--viz-baseline` role is gone. The section and request-detail rules take the hybrid's hairlines.
+  - **Contrast themes.** The chart's Reported key keeps a solid square in Windows contrast themes.
+- **Settings dialog.**
+  - **Width.** It is 780px in both styles, so `w-dialog` leaves the Compact exceptions.
+  - **Label-left rows.** The model profile's fields and limits are label-left rows: a 112px column, 104px in Compact. The rule is scoped to the profile form's own fields, so the MCP form keeps its long labels above their fields.
+  - **Appearance.** The Theme and Style radios sit on the same column, with their help text under them.
+  - **Inputs.** Inputs and selects share one height: 29px, 27px in Compact.
+  - **Head and spacing.** The eyebrow and title share a baseline. The head, form and MCP spacing are tighter.
+  - **Removed.** The dead `.manage-dialog` width rule is gone.
+  - **Scroll.** The dialog still scrolls at 940px tall, as it did before, because it holds the profile and the whole MCP section.
+- **Coordinated view.**
+  - **Agent tree.** It sits on the canvas with outlined chips. The selected chip has a 2px bar, a `--select` border and the new `--select-chip-bg`. In Light that is `--surface`, lighter than the rest, which fixes the darker selected chip deferred from part 1. Dark and High contrast keep `--select-soft`.
+  - **Chips and cards.** The chips, child panel, assignment summary and Orchestration-tab cards move onto the ladder at Balanced's sizes and go flat.
+  - **Child summary.** It loses the browser's default list margins, which about halves its height.
+  - **Coordinator composer.** It sits on the transcript's lane instead of a second gutter in.
+  - **Child view banner and tray.** They reach the pane edges, as the coordinator's do, in and out of Focus.
+
+**Validation** (local, Windows, isolated fixtures)
+- **`pnpm check`** (at `17af292`, part 4b merged with parts 4a and 3, #67 and #69): typecheck and lint pass. Vitest: 837 of 847 in the parallel run.
+  - **The 10 failures.** They are timeouts and EBUSY cleanup errors in five runtime and integration files, including continuity, git-operations and repository-preview. This change does not touch them, and serially they pass, 77 of 77.
+  - **New unit checks.** Stylesheet pins for the Usage card grid, the label-left settings rows, the selected agent chip's fill token and the child view's full-bleed banner and tray. `select-chip-bg` joins the theme contrast pairs for ink, muted ink and the selection.
+- **`pnpm test:e2e`**: 34 of 34 pass, at `17af292` and before the merge.
+  - **`style.spec.ts`.** A new test checks the settings dialog in both styles: 780px, no sideways scroll, each field beside its label on one shared edge, the MCP form stacked, and one field height (29px, 27px in Compact).
+  - **`usage.spec.ts`.** Each figure sits beside its label, a breakdown row is under 40px tall, no label wraps, and a synthetic 300px card keeps its label whole.
+  - **`orchestration.spec.ts`.** The child summary's gaps stay under 20px, and the coordinator composer starts on the transcript's edge.
+- **Mutants.** Ten stylesheet mutants were run. Eight fail a test. The two that survive are the equivalent placement mutants named under known limits.
+- **Harness** (`.local/verification/ui-look-panels-20261027/render2`): every preset and sheet has empty contrast, overflow and 24×24 target lists. Under forced colours, Light and Dark match in 32 of 32 captures.
+- **Independent review**: two reviewers (Sonnet, high, from their agent definitions), one on code and tests and one on the rendered captures. Both said GO, with no P0 or P1.
+  - Fixed: dialog selects 2px taller than the inputs, a wrapped dialog head with no gap, the Reported key vanishing in Windows contrast themes, and the child view's full-bleed rule having no test.
+- **Not run**: `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed.
+
+**Known limits**
+- **Settings.**
+  - The dialog scrolls inside itself at 1480×940, so the prototype's no-scroll measurement (taken before the Appearance and Reasoning effort rows existed) is not claimed.
+  - At 200% zoom of a 1000px window the two limit inputs are about 77px wide.
+  - No Settings capture at 200% zoom exists.
+- **Daily trend.** The live captures have no daily data, so its 88px bars are seen only on the synthetic sheet.
+- **Equivalent mutants.** The Usage card keeps both explicit placement and auto-placement into its two-column template. Either alone keeps the figure beside the label, so removing one is invisible and no test can fail for it.
+
 ## Default look, part 4a: Balanced's inspector — 27 October 2026
 
 Task id `ui-look-inspector-20261027`, the first half of the fourth slice of the default look Rudy chose on 27 October.
