@@ -55,7 +55,7 @@ export function McpSettings({ api, servers, onChanged, setNotice }: Props) {
   };
 
   return <section className="mcp-settings" data-testid="mcp-settings">
-    <div className="dialog-head"><div><p className="eyebrow">EXTERNAL TOOLS</p><h2>MCP servers</h2></div></div>
+    <div className="dialog-head"><div><p className="eyebrow">External tools</p><h2>MCP servers</h2></div></div>
     <div className="profile-form">
       <p className="probe-note">Configured stdio servers run in a supervised Windows Job Object with your privileges and a minimal environment. Their tools are advertised to coding tasks as <code>mcp__key__tool</code>. Only tools you mark read-only run without a per-call approval; server annotations are hints and grant nothing. Inputs and outputs are secret-screened and bounded.</p>
       {servers.map((server) => <div className="mcp-server" key={server.id} data-testid={`mcp-server-${server.key}`}>
