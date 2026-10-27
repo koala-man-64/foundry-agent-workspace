@@ -45,11 +45,14 @@ describe('classifyPatchLines', () => {
 });
 
 describe('inspector width', () => {
-  it('defaults to 360px up to 1480px and grows on wide windows to at most 480px', () => {
-    expect(defaultInspectorWidth(1000)).toBe(360 > maxInspectorWidth(1000) ? maxInspectorWidth(1000) : 360);
-    expect(defaultInspectorWidth(1480)).toBe(360);
-    expect(defaultInspectorWidth(1920)).toBe(480);
-    expect(defaultInspectorWidth(2560)).toBe(480);
+  it('defaults to a width that follows the window: 360px at 1000px, 400px at 1480px, 640px from about 1920px', () => {
+    expect(defaultInspectorWidth(1000)).toBe(360);
+    expect(defaultInspectorWidth(1480)).toBe(400);
+    expect(defaultInspectorWidth(1700)).toBe(520);
+    expect(defaultInspectorWidth(1920)).toBe(640);
+    expect(defaultInspectorWidth(2560)).toBe(640);
+    // Still clamped to what leaves the conversation its room.
+    expect(defaultInspectorWidth(1000)).toBeLessThanOrEqual(maxInspectorWidth(1000));
   });
 
   it('clamps to the minimum and to what leaves the conversation room', () => {
@@ -85,9 +88,9 @@ describe('inspector width', () => {
   it('prefers a remembered width, clamped, and survives unavailable storage', () => {
     expect(initialInspectorWidth(1480, { getItem: () => '420' })).toBe(420);
     expect(initialInspectorWidth(1000, { getItem: () => '900' })).toBe(maxInspectorWidth(1000));
-    expect(initialInspectorWidth(1920, { getItem: () => null })).toBe(480);
-    expect(initialInspectorWidth(1480, { getItem: () => { throw new Error('denied'); } })).toBe(360);
-    expect(initialInspectorWidth(1480, undefined)).toBe(360);
+    expect(initialInspectorWidth(1920, { getItem: () => null })).toBe(640);
+    expect(initialInspectorWidth(1480, { getItem: () => { throw new Error('denied'); } })).toBe(400);
+    expect(initialInspectorWidth(1480, undefined)).toBe(400);
     expect(() => rememberInspectorWidth(400, { setItem: () => { throw new Error('denied'); } })).not.toThrow();
   });
 });

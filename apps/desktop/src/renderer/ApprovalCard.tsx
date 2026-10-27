@@ -47,26 +47,26 @@ export function ApprovalCard({ approval, variant, complete, busy, error, onDecid
       <dl><dt>Origin</dt><dd>{approval.browser.prepared.origin}</dd></dl>
       <dl><dt>Target tab</dt><dd>{approval.browser.prepared.tabId}</dd></dl>
       <dl><dt>Action</dt><dd>{approval.browser.prepared.action.kind}</dd></dl>
-      <dl><dt>Exact request</dt><dd><pre>{JSON.stringify(approval.browser.prepared.action, null, 2)}</pre></dd></dl>
+      <dl className="field-long"><dt>Exact request</dt><dd><pre>{JSON.stringify(approval.browser.prepared.action, null, 2)}</pre></dd></dl>
       <small>One approval permits this exact action only. The page may have changed; stale actions are rejected.</small>
     </div>}
     {approval.mcp && <div className="command-evidence">
       <strong>External MCP tool</strong>
       <dl><dt>Server</dt><dd>{approval.mcp.serverName} ({approval.mcp.serverKey})</dd></dl>
       <dl><dt>Tool</dt><dd>{approval.mcp.tool}</dd></dl>
-      <dl><dt>Arguments</dt><dd><pre>{approval.mcp.arguments}</pre></dd></dl>
+      <dl className="field-long"><dt>Arguments</dt><dd><pre>{approval.mcp.arguments}</pre></dd></dl>
       <small>External tools act outside the worktree with your Windows privileges; the server's own annotations grant nothing.</small>
     </div>}
     {approval.path && <dl><dt>File</dt><dd>{approval.path}</dd></dl>}
     {approval.expectedHash === null
       ? <dl><dt>Before</dt><dd>File is absent. This approval creates a new file.</dd></dl>
-      : approval.before !== undefined && <dl><dt>Before</dt><dd>{approval.before === '' ? 'Existing empty file.' : <pre>{approval.before}</pre>}</dd></dl>}
-    {approval.after !== undefined && <dl><dt>After</dt><dd><pre>{approval.after}</pre></dd></dl>}
+      : approval.before !== undefined && <dl className={approval.before === '' ? undefined : 'field-long'}><dt>Before</dt><dd>{approval.before === '' ? 'Existing empty file.' : <pre>{approval.before}</pre>}</dd></dl>}
+    {approval.after !== undefined && <dl className="field-long"><dt>After</dt><dd><pre>{approval.after}</pre></dd></dl>}
     {(approval.expectedHash !== undefined || approval.resultingHash !== undefined) && <dl><dt>Hash</dt><dd>{approval.expectedHash === null ? 'absent' : approval.expectedHash ?? 'unavailable'} → {approval.resultingHash ?? 'pending'}</dd></dl>}
     {approval.command && <div className="command-evidence"><strong>Command</strong><pre>{approval.command}</pre><small>Runs with your Windows privileges; approval is not sandboxing.</small></div>}
     {approval.cwd && <dl><dt>Working directory</dt><dd>{approval.cwd}</dd></dl>}
     {approval.shell && <dl><dt>Shell</dt><dd>{approval.shell}</dd></dl>}
-    {approval.environment && <dl><dt>Environment</dt><dd>{Object.entries(approval.environment).map(([key, value]) => <span className="environment" key={key}>{key}={value}</span>)}</dd></dl>}
+    {approval.environment && <dl className="field-long"><dt>Environment</dt><dd className="environment-list">{Object.entries(approval.environment).map(([key, value]) => <span className="environment" key={key}>{key}={value}</span>)}</dd></dl>}
     {approval.timeoutMs !== undefined && <dl><dt>Timeout</dt><dd>{approval.timeoutMs.toLocaleString()} ms</dd></dl>}
     {approval.handoff && <div className="orchestration-evidence">
       <strong>Handoff</strong>
@@ -75,7 +75,7 @@ export function ApprovalCard({ approval, variant, complete, busy, error, onDecid
       <dl><dt>Manifest SHA-256</dt><dd>{approval.handoff.manifestSha256}</dd></dl>
       <dl><dt>Git</dt><dd>{approval.handoff.gitPath} (SHA-256 <Hash value={approval.handoff.gitSha256} />)</dd></dl>
       <dl><dt>Expected HEAD</dt><dd><Hash value={approval.handoff.expectedHead} /></dd></dl>
-      <dl><dt>Patch</dt><dd><PatchText patch={approval.handoff.patch} suffix={approval.handoff.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
+      <dl className="field-long"><dt>Patch</dt><dd><PatchText patch={approval.handoff.patch} suffix={approval.handoff.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
     </div>}
     {approval.integration && <div className="orchestration-evidence">
       <strong>Integration</strong>
@@ -86,7 +86,7 @@ export function ApprovalCard({ approval, variant, complete, busy, error, onDecid
       {approval.integration.resolvedTree && <dl><dt>Resolved tree (continuation)</dt><dd><Hash value={approval.integration.resolvedTree} /></dd></dl>}
       <dl><dt>Changed paths</dt><dd>{approval.integration.changedPaths.join(', ') || 'none'}</dd></dl>
       <dl><dt>Git</dt><dd>{approval.integration.gitPath} (SHA-256 <Hash value={approval.integration.gitSha256} />)</dd></dl>
-      <dl><dt>Patch</dt><dd><PatchText patch={approval.integration.patch} suffix={approval.integration.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
+      <dl className="field-long"><dt>Patch</dt><dd><PatchText patch={approval.integration.patch} suffix={approval.integration.patchTruncated ? '\n(truncated)' : ''} /></dd></dl>
     </div>}
     {approval.result && <div className="approval-result">
       <strong>{approval.result.isError ? 'Redacted error result' : 'Redacted result'}</strong>

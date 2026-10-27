@@ -117,9 +117,12 @@ export function clampInspectorWidth(width: number, viewportWidth: number, rail: 
   return Math.round(Math.max(MIN_INSPECTOR_WIDTH, Math.min(maxInspectorWidth(viewportWidth, rail), width)));
 }
 
-/** 360px up to a 1480px window, then growing with the spare width to at most 480px. */
+/**
+ * The width a viewer who never dragged the separator gets: 360px at the 1000px minimum window, 400px at 1480px and 640px
+ * from about 1920px, read when the app starts. A remembered (dragged) width always wins.
+ */
 export function defaultInspectorWidth(viewportWidth: number, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
-  return clampInspectorWidth(Math.min(480, 360 + Math.max(0, viewportWidth - 1480) * 0.3), viewportWidth, rail);
+  return clampInspectorWidth(Math.min(640, Math.max(360, 0.5455 * viewportWidth - 407)), viewportWidth, rail);
 }
 
 /** The remembered width (a per-viewer convenience in local storage), else the default; always clamped to the window. */

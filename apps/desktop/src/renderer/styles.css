@@ -61,8 +61,8 @@
   --h-chart: 138px;                                  /* Usage daily chart */
   --h-chart-request: 118px;                          /* Usage request chart */
   --h-browser-tabs: 35px;                            /* browser tab strip */
-  --h-file-tree-min: 100px;                          /* file list floor */
-  --h-file-tree-max: none;                           /* file list ceiling */
+  --h-file-tree-min: 0px;                          /* file list floor */
+  --h-file-tree-max: 40%;                           /* file list ceiling */
   --h-nav-list-min: 120px;                           /* Inbox / history task list floor */
 
   /* ---- Widths and measures ---- */
@@ -78,7 +78,7 @@
   --measure-focus: 860px;                            /* Focus reading column */
   --w-dialog: 580px;                                 /* settings dialog */
   --w-dialog-btn: 120px;                             /* dialog action buttons */
-  --file-tree-share: 30%;                            /* flex-basis of the file list against the preview */
+  --file-tree-share: auto;                            /* flex-basis of the file list against the preview */
   --size-plus: 24px;                                 /* rail "+" disc */
   --size-mark: 48px;                                 /* large mark */
 
@@ -171,15 +171,16 @@
   --gap-fieldset: var(--space-1-5);
 
   /* ---- Inspector ---- */
-  --pad-inspector-tab: var(--space-3) var(--space-2);
-  --gap-inspector-tools: var(--space-1-5);
-  --pad-inspector-pane: var(--space-2);              /* inspector tool bar and file list */
-  --pad-ctl-sm: var(--space-1) var(--space-2);       /* small bordered buttons (tools) */
+  --pad-inspector-tab: var(--space-1);
+  --gap-inspector-tools: var(--space-1);
+  --pad-inspector-pane: var(--space-1) var(--space-2);              /* inspector tool bar and file list */
+  --pad-ctl-sm: var(--space-0-5) var(--space-2);       /* small bordered buttons (tools) */
   --pad-chip: var(--space-1) var(--space-1-5);       /* filter chips */
-  --pad-inspector-empty: var(--space-4);
-  --pad-file-row: var(--space-1-5);
-  --m-pre-file: var(--space-2) 0 0;
-  --pad-panel: var(--space-3);                       /* approvals, usage, publish and channel panels */
+  --pad-inspector-empty: var(--space-3);
+  --pad-file-row: var(--space-1) var(--space-1-5);
+  --m-pre-file: var(--space-1) 0 0;
+  --pad-panel: var(--space-2) var(--space-3);       /* files, changes, usage, publish, activity and channel panels */
+  --pad-panel-tight: var(--space-2);                 /* the approvals and orchestration panels, whose cards carry their own inset */
   --gap-continuity: var(--space-2);
   --h3-margin-continuity: var(--space-2) 0 var(--space-0-5);
   --gap-h3-activity: var(--space-2);
@@ -199,6 +200,12 @@
   --field-columns: none;                             /* e.g. 96px minmax(0, 1fr) */
   --field-col-gap: normal;
   --m-pre-card: var(--space-1) 0 0;
+  /* An approval list at least 508px wide (about 480px of a boxed card): short fields put their label in a column beside the
+     value; long evidence (a pre, a patch, the environment) keeps its label above and the full width. */
+  --card-field-layout: grid;
+  --card-field-columns: var(--label-col) minmax(0, 1fr);
+  --card-field-col-gap: var(--space-3);
+  --label-col: 7.5rem;                               /* fits Working directory, Manifest SHA-256 and Expected HEAD / tree */
   /* An approval list under 560px wide (the docked inspector): a label column would narrow the value column to about 230px,
      so paths, commands and hashes would wrap far more. A style that uses a label column keeps these narrow values stacked. */
   --field-layout-narrow: var(--field-layout);
@@ -227,9 +234,9 @@
 
   /* ---- Activity, Usage ---- */
   --gap-chips: var(--space-1);
-  --gap-activity-item: var(--space-1);
-  --m-activity-item: var(--space-2) 0 var(--space-2) var(--space-3);
-  --pad-activity-item: var(--space-2);
+  --gap-activity-item: 0 var(--space-2);
+  --m-activity-item: 0;
+  --pad-activity-item: var(--space-1) var(--space-0-5);
   --gap-usage-head: var(--space-4);
   --m-usage-title: var(--space-1-5) 0 var(--space-2);
   --gap-usage-controls: var(--space-1-5);
@@ -346,7 +353,6 @@
   --line-faint: #e9e2d5;
   --line-popup: #bdb5a3;
   --line-emphasis: var(--line-strong);
-  --line-timeline: #cbc3b0;
   --line-compacted: var(--line-strong);
   --hover-veil: #0000000f;
   --line-panel: var(--line-control);
@@ -616,7 +622,6 @@
     --line-faint: var(--line-soft);
     --line-popup: var(--line-control);
     --line-emphasis: var(--line-strong);
-    --line-timeline: var(--line);
     --line-compacted: var(--line-strong);
     --ink-content: var(--ink-2);
     --danger-ink-strong: var(--danger-ink);
@@ -691,7 +696,6 @@
     --line-popup: var(--line-strong);
     --line-panel: var(--line);
     --line-emphasis: var(--line-strong);
-    --line-timeline: var(--line);
     --line-compacted: var(--line-strong);
     --hover-veil: #0000001a;
 
@@ -869,7 +873,7 @@
   --h-chart-request: 84px;
   --h-browser-tabs: 30px;
   --h-file-tree-min: 0px;
-  --h-file-tree-max: 45%;
+  --h-file-tree-max: 40%;
   --h-nav-list-min: 80px;
   --rail-w: 240px;
   --rail-w-narrow: 224px;
@@ -962,14 +966,18 @@
   --gap-draft-options: var(--space-2);
   --pad-fieldset: 6px;
   --gap-fieldset: var(--space-1);
-  --pad-inspector-tab: 3px var(--space-2);
+  --pad-inspector-tab: var(--space-0-5) var(--space-1);
   --gap-inspector-tools: var(--space-1);
-  --pad-inspector-pane: var(--space-1-5) var(--space-2);
+  --pad-inspector-pane: var(--space-0-5) var(--space-1-5);
   --pad-chip: 2px 6px;
-  --pad-inspector-empty: var(--space-3);
-  --pad-file-row: 3px 6px;
+  --pad-inspector-empty: var(--space-2);
+  --pad-file-row: 3px var(--space-1);
   --pad-panel: var(--space-2);
-  --m-pre-file: 6px 0 0;
+  --pad-panel-tight: var(--space-1-5);
+  --card-field-layout: grid;
+  --card-field-columns: minmax(88px, min(28%, 112px)) minmax(0, 1fr);
+  --card-field-col-gap: 10px;
+  --m-pre-file: var(--space-0-5) 0 0;
   --gap-continuity: 6px;
   --h3-margin-continuity: var(--space-1) 0 var(--space-0-5);
   --gap-h3-activity: 6px;
@@ -1007,9 +1015,9 @@
   --gap-form: var(--space-2);
   --form-columns: none;
   --gap-chips: 3px;
-  --gap-activity-item: 2px;
-  --m-activity-item: var(--space-1) 0 var(--space-1) var(--space-2);
-  --pad-activity-item: 6px;
+  --gap-activity-item: 0 var(--space-1-5);
+  --m-activity-item: 0;
+  --pad-activity-item: 3px var(--space-0-5);
   --gap-usage-head: var(--space-3);
   --m-usage-title: 2px 0 var(--space-1);
   --gap-usage-controls: var(--space-1);
@@ -1399,8 +1407,8 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .inspector-resize::before { content: ''; position: absolute; inset: 0 -4px; }
 .inspector-resize:hover, .inspector-resize:focus-visible { background: var(--choice); }
 .inspector-resize:focus-visible { outline-offset: 0; }
-.inspector-tabs { display: flex; flex: 0 0 auto; flex-wrap: wrap; border-bottom: 1px solid var(--line-soft); }
-.inspector-tabs button { flex: 0 0 auto; min-width: 0; padding: var(--pad-inspector-tab); color: var(--ink-muted); border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: var(--fs-sm); min-height: max(var(--target-min), var(--h-dense)); }
+.inspector-tabs { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 0 var(--space-2); padding: 0 var(--space-2); border-bottom: 1px solid var(--line-soft); }
+.inspector-tabs button { flex: 0 0 auto; min-width: 0; padding: var(--pad-inspector-tab); color: var(--ink-muted); border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: var(--fs-sm); min-height: var(--h-chrome); }
 .inspector-tabs button:hover { color: var(--ink); box-shadow: inset 0 -2px 0 var(--line-control); }
 .inspector-tabs button:focus-visible { outline-offset: -3px; }
 .inspector-tabs button.active { color: var(--ink); font-weight: 600; border-bottom-color: var(--select); box-shadow: none; }
@@ -1421,7 +1429,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .file-content, .patch { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel); border-top: 1px solid var(--line-soft); }
 .file-content > p, .patch > p { color: var(--ink-muted); font-size: var(--fs-xs); }
 .file-content pre, .patch pre { margin: var(--m-pre-file); color: var(--ink-content); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: var(--lh-evidence); }
-.approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel); container: approval-list / inline-size; }
+.approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel-tight); container: approval-list / inline-size; }
 .tool-readiness { padding: var(--pad-readiness); margin-bottom: var(--gap-panel-note); color: var(--ink-2); border-left: 3px solid var(--line-strong); background: var(--surface-well); font-size: var(--fs-sm); line-height: 1.45; }
 .tool-readiness + .tool-readiness { margin-top: calc(-1 * var(--gap-panel-note)); padding-top: 0; }
 
@@ -1455,11 +1463,19 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-card dd { margin: 0; overflow-wrap: anywhere; }
 .approval-card pre { margin: var(--m-pre-card-narrow); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: var(--lh-evidence); }
 /* The lists that hold approval cards are size containers (not the cards, so a card is never its own stacking context).
-   560px keeps about 400px for the value beside a 112px label. */
-@container approval-list (min-width: 560px) {
-  .approval-card dl { margin: var(--gap-field) 0 0; display: var(--field-layout); grid-template-columns: var(--field-columns); column-gap: var(--field-col-gap); align-items: baseline; }
-  .approval-card dt { margin-bottom: var(--gap-field-label); }
+   508px of list is about 480px of a boxed card (its 3px edge, border and padding take 28px): short fields put their label
+   beside the value; long evidence keeps the label above. 608px of list gives the environment two columns, and an entry
+   never splits across them. */
+@container approval-list (min-width: 508px) {
+  .approval-card dl { margin: var(--gap-field) 0 0; display: var(--card-field-layout); grid-template-columns: var(--card-field-columns); column-gap: var(--card-field-col-gap); align-items: baseline; }
+  .approval-card dt { margin-bottom: 0; overflow-wrap: anywhere; }
+  .approval-card dl.field-long { display: block; }
+  .approval-card dl.field-long dt { margin-bottom: var(--gap-field-label); }
   .approval-card pre { margin: var(--m-pre-card); }
+}
+@container approval-list (min-width: 608px) {
+  .approval-card .environment-list { columns: 2; column-gap: var(--space-5); }
+  .approval-card .environment { break-inside: avoid; }
 }
 .command-evidence, .approval-result { margin-top: var(--gap-evidence); padding: var(--pad-evidence); border-radius: var(--radius-sm); background: var(--surface-sunken); }
 .command-evidence small, .approval-result small { display: block; margin-top: var(--gap-evidence-note); color: var(--ink-muted); font-size: var(--fs-evidence); line-height: var(--lh-evidence); }
@@ -1540,7 +1556,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .assignment-summary { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
 .assignment-summary dt { color: var(--ink-2); font-size: var(--fs-sm); font-weight: 600; }
 .assignment-summary dd { margin: 2px 0 0; overflow-wrap: anywhere; }
-.orchestration-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-orchestration); min-width: 0; padding: var(--pad-panel); overflow-y: auto; }
+.orchestration-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-orchestration); min-width: 0; padding: var(--pad-panel-tight); overflow-y: auto; }
 .orchestration-panel > section { min-width: 0; }
 .orchestration-panel h3 { margin: 0 0 8px; }
 .assignment-card { margin-bottom: 8px; padding: 10px; border: 1px solid var(--line); background: var(--surface-card); font-size: var(--fs-sm); }
@@ -1561,8 +1577,11 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .activity-filters { display: flex; flex-wrap: wrap; gap: var(--gap-chips); }
 .activity-filters button { min-height: var(--h-ctl-sm); padding: var(--pad-chip); border: 1px solid var(--line-strong); background: var(--surface-card); color: var(--ink); font-size: var(--fs-xs); }
 .activity-filters button[aria-pressed="true"] { border-color: var(--choice); font-weight: 600; box-shadow: inset 0 -2px 0 var(--choice); }
-.activity-timeline { list-style: none; padding: 0; border-left: 2px solid var(--line-timeline); }
-.activity-timeline li { display: grid; gap: var(--gap-activity-item); margin: var(--m-activity-item); padding: var(--pad-activity-item); border: 1px solid var(--line); background: var(--surface-card); }
+.activity-timeline { list-style: none; padding: 0; }
+.activity-timeline li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--gap-activity-item); margin: var(--m-activity-item); padding: var(--pad-activity-item); border: 0; border-bottom: 1px solid var(--line); background: transparent; }
+.activity-timeline li > strong { grid-column: 1; grid-row: 1; overflow-wrap: anywhere; }
+.activity-timeline li > time { grid-column: 2; grid-row: 1; text-align: right; }
+.activity-timeline li > :not(strong, time) { grid-column: 1 / -1; }
 .activity-timeline time, .activity-timeline small { color: var(--ink-muted); font-size: var(--fs-xs); }
 .recovery-notice { margin-bottom: 10px; padding: 9px; border: 1px solid var(--warn-line); background: var(--warn-soft); }
 .automation-dialog { width: min(1200px, 96vw); max-height: 90vh; }
