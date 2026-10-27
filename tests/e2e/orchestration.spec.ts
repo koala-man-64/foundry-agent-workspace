@@ -10,6 +10,8 @@ import { V1_SCHEMA } from '../../packages/runtime/src/schema';
 import { createFixtureTask, waitForRuntimeReady } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
+// The Changes tab's words for an empty diff (worktree.tsx); it must not read as a clean worktree.
+const EMPTY_DIFF_TEXT = 'No changes to show. Secret-named files, and new files that are binary or too large to read, are not listed.';
 const VALIDATION_COMMAND = "$files = @(Get-ChildItem -File -Filter *.txt); if ($files.Count -lt 3) { exit 1 }; foreach ($f in $files) { if ((Get-Content -Raw $f.FullName) -notmatch 'fixture') { exit 2 } }; Write-Output ('validated ' + $files.Count)";
 
 type HandoffDownload = { filename: string; path: string; state: string };
@@ -173,6 +175,10 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.getByRole('heading', { name: 'Coordinated demo task', exact: true })).toBeVisible();
     const created = await snapshotTaskByTitle(page, 'Coordinated demo task');
 
+    const inspector = page.getByLabel('Coordinated task inspector');
+    await inspector.getByRole('button', { name: 'Files', exact: true }).click();
+    await inspector.getByRole('button', { name: /alpha\.txt$/ }).click();
+    await expect(inspector.locator('.file-content pre')).toContainText('alpha fixture');
     await approveUntilSettled(page, created.id, 40);
     try { await expect(page.getByText(/^Completed on /)).toBeVisible({ timeout: 60000 }); }
     catch (error) {
@@ -182,6 +188,12 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.locator('article.approval-card.awaiting-approval')).toHaveCount(0);
     // The runtime rejects messages to a finished coordinator, so the composer says so instead of accepting them.
     await expect(page.getByLabel('Message coordinator')).toBeDisabled();
+    // The finished run re-read the root worktree: the open file shows the integrated change without Refresh,
+    // and with every change committed the Changes tab says so in words.
+    await inspector.getByRole('button', { name: 'Files', exact: true }).click();
+    await expect(inspector.locator('.file-content pre')).toContainText('alpha child change');
+    await inspector.getByRole('button', { name: 'Changes', exact: true }).click();
+    await expect(inspector.locator('.patch')).toHaveText(EMPTY_DIFF_TEXT);
     const rootHistory = await page.evaluate(taskId => window.workspace.invoke('task.messages', { taskId, limit: 50 }), created.id);
     const finalReply = rootHistory.items.map(item => item.message).filter(message => message.role === 'assistant' && message.status === 'complete').at(-1)?.content;
     expect(finalReply).toBeTruthy();
