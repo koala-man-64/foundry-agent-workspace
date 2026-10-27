@@ -5,7 +5,7 @@
   let theme = 'light';
   try {
     const stored = window.localStorage.getItem('foundry.theme');
-    if (stored === 'dark') theme = 'dark';
+    if (stored === 'dark' || stored === 'contrast') theme = stored;
     else if (stored === 'system') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   } catch {
     theme = 'light';

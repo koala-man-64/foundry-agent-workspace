@@ -629,6 +629,195 @@
   }
 }
 
+/* High contrast (data-theme="contrast"): a light theme for bright rooms, projectors and tired eyes, not a Windows contrast
+   theme. Token values only. Body ink is near-black green at 7:1 or more; borders, not tints, carry the structure; needs-you
+   is one rust family, warning amber and danger crimson; the focus ring is deep blue; the rail stays dark with brighter ink.
+   Every fill has its own white ink. Inside forced-colors: none, so a Windows contrast theme still wins. themes.test.ts checks
+   it strictly: body inks at 7:1; every other text, control boundary, ring and mark, and the card, panel and popup borders at
+   4.5:1. Dividers and the disabled-control border stay lighter on purpose. */
+@media (forced-colors: none) {
+  :root[data-theme="contrast"] {
+    /* Native controls */
+    --color-scheme: light;
+    --control-accent: #174d3b;
+    --placeholder: #54594f;
+    --placeholder-disabled: var(--ink-muted); /* the disabled composer's explanation, 7.6:1 on the disabled fill */
+    --selection-bg: #0b3a8c;
+    --selection-ink: #ffffff;
+
+    /* Surfaces: five tones instead of nine; cards take the canvas and are told apart by their borders */
+    --canvas: #fcf9f0;
+    --canvas-deep: #e4dbc1;
+    --surface: #ffffff;
+    --surface-card: #fcf9f0;
+    --surface-sunken: #f0e9d6;
+    --surface-inspector: #f0e9d6;
+    --surface-well: #e4dbc1;
+    --surface-hover: #d6caa8;
+    --surface-disabled: #e4dbc1;
+    --browser-tab-bg: var(--surface-well);
+    --browser-ground: #ffffff;
+
+    /* Ink: near-black green */
+    --ink: #0e1813;
+    --ink-2: #1f2d25;
+    --ink-muted: #36423a;
+    --ink-eyebrow: #43372a;
+    --ink-disabled: #57534a;
+    --ink-inverse: var(--on-brand);
+    --ink-content: var(--ink);
+
+    /* Lines: card borders 6.5:1 and control borders 8.5:1 on the canvas; dividers and the disabled border stay lighter */
+    --line-soft: #878269;
+    --line: #615a47;
+    --line-control: #9c967d;
+    --line-strong: #4f4938;
+    --line-faint: var(--line-soft);
+    --line-popup: var(--line-strong);
+    --line-panel: var(--line);
+    --line-emphasis: var(--line-strong);
+    --line-timeline: var(--line);
+    --line-compacted: var(--line-strong);
+    --hover-veil: #0000001a;
+
+    /* Needs you: one rust family (hue 22 to 26) for the primary action, its text, chip, ring and banners */
+    --accent: #953b05;
+    --accent-hover: #772c00;
+    --accent-soft: #ffe9d6;
+    --on-accent: #ffffff;
+    --needs-you-ink: #6b2c00;
+    --needs-you-soft: #ffe6d4;
+    --needs-you-soft-hover: #ffd8bd;
+    --needs-you-line: var(--accent);
+    --needs-you-banner-bg: #ffe2cc;
+    --needs-you-banner-ink: #5a2500;
+    --needs-you-banner-line: var(--accent);
+    --upgrade-banner-bg: var(--accent-hover);
+    --upgrade-banner-ink: var(--on-accent);
+
+    /* Danger: crimson, 30 degrees from needs-you, always beside a word */
+    --danger: #a91e30;
+    --danger-ink: #821725;
+    --danger-soft: #fbe0e4;
+    --on-danger: #ffffff;
+    --danger-hover: #6e0f1f;
+    --danger-ink-strong: var(--danger-ink);
+    --danger-line: var(--danger);
+
+    /* Warning: amber, its own family */
+    --warn-ink: #543f00;
+    --warn-soft: #fff1c7;
+    --warn: #9a6200;
+    --warn-line: var(--warn-ink);
+
+    /* Success: green */
+    --ok: #17703a;
+    --ok-ink: #0b4d25;
+    --ok-soft: #dcf1e0;
+    --ok-line: #4c8a62;
+
+    /* Notices */
+    --notice-error-ink: #5a0a18;
+    --notice-error-bg: #fbe0e4;
+    --notice-warning-ink: #4a3000;
+    --notice-warning-bg: #fff1c7;
+    --notice-success-ink: #0b4a22;
+    --notice-success-bg: #dcf1e0;
+    --notice-error-line: var(--danger);
+    --notice-warning-line: var(--warn);
+    --notice-success-line: var(--ok);
+
+    /* Brand and buttons: secondary buttons are a neutral sand, and their 4.5:1 boundary is the ring */
+    --brand: #1b5a45;
+    --brand-ink: #174d3b;
+    --on-brand: #ffffff;
+    --brand-fill: var(--brand-ink);
+    --secondary-bg: #e6e2d6;
+    --secondary-bg-hover: #d5d0bf;
+    --secondary-ink: #14201a;
+    --secondary-ring: #4f4938;
+    --brand-quiet: #2f6050;
+    --mark-bg: #f2d489;
+    --mark-ink: #10322a;
+
+    /* Focus and selection: a deep blue ring, never the needs-you hue; selection keeps the green identity */
+    --focus: #0b3d91;
+    --select: #174d3b;
+    --select-soft: #d5ead9;
+    --choice: var(--select);
+    --choice-soft: var(--select-soft);
+
+    /* Patches */
+    --patch-add-bg: var(--ok-soft);
+    --patch-add-bar: var(--ok);
+    --patch-del-bg: var(--danger-soft);
+    --patch-del-bar: var(--danger);
+
+    /* Charts and graph: hatching, outlines and words keep each state without colour */
+    --viz-reported: #17703a;
+    --viz-unknown: #9a4f00;
+    --viz-unsent: #4f5a53;
+    --viz-axis: #615a46;
+    --viz-baseline: var(--line);
+    --viz-hatch-ground: var(--accent-soft);
+    --graph-line: #4e5b4c;
+    --graph-done: #dcf1e0;
+    --graph-failed: #fbe0e4;
+    --graph-open: #fcf9f0;
+    --graph-ink: var(--ink);
+    --graph-ink-2: var(--ink-2);
+
+    /* Shadows and scrims */
+    --shadow-card: #0000001c;
+    --shadow-menu: var(--shadow-dialog);
+    --shadow-popup: var(--shadow-dialog);
+    --shadow-drawer: var(--shadow-dialog);
+    --shadow-dialog: #0a140e99;
+    --scrim: #0a140ecc;
+    --scrim-light: var(--scrim);
+
+    /* Rail: near-black, 18.5:1 against the canvas, with brighter ink; mint selection, rust-peach needs-decision */
+    --rail: #0b0d0c;
+    --rail-line: #7f8487;
+    --rail-hover: #202425;
+    --rail-line-control: #9aa0a3;
+    --rail-plus-bg: #626a6e;
+    --rail-raised: #0b0d0c;
+    --rail-selected: #17503d;
+    --rail-edge: var(--rail-line);
+    --rail-line-strong: #a0a5a8;
+    --rail-popover: var(--rail-hover);
+    --rail-popover-hover: #3a3f41;
+    --rail-ink: #f5f6f4;
+    --rail-ink-2: #e0e3e1;
+    --rail-muted: #c8ccca;
+    --rail-faint: #b5bab8;
+    --rail-ink-strong: #ffffff;
+    --rail-ink-bright: var(--rail-ink-strong);
+    --rail-ink-list: var(--rail-ink);
+    --rail-ink-warm: var(--rail-ink-2);
+    --rail-ink-icon: var(--rail-ink-2);
+    --rail-ink-glyph: var(--rail-muted);
+    --rail-ink-meta: var(--rail-ink-2);
+    --rail-ink-meta-2: var(--rail-ink-2);
+    --rail-accent: #ffb48a;
+    --rail-select-mark: #8fe3b8;
+    --rail-focus: #8cc4ff;
+    --rail-dot: var(--rail-faint);
+    --rail-dot-running: #ffcb6b;
+    --rail-dot-failed: #ffa0a8;
+    --rail-dot-cancelled: var(--rail-muted);
+    --rail-warn: #ffcb6b;
+    --rail-warn-ink: #ffcb6b;
+    --rail-accent-line: #c48a68; /* the needs-decision row outline, peach rather than the in-progress border */
+    --rail-button-bg: #3a3f41;
+    --rail-button-ink: #ffffff;
+    --rail-error-bg: #3b1519;
+    --rail-error-ink: #ffe9ec;
+    --rail-error-scheme: dark; /* the Chromium-drawn Retry button matches the dark error box */
+  }
+}
+
 /* Compact (data-style="compact"): the style axis. Size and spacing token values only, never a selector or a colour, and never
    --target-min, so every pointer target keeps its 24px floor. Not inside forced-colors: none: a style carries no colour, so it
    keeps applying under a Windows contrast theme. Any theme works with any style. styles.test.ts checks it. */

@@ -142,6 +142,13 @@ const PAIRS: readonly Pair[] = [
 // High contrast: body inks at 7:1, every other text and every UI pair at 4.5:1.
 const STRICT_THEMES = new Set(['contrast']);
 const BODY_INKS = new Set(['ink', 'ink-2', 'ink-content', 'rail-ink', 'rail-ink-strong', 'rail-ink-list']);
+// High contrast carries its structure in borders rather than tints, so card, panel and popup borders are boundaries there.
+// Light and Dark separate those regions by tone, so these rows apply to strict themes only.
+const STRICT_PAIRS: readonly Pair[] = [
+  ['line', PAGE, 4.5, 'ui'],
+  ['line-panel', PAGE, 4.5, 'ui'],
+  ['line-popup', ['surface', 'surface-card'], 4.5, 'ui'],
+];
 // Meanings told apart by hue (when both are chromatic) and by colour distance.
 const DISTINCT = [['accent', 'danger'], ['needs-you-ink', 'warn-ink'], ['needs-you-ink', 'danger-ink']] as const;
 const NEEDS_YOU_FAMILY = ['accent', 'needs-you-ink', 'needs-you-line', 'rail-accent'];
@@ -165,7 +172,7 @@ describe.each(THEMES)('theme %s', theme => {
 
   it('meets every contrast pair', () => {
     const failures: string[] = [];
-    for (const [foreground, backgrounds, minimum, kind] of PAIRS) {
+    for (const [foreground, backgrounds, minimum, kind] of STRICT_THEMES.has(theme) ? [...PAIRS, ...STRICT_PAIRS] : PAIRS) {
       const ink = colour(foreground);
       if (ink === 'transparent' && PENDING_DECISIONS.some(decision => decision.theme === theme && decision.token === foreground)) continue;
       const required = STRICT_THEMES.has(theme) ? (kind === 'text' && BODY_INKS.has(foreground) ? 7 : 4.5) : minimum;

@@ -8,7 +8,7 @@ export function AppearanceSettings({ theme, onChange, style, onStyleChange }: { 
     <fieldset className="appearance-settings" aria-describedby={`theme-help-${id}`}>
       <legend>Theme</legend>
       <div className="appearance-options">{THEMES.map(value => <label key={value} className="checkbox-row"><input type="radio" name="foundry-theme" value={value} checked={theme === value} onChange={() => onChange(value)} />{THEME_LABELS[value]}</label>)}</div>
-      <small id={`theme-help-${id}`}>System follows the Windows app mode. Whatever you choose, the window title bar follows Windows, and a Windows contrast theme replaces these colours.</small>
+      <small id={`theme-help-${id}`}>System follows the Windows app mode. High contrast is a light theme with darker text and stronger borders. Whatever you choose, the window title bar follows Windows, and a Windows contrast theme replaces these colours.</small>
     </fieldset>
     <fieldset className="appearance-settings" aria-describedby={`style-help-${id}`}>
       <legend>Style</legend>

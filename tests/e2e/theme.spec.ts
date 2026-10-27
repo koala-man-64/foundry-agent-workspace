@@ -36,7 +36,7 @@ test('the theme is a closed choice in settings that persists, follows Windows fo
     await expect.poll(() => theme(page)).toBe('light');
     await page.getByRole('button', { name: /Model settings/ }).first().click();
     const choices = page.getByRole('dialog').getByRole('group', { name: 'Theme' });
-    await expect(choices.getByRole('radio')).toHaveCount(3);
+    await expect(choices.getByRole('radio')).toHaveCount(4);
     await expect(choices.getByRole('radio', { name: 'Light' })).toBeChecked();
 
     await choices.getByRole('radio', { name: 'Dark' }).check();
@@ -70,6 +70,29 @@ test('the theme is a closed choice in settings that persists, follows Windows fo
     await windowsMode(page, 'dark');
     await windowsMode(page, 'light');
     expect(await theme(page)).toBe('dark');
+
+    // High contrast is an explicit light theme: it colours the window, ignores the Windows app mode, gives way to a
+    // Windows contrast theme and is restored before the first paint.
+    await choices.getByRole('radio', { name: 'High contrast' }).check();
+    await expect.poll(() => theme(page)).toBe('contrast');
+    const highContrast = await underlay(page);
+    expect([highContrast === dark, highContrast === '#e8e2d4']).toEqual([false, false]);
+    await expect.poll(() => windowBackground(app)).toBe(highContrast);
+    await windowsMode(page, 'dark');
+    expect(await theme(page)).toBe('contrast');
+    await windowsMode(page, 'light');
+    // Sampled from the block: under forced colours they fall back to Foundry Light's values.
+    const sample = () => page.evaluate(() => ['--canvas', '--accent', '--focus'].map(name => getComputedStyle(document.documentElement).getPropertyValue(name).trim()));
+    const own = await sample();
+    await page.emulateMedia({ forcedColors: 'active' });
+    const forced = await sample();
+    expect(forced.map((value, index) => value === own[index])).toEqual([false, false, false]);
+    await page.emulateMedia({ forcedColors: 'none' });
+    expect(await sample()).toEqual(own);
+    await page.reload();
+    await waitForRuntimeReady(page);
+    expect(await firstPaintTheme(page)).toBe('contrast');
+    expect(await theme(page)).toBe('contrast');
 
     // A stored value outside the list is ignored.
     await page.evaluate(() => localStorage.setItem('foundry.theme', 'paper'));
