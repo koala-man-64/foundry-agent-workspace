@@ -13,7 +13,7 @@ export function AppearanceSettings({ theme, onChange, style, onStyleChange }: { 
     <fieldset className="appearance-settings" aria-describedby={`style-help-${id}`}>
       <legend>Style</legend>
       <div className="appearance-options">{STYLES.map(value => <label key={value} className="checkbox-row"><input type="radio" name="foundry-style" value={value} checked={style === value} onChange={() => onStyleChange(value)} />{STYLE_LABELS[value]}</label>)}</div>
-      <small id={`style-help-${id}`}>Compact fits more on screen. Every control keeps a 24px minimum, and text keeps its minimum sizes.</small>
+      <small id={`style-help-${id}`}>Compact uses smaller text and tighter spacing so more fits on screen. Controls stay at least 24px.</small>
     </fieldset>
   </>;
 }

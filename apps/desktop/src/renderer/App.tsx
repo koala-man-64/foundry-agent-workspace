@@ -134,7 +134,8 @@ function App() {
   const [style, setStyle] = useState<StylePreference>(() => readStyle(viewerStorage()));
   useEffect(() => {
     applyStyle(style, document.documentElement);
-    // A style may change the rail; read it again and keep the stored inspector width inside the new limits.
+    // A style may change the rail; read it again and keep the inspector inside the new limits. The stored width is not
+    // overwritten, so a style with a narrower rail can restore it on the next start.
     const rail = documentRailWidths();
     setRailWidths(current => current.wide === rail.wide && current.narrow === rail.narrow ? current : rail);
     setInspectorWidth(width => clampInspectorWidth(width, window.innerWidth, rail));

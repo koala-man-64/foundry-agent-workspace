@@ -91,6 +91,8 @@ function px(name: string): number | undefined {
 
 // Style blocks (:root[data-style="..."]): token values only, set on the size roles.
 const styleBlocks = new Map([...uncommented(css).matchAll(/:root\[data-style="([\w-]+)"\]\s*{([^}]*)}/g)].map(match => [match[1]!, new Map([...match[2]!.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(declaration => [declaration[1]!, declaration[2]!.trim()]))]));
+// Fixed heights held at the 24px floor. --h-dense is exempt: dense rows clamp it with max(var(--target-min), var(--h-dense)).
+const FIXED_HEIGHTS = /^h-(ctl|view|chrome|decision|composer|compose-text|browser-tabs)\b/;
 // Rows whose height comes from padding: each is clamped to the pointer-target floor, so a style can shrink the padding only.
 const DENSE_ROWS = ['.sidebar-new', '.project-toggle', '.task-row', '.sidebar-footer button', '.sidebar-usage button', '.inspector-tabs button', '.file-tree button', '.agent-row'];
 
@@ -103,8 +105,8 @@ describe('size tokens', () => {
 
   it('holds the 24px pointer-target floor on every fixed control height and on dense rows', () => {
     expect(rootTokens.get('target-min')).toBe('24px');
-    const heights = [...rootTokens.keys()].filter(name => /^h-(ctl|view|chrome|decision|composer)\b/.test(name)).map(name => [name, px(name)] as const);
-    expect(heights.length).toBeGreaterThanOrEqual(6);
+    const heights = [...rootTokens.keys()].filter(name => FIXED_HEIGHTS.test(name)).map(name => [name, px(name)] as const);
+    expect(heights.length).toBeGreaterThanOrEqual(8);
     expect(heights.filter(([, value]) => value === undefined || value < 24)).toEqual([]);
     const clamped = [...uncommented(css).matchAll(/([^{}]+)\{[^{}]*min-height:\s*max\(var\(--target-min\), var\(--h-dense\)\)/g)].map(match => match[1]!.replace(/\s+/g, ' ').trim());
     expect(clamped.sort()).toEqual([...DENSE_ROWS].sort());
@@ -118,6 +120,13 @@ describe('size tokens', () => {
 
   it('keeps every style block to size token values, at the floors, outside forced-colors: none', () => {
     expect(STYLES.filter(style => style !== 'comfortable').sort()).toEqual([...styleBlocks.keys()].sort());
+    // Every [data-style] in the stylesheet opens one of those blocks at the top level: no selector rule or duplicate block on
+    // a style, and no wrapper (forced-colors: none, @media, @supports) that could switch a style off.
+    const plain = uncommented(css);
+    const uses = [...plain.matchAll(/\[data-style\b/g)].map(match => match.index!);
+    const depth = (index: number) => (plain.slice(0, index).match(/{/g) ?? []).length - (plain.slice(0, index).match(/}/g) ?? []).length;
+    expect(uses.length).toBe(styleBlocks.size);
+    expect(uses.map(depth), 'style blocks at the top level').toEqual(uses.map(() => 0));
     for (const [style, block] of styleBlocks) {
       const values = new Map([...rootTokens, ...block]);
       const resolved = (name: string) => {
@@ -129,15 +138,21 @@ describe('size tokens', () => {
       expect([...block.keys()].filter(name => !sizeTokens.has(name)), `${style}: names outside the size roles`).toEqual([]);
       expect([...block.keys()].filter(name => name === 'target-min' || name.startsWith('space-')), `${style}: floors and the ladder`).toEqual([]);
       expect([...block].filter(([, value]) => /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|color)\(/i.test(value)), `${style}: colours`).toEqual([]);
-      const heights = [...values.keys()].filter(name => /^h-(ctl|view|chrome|decision|composer)\b/.test(name)).filter(name => (size(name) ?? 0) < 24);
+      const heights = [...values.keys()].filter(name => FIXED_HEIGHTS.test(name)).filter(name => (size(name) ?? 0) < 24);
       expect(heights, `${style}: control heights under 24px`).toEqual([]);
       const type = [...values.keys()].filter(name => name.startsWith('fs-')).filter(name => (size(name) ?? 0) < 11);
       expect(type, `${style}: type roles under 11px`).toEqual([]);
       expect([size('fs-prose')! >= 14, size('fs-evidence')! >= 12], `${style}: prose 14px, evidence 12px`).toEqual([true, true]);
       // In a narrow approval list a label column would break paths, commands and hashes mid-token.
       expect(resolved('field-layout-narrow'), `${style}: narrow approval fields`).toBe('block');
-      expect(new RegExp(`@media \\(forced-colors: none\\)\\s*{\\s*:root\\[data-style="${style}"\\]`).test(uncommented(css)), `${style}: inside forced-colors: none`).toBe(false);
     }
+  });
+
+  it('lets a style put approval labels beside values only in a wide list, never in a narrow one', () => {
+    const plain = uncommented(css);
+    for (const list of ['approvals-panel', 'approval-tray-cards']) expect(new RegExp(`\\.${list} \\{[^}]*container: approval-list / inline-size;`).test(plain), list).toBe(true);
+    for (const name of ['field-layout', 'field-columns', 'field-col-gap', 'gap-field', 'gap-field-label', 'm-pre-card']) expect(rootTokens.get(`${name}-narrow`), name).toBe(`var(--${name})`);
+    expect(/@container approval-list \(min-width: 560px\)\s*{\s*\.approval-card dl \{[^}]*display: var\(--field-layout\);/.test(plain)).toBe(true);
   });
 
   it('defines every token a declaration uses', () => {

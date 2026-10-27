@@ -194,8 +194,8 @@
   --field-columns: none;                             /* e.g. 96px minmax(0, 1fr) */
   --field-col-gap: normal;
   --m-pre-card: var(--space-1) 0 0;
-  /* An approval list under 504px wide (the docked inspector): a label column would leave about 230px for values, so paths,
-     commands and hashes would break mid-token. A style that uses a label column keeps these narrow values stacked. */
+  /* An approval list under 560px wide (the docked inspector): a label column would narrow the value column to about 230px,
+     so paths, commands and hashes would wrap far more. A style that uses a label column keeps these narrow values stacked. */
   --field-layout-narrow: var(--field-layout);
   --field-columns-narrow: var(--field-columns);
   --field-col-gap-narrow: var(--field-col-gap);
@@ -771,7 +771,7 @@
   --field-layout: grid;
   --field-columns: minmax(88px, min(28%, 112px)) minmax(0, 1fr);
   --field-col-gap: 10px;
-  --gap-field: 2px;
+  --gap-field: 4px;
   --gap-field-label: 0px;
   --m-pre-card: 0px;
   --field-layout-narrow: block;
@@ -1197,9 +1197,10 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-card dt { margin-bottom: var(--gap-field-label-narrow); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .approval-card dd { margin: 0; overflow-wrap: anywhere; }
 .approval-card pre { margin: var(--m-pre-card-narrow); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: 1.45; }
-/* The lists that hold approval cards are size containers (not the cards, so a card is never its own stacking context). */
-@container approval-list (min-width: 504px) {
-  .approval-card dl { margin: var(--gap-field) 0 0; display: var(--field-layout); grid-template-columns: var(--field-columns); column-gap: var(--field-col-gap); }
+/* The lists that hold approval cards are size containers (not the cards, so a card is never its own stacking context).
+   560px keeps about 400px for the value beside a 112px label. */
+@container approval-list (min-width: 560px) {
+  .approval-card dl { margin: var(--gap-field) 0 0; display: var(--field-layout); grid-template-columns: var(--field-columns); column-gap: var(--field-col-gap); align-items: baseline; }
   .approval-card dt { margin-bottom: var(--gap-field-label); }
   .approval-card pre { margin: var(--m-pre-card); }
 }

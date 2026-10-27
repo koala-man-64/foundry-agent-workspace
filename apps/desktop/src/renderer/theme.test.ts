@@ -125,7 +125,11 @@ describe('first-paint script', () => {
     expect(run(() => storage(), false).style).toBe('comfortable');
     expect(run(() => storage({}, true), false).style).toBe('comfortable');
     expect(run(() => { throw new Error('storage blocked'); }, false).style).toBe('comfortable');
-    // The theme and the style are independent: one stored value never changes the other.
-    expect(run(() => storage({ [THEME_STORAGE_KEY]: 'dark', [STYLE_STORAGE_KEY]: 'compact' }), false)).toMatchObject({ theme: 'dark', style: 'compact' });
+    // The theme and the style are independent: one stored value never changes the other, in either Windows mode.
+    for (const theme of [...THEMES, undefined]) for (const style of [...STYLES, undefined]) for (const prefersDark of [false, true]) {
+      const values = Object.fromEntries([[THEME_STORAGE_KEY, theme], [STYLE_STORAGE_KEY, style]].filter((entry): entry is [string, string] => entry[1] !== undefined));
+      const stored = storage(values);
+      expect(run(() => stored, prefersDark), `${theme}/${style}, Windows ${prefersDark ? 'dark' : 'light'}`).toEqual({ theme: resolveTheme(readTheme(stored), prefersDark), style: readStyle(stored) });
+    }
   });
 });
