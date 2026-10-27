@@ -34,7 +34,7 @@
   /* ---- Type roles (the --fs-* scale itself is unchanged) ---- */
   --fs-heading: var(--fs-lg);                        /* h2 */
   --fs-prose: var(--fs-lg);                          /* transcript text, draft textarea, empty state. Floor 14px */
-  --lh-prose: 1.55;                                  /* transcript line height */
+  --lh-prose: 1.5;                                  /* transcript line height */
   --fs-title: var(--fs-2xl);                         /* task header h1 */
   --fs-title-short: var(--fs-xl);                   /* task header h1 in windows <= 760px tall */
   --fs-page-title: var(--fs-3xl);                    /* Usage page and gate h1 */
@@ -68,7 +68,10 @@
   /* ---- Widths and measures ---- */
   --rail-w: 270px;                                   /* sidebar rail; layout.ts reads it for the inspector limits */
   --rail-w-narrow: 236px;                            /* sidebar rail at <= 1050px */
-  --measure-message: 780px;                          /* transcript message and compaction summary */
+  --measure-message: none;                           /* transcript message and compaction summary: the lane */
+  --measure-prose: 33rem;                            /* transcript text: about 64ch of 15px prose, under 90 characters */
+  --meta-col: 124px;                                 /* the author and time column beside the text, from a 620px transcript */
+  --gap-meta-col: var(--space-3);                    /* that column to the text */
   --measure-draft: 760px;                            /* draft composer and template disclosure */
   --inset-draft: 48px;                               /* page margin around them */
   --inset-draft-narrow: 28px;                        /* ... at <= 950px */
@@ -81,9 +84,8 @@
 
   /* ---- Gutters: the page lane ---- */
   --gutter: var(--space-5);                          /* left and right edge of composer, banner, tray, notices, agent tree */
-  --pad-messages: var(--space-6) 13%;                /* transcript */
-  --pad-messages-x-narrow: 8%;                       /* transcript inline padding at <= 1050px */
-  --pad-coordinator-messages: var(--space-4) 4%;
+  --pad-messages: var(--space-3) var(--gutter) var(--space-2);                /* transcript */
+  --pad-coordinator-messages: var(--space-2) 0;
   --usage-pad-top: var(--space-5);                   /* Usage page */
   --usage-pad-x: clamp(var(--space-4), 4vw, 52px);
   --usage-pad-bottom: 64px;
@@ -108,12 +110,12 @@
   --pad-tray-summary: var(--space-2) 0;
 
   /* ---- Transcript ---- */
-  --gap-message: var(--space-5);                     /* after each message */
-  --gap-meta: var(--space-1-5);                      /* author line to text */
-  --pad-bubble: var(--space-3) var(--space-4);       /* the user's message */
+  --gap-message: var(--space-3);                     /* after each message */
+  --gap-meta: var(--space-0-5);                      /* author line to text */
+  --pad-bubble: var(--space-2) var(--space-3);       /* the user's message */
   --pad-message-rule: var(--space-3);                /* hairline to text: assistant and compacted messages */
-  --pad-compaction: var(--space-3);                  /* compaction summary */
-  --m-empty: 13vh auto;                              /* empty state */
+  --pad-compaction: var(--space-2) var(--space-3);                  /* compaction summary */
+  --m-empty: 6vh auto;                              /* empty state */
 
   /* ---- Rail ---- */
   --pad-rail: var(--space-2) var(--space-2) var(--space-1-5);
@@ -871,7 +873,8 @@
   --h-nav-list-min: 80px;
   --rail-w: 240px;
   --rail-w-narrow: 224px;
-  --measure-message: 78ch;
+  --meta-col: 112px;
+  --gap-meta-col: var(--space-2);
   --measure-draft: 680px;
   --inset-draft: 32px;
   --inset-draft-narrow: 20px;
@@ -882,9 +885,8 @@
   --size-plus: 22px;
   --size-mark: 36px;
   --gutter: var(--space-4);
-  --pad-messages: 10px max(16px, calc((100% - 880px) / 2)) 6px;
-  --pad-messages-x-narrow: 16px;
-  --pad-coordinator-messages: 8px 16px;
+  --pad-messages: var(--space-2) var(--gutter) var(--space-1-5);
+  --pad-coordinator-messages: var(--space-1-5) 0;
   --usage-pad-top: 14px;
   --usage-pad-x: clamp(12px, 3vw, 32px);
   --usage-pad-bottom: 32px;
@@ -1341,21 +1343,37 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .notice-info { color: var(--ink-2); border-bottom-color: var(--line); border-left-color: var(--line-strong); background: var(--surface-card); }
 dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .usage-page > .notice { margin: calc(-1 * var(--usage-pad-top)) calc(-1 * var(--usage-pad-x)) var(--gap-usage-notice); }
-.messages { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--pad-messages); }
+.messages { container: transcript / inline-size; flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--pad-messages); }
 .messages:focus-visible { outline-offset: -3px; }
 .message { max-width: var(--measure-message); margin-bottom: var(--gap-message); }
 .message.user { margin-left: auto; }
-.message-meta { margin-bottom: var(--gap-meta); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 600; }
-.message-meta time, .message-meta span { margin-left: var(--gap-inline); font-weight: 400; }
-.message p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-prose); line-height: var(--lh-prose); }
+.message-meta { margin-bottom: var(--gap-meta); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 600; line-height: 1.35; }
+.message-meta > :not(.message-author) { margin-left: var(--gap-inline); font-weight: 400; }
+.message p { max-width: var(--measure-prose); white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-prose); line-height: var(--lh-prose); }
 .message.user { display: flex; flex-direction: column; align-items: flex-end; }
-.message.user p { width: fit-content; max-width: 100%; padding: var(--pad-bubble); color: var(--bubble-ink); border-radius: var(--radius-lg); background: var(--bubble-bg); }
+.message.user p { width: fit-content; max-width: min(100%, var(--measure-prose)); padding: var(--pad-bubble); color: var(--bubble-ink); border-radius: var(--radius-lg); background: var(--bubble-bg); }
 .message.compacted { padding-left: var(--pad-message-rule); border-left: 2px dashed var(--line-compacted); }
 .message.compacted p { color: var(--ink-muted); }
 .message.user.compacted p { color: var(--bubble-compacted-ink); background: var(--bubble-compacted-bg); }
 .compacted-tag { margin-left: 8px; padding: var(--pad-badge); color: var(--ink-2); background: transparent; border-radius: var(--radius-xs); box-shadow: inset 0 0 0 1px var(--line-strong); font-size: var(--fs-xs); }
 .compaction-summary { max-width: var(--measure-message); margin: 0 0 var(--gap-message); padding: var(--pad-compaction); border-left: 2px solid var(--ink); background: var(--surface-sunken); }
 .compaction-summary p { font-size: var(--fs-sm); line-height: 1.5; }
+/* From a 620px transcript the author and time hang in a column beside the text, and your messages align with the agent's.
+   A container query, not the viewport: a dragged-wide inspector or the expanded browser fall back to the line above. */
+@container transcript (min-width: 620px) {
+  .message, .message.user { display: grid; grid-template-columns: var(--meta-col) minmax(0, 1fr); column-gap: var(--gap-meta-col); align-items: start; margin-left: 0; }
+  .message > .message-meta { grid-column: 1; grid-row: 1 / span 4; margin: 3px 0 0; }
+  .message > :not(.message-meta) { grid-column: 2; }
+  .message-author, .message-meta > :not(.message-author) { display: block; margin-left: 0; }
+  .message-meta > time { white-space: nowrap; }
+  .message.user p { justify-self: start; }
+  .message.compacted { padding-left: 0; border-left: 0; }
+  .message.compacted > p { padding-left: var(--pad-message-rule); border-left: 2px dashed var(--line-compacted); }
+  .message.user.compacted > p { padding: var(--pad-bubble); border-left: 0; }
+  .compacted-tag { width: fit-content; max-width: 100%; margin-top: var(--space-0-5); }
+  .message.compaction-summary { display: block; }
+  .compaction-summary .message-meta > :not(.message-author) { display: inline; margin-left: var(--gap-inline); }
+}
 .empty-state { max-width: 440px; margin: var(--m-empty); color: var(--ink-muted); text-align: center; }
 .empty-state h2 { font-size: var(--fs-welcome); font-weight: normal; }
 .empty-state p { margin-top: 10px; font-size: var(--fs-prose); line-height: 1.5; }
@@ -1649,7 +1667,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .channel-error { color: var(--danger-ink); }
 
 /* Responsive. The 950px breakpoint is mirrored by COMPACT_LAYOUT_QUERY in layout.ts. */
-@media (max-width: 1050px) { .workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) 5px var(--inspector-width, 360px); } .workspace.coordinated-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) var(--inspector-width, 360px); } .workspace.wide-content-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr); } .messages { padding-inline: var(--pad-messages-x-narrow); } }
+@media (max-width: 1050px) { .workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) 5px var(--inspector-width, 360px); } .workspace.coordinated-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr) var(--inspector-width, 360px); } .workspace.wide-content-workspace { grid-template-columns: var(--rail-w-narrow) minmax(320px, 1fr); } }
 @media (max-width: 950px) {
   body { min-width: 0; }
   .workspace, .workspace.coordinated-workspace, .workspace.wide-content-workspace { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); }
