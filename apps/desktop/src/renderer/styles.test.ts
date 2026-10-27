@@ -234,6 +234,17 @@ describe('size tokens', () => {
     }
   });
 
+  it('hangs the transcript author and time in a column only from a 620px transcript, measured on the transcript itself', () => {
+    const plain = uncommented(css);
+    expect(/\n\.messages \{[^}]*container: transcript \/ inline-size;/.test(plain)).toBe(true);
+    const wide = /@container transcript \(min-width: 620px\)\s*{([\s\S]*?)\n}/.exec(plain)?.[1] ?? '';
+    expect(wide).toContain('grid-template-columns: var(--meta-col) minmax(0, 1fr);');
+    expect(wide).toContain('.message > :not(.message-meta) { grid-column: 2; }');
+    expect([px('meta-col'), rootTokens.get('measure-prose')]).toEqual([124, '33rem']);
+    // The prose measure caps the text in both layouts, the bubble included.
+    expect(/\n\.message p \{[^}]*max-width: var\(--measure-prose\);/.test(plain) && /\n\.message\.user p \{[^}]*max-width: min\(100%, var\(--measure-prose\)\);/.test(plain)).toBe(true);
+  });
+
   it('lets a style put approval labels beside values only in a wide list, never in a narrow one', () => {
     const plain = uncommented(css);
     for (const list of ['approvals-panel', 'approval-tray-cards']) expect(new RegExp(`\\.${list} \\{[^}]*container: approval-list / inline-size;`).test(plain), list).toBe(true);
