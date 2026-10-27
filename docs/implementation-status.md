@@ -1,5 +1,67 @@
 # Implementation status
 
+## High contrast theme — 26 October 2026
+
+The fifth step of the preset themes plan. Task id `ui-theme-contrast-20261026`. Renderer only. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.
+
+Delivered:
+
+- **The choice.** High contrast is a fourth theme in Settings: System, Light, Dark, High contrast.
+  - It is in the closed list in `theme.ts`.
+  - `theme-boot.js` restores it before the first paint.
+  - System never resolves to it.
+  - The helper text says it is a light theme with darker text and stronger borders, so it is not mistaken for a Windows contrast theme.
+- **The theme** is one block of token values under `:root[data-theme="contrast"]`, inside `forced-colors: none`, so a Windows contrast theme still wins.
+  - It is the themes round's reviewed design, ported unchanged: 148 tokens.
+  - It adds `--placeholder-disabled`, which the base gained after that round. It aliases `--ink-muted` (7.6:1 on the disabled fill), because a disabled composer's placeholder is the only thing that explains why it is disabled.
+- **What the theme does:**
+  - Body ink is a near-black green, at 7:1 or more on every surface.
+  - Borders, not tints, carry the structure: cards are 6.5:1 and controls 8.5:1 on the canvas.
+  - Needs-you is one rust family, warning is amber and danger is crimson.
+  - The focus ring is deep blue.
+  - The rail stays dark, with brighter ink.
+  - Every fill has its own white ink.
+- **Compact** works with it, because the style carries no colour.
+
+Validation:
+- `themes.test.ts` checks the block strictly. Body inks must reach 7:1. Every other text, every control boundary, ring and mark, and the card, panel and popup borders must reach 4.5:1. The border rows are new and apply only to strict themes, because Light and Dark separate those regions by tone.
+  - It also applies the rules every theme meets:
+    - every literal Light token is restated;
+    - needs-you, danger and warning are told apart;
+    - focus rings stay out of the needs-you family;
+    - the colour scheme matches the canvas;
+    - the Retry button's scheme matches its box;
+    - the block is wrapped in `forced-colors: none`;
+    - Settings offers every block.
+  - Each of 14 mutations fails a check. Four of them use values that pass Light's thresholds and fail only the strict ones; one is a card border at 3.4:1.
+- `theme.test.ts` covers the closed list, System never resolving to High contrast, the first-paint script for a stored `contrast`, and every stored theme and style pair.
+- `theme.spec.ts` (e2e) checks the following:
+  - Settings offers four choices.
+  - High contrast sets `data-theme` and the window underlay.
+  - It ignores the Windows app mode.
+  - It gives way to emulated forced colours. Unwrapping the block makes this fail.
+  - It is restored before the first paint.
+- Harness, at 125% display scaling. It covers the 27 app captures, the keyboard-focused tray, and the states, coverage, extras and dialog sheets:
+  - At WCAG thresholds, the contrast, overflow and 24×24 target lists are empty for High contrast, High contrast with Compact, and High contrast with the Windows app mode dark.
+  - At 7:1, with large text at 4.5:1, no text node in the 25 app captures falls below. Light has 602.
+  - Under emulated forced colours, High contrast renders the same as Light: 27 of 29 captures are identical. The coordinated pair differs only by run state, and its inspector is identical.
+  - With the Windows app mode dark, High contrast is unchanged, apart from isolated pixels and the coordinated run state.
+
+Known limits:
+- Two text nodes in High contrast fall below 7:1, both above 4.5:1:
+  - the Retry button in the rail's error box, at 4.6:1. Its face is drawn by Chromium, not a token;
+  - the rail's "+" glyph, at 5.5:1.
+- Some lines stay below 4.5:1 on purpose:
+  - Dividers are 2.8 to 3.9:1. They separate regions and do not bound a control.
+  - The disabled-control border is 2.2 to 3.0:1, so a disabled control reads as disabled.
+  - The 3px success stripes are 3.4 to 3.9:1 where they are drawn, beside the word that carries the state.
+- Two pairs are told apart by their words, not by colour alone:
+  - The primary fill (rust) and the danger fill (crimson) sit 30 degrees apart in hue, as designed. Approve and Reject also differ in style: a filled button against an outlined one.
+  - APPROVED and EXECUTING share one neutral chip, as in Light.
+- The Windows title bar and caption follow Windows, as they do for every theme.
+
+Not verified: the packaged app; the installer.
+
 ## Compact style — 26 October 2026
 
 The fourth step of the preset themes plan. Task id `ui-theme-compact-20261026`. Renderer only. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.

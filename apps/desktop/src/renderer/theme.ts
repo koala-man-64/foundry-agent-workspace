@@ -3,10 +3,10 @@
  * inspector width; it is never read from repository text, model output, a URL or a file. A theme is a block of token
  * values in styles.css selected by data-theme on <html>.
  */
-export const THEMES = ['system', 'light', 'dark'] as const;
+export const THEMES = ['system', 'light', 'dark', 'contrast'] as const;
 export type ThemePreference = (typeof THEMES)[number];
 export type ResolvedTheme = Exclude<ThemePreference, 'system'>;
-export const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' };
+export const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark', contrast: 'High contrast' };
 // public/theme-boot.js mirrors this key and the light fallback, so the first frame is already themed.
 export const THEME_STORAGE_KEY = 'foundry.theme';
 

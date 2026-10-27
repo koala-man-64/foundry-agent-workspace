@@ -21,7 +21,8 @@ describe('theme preference', () => {
   it('reads only a value from the closed list and falls back to Light', () => {
     expect(readTheme(storage({ [THEME_STORAGE_KEY]: 'dark' }))).toBe('dark');
     expect(readTheme(storage({ [THEME_STORAGE_KEY]: 'system' }))).toBe('system');
-    for (const value of ['paper', 'DARK', '', 'dark; color: red', '<script>']) expect(readTheme(storage({ [THEME_STORAGE_KEY]: value }))).toBe('light');
+    expect(readTheme(storage({ [THEME_STORAGE_KEY]: 'contrast' }))).toBe('contrast');
+    for (const value of ['paper', 'DARK', '', 'dark; color: red', '<script>', 'high-contrast', 'Contrast']) expect(readTheme(storage({ [THEME_STORAGE_KEY]: value }))).toBe('light');
     expect(readTheme(storage())).toBe('light');
     expect(readTheme(storage({}, true))).toBe('light');
     expect(readTheme(undefined)).toBe('light');
@@ -39,6 +40,7 @@ describe('theme preference', () => {
     expect(resolveTheme('system', false)).toBe('light');
     expect(resolveTheme('light', true)).toBe('light');
     expect(resolveTheme('dark', false)).toBe('dark');
+    expect(resolveTheme('contrast', true)).toBe('contrast');
   });
 });
 
