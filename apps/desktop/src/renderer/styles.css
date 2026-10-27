@@ -413,7 +413,7 @@
   --rail-popover: #26231d;
   --rail-popover-hover: #34302a;
   --rail-line-control: #8f8777;
-  --rail-plus-bg: var(--rail-hover);
+  --rail-plus-bg: var(--rail-line);
   /* Rail inks */
   --rail-ink-strong: var(--rail-ink);
   --rail-ink-bright: var(--rail-ink);
@@ -1038,7 +1038,7 @@ button { cursor: pointer; }
 input[type=date]::-webkit-calendar-picker-indicator:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .sidebar-shell :focus-visible { outline-color: var(--rail-focus); }
 h1, h2, p { margin: 0; }
-h1, h2 { font-family: var(--font-serif); }
+h1, h2 { font-family: var(--font-serif); font-weight: 600; }
 h2 { font-size: var(--fs-heading); }
 /* Two weights: 400 and 600. */
 strong, b, th { font-weight: 600; }
@@ -1147,12 +1147,13 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .action-row.tier-0 strong { font-weight: 600; }
 .action-row.tier-0 > span { color: var(--rail-accent); font-weight: 600; }
 .action-row .chip { margin-left: 6px; padding: 0 5px; color: var(--rail-ink); border: 1px solid var(--rail-faint); border-radius: var(--radius-sm); font-size: var(--fs-xs); }
-/* A decision is waiting: the Inbox view's rule turns terracotta, over its selection mark; while it is not the open view
-   its label is in the needs-you ink as well (never on a selection fill, where the ink would lose contrast). */
-.workspace-views[data-decisions="pending"] > button:first-child { box-shadow: inset 2px 0 0 var(--rail-accent); }
+/* A decision is waiting in the Inbox. The open view always keeps its selection bar, so open and pending never differ by hue
+   alone: closed, the Inbox label is in the needs-you ink beside its count; open, a terracotta stripe joins the bar (the label
+   stays rail ink, which keeps its contrast on a theme's selection fill). */
 .workspace-views[data-decisions="pending"] > button:first-child:not(.active) { color: var(--rail-accent); font-weight: 600; }
+.workspace-views[data-decisions="pending"] > button:first-child.active { box-shadow: inset 2px 0 0 var(--rail-select-mark), inset 5px 0 0 var(--rail-accent); }
 .navigation-error { padding: var(--pad-nav-error); color: var(--rail-error-ink); background: var(--rail-error-bg); font-size: var(--fs-xs); line-height: 1.4; }
-.navigation-error button { min-height: var(--target-min); color: inherit; color-scheme: var(--rail-error-scheme); }
+.navigation-error button { min-height: var(--target-min); padding: 0 var(--space-2); color: inherit; border: 1px solid currentColor; border-radius: var(--radius-sm); background: transparent; color-scheme: var(--rail-error-scheme); }
 .workspace-navigation .task-row { display: grid; grid-template-columns: 10px 1fr; gap: var(--gap-row); padding: var(--pad-rail-row); color: var(--rail-ink-list); border: 0; background: transparent; text-align: left; }
 .workspace-navigation .task-row:hover { background: var(--rail-hover); }
 .workspace-navigation .task-row.selected { background: var(--rail-selected); box-shadow: inset 2px 0 0 var(--rail-select-mark); }
@@ -1323,6 +1324,7 @@ input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; color:
 .task-status.warning .task-metrics { color: var(--warn-ink); font-weight: 600; }
 .header-actions .secondary.subdued { color: var(--ink-2); background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
 .header-actions .secondary.subdued:hover:not(:disabled) { background: var(--surface-well); }
+.header-actions .secondary.subdued:disabled { color: var(--ink-disabled); box-shadow: none; }
 .notice { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: space-between; gap: var(--gap-notice); padding: var(--pad-strip-y) var(--gutter) var(--pad-strip-y) calc(var(--gutter) - 4px); color: var(--notice-error-ink); border-bottom: 1px solid var(--notice-error-line); border-left: 4px solid var(--danger); background: var(--notice-error-bg); font-size: var(--fs-sm); line-height: 1.45; }
 .notice p { min-width: 0; overflow-wrap: anywhere; }
 .notice button { flex: 0 0 auto; min-width: var(--target-min); min-height: var(--target-min); margin: -3px -8px -3px 0; color: inherit; border: 0; border-radius: var(--radius-sm); background: none; font-size: 18px; line-height: 1; }
@@ -1409,8 +1411,8 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-heading strong.approval-tool { font-family: var(--font-mono); }
 .approval-heading span { flex: 0 0 auto; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 600; }
 .approval-state { padding: var(--pad-badge); border-radius: var(--radius-sm); background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
-/* labels.ts writes the states in lower case; the badge capitalises its first letter. */
-.approval-state::first-letter { text-transform: uppercase; }
+/* labels.ts and the panels write state words in lower case; the heading capitalises their first letter. */
+.approval-heading > span::first-letter { text-transform: uppercase; }
 .approval-state.awaiting-approval { color: var(--on-accent); background: var(--accent); box-shadow: none; }
 /* Approved and executing are progress, not errors or a decision: a neutral chip beside the word. */
 .approval-state.approved, .approval-state.executing { color: var(--ink); background: transparent; box-shadow: inset 0 0 0 1px var(--ink); }
@@ -1482,7 +1484,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--gap-btn-row); }
 .dialog-actions button { min-width: var(--w-dialog-btn); }
 /* The database upgrade is a warning, not a decision: ochre with a 4px rule. */
-.upgrade-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: var(--pad-upgrade); color: var(--upgrade-banner-ink); border-left: 4px solid var(--warn); background: var(--upgrade-banner-bg); font-size: var(--fs-sm); line-height: 1.4; }
+.upgrade-banner { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: var(--pad-upgrade); color: var(--upgrade-banner-ink); border-left: 4px solid var(--warn-line); background: var(--upgrade-banner-bg); font-size: var(--fs-sm); line-height: 1.4; }
 .upgrade-banner button { flex: 0 0 auto; }
 .upgrade-dialog .profile-form p { color: var(--ink-2); font-size: var(--fs-md); line-height: 1.5; }
 

@@ -144,6 +144,7 @@ const PAIRS: readonly Pair[] = [
   ['graph-line', ['surface-inspector'], 3, 'ui'],
   ['patch-add-bar', ['patch-add-bg'], 3, 'ui'],
   ['patch-del-bar', ['patch-del-bg'], 3, 'ui'],
+  ['warn-line', ['upgrade-banner-bg'], 3, 'ui'],
 ];
 // High contrast: body inks at 7:1, every other text and every UI pair at 4.5:1.
 const STRICT_THEMES = new Set(['contrast']);

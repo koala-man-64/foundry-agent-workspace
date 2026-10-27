@@ -69,7 +69,7 @@ describe('design tokens', () => {
 
   it('uses two weights, 400 and 600, and only the rail glyphs draw lighter', () => {
     const plain = uncommented(css);
-    const weights = [...plain.matchAll(/([^{}]+)\{([^}]*)\}/g)].flatMap(([, selector, body]) => [...body!.matchAll(/font-weight:\s*([^;]+);|font:\s*(\d{3})\s/g)]
+    const weights = [...plain.matchAll(/([^{}]+)\{([^}]*)\}/g)].flatMap(([, selector, body]) => [...body!.matchAll(/font-weight:\s*([^;}]+?)\s*(?:;|$)|font:\s*(\d{3}|bold|bolder|lighter)\s/g)]
       .map(match => [selector!.trim(), (match[1] ?? match[2])!.trim()] as const));
     expect(weights.length).toBeGreaterThan(40);
     expect(weights.filter(([selector, weight]) => !['400', '600', 'normal'].includes(weight) && !(weight === '300' && ['.sidebar-plus', '.icon-button'].includes(selector)))).toEqual([]);
@@ -77,8 +77,21 @@ describe('design tokens', () => {
 
   it('writes labels in sentence case: no capitals-and-tracking labels', () => {
     const plain = uncommented(css);
-    expect([...plain.matchAll(/([^{}]+)\{[^}]*text-transform:\s*uppercase/g)].map(match => match[1]!.trim())).toEqual(['.approval-state::first-letter']);
-    expect([...plain.matchAll(/letter-spacing:\s*([^;]+);/g)].map(match => match[1]!.trim()).filter(value => !['0', 'normal'].includes(value))).toEqual([]);
+    expect([...plain.matchAll(/([^{}]+)\{[^}]*text-transform:\s*uppercase/g)].map(match => match[1]!.trim())).toEqual(['.approval-heading > span::first-letter']);
+    expect([...plain.matchAll(/letter-spacing:\s*([^;}]+)/g)].map(match => match[1]!.trim()).filter(value => !['0', 'normal'].includes(value))).toEqual([]);
+    // The browser's own bold (headings) takes the second weight too.
+    expect(/(?:^|\})\s*h1, h2 \{[^}]*font-weight: 600;/.test(plain)).toBe(true);
+  });
+
+  it('sets evidence text at 12px and 1.4 in Comfortable, in every evidence rule', () => {
+    expect([px('fs-evidence'), rootTokens.get('lh-evidence')]).toEqual([12, '1.4']);
+    const plain = uncommented(css);
+    for (const selector of ['.file-content pre, .patch pre', '.approval-card pre', '.command-evidence small, .approval-result small',
+      '.assignment-card pre, .orchestration-evidence pre, .assignment-summary pre, .activity-timeline pre', '.request-chart table']) {
+      const start = plain.indexOf(`\n${selector} {`);
+      const body = start < 0 ? '' : plain.slice(start, plain.indexOf('}', start));
+      expect(body.includes('var(--fs-evidence)') && body.includes('var(--lh-evidence)'), selector).toBe(true);
+    }
   });
 
   it('uses no font size below the 11px floor', () => {
@@ -249,6 +262,24 @@ describe('attention styles', () => {
 
   it('keeps the decision emphasis and Focus state visible in forced colours', () => {
     for (const selector of ['.approval-card.awaiting-approval', '.approval-card.unknown', '.approval-banner', '.focus-toggle[aria-pressed="true"]', '.approval-tray']) expect(forcedColors).toContain(selector);
+  });
+
+  it('keeps a box for the cards that need a decision or carry an unknown or failed outcome; decided cards are flat rows', () => {
+    const plain = uncommented(css);
+    const rule = (selector: string) => { const start = plain.indexOf(`\n${selector} {`); return { start, body: start < 0 ? '' : plain.slice(start, plain.indexOf('}', start)) }; };
+    const [base, first, live, awaiting, unknown] = ['.approval-card', '.approval-card:first-of-type', '.approval-card:is(.awaiting-approval, .unknown, .failed)',
+      '.approval-card.awaiting-approval', '.approval-card.unknown, .approval-card.failed'].map(rule);
+    // Order carries the cascade: the live box restores the top border that :first-of-type removes, and the state rules then
+    // set the 3px edge, which a later border shorthand would reset.
+    expect([base, first, live, awaiting, unknown].map(found => found!.start >= 0)).toEqual([true, true, true, true, true]);
+    expect(base!.start < first!.start && first!.start < live!.start && live!.start < awaiting!.start && awaiting!.start < unknown!.start).toBe(true);
+    expect(['border: 0;', 'border-top: 1px solid var(--line);', 'background: transparent;'].every(part => base!.body.includes(part))).toBe(true);
+    expect(['margin: var(--gap-card) 0;', 'border: 1px solid'].every(part => live!.body.includes(part))).toBe(true);
+    expect([awaiting!.body, unknown!.body].every(body => body.includes('border-left: 3px solid'))).toBe(true);
+  });
+
+  it('restates the needs-decision marks for Windows contrast themes', () => {
+    for (const selector of ['.action-row.tier-0', '.workspace-views[data-decisions="pending"] > button:first-child', '.primary:disabled']) expect(forcedColors).toContain(selector);
   });
 
   it('draws the decision ring inside the border, so emphasis never changes geometry', () => {
