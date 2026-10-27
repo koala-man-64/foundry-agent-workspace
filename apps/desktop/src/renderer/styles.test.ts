@@ -67,6 +67,20 @@ describe('design tokens', () => {
     expect(failures(['viz-reported', 'viz-unknown', 'viz-unsent', 'viz-axis'], ['surface', 'surface-card', 'surface-inspector'], 3)).toEqual([]);
   });
 
+  it('uses two weights, 400 and 600, and only the rail glyphs draw lighter', () => {
+    const plain = uncommented(css);
+    const weights = [...plain.matchAll(/([^{}]+)\{([^}]*)\}/g)].flatMap(([, selector, body]) => [...body!.matchAll(/font-weight:\s*([^;]+);|font:\s*(\d{3})\s/g)]
+      .map(match => [selector!.trim(), (match[1] ?? match[2])!.trim()] as const));
+    expect(weights.length).toBeGreaterThan(40);
+    expect(weights.filter(([selector, weight]) => !['400', '600', 'normal'].includes(weight) && !(weight === '300' && ['.sidebar-plus', '.icon-button'].includes(selector)))).toEqual([]);
+  });
+
+  it('writes labels in sentence case: no capitals-and-tracking labels', () => {
+    const plain = uncommented(css);
+    expect([...plain.matchAll(/([^{}]+)\{[^}]*text-transform:\s*uppercase/g)].map(match => match[1]!.trim())).toEqual(['.approval-state::first-letter']);
+    expect([...plain.matchAll(/letter-spacing:\s*([^;]+);/g)].map(match => match[1]!.trim()).filter(value => !['0', 'normal'].includes(value))).toEqual([]);
+  });
+
   it('uses no font size below the 11px floor', () => {
     const sizes = [...css.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map(match => Number(match[1]));
     expect(sizes.filter(size => size < 11)).toEqual([]);
@@ -142,7 +156,7 @@ describe('size tokens', () => {
       expect(heights, `${style}: control heights under 24px`).toEqual([]);
       const type = [...values.keys()].filter(name => name.startsWith('fs-')).filter(name => (size(name) ?? 0) < 11);
       expect(type, `${style}: type roles under 11px`).toEqual([]);
-      expect([size('fs-prose')! >= 14, size('fs-evidence')! >= 12], `${style}: prose 14px, evidence 12px`).toEqual([true, true]);
+      expect([size('fs-prose')! >= 14, size('fs-evidence')! >= 12, Number(resolved('lh-evidence')) >= 1.35], `${style}: prose 14px, evidence 12px at 1.35 or more`).toEqual([true, true, true]);
       // In a narrow approval list a label column would break paths, commands and hashes mid-token.
       expect(resolved('field-layout-narrow'), `${style}: narrow approval fields`).toBe('block');
     }

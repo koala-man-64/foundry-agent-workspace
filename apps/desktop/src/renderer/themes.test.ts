@@ -68,6 +68,8 @@ function deltaE2000(one: string, two: string): number {
 const PAGE = ['canvas', 'surface', 'surface-card', 'surface-sunken', 'surface-inspector', 'surface-well'];
 const RAIL3 = ['rail', 'rail-raised', 'rail-hover'];
 const RAIL4 = [...RAIL3, 'rail-selected'];
+// The needs-decision Inbox row: the one tinted, boxed rail row.
+const NEEDS_ROW = 'rail-needs-bg';
 type Pair = readonly [foreground: string, backgrounds: readonly string[], minimum: number, kind: 'text' | 'ui'];
 // WCAG 1.4.3 text at 4.5:1 and 1.4.11 boundaries, rings and marks at 3:1, on every surface each token is drawn on.
 const PAIRS: readonly Pair[] = [
@@ -95,21 +97,23 @@ const PAIRS: readonly Pair[] = [
   ['notice-warning-ink', ['notice-warning-bg'], 4.5, 'text'],
   ['notice-success-ink', ['notice-success-bg'], 4.5, 'text'],
   ['mark-ink', ['mark-bg'], 4.5, 'text'],
+  ['bubble-ink', ['bubble-bg'], 4.5, 'text'],
+  ['bubble-compacted-ink', ['bubble-compacted-bg'], 4.5, 'text'],
   ['graph-ink', ['graph-done', 'graph-failed', 'graph-open'], 4.5, 'text'],
   ['graph-ink-2', ['graph-done', 'graph-failed', 'graph-open'], 4.5, 'text'],
   ['rail-ink', RAIL3, 4.5, 'text'],
   ['rail-ink-strong', ['rail-hover', 'rail-selected', 'rail-raised'], 4.5, 'text'],
   ['rail-ink-bright', ['rail', 'rail-hover', 'rail-plus-bg', 'rail-popover', 'rail-popover-hover'], 4.5, 'text'],
-  ['rail-ink-list', RAIL4, 4.5, 'text'],
+  ['rail-ink-list', [...RAIL4, NEEDS_ROW], 4.5, 'text'],
   ['rail-ink-warm', ['rail', 'rail-hover'], 4.5, 'text'],
   ['rail-ink-icon', ['rail', 'rail-hover'], 4.5, 'text'],
   ['rail-ink-glyph', ['rail', 'rail-hover'], 4.5, 'text'],
   ['rail-ink-2', RAIL4, 4.5, 'text'],
   ['rail-muted', RAIL3, 4.5, 'text'],
   ['rail-faint', RAIL3, 4.5, 'text'],
-  ['rail-ink-meta', ['rail-raised', 'rail-hover'], 4.5, 'text'],
+  ['rail-ink-meta', ['rail-raised', 'rail-hover', NEEDS_ROW], 4.5, 'text'],
   ['rail-ink-meta-2', RAIL4, 4.5, 'text'],
-  ['rail-accent', RAIL3, 4.5, 'text'],
+  ['rail-accent', [...RAIL3, NEEDS_ROW], 4.5, 'text'],
   ['rail-warn-ink', ['rail', 'rail-hover'], 4.5, 'text'],
   ['rail-button-ink', ['rail-button-bg'], 4.5, 'text'],
   ['rail-error-ink', ['rail-error-bg'], 4.5, 'text'],
@@ -118,12 +122,14 @@ const PAIRS: readonly Pair[] = [
   ['select', [...PAGE, 'select-soft'], 3, 'ui'],
   ['accent', PAGE, 3, 'ui'],
   ['danger', PAGE, 3, 'ui'],
+  // The complete badge's ring: on cards, panels and the tray, never on an evidence well.
+  ['ok', PAGE.filter(surface => surface !== 'surface-well'), 3, 'ui'],
   ['choice', PAGE, 3, 'ui'],
   ['needs-you-line', ['canvas', 'surface', 'surface-card', 'surface-sunken', 'surface-inspector'], 3, 'ui'],
   ['secondary-ring', PAGE, 3, 'ui'],
-  ['rail-focus', [...RAIL4, 'rail-error-bg', 'rail-button-bg', 'rail-popover', 'rail-popover-hover'], 3, 'ui'],
+  ['rail-focus', [...RAIL4, NEEDS_ROW, 'rail-error-bg', 'rail-button-bg', 'rail-popover', 'rail-popover-hover'], 3, 'ui'],
   ['rail-accent', RAIL4, 3, 'ui'],
-  ['rail-accent-line', RAIL3, 3, 'ui'],
+  ['rail-accent-line', [...RAIL3, NEEDS_ROW], 3, 'ui'],
   ['rail-select-mark', RAIL4, 3, 'ui'],
   ['rail-line-control', RAIL3, 3, 'ui'],
   ['rail-warn', ['rail', 'rail-hover'], 3, 'ui'],
