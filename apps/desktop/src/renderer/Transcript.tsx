@@ -125,7 +125,7 @@ export function Transcript({ messages, compactions = [], ordinals, awaitingAppro
       const content = message.content || (message.status === 'streaming' ? awaitingApproval ? 'Awaiting your reviewed tool approval.' : 'Receiving response…' : '');
       return <div key={message.id}>
         <article className={`message ${message.role} ${record ? 'compacted' : ''}`} data-message-id={message.id}>
-          <div className="message-meta">{label} <time dateTime={message.createdAt} title={new Date(message.createdAt).toLocaleString()}>{formatDateTime(message.createdAt)}</time>{record && <span className="compacted-tag">compacted · retained locally</span>}</div>
+          <div className="message-meta"><span className="message-author">{label}</span> <time dateTime={message.createdAt} title={new Date(message.createdAt).toLocaleString()}>{formatDateTime(message.createdAt)}</time>{record && <span className="compacted-tag">compacted · retained locally</span>}</div>
           <MessageBody message={message} initial={content} api={api} taskId={taskId} />
         </article>
         {slots[index + 1]?.map(item => summary(item, item.id))}

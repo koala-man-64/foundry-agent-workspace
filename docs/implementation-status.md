@@ -17,6 +17,40 @@ Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel
 - **C#.** Nothing to land. The native runtime has no automation handler: `automation.script.grant` reaches the `NotSupportedException` default in `DevelopmentChat.Dispatch`. Its future port must keep the same strict check, with no tolerance, and port the runtime test above.
 - **Found, not changed.** The dialog's "Days until expiry" field accepts up to 365. The runtime refuses anything over 30 with the message above.
 
+## Default look, part 3: the transcript on the lane, with a hanging author column — 27 October 2026
+
+Task id `ui-look-transcript-20261027`, the third slice of the default look Rudy chose on 27 October. Rudy picked the hanging author and time column explicitly. Renderer CSS plus one span in `Transcript.tsx`: no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.
+
+**What changed**
+- **One lane.** The transcript shares the 24px lane with the header, banner and composer, in Comfortable and in Compact. Compact's centred 880px column is gone, so its transcript lines up with its header. A child agent's transcript sits on the detail pane's lane, like the coordinator's.
+- **Rhythm and measure.**
+  - Spacing: 12px between messages, 2px from the author line to the text, and an 8px 12px bubble.
+  - Line height: 1.5.
+  - Measure: a 33rem cap on the text and the bubble, about 64 characters of 15px prose.
+- **Hanging column.** From a transcript 620px wide, the author and time hang in a 124px column beside the text (112px in Compact), and your messages align with the agent's.
+  - The width check is a container query on `.messages`, so a dragged-wide inspector or the expanded browser falls back.
+  - Narrower than that, the author line stays above the text and your bubble stays right-aligned.
+  - The author is its own span. A compacted message's dashed rule moves to its text. The compacted tag stacks under the time.
+  - Load buttons start at the text edge. The time wraps in its column (its exact value is in the title).
+
+**Validation** (local, Windows, isolated fixtures)
+- **`pnpm check`** (at `a489c5d`): typecheck and lint pass. Vitest: 833 of 835. The 2 failures are load timeouts in the runtime publish and continuity tests, which this change does not touch; serially those files pass, 30 of 30.
+  - New stylesheet check: the container rule (on the transcript, at 620px, as a grid with the author column), the 124px column and the 33rem measure on the text and the bubble.
+- **`pnpm test:e2e`**: 31 of 31 pass, including the new `transcript.spec.ts`.
+  - At 1480×940 it checks that the author and time sit beside the text and that both speakers share the text edge.
+  - At 1000×680 it checks that the author line is above the text, your bubble sits at its message's right edge, and the agent's text at its message's left edge.
+  - With the container rule disabled, the spec fails.
+- **Harness** (`.local/verification/ui-look-transcript-20261027/render2`):
+  - Every preset and sheet has empty contrast, overflow and 24×24 target lists. High contrast has no app text below 7:1. Under forced colours, Light and Dark match in 29 of 29 captures.
+  - At 1480×940 the chat shows 8 exchanges with the author column.
+- **Independent review**: two reviewers (Sonnet, high, from their agent definitions), one on layout and who-said-what and one on code and tests. Both said GO, with no P0 or P1.
+  - Fixed: Load buttons stretching across the text column, the time overrunning its column in longer locales, the narrow-layout e2e check that could not fail reliably, the column layout's margin reaching the compaction summary, and the child transcript inset twice.
+- **Not run**: `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed.
+
+**Known limits**
+- **Compacted messages.** In the column layout, a compacted message's dashed rule marks its text, not its Load button or error line. No real-app render shows a compacted or truncated message in the hanging layout, so they are verified by reading the CSS only.
+- **Window resizes.** The 620px switch follows the transcript's own width, so resizing the inspector moves a transcript between the two layouts.
+
 ## Default look, part 2: Balanced sizes for the shell — 27 October 2026
 
 Task id `ui-look-balanced-20261027`, the second of five slices of the default look Rudy chose on 27 October. It builds on part 1 (the hybrid's colours and structure) and lands Balanced's sizes for the shell:
