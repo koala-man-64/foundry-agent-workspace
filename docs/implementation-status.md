@@ -17,6 +17,55 @@ Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel
 - **C#.** Nothing to land. The native runtime has no automation handler: `automation.script.grant` reaches the `NotSupportedException` default in `DevelopmentChat.Dispatch`. Its future port must keep the same strict check, with no tolerance, and port the runtime test above.
 - **Found, not changed.** The dialog's "Days until expiry" field accepts up to 365. The runtime refuses anything over 30 with the message above.
 
+## Changes tab: words for an empty diff, and re-reads after approvals — 27 October 2026
+
+Task id `ui-changes-tab-20261027`, the separate Changes-tab fix from the preset-themes plan. Renderer only: no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#, because the WebView2 host loads the same renderer.
+
+**Defects fixed**
+- **Blank tab.** When the worktree had no diff, the Changes tab showed nothing at all. The runtime returns an empty summary, and `diff?.summary ?? 'Loading changes…'` rendered the empty string.
+- **Stale tab.** After an approved edit or command, Files and Changes kept their earlier contents until the task was reselected or Refresh pressed. The renderer read the diff only on selection, Refresh, commit and reconcile.
+- **Dropped diff.** In the chat inspector, browsing into a folder while a refresh was in flight discarded that refresh's diff, because `loadFiles` bumps the counter the diff was guarded by. A coordinated view whose diff read failed showed "Loading changes…" forever.
+
+**What changed**
+- **One panel.** `ChangesPanel` in `worktree.tsx` serves both inspectors.
+  - An empty diff reads "No changes to show. Secret-named files, and new files that are binary or too large to read, are not listed." The runtime leaves those out of the diff (`safeDiffPaths`, the untracked loop in `repository.ts`), so the words never claim a clean worktree.
+  - An empty diff that is truncated reads "Some changes are not shown (truncated)."
+  - A failed read is shown in place with Retry. If an older diff is still on screen, it says that diff may be out of date.
+- **Re-reads.** Files and Changes re-read the worktree when an approval for the shown task settles in a state that may have touched files (`complete`, `failed` or `unknown`), and when its run completes or stops. That rule is `mayChangeWorktree`.
+  - The chat inspector calls the latest render's Refresh through a ref, the same pattern as `snapshotWorker`.
+  - The coordinated inspector re-reads its root inside its existing 250 ms event debounce, and now also re-reads the open file, on Refresh and after those events.
+  - App skips coordinated roots, which the coordinated view owns.
+  - Edits made outside the app raise no event, so Refresh still covers them.
+- **Independent reads.** The listing and the diff are read in parallel and handled separately. A listing failure no longer blocks or mislabels the diff. The diff has its own version counter, so browsing supersedes only the listing.
+- **Nothing gains authority.** The re-reads are the same read-only `files.list`, `task.diff` and `files.read` calls that Refresh makes. They approve, retry or reconcile nothing.
+
+**Validation** (local, Windows, isolated fixtures)
+- **`pnpm check`.**
+  - Typecheck and lint pass.
+  - Vitest passed 833 of 835 (initial commit run: 829 of 832). Every failure was a timeout or `EBUSY` in runtime git, publish and continuity tests this change does not touch, the same load pattern as the last PRs.
+  - Rerun serially, the failed files pass, 47 of 47.
+  - The new `worktree.test.ts` passes 8 of 8.
+- **`pnpm test:e2e`.** 30 of 30 pass, on the initial commit and again after the review fixes.
+- **Tests added.**
+  - The chat inspector says the empty-diff sentence before an approval, shows the new file after approving without Refresh, and keeps the sentence after a reject. It keeps the diff when a folder is browsed during Refresh.
+  - The coordinated inspector shows an open file's integrated content without Refresh, and the empty-diff sentence after completion.
+- **Mutation checks.** All 6 mutants fail their test, and sources are restored by sha256 after each one:
+  - the diff guarded by the listing counter again;
+  - no automatic refresh in the chat view;
+  - a blank empty diff;
+  - no "may be out of date" line over an older diff;
+  - no automatic refresh in the coordinated view;
+  - no open-file re-read in the coordinated view.
+- **Independent review.** Two reviewers (Sonnet, high, from their agent definitions), one on correctness, races and tests, one on trust and wording. Both returned GO with no P0 or P1.
+  - Their P2 and P3 findings are fixed: the wording, the inline error over an older diff, independent reads, the coordinated error state and open-file re-read, and the duplicate App refresh.
+  - The browse-race check stays timing-based (see Known limits).
+- **Not run.** `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed. The packaged app and the installer are not verified.
+
+**Known limits**
+- **Rendering assumption.** The empty-state sentence assumes the runtime's current exclusions. A runtime flag saying "paths were left out" would be more exact, but it is a protocol change and was not made.
+- **Timing-dependent check.** The browse-during-refresh e2e check relies on timing: the folder click must land while Refresh's reads are still running. It cannot fail with the fix in place. On this machine it caught the old behaviour (the mutant failed), but a much faster machine could let the old code pass.
+- **No timestamp.** One refresh is taken when an approval settles. A command whose outcome is `unknown` may still write later, and the tab does not say how old its snapshot is. The approval card and the banner carry the unknown state.
+
 ## Clear site data: the `browser.spec` wait, and pages that ask to stay — 26–27 October 2026
 
 Task id `browser-clear-wait-20261026`. Two parts:
