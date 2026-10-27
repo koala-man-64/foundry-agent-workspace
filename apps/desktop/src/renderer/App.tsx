@@ -18,8 +18,7 @@ import { TemplatePicker } from './TemplatePicker';
 import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
-import { diffSummaryText, mayChangeWorktree } from './worktree';
-import { PatchText } from './Evidence';
+import { ChangesPanel, mayChangeWorktree } from './worktree';
 import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay } from './layout';
 import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
 import { FocusControls } from './FocusControls';
@@ -403,14 +402,13 @@ function App() {
     // Browsing a folder supersedes this listing but not the diff, which covers the whole worktree.
     const version = ++inspectorVersion.current; const diffRun = ++diffVersion.current;
     if (kind === 'none') { setFiles([]); setDiff(undefined); return; }
-    try {
-      const nextFiles = await api.invoke('files.list', { taskId, path });
-      const nextDiff = kind === 'git' ? await api.invoke('task.diff', { taskId }) : undefined;
-      if (selectedRef.current !== taskId) return;
-      if (version === inspectorVersion.current && currentPathRef.current === path) setFiles(nextFiles);
-      if (diffRun === diffVersion.current) { setDiff(nextDiff); setDiffError(''); }
-    } catch (error) {
-      if (selectedRef.current === taskId && diffRun === diffVersion.current) { setDiffError(errorMessage(error)); setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
+    const [listed, read] = await Promise.allSettled([api.invoke('files.list', { taskId, path }), kind === 'git' ? api.invoke('task.diff', { taskId }) : Promise.resolve(undefined)]);
+    if (selectedRef.current !== taskId) return;
+    if (version === inspectorVersion.current && currentPathRef.current === path) {
+      if (listed.status === 'fulfilled') setFiles(listed.value); else setNotice(`Could not load files: ${errorMessage(listed.reason)}`);
+    }
+    if (diffRun === diffVersion.current) {
+      if (read.status === 'fulfilled') { setDiff(read.value); setDiffError(''); } else { setDiffError(errorMessage(read.reason)); setNotice(`Could not load changes: ${errorMessage(read.reason)}`); }
     }
   }, [api]);
 
@@ -764,7 +762,7 @@ function App() {
     void refreshInspector(selectedId, currentPathRef.current, workspaceKind);
     if (file) void readFile(file.path);
   };
-  inspectorWorker.current = taskId => { if (taskId === selectedId) refreshCurrentInspector(); };
+  inspectorWorker.current = taskId => { if (taskId === selectedId && detail?.task.mode !== 'coordinated') refreshCurrentInspector(); };
   const parentPath = currentPath.includes('/') ? currentPath.slice(0, currentPath.lastIndexOf('/')) : '';
   /** One approval action. A failure is shown in the card, and Approve stays disabled until a complete read of that approval succeeds. */
   const runApprovalAction = async (approval: Approval, action: 'approve' | 'reject' | 'reconcile' | 'acknowledge', run: (taskId: string) => Promise<unknown>) => {
@@ -958,7 +956,7 @@ function App() {
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : effectiveRightTab === 'changes' ? <div className="patch">{!diff && diffError ? <div className="load-error" role="alert"><p>Could not load changes: {diffError}</p><button type="button" className="secondary" onClick={refreshCurrentInspector}>Retry</button></div> : <p>{diffSummaryText(diff)}</p>}{diff?.patch && <PatchText patch={diff.patch} />}</div> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
+      </> : effectiveRightTab === 'changes' ? <ChangesPanel diff={diff} error={diffError} onRetry={refreshCurrentInspector} /> : effectiveRightTab === 'usage' ? <div className="usage-panel" data-testid="usage-panel">
         {usage ? <>
           <div className="usage-grid">
             <div><dt>Task budget</dt><dd>{usage.usedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}</dd></div>

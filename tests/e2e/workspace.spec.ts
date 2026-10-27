@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createFixtureTask, notice, waitForRuntimeReady } from './fixtures';
 
+// The Changes tab's words for an empty diff (worktree.tsx); it must not read as a clean worktree.
+const EMPTY_DIFF_TEXT = 'No changes to show. Secret-named files, and new files that are binary or too large to read, are not listed.';
+
 test('offline create demo clearly reviews an absent file and creates only the approved worktree content', async () => {
   test.setTimeout(120_000);
   const fixture = await mkdtemp(join(tmpdir(), 'foundry-create-e2e-'));
@@ -46,7 +49,7 @@ test('offline create demo clearly reviews an absent file and creates only the ap
       await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
       // An unchanged worktree is said in words, not left blank.
       await page.getByRole('button', { name: 'Changes', exact: true }).click();
-      await expect(page.locator('.patch')).toHaveText('No uncommitted changes to show.');
+      await expect(page.locator('.patch')).toHaveText(EMPTY_DIFF_TEXT);
       await page.getByRole('button', { name: /^Approvals/ }).click();
       await card.getByRole('button', { name: decision === 'approve' ? 'Approve' : 'Reject', exact: true }).click();
       await expect.poll(() => page.evaluate(async taskId => (await window.workspace.invoke('task.read', { taskId })).task.status, task.id), { timeout: 60_000 }).toBe('idle');
@@ -54,7 +57,7 @@ test('offline create demo clearly reviews an absent file and creates only the ap
         await expect(page.locator('article.approval-card.rejected')).toContainText('Create file');
         await expect(readFile(destination)).rejects.toMatchObject({ code: 'ENOENT' });
         await page.getByRole('button', { name: 'Changes', exact: true }).click();
-        await expect(page.locator('.patch')).toHaveText('No uncommitted changes to show.');
+        await expect(page.locator('.patch')).toHaveText(EMPTY_DIFF_TEXT);
       } else {
         await expect(page.locator('article.approval-card.complete')).toContainText('Create file');
         expect(await readFile(destination)).toEqual(Buffer.from(content, 'utf8'));
