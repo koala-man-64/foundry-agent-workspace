@@ -1748,8 +1748,9 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .workspace[data-focus="on"] > .sidebar-shell { display: none; }
 /* The tray may take most of the column while a decision waits, but the transcript always keeps a few lines. The transcript starts
    from a flex basis of 0, not its content height: sized by its content, a long transcript took space from the tray in proportion
-   to its length and squeezed a pending decision to a strip, whatever the floor. */
-.workspace[data-focus="on"] > .conversation > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }
+   to its length and squeezed a pending decision to a strip, whatever the floor. The coordinator's transcript, inside its detail,
+   holds the tray the same way. */
+.workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] .coordinator-detail > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }
 @media (max-width: 1050px) { .focus-toggle .shortcut-hint { display: none; } .workspace-views button { padding-inline: var(--space-1); } .sidebar-mode-tabs button, .workspace-views button { font-size: var(--fs-xs); } }
 .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] > .conversation > .composer, .workspace[data-focus="on"] > .conversation > .approval-tray,
 .workspace[data-focus="on"] > .conversation > .approval-banner, .workspace[data-focus="on"] > .conversation > .notice, .workspace[data-focus="on"] .agent-tree, .workspace[data-focus="on"] .agent-detail { padding-inline: max(var(--gutter), calc((100% - var(--measure-focus)) / 2)); }
@@ -1806,7 +1807,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
    text, a card's padding, the decision buttons or the limits note's wording. These rules only read *-short roles and set none,
    so a style keeps its own, denser values. After the tray and card rules, which they override at equal specificity. */
 @media (max-height: 760px) {
-  .workspace[data-focus="on"] > .conversation > .messages { min-height: var(--h-focus-messages-min-short); }
+  .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] .coordinator-detail > .messages { min-height: var(--h-focus-messages-min-short); }
   .tray-summary { padding: var(--pad-tray-summary-short); }
   .approval-tray-cards > .tool-readiness { margin-bottom: var(--gap-panel-note-short); padding: var(--pad-readiness-short); }
   .approval-tray-cards > .tool-readiness + .tool-readiness { margin-top: calc(-1 * var(--gap-panel-note-short)); padding-top: 0; }

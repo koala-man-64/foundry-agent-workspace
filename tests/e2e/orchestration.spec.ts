@@ -629,6 +629,21 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     // The other child's approval is still waiting, so it leads the tray ahead of the card just decided.
     await expect(tray.locator('article.approval-card').first()).toHaveClass(/awaiting-approval/);
     await expect(tray.locator('article.approval-card').first()).not.toHaveAttribute('data-approval-id', id!);
+    // Stacked in the minimum window, a long coordinator transcript keeps its floor and cannot squeeze the pending Approve
+    // out of the tray: the transcript is not sized by its length.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1000, 680));
+    await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual([1000, 680]);
+    await page.evaluate(() => { const filler = document.createElement('div'); filler.style.height = '3000px'; document.querySelector('.coordinator-detail > .messages')!.append(filler); });
+    const fit = await page.evaluate(() => {
+      const cards = document.querySelector<HTMLElement>('.approval-tray-cards')!; cards.scrollTop = 0;
+      const card = document.querySelector('.approval-tray article.approval-card.awaiting-approval')!;
+      const approve = [...card.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Approve')!.getBoundingClientRect();
+      const port = cards.getBoundingClientRect(), messages = document.querySelector<HTMLElement>('.coordinator-detail > .messages')!;
+      return { above: approve.top - port.top, below: Math.min(port.bottom, window.innerHeight) - approve.bottom, transcript: messages.getBoundingClientRect().height, floor: Number.parseFloat(getComputedStyle(messages).minHeight) };
+    });
+    expect(fit.above, 'Approve starts inside the tray').toBeGreaterThanOrEqual(0);
+    expect(fit.below, 'Approve ends inside the tray and the window').toBeGreaterThanOrEqual(0);
+    expect(fit.transcript, 'the coordinator transcript keeps its floor').toBeGreaterThanOrEqual(fit.floor - 0.5);
     expect(errors).toEqual([]);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });

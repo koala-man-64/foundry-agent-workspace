@@ -270,7 +270,8 @@ describe('size tokens', () => {
     expect([compact.get('measure-focus'), compact.get('h-focus-messages-min'), compact.get('h-focus-messages-min-short')]).toEqual(['1180px', '72px', '64px']);
     expect(Number.parseFloat(compact.get('h-tray-max')!)).toBeLessThanOrEqual(Number.parseFloat(rootTokens.get('h-tray-max')!));
     // A flex basis of 0: sized by its content, a long transcript would shrink the tray in proportion to its length.
-    expect(plain).toContain('\n.workspace[data-focus="on"] > .conversation > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }');
+    // The coordinator's transcript, inside its detail, too.
+    expect(plain).toContain('\n.workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] .coordinator-detail > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }');
   });
 
   it('puts the Focus tray beside the transcript from 1180px by a data attribute, in grid areas that keep the DOM order', () => {
