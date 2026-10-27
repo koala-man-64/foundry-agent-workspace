@@ -19,7 +19,7 @@ import { ContinuityPanel } from './ContinuityPanel';
 import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { PatchText } from './Evidence';
-import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay, useShownInspectorWidth } from './layout';
+import { inspectorTabInView, approvalsTabLabel, clampInspectorWidth, documentRailWidths, initialInspectorWidth, maxInspectorWidth, MIN_INSPECTOR_WIDTH, rememberInspectorWidth, useCompactLayout, useInspectorOverlay, useMaxInspectorWidth, useShownInspectorWidth, type RailWidths } from './layout';
 import { draftSendBlockReason, isFocusShortcut, sendOnShortcut } from './composer';
 import { FocusControls } from './FocusControls';
 import { relativeTime, taskStatusLabel } from './labels';
@@ -65,6 +65,12 @@ function payloadNumber(payload: unknown, key: string): number | undefined {
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
   const value = Reflect.get(payload, key);
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+/** The inspector's separator. Its maximum follows the window without re-rendering App on every resize. */
+function InspectorSeparator({ width, rail, onPointerDown, onKeyDown }: { width: number; rail: RailWidths; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void }) {
+  const max = useMaxInspectorWidth(rail);
+  return <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={width} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={max} aria-valuetext={`Inspector ${width} pixels wide`} onPointerDown={onPointerDown} onKeyDown={onKeyDown} />;
 }
 
 function App() {
@@ -135,11 +141,10 @@ function App() {
   const [style, setStyle] = useState<StylePreference>(() => readStyle(viewerStorage()));
   useEffect(() => {
     applyStyle(style, document.documentElement);
-    // A style may change the rail; read it again and keep the inspector inside the new limits. The stored width is not
-    // overwritten, so a style with a narrower rail can restore it on the next start.
+    // A style may change the rail; read it again. The shown inspector width is clamped to the new limits on the next
+    // render, and the chosen width is kept, so a wider window or another style can show it again.
     const rail = documentRailWidths();
     setRailWidths(current => current.wide === rail.wide && current.narrow === rail.narrow ? current : rail);
-    setInspectorWidth(width => clampInspectorWidth(width, window.innerWidth, rail));
   }, [style]);
   const chooseStyle = (next: StylePreference) => { saveStyle(next, viewerStorage()); setStyle(next); };
   const [inspectorDragging, setInspectorDragging] = useState(false);
@@ -809,6 +814,8 @@ function App() {
     if (next === undefined) return;
     event.preventDefault();
     const width = clampInspectorWidth(next, window.innerWidth, railWidths);
+    // A key that changes nothing on screen (growing at the limit) keeps the chosen width a narrowed window is hiding.
+    if (width === shownInspectorWidth) return;
     setInspectorWidth(width); rememberInspectorWidth(width, viewerStorage());
   };
   const openSettings = async () => {
@@ -939,7 +946,7 @@ function App() {
         <button className="primary" disabled={!canSend} aria-keyshortcuts="Control+Enter" title="Send (Ctrl+Enter)">Send<span className="shortcut-hint" aria-hidden="true">Ctrl+Enter</span></button>
       </form>
     </section>
-    <div className="inspector-resize" role="separator" aria-label="Resize inspector" aria-orientation="vertical" tabIndex={0} aria-valuenow={shownInspectorWidth} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={maxInspectorWidth(window.innerWidth, railWidths)} aria-valuetext={`Inspector ${shownInspectorWidth} pixels wide`} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
+    <InspectorSeparator width={shownInspectorWidth} rail={railWidths} onPointerDown={beginInspectorResize} onKeyDown={resizeInspectorByKey} />
     <aside id="task-inspector" className={`inspector${inspectorOpen ? ' open' : ''}`} aria-label="Task inspector" {...inspector.asideProps}>
       <button ref={inspector.closeRef} type="button" className="inspector-close" onClick={() => setInspectorOpen(false)}>Close inspector</button>
       <div className="inspector-tabs" role="group" aria-label="Inspector sections">{([

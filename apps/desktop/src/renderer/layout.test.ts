@@ -75,7 +75,8 @@ describe('inspector width', () => {
     expect(maxInspectorWidth(1480, narrowRail)).toBe(1480 - 240 - 320 - 5);
     expect(maxInspectorWidth(1000, narrowRail)).toBe(1000 - 224 - 320 - 5);
     expect(clampInspectorWidth(5000, 1480, narrowRail)).toBe(maxInspectorWidth(1480, narrowRail));
-    expect(initialInspectorWidth(1000, { getItem: () => '900' }, narrowRail)).toBe(maxInspectorWidth(1000, narrowRail));
+    // The chosen width is not clamped to the start window; the shown width is (useShownInspectorWidth, clampInspectorWidth).
+    expect(initialInspectorWidth(1000, { getItem: () => '900' }, narrowRail)).toBe(900);
   });
 
   it('reads the rail widths from the page and keeps the default for anything but a px length', () => {
@@ -85,9 +86,11 @@ describe('inspector width', () => {
     expect(documentRailWidths(style({ '--rail-w': 'calc(10px + 20%)', '--rail-w-narrow': '-4px' }))).toEqual(DEFAULT_RAIL_WIDTHS);
   });
 
-  it('prefers a remembered width, clamped, and survives unavailable storage', () => {
+  it('prefers a remembered width, kept above the minimum but not clamped to the start window, and survives unavailable storage', () => {
     expect(initialInspectorWidth(1480, { getItem: () => '420' })).toBe(420);
-    expect(initialInspectorWidth(1000, { getItem: () => '900' })).toBe(maxInspectorWidth(1000));
+    expect(initialInspectorWidth(1000, { getItem: () => '900' })).toBe(900);
+    expect(initialInspectorWidth(1000, { getItem: () => '120.4' })).toBe(MIN_INSPECTOR_WIDTH);
+    expect(initialInspectorWidth(1000, { getItem: () => '-5' })).toBe(defaultInspectorWidth(1000));
     expect(initialInspectorWidth(1920, { getItem: () => null })).toBe(640);
     expect(initialInspectorWidth(1480, { getItem: () => { throw new Error('denied'); } })).toBe(400);
     expect(initialInspectorWidth(1480, undefined)).toBe(400);

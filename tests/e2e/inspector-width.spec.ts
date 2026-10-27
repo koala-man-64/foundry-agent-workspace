@@ -69,16 +69,45 @@ test('narrowing the window keeps the whole inspector on screen, and widening it 
     const chosen = Math.max(300, 1480 - await rail() - 320 - 5);
     await expect.poll(async () => Math.round((await inspector.boundingBox())!.width)).toBe(chosen);
 
+    const shown = async () => Math.round((await inspector.boundingBox())!.width);
     await resize(1100, 760);
     const limit = Math.max(300, 1100 - await rail() - 320 - 5);
-    await expect.poll(async () => Math.round((await inspector.boundingBox())!.width)).toBe(limit);
+    await expect.poll(shown).toBe(limit);
     const box = (await inspector.boundingBox())!;
     expect(box.x + box.width, 'the inspector ends inside the window').toBeLessThanOrEqual(1100.5);
     expect(Math.round((await page.locator('.conversation').boundingBox())!.width)).toBeGreaterThanOrEqual(320);
     await expect(separator).toHaveAttribute('aria-valuenow', String(limit));
     await expect(separator).toHaveAttribute('aria-valuemax', String(limit));
+    // Growing at the limit changes nothing on screen, and a style change while narrowed only re-clamps what is shown:
+    // neither lowers the chosen width.
+    await separator.focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.getByRole('button', { name: /Model settings/ }).first().click();
+    await page.getByRole('dialog').getByRole('group', { name: 'Style' }).getByRole('radio', { name: 'Compact' }).check();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.style)).toBe('compact');
+    await page.getByRole('button', { name: 'Close settings' }).click();
+    const compactLimit = Math.max(300, 1100 - await rail() - 320 - 5);
+    expect(compactLimit, 'Compact has a narrower rail').toBeGreaterThan(limit);
+    await expect.poll(shown).toBe(compactLimit);
 
     await resize(1480, 940);
-    await expect.poll(async () => Math.round((await inspector.boundingBox())!.width)).toBe(chosen);
+    await expect.poll(shown).toBe(chosen);
+
+    // Keys step from the width on screen; the user acted on what they saw, so that width becomes the chosen one.
+    await resize(1100, 760);
+    await separator.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(shown).toBe(compactLimit - 16);
+    await expect(separator).toHaveAttribute('aria-valuenow', String(compactLimit - 16));
+    await resize(1480, 940);
+    await expect.poll(shown).toBe(compactLimit - 16);
+
+    // The separator's maximum follows the window even when the shown width does not change.
+    await separator.focus();
+    await page.keyboard.press('Home');
+    await expect.poll(shown).toBe(300);
+    await resize(1100, 760);
+    await expect(separator).toHaveAttribute('aria-valuemax', String(compactLimit));
+    await expect(separator).toHaveAttribute('aria-valuenow', '300');
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
 });

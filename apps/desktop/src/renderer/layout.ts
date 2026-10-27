@@ -28,6 +28,11 @@ export function useShownInspectorWidth(width: number, rail: RailWidths): number 
   return useSyncExternalStore(subscribeResize, () => clampInspectorWidth(width, window.innerWidth, rail), () => width);
 }
 
+/** The widest inspector the window allows now; a component that uses it re-renders when that changes. */
+export function useMaxInspectorWidth(rail: RailWidths): number {
+  return useSyncExternalStore(subscribeResize, () => maxInspectorWidth(window.innerWidth, rail), () => MIN_INSPECTOR_WIDTH);
+}
+
 /** Whether an inspector tab is on screen: selected, and the inspector either a column or an open slide-over. */
 export function inspectorTabInView(tabSelected: boolean, overlay: boolean, overlayOpen: boolean): boolean {
   return tabSelected && (!overlay || overlayOpen);
@@ -140,11 +145,14 @@ export function defaultInspectorWidth(viewportWidth: number, rail: RailWidths = 
   return clampInspectorWidth(Math.min(640, Math.max(360, 0.5455 * viewportWidth - 407)), viewportWidth, rail);
 }
 
-/** The remembered width (a per-viewer convenience in local storage), else the default; always clamped to the window. */
+/**
+ * The chosen width at start: the remembered width (a per-viewer convenience in local storage), else the default. It is
+ * not clamped to the start window, so a window that starts narrow and is widened shows the remembered width again.
+ */
 export function initialInspectorWidth(viewportWidth: number, storage: Pick<Storage, 'getItem'> | undefined, rail: RailWidths = DEFAULT_RAIL_WIDTHS): number {
   let stored: number | undefined;
   try { const value = Number(storage?.getItem(INSPECTOR_WIDTH_KEY)); stored = Number.isFinite(value) && value > 0 ? value : undefined; } catch { stored = undefined; }
-  return stored === undefined ? defaultInspectorWidth(viewportWidth, rail) : clampInspectorWidth(stored, viewportWidth, rail);
+  return stored === undefined ? defaultInspectorWidth(viewportWidth, rail) : Math.round(Math.max(MIN_INSPECTOR_WIDTH, stored));
 }
 
 export function rememberInspectorWidth(width: number, storage: Pick<Storage, 'setItem'> | undefined): void {
