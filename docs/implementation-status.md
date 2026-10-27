@@ -1,5 +1,29 @@
 # Implementation status
 
+## Clear site data wait in `browser.spec` — 26 October 2026
+
+Task id `browser-clear-wait-20261026`. Test only: no product, protocol, IPC, main-process, runtime, schema or dependency change. Nothing is dual-landed in C#, which has no browser host yet.
+
+- **The flake.** The persistence test failed in 2 of 3 full `pnpm test:e2e` runs on a busy machine. Both failures were at the clear assertion, which still read the seeded cookie, `localStorage` and IndexedDB values.
+  - The test clicked Clear data and waited on `tabs.every(!attachedTaskId)`, which was already true. It then sent `navigate` while the clear was still in flight.
+  - `clearSite` blanks each same-origin tab with an awaited `loadURL('about:blank')` before it clears storage. A navigation that starts during that load makes Electron reject it with `ERR_ABORTED (-3) loading '<the new URL>'`, so `clearSite` throws before it touches storage. That is the handler error the failing runs logged.
+- **The fix.** The test now waits for three things before it navigates to a fresh document:
+  - the confirmation to close, in the render that marks the panel busy;
+  - the address bar to re-enable, since busy ends only after the clear resolves;
+  - the tab to sit idle on `about:blank`.
+- **Evidence.**
+  - Sending `clearSite` and `navigate` together reproduces the logged error and the seeded values every time.
+  - With `clearStorageData` delayed by 2 s in main, the previous spec fails 3 of 3 at the clear assertion and the new one passes 3 of 3.
+  - The new spec passes 10 consecutive runs alongside a parallel `vitest run`. That load alone did not reproduce the old failure (the previous spec also passed 10 of 10), so the deterministic cases are the proof.
+- **Product behaviour, checked.**
+  - Clear site data reports success only after these resolve: `clearStorageData` (cookies, `localStorage`, IndexedDB, Cache Storage, service workers), `clearCache` and both flushes.
+  - It does not reload; same-origin tabs stay on `about:blank`.
+  - While it runs, the panel's busy state disables the address bar and Go, so the user's own panel cannot overtake it.
+- **Found but not changed.**
+  - Two things make Clear site data fail with a raw `ERR_ABORTED` notice, clearing nothing: a navigation during the blanking, or a page that cancels `beforeunload` after a user gesture. Clear browser data uses the same blank-first loop. Neither case reports a clear that did not happen. A retry after closing that tab is safe.
+  - The C# host's per-origin clearing should not inherit the cancelled-unload case.
+  - Under artificial full CPU saturation (a busy loop per core), earlier steps of the same test timed out in 2 of 10 runs, at the inspector resize and the manual navigation after restart. This change does not touch those steps.
+
 ## High contrast theme — 26 October 2026
 
 The fifth step of the preset themes plan. Task id `ui-theme-contrast-20261026`. Renderer only. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.
