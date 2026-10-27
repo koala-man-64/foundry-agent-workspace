@@ -434,7 +434,7 @@
   --rail-button-bg: #34302a;
   --rail-button-ink: var(--rail-ink);
   --rail-error-bg: #3a171b;
-  --rail-error-ink: #ffc2c8;
+  --rail-error-ink: #fde8ea;
   --rail-select-mark: #efe9dc;
   --rail-needs-bg: #2b1c14;                          /* the needs-decision Inbox row: the only tinted, boxed row */
   /* The user's message: a quiet well in Light; Dark and High contrast keep their brand fill */
@@ -1147,8 +1147,10 @@ h3 { margin: var(--h3-margin); color: var(--ink-muted); font: 600 var(--fs-sm)/1
 .action-row.tier-0 strong { font-weight: 600; }
 .action-row.tier-0 > span { color: var(--rail-accent); font-weight: 600; }
 .action-row .chip { margin-left: 6px; padding: 0 5px; color: var(--rail-ink); border: 1px solid var(--rail-faint); border-radius: var(--radius-sm); font-size: var(--fs-xs); }
-/* A decision is waiting: the Inbox view carries the needs-you ink and rule, over its selection mark. */
-.workspace-views[data-decisions="pending"] > button:first-child { color: var(--rail-accent); font-weight: 600; box-shadow: inset 2px 0 0 var(--rail-accent); }
+/* A decision is waiting: the Inbox view's rule turns terracotta, over its selection mark; while it is not the open view
+   its label is in the needs-you ink as well (never on a selection fill, where the ink would lose contrast). */
+.workspace-views[data-decisions="pending"] > button:first-child { box-shadow: inset 2px 0 0 var(--rail-accent); }
+.workspace-views[data-decisions="pending"] > button:first-child:not(.active) { color: var(--rail-accent); font-weight: 600; }
 .navigation-error { padding: var(--pad-nav-error); color: var(--rail-error-ink); background: var(--rail-error-bg); font-size: var(--fs-xs); line-height: 1.4; }
 .navigation-error button { min-height: var(--target-min); color: inherit; color-scheme: var(--rail-error-scheme); }
 .workspace-navigation .task-row { display: grid; grid-template-columns: 10px 1fr; gap: var(--gap-row); padding: var(--pad-rail-row); color: var(--rail-ink-list); border: 0; background: transparent; text-align: left; }
