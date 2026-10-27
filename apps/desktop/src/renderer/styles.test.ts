@@ -252,7 +252,7 @@ describe('size tokens', () => {
     expect(/@container approval-list \(min-width: 508px\)\s*{\s*\.approval-card dl \{[^}]*display: var\(--card-field-layout\);/.test(plain)).toBe(true);
     // Long evidence keeps its label above and the full width; the environment takes two columns only in a wider list.
     expect(/@container approval-list \(min-width: 508px\)\s*{[^@]*\.approval-card dl\.field-long \{ display: block; \}/.test(plain)).toBe(true);
-    expect(/@container approval-list \(min-width: 608px\)\s*{\s*\.approval-card \.environment-list \{ columns: 2;/.test(plain)).toBe(true);
+    expect(/@container approval-list \(min-width: 600px\)\s*{\s*\.approval-card \.environment-list \{ columns: 2;/.test(plain)).toBe(true);
     expect([rootTokens.get('card-field-layout'), rootTokens.get('label-col')]).toEqual(['grid', '7.5rem']);
   });
 

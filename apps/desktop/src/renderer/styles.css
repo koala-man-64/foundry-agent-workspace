@@ -61,8 +61,8 @@
   --h-chart: 138px;                                  /* Usage daily chart */
   --h-chart-request: 118px;                          /* Usage request chart */
   --h-browser-tabs: 35px;                            /* browser tab strip */
-  --h-file-tree-min: 0px;                          /* file list floor */
-  --h-file-tree-max: 40%;                           /* file list ceiling */
+  --h-file-tree-min: 0px;                            /* file list floor */
+  --h-file-tree-max: 40%;                            /* file list ceiling */
   --h-nav-list-min: 120px;                           /* Inbox / history task list floor */
 
   /* ---- Widths and measures ---- */
@@ -78,7 +78,7 @@
   --measure-focus: 860px;                            /* Focus reading column */
   --w-dialog: 580px;                                 /* settings dialog */
   --w-dialog-btn: 120px;                             /* dialog action buttons */
-  --file-tree-share: auto;                            /* flex-basis of the file list against the preview */
+  --file-tree-share: auto;                           /* flex-basis of the file list against the preview */
   --size-plus: 24px;                                 /* rail "+" disc */
   --size-mark: 48px;                                 /* large mark */
 
@@ -1420,7 +1420,8 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .inspector-empty { padding: var(--pad-inspector-empty); }
 .load-error { display: grid; justify-items: start; gap: 8px; color: var(--notice-error-ink); }
 .inspector-open, .inspector-close { display: none; }
-.file-tree { flex: 0 1 var(--file-tree-share); min-height: var(--h-file-tree-min); overflow: auto; padding: var(--pad-inspector-pane); max-height: var(--h-file-tree-max); }
+/* The file list keeps its rows (up to its ceiling) however long the open file is; the preview takes the rest. */
+.file-tree { flex: 0 0 var(--file-tree-share); min-height: var(--h-file-tree-min); overflow: auto; padding: var(--pad-inspector-pane); max-height: var(--h-file-tree-max); }
 .file-tree button { display: flex; width: 100%; gap: var(--gap-inline); padding: var(--pad-file-row); color: var(--ink-2); border: 0; background: none; text-align: left; font-family: var(--font-mono); font-size: var(--fs-sm); min-height: max(var(--target-min), var(--h-dense)); }
 .file-tree button:hover { background: var(--surface-well); }
 .file-tree .active-file { background: var(--surface-well); font-weight: 600; box-shadow: inset 2px 0 0 var(--select); }
@@ -1464,16 +1465,17 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-card pre { margin: var(--m-pre-card-narrow); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: var(--lh-evidence); }
 /* The lists that hold approval cards are size containers (not the cards, so a card is never its own stacking context).
    508px of list is about 480px of a boxed card (its 3px edge, border and padding take 28px): short fields put their label
-   beside the value; long evidence keeps the label above. 608px of list gives the environment two columns, and an entry
-   never splits across them. */
+   beside the value; long evidence keeps the label above. 600px of list (the 640px default inspector, with a scrollbar) gives
+   the environment two columns, and an entry never splits across them. */
 @container approval-list (min-width: 508px) {
   .approval-card dl { margin: var(--gap-field) 0 0; display: var(--card-field-layout); grid-template-columns: var(--card-field-columns); column-gap: var(--card-field-col-gap); align-items: baseline; }
   .approval-card dt { margin-bottom: 0; overflow-wrap: anywhere; }
   .approval-card dl.field-long { display: block; }
-  .approval-card dl.field-long dt { margin-bottom: var(--gap-field-label); }
+  .approval-card dl.field-long dt { margin-bottom: var(--gap-field-label-narrow); }
   .approval-card pre { margin: var(--m-pre-card); }
+  .approval-card dl.field-long pre { margin: var(--m-pre-card-narrow); }
 }
-@container approval-list (min-width: 608px) {
+@container approval-list (min-width: 600px) {
   .approval-card .environment-list { columns: 2; column-gap: var(--space-5); }
   .approval-card .environment { break-inside: avoid; }
 }
