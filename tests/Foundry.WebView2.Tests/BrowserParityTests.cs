@@ -414,7 +414,12 @@ public sealed class BrowserParityTests
         var navigation = await rig.NavigateAsync($"{server.Origin}/auth");
         await rig.WaitForAsync(item => item.Kind == "basic-authentication", "the authentication request");
         Assert.Equal(new Navigation(false, CoreWebView2WebErrorStatus.ValidAuthenticationCredentialsRequired, 401), navigation);
-        Assert.False(Assert.Single(server.Requests).Headers.ContainsKey("Authorization"));
+        // After the cancel, WebView2 reloads the page by itself, a navigation that is not user-initiated, to show the 401
+        // body without asking again. Its request is recorded before it completes, so waiting for it settles the count.
+        await rig.WaitForAsync(_ => rig.Observations.Count(item => item.Kind == "navigated") >= 2, "the reload that shows the 401 body");
+        Assert.Equal(2, server.Requests.Count(request => request.Path == "/auth"));
+        Assert.All(server.Requests, request => Assert.False(request.Headers.ContainsKey("Authorization")));
+        Assert.Single(rig.Observations, item => item.Kind == "basic-authentication");
     }
 
     /// <summary>
