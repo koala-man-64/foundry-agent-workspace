@@ -12,7 +12,8 @@ import { readApprovalEvidence } from './ApprovalEvidence';
 import { ApprovalCard, focusAfterDecision } from './ApprovalCard';
 import { inspectorTabInView, approvalsTabLabel, useCompactLayout, useInspectorOverlay } from './layout';
 import { sendOnShortcut } from './composer';
-import { Hash, PatchText } from './Evidence';
+import { Hash } from './Evidence';
+import { ChangesPanel, mayChangeWorktree } from './worktree';
 import { formatDateTime, humanize, lifecycleLabel, waitReasonLabel } from './labels';
 import { mergeTranscriptPage, refreshedOlderCursor } from './transcriptHistory';
 import type { ActionItem } from '../../../../packages/protocol/src/workspace';
@@ -96,9 +97,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const [reviseAcceptance, setReviseAcceptance] = useState('');
   const [busy, setBusy] = useState<string>();
   const [currentPath, setCurrentPath] = useState('');
+  const currentPathRef = useRef(currentPath);
+  currentPathRef.current = currentPath;
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [file, setFile] = useState<FileContent>();
+  const openFileRef = useRef<string | undefined>(undefined);
+  openFileRef.current = file?.path;
   const [diff, setDiff] = useState<DiffResult>();
+  const [diffError, setDiffError] = useState('');
 
   const rootRef = useRef(rootTaskId); rootRef.current = rootTaskId;
   const viewVersion = useRef(0);
@@ -295,11 +301,17 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
 
   const refreshInspector = useCallback(async (path: string) => {
     const version = ++inspectorVersion.current;
-    try {
-      const [nextFiles, nextDiff] = await Promise.all([api.invoke('files.list', { taskId: rootTaskId, path }), api.invoke('task.diff', { taskId: rootTaskId })]);
-      if (version === inspectorVersion.current && rootRef.current === rootTaskId) { setFiles(nextFiles); setDiff(nextDiff); }
-    } catch (error) { if (version === inspectorVersion.current) setNotice(`Could not refresh inspector: ${errorMessage(error)}`); }
+    const [listed, read] = await Promise.allSettled([api.invoke('files.list', { taskId: rootTaskId, path }), api.invoke('task.diff', { taskId: rootTaskId })]);
+    if (version !== inspectorVersion.current || rootRef.current !== rootTaskId) return;
+    if (listed.status === 'fulfilled') setFiles(listed.value); else setNotice(`Could not load files: ${errorMessage(listed.reason)}`);
+    if (read.status === 'fulfilled') { setDiff(read.value); setDiffError(''); } else { setDiffError(errorMessage(read.reason)); setNotice(`Could not load changes: ${errorMessage(read.reason)}`); }
   }, [api, rootTaskId, setNotice]);
+  /** Refresh: the listing, the diff and the open file, which an integration may have changed. */
+  const refreshCurrent = useCallback(() => {
+    void refreshInspector(currentPathRef.current);
+    const open = openFileRef.current;
+    if (open) void api.invoke('files.read', { taskId: rootTaskId, path: open }).then(next => { if (rootRef.current === rootTaskId && openFileRef.current === open) setFile(next); }, error => setNotice(`Could not read file: ${errorMessage(error)}`));
+  }, [api, rootTaskId, refreshInspector, setNotice]);
 
   useEffect(() => {
     setRunsById({}); setRunsCursor(null); setEventsById({}); setEventsCursor(null); setView(undefined);
@@ -307,7 +319,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
     seenLiveApprovals.current = new Set();
     setApprovalsPartial(false);
     setSelectedChildId(undefined); setChildDetail(undefined); setApprovalErrors({}); setRootApprovals([]); setChildApprovals({}); setRootMessages([]); setRootCompactions([]); setRootNextBefore(null); setRootThrough(undefined);
-    setCurrentPath(''); setFiles([]); setFile(undefined); setDiff(undefined);
+    setCurrentPath(''); setFiles([]); setFile(undefined); setDiff(undefined); setDiffError('');
     void fetchLatest(); void refreshInspector(''); void loadRootTranscript();
   }, [rootTaskId, fetchLatest, refreshInspector, loadRootTranscript]);
 
@@ -333,8 +345,10 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let worktreeChanged = false;
     const unsubscribe = api.onEvent((event) => {
       if (event.type === 'runtime.stopped' || event.type === 'task.progress') return;
+      if (event.taskId === rootTaskId && mayChangeWorktree(event)) worktreeChanged = true;
       if (timer) return;
       timer = setTimeout(() => {
         timer = undefined;
@@ -342,10 +356,11 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         void loadRootTranscript();
         if (selectedChildRef.current) void loadChild(selectedChildRef.current);
         if (approvalsWantedRef.current) void loadApprovals();
+        if (worktreeChanged) { worktreeChanged = false; refreshCurrent(); }
       }, 250);
     });
     return () => { unsubscribe(); if (timer) clearTimeout(timer); };
-  }, [api, fetchLatest, loadRootTranscript, loadChild, loadApprovals]);
+  }, [api, rootTaskId, fetchLatest, loadRootTranscript, loadChild, loadApprovals, refreshCurrent]);
 
   const coordinatorRun = useMemo(() => Object.values(runsById).find((run) => run.role === 'coordinator'), [runsById]);
   const childRuns = useMemo(() => Object.values(runsById).filter((run) => run.role === 'child').sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [runsById]);
@@ -554,14 +569,14 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
         <button type="button" className={`channel-tab ${tab === 'channel' ? 'active' : ''}`} aria-pressed={tab === 'channel'} onClick={() => setTab('channel')}>Project channel</button>
       </div>
       {tab === 'handoff' ? <CoordinatedHandoffPanel key={rootTaskId} api={api} rootTaskId={rootTaskId} /> : tab === 'usage' ? <CoordinatedTaskControls key={selectedChildId ?? rootTaskId} api={api} rootTaskId={rootTaskId} taskId={selectedChildId ?? rootTaskId} label={selectedChildId ? 'Child' : 'Coordinator'} active={(selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'running' || (selectedChildId ? runsById[selectedChildId]?.lifecycle : coordinatorRun?.lifecycle) === 'preparing'} retired={task.status === 'retired'} retirementReady={rootTerminal && childRuns.every(run => run.lifecycle === 'terminal')} refreshToken={eventsSorted[0]?.sequence ?? 0} onRefresh={refreshManagedTask} setNotice={setNotice} /> : tab === 'channel' ? <AgentChannelPanel key={selectedChildId ?? rootTaskId} api={api} taskId={selectedChildId ?? rootTaskId} /> : tab === 'activity' ? <TaskActivity api={api} taskId={rootTaskId} refreshToken={eventsSorted[0]?.sequence ?? 0} unknownOutcomes={(view?.integrations ?? []).filter(item => item.state === 'unknown').length} /> : tab === 'continuity' ? <ContinuityPanel api={api} taskId={rootTaskId} messages={rootMessages} profiles={profiles} setNotice={setNotice} onCreated={onTaskCreated} /> : tab === 'files' ? <>
-        <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={() => void refreshInspector(currentPath)}>Refresh</button></div>
+        <div className="inspector-tools"><button type="button" onClick={() => browseDirectory('')} disabled={!currentPath}>Root</button><span title={currentPath || 'Repository root'}>{currentPath || 'Repository root'}</span><button type="button" onClick={refreshCurrent}>Refresh</button></div>
         <div className="file-tree">
           {currentPath && <button type="button" className="up-directory" onClick={() => browseDirectory(parentPath)}><span>←</span>Up</button>}
           {files.map((entry) => <button key={entry.path} type="button" className={file?.path === entry.path ? 'active-file' : ''} onClick={() => entry.kind === 'directory' ? browseDirectory(entry.path) : void readFile(entry.path)}><span>{entry.kind === 'directory' ? '▸' : '·'}</span>{entry.path}</button>)}
           {!files.length && <p className="muted">No files here.</p>}
         </div>
         <div className="file-content"><p>{file?.path ?? 'Choose a file to read'}</p><pre>{file?.content}</pre></div>
-      </> : tab === 'changes' ? <div className="patch"><p>{diff?.summary ?? 'Loading changes…'}{diff?.truncated ? ' (truncated)' : ''}</p>{diff && <PatchText patch={diff.patch} />}</div>
+      </> : tab === 'changes' ? <ChangesPanel diff={diff} error={diffError} onRetry={refreshCurrent} />
         : tab === 'approvals' ? <div className="approvals-panel">
           {!trayActive && approvalGroups.live.map(renderApproval)}
           {approvalGroups.decided.length > 0 && <Disclosure className="decided-approvals" summary={disclosureLabel('Decided approvals', approvalGroups.decided.length, { more: approvalsPartial, detail: decidedSummaryDetail(approvalGroups.decided) })} forceOpen={focusAction?.kind === 'approval' && approvalGroups.decided.some(item => item.id === focusAction.sourceId)}>{approvalGroups.decided.map(renderApproval)}</Disclosure>}
