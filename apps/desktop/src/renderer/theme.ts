@@ -23,6 +23,29 @@ export function resolveTheme(theme: ThemePreference, prefersDark: boolean): Reso
   return theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
 }
 
+/**
+ * Compiled-in styles: the size and spacing axis, independent of the theme. Kept like the theme, selected by data-style on
+ * <html>; Comfortable is the token defaults, Compact a block of token values in styles.css.
+ */
+export const STYLES = ['comfortable', 'compact'] as const;
+export type StylePreference = (typeof STYLES)[number];
+export const STYLE_LABELS: Record<StylePreference, string> = { comfortable: 'Comfortable', compact: 'Compact' };
+// public/theme-boot.js mirrors this key and the Comfortable fallback too.
+export const STYLE_STORAGE_KEY = 'foundry.style';
+
+/** The stored style; anything missing, unknown or unreadable is Comfortable. */
+export function readStyle(storage: Storage | undefined): StylePreference {
+  try { const value = storage?.getItem(STYLE_STORAGE_KEY); return STYLES.find(style => style === value) ?? 'comfortable'; } catch { return 'comfortable'; }
+}
+
+export function saveStyle(style: StylePreference, storage: Storage | undefined): void {
+  try { storage?.setItem(STYLE_STORAGE_KEY, style); } catch { /* only a convenience, like the theme */ }
+}
+
+export function applyStyle(style: StylePreference, root: HTMLElement): void {
+  root.dataset.style = style;
+}
+
 export interface ThemeHost {
   root: HTMLElement;
   /** The page's <meta name="theme-color">: main applies it as the window underlay (did-change-theme-color). */

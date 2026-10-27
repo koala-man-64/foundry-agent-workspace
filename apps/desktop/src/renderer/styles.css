@@ -194,6 +194,14 @@
   --field-columns: none;                             /* e.g. 96px minmax(0, 1fr) */
   --field-col-gap: normal;
   --m-pre-card: var(--space-1) 0 0;
+  /* An approval list under 560px wide (the docked inspector): a label column would narrow the value column to about 230px,
+     so paths, commands and hashes would wrap far more. A style that uses a label column keeps these narrow values stacked. */
+  --field-layout-narrow: var(--field-layout);
+  --field-columns-narrow: var(--field-columns);
+  --field-col-gap-narrow: var(--field-col-gap);
+  --gap-field-narrow: var(--gap-field);
+  --gap-field-label-narrow: var(--gap-field-label);
+  --m-pre-card-narrow: var(--m-pre-card);
   --pad-evidence: var(--space-2);
   --gap-evidence-note: var(--space-1-5);
   --gap-disclosure-note: var(--space-2);             /* privilege disclosure */
@@ -621,6 +629,198 @@
   }
 }
 
+/* Compact (data-style="compact"): the style axis. Size and spacing token values only, never a selector or a colour, and never
+   --target-min, so every pointer target keeps its 24px floor. Not inside forced-colors: none: a style carries no colour, so it
+   keeps applying under a Windows contrast theme. Any theme works with any style. styles.test.ts checks it. */
+:root[data-style="compact"] {
+  --fs-heading: var(--fs-md);
+  --fs-prose: 14px;
+  --lh-prose: 1.45;
+  --fs-title: var(--fs-xl);
+  --fs-title-short: 18px;
+  --fs-page-title: var(--fs-2xl);
+  --fs-section: 16px;
+  --fs-figure: var(--fs-xl);
+  --fs-welcome: var(--fs-xl);
+  --fs-evidence: var(--fs-sm);
+  --fs-mark: 22px;
+  --fs-plus: 18px;
+  --h-ctl: 28px;
+  --h-view: 26px;
+  --h-chrome: 26px;
+  --h-ctl-sm: 24px;
+  --h-dense: 26px;
+  --h-decision: 30px;
+  --h-composer: 34px;
+  --h-compose-text: 56px;
+  --h-header-min: 0px;
+  --h-tray-max: 68vh;
+  --h-focus-messages-min: 72px;
+  --h-chart: 96px;
+  --h-chart-request: 84px;
+  --h-browser-tabs: 30px;
+  --h-file-tree-min: 0px;
+  --h-file-tree-max: 45%;
+  --h-nav-list-min: 80px;
+  --rail-w: 240px;
+  --rail-w-narrow: 224px;
+  --measure-message: 78ch;
+  --measure-draft: 680px;
+  --inset-draft: 32px;
+  --inset-draft-narrow: 20px;
+  --measure-focus: 1040px;
+  --w-dialog: 640px;
+  --w-dialog-btn: 96px;
+  --file-tree-share: auto;
+  --size-plus: 22px;
+  --size-mark: 36px;
+  --gutter: var(--space-4);
+  --pad-messages: 10px max(16px, calc((100% - 880px) / 2)) 6px;
+  --pad-messages-x-narrow: 16px;
+  --pad-coordinator-messages: 8px 16px;
+  --usage-pad-top: 14px;
+  --usage-pad-x: clamp(12px, 3vw, 32px);
+  --usage-pad-bottom: 32px;
+  --header-pad-top: 8px;
+  --header-pad-bottom: 8px;
+  --header-pad-top-short: 6px;
+  --header-pad-bottom-short: 6px;
+  --header-pad-narrow: 8px 16px;
+  --gap-header: 4px var(--space-3);
+  --gap-header-stack: 2px;
+  --gap-btn-row: 6px;
+  --pad-composer-y: 6px;
+  --gap-composer: 8px;
+  --gap-hint: 6px;
+  --pad-strip-y: var(--space-1-5);
+  --gap-notice: var(--space-2);
+  --pad-notice-dialog: 12px 16px;
+  --gap-usage-notice: 10px;
+  --pad-upgrade: 6px var(--space-4);
+  --pad-tray-summary: 4px 0 2px;
+  --gap-card: var(--space-2);
+  --gap-message: var(--space-3);
+  --gap-meta: var(--space-0-5);
+  --gap-inline: 6px;
+  --pad-bubble: 5px 10px;
+  --pad-message-rule: 10px;
+  --pad-compaction: 8px 10px;
+  --m-empty: 6vh auto;
+  --pad-rail: 10px 6px 6px;
+  --pad-tabs: 6px 5px;
+  --gap-segments: var(--space-0-5);
+  --pad-mode-tab: 4px 4px;
+  --pad-badge: 1px var(--space-1-5);
+  --pad-rail-row: 4px var(--space-2);
+  --gap-rail-new: var(--space-2);
+  --m-projects-head: 14px 6px 4px;
+  --gap-project-group: 6px;
+  --pad-project-toggle: 4px 4px;
+  --pad-project-legacy: 4px var(--space-2);
+  --gap-rows: 1px;
+  --gap-row: var(--space-2);
+  --pad-task-row: 4px 8px 4px 17px;
+  --gap-footer: 0px;
+  --pad-footer-top: var(--space-1);
+  --pad-rail-usage: 0 6px 6px;
+  --radius-rail-row: 5px;
+  --rail-heading-margin: var(--space-2) 0 var(--space-0-5);
+  --pad-nav: 6px;
+  --gap-nav: 6px;
+  --pad-view: 3px 6px;
+  --gap-actions: 3px;
+  --gap-action-row: 1px;
+  --pad-action-row: 5px 8px;
+  --pad-nav-error: 6px;
+  --gap-filters-open: var(--space-1);
+  --pad-btn: 4px var(--space-3);
+  --pad-ctl-sm: 2px var(--space-2);
+  --pad-input: 4px var(--space-2);
+  --gap-label: 3px;
+  --pad-disclosure: 2px 6px;
+  --gap-disclosure-open: var(--space-1);
+  --gap-panel-note: 6px;
+  --h3-margin: var(--space-2) 0 var(--space-1);
+  --m-mark: 0 auto var(--space-2);
+  --pad-welcome: var(--space-3);
+  --gap-welcome: 6px;
+  --pad-compose: var(--space-2);
+  --gap-compose: 6px;
+  --gap-draft-block: var(--space-3);
+  --gap-compose-bottom-narrow: 10px;
+  --radius-compose: var(--space-2);
+  --gap-draft-options: var(--space-2);
+  --pad-fieldset: 6px;
+  --gap-fieldset: var(--space-1);
+  --pad-inspector-tab: 3px var(--space-2);
+  --gap-inspector-tools: var(--space-1);
+  --pad-inspector-pane: var(--space-1-5) var(--space-2);
+  --pad-chip: 2px 6px;
+  --pad-inspector-empty: var(--space-3);
+  --pad-file-row: 3px 6px;
+  --pad-panel: var(--space-2);
+  --m-pre-file: 6px 0 0;
+  --gap-continuity: 6px;
+  --h3-margin-continuity: var(--space-1) 0 var(--space-0-5);
+  --gap-h3-activity: 6px;
+  --gap-orchestration: 10px;
+  --pad-readiness: 6px;
+  --pad-card: 8px 10px;
+  --gap-card-heading: 2px;
+  --pad-evidence: 5px var(--space-2);
+  --field-layout: grid;
+  --field-columns: minmax(88px, min(28%, 112px)) minmax(0, 1fr);
+  --field-col-gap: 10px;
+  --gap-field: 4px;
+  --gap-field-label: 0px;
+  --m-pre-card: 0px;
+  --field-layout-narrow: block;
+  --field-columns-narrow: none;
+  --field-col-gap-narrow: normal;
+  --gap-field-narrow: 4px;
+  --gap-field-label-narrow: 1px;
+  --m-pre-card-narrow: 2px 0 0;
+  --gap-evidence: 4px;
+  --gap-evidence-note: var(--space-1);
+  --gap-disclosure-note: 6px;
+  --pad-disclosure-note: var(--space-1) var(--space-2);
+  --pad-result-pre: var(--space-1);
+  --gap-actions-top: 6px;
+  --gap-decision: var(--space-3);
+  --pad-decision: 4px 14px;
+  --pad-dialog-head: 10px var(--space-4);
+  --pad-form: var(--space-3) var(--space-4);
+  --gap-dialog-head: var(--space-3);
+  --gap-form-pair: var(--space-2);
+  --gap-form: var(--space-2);
+  --form-columns: none;
+  --gap-chips: 3px;
+  --gap-activity-item: 2px;
+  --m-activity-item: var(--space-1) 0 var(--space-1) var(--space-2);
+  --pad-activity-item: 6px;
+  --gap-usage-head: var(--space-3);
+  --m-usage-title: 2px 0 var(--space-1);
+  --gap-usage-controls: var(--space-1);
+  --m-usage-controls: var(--space-3) 0 10px;
+  --gap-usage-cards: var(--space-2);
+  --gap-usage-card: 3px;
+  --pad-usage-card: 8px 10px;
+  --m-usage-section: 14px;
+  --pad-usage-section: 10px;
+  --m-chart: 6px 0;
+  --gap-usage-rows: 3px;
+  --pad-usage-row: 6px 10px;
+  --gap-usage-requests: 6px;
+  --gap-usage-request: var(--space-1) var(--space-3);
+  --gap-usage-grid: var(--space-1);
+  --pad-usage-grid-row: var(--space-1) var(--space-2);
+  --pad-list-row: var(--space-1) 0;
+  --gap-agent-tree: var(--space-1);
+  --pad-agent-tree-y: var(--space-2);
+  --pad-agent-row: var(--space-1) var(--space-2);
+  --pad-agent-detail-bottom: 10px;
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 880px; height: 100vh; overflow: hidden; }
 #root { display: flex; flex-direction: column; height: 100vh; min-height: 0; }
@@ -969,7 +1169,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .file-content, .patch { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel); border-top: 1px solid var(--line-soft); }
 .file-content > p, .patch > p { color: var(--ink-muted); font-size: var(--fs-xs); }
 .file-content pre, .patch pre { margin: var(--m-pre-file); color: var(--ink-content); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: 1.5; }
-.approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel); }
+.approvals-panel { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--pad-panel); container: approval-list / inline-size; }
 .tool-readiness { padding: var(--pad-readiness); margin-bottom: var(--gap-panel-note); color: var(--ink-2); border-left: 3px solid var(--line-strong); background: var(--surface-well); font-size: var(--fs-sm); line-height: 1.45; }
 .tool-readiness + .tool-readiness { margin-top: calc(-1 * var(--gap-panel-note)); padding-top: 0; }
 
@@ -993,10 +1193,17 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .approval-state.unknown, .approval-state.failed, .approval-state.rejected, .approval-state.revoked { color: var(--danger-ink); background: var(--danger-soft); box-shadow: inset 0 0 0 1px var(--danger); }
 .approval-card > p { line-height: 1.45; }
 .approval-error { margin-top: 8px; padding: var(--pad-evidence); color: var(--notice-error-ink); border-left: 3px solid var(--danger); background: var(--notice-error-bg); overflow-wrap: anywhere; }
-.approval-card dl { margin: var(--gap-field) 0 0; display: var(--field-layout); grid-template-columns: var(--field-columns); column-gap: var(--field-col-gap); }
-.approval-card dt { margin-bottom: var(--gap-field-label); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
+.approval-card dl { margin: var(--gap-field-narrow) 0 0; display: var(--field-layout-narrow); grid-template-columns: var(--field-columns-narrow); column-gap: var(--field-col-gap-narrow); }
+.approval-card dt { margin-bottom: var(--gap-field-label-narrow); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
 .approval-card dd { margin: 0; overflow-wrap: anywhere; }
-.approval-card pre { margin: var(--m-pre-card); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: 1.45; }
+.approval-card pre { margin: var(--m-pre-card-narrow); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--fs-evidence); line-height: 1.45; }
+/* The lists that hold approval cards are size containers (not the cards, so a card is never its own stacking context).
+   560px keeps about 400px for the value beside a 112px label. */
+@container approval-list (min-width: 560px) {
+  .approval-card dl { margin: var(--gap-field) 0 0; display: var(--field-layout); grid-template-columns: var(--field-columns); column-gap: var(--field-col-gap); align-items: baseline; }
+  .approval-card dt { margin-bottom: var(--gap-field-label); }
+  .approval-card pre { margin: var(--m-pre-card); }
+}
 .command-evidence, .approval-result { margin-top: var(--gap-evidence); padding: var(--pad-evidence); background: var(--surface-sunken); }
 .command-evidence small, .approval-result small { display: block; margin-top: var(--gap-evidence-note); color: var(--ink-muted); font-size: var(--fs-evidence); line-height: 1.35; }
 /* The privilege and screening disclosures qualify the whole approval, so they read as warnings, not footnotes. */
@@ -1237,7 +1444,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
    composer stay usable; it scrolls on its own and is reachable by keyboard. */
 .approval-tray { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; max-height: var(--h-tray-max); padding: 0 var(--gutter); border-top: 1px solid var(--line-soft); background: var(--surface-inspector); }
 .tray-summary { flex: 0 0 auto; padding: var(--pad-tray-summary); color: var(--needs-you-ink); font-size: var(--fs-sm); font-weight: 650; }
-.approval-tray-cards { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: var(--gap-card); }
+.approval-tray-cards { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: var(--gap-card); container: approval-list / inline-size; }
 .approval-tray-cards:focus-visible { outline-offset: -3px; }
 .approval-tray-cards > .approval-card:last-child { margin-bottom: 0; }
 .coordinator-detail > .approval-tray { margin: 0 calc(-1 * var(--gutter)); }

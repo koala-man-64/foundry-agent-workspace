@@ -1,5 +1,90 @@
 # Implementation status
 
+## Compact style — 26 October 2026
+
+The fourth step of the preset themes plan. Task id `ui-theme-compact-20261026`. Renderer only. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.
+
+Delivered:
+
+- **The choice.** Settings now has a Style group under Theme: Comfortable or Compact.
+  - It is a closed list in `theme.ts`, kept in this viewer's `localStorage` under `foundry.style`. Anything missing, unknown or unreadable means Comfortable.
+  - `theme-boot.js` sets `data-style` before the first paint, as it does `data-theme`.
+  - Theme and style are independent, so any theme works with any style.
+- **Compact** is one block of size and spacing token values under `:root[data-style="compact"]`. It has no selector, no colour, no `--target-min` and no ladder change.
+  - It is not inside `forced-colors: none`, so it keeps its sizes under a Windows contrast theme.
+  - It ports the themes round's design onto the role names from the normalisation.
+  - Intentional differences from that design:
+    - where merged roles had different Compact values, one value was chosen per role. For example the rail rows are 4px 8px, the button padding 4px 12px, and project task rows sit 1px apart rather than 0;
+    - awaiting and decided cards share one padding, because emphasis must not change a card's geometry;
+    - wide-layout fields are 4px apart, not 2px, so a multi-line value does not run into the next field.
+- **Label-beside-value approval fields.** In Compact, approval fields put the label beside the value in a list at least 560px wide (the Focus tray, or a widened inspector). That keeps about 400px for the value, and the label aligns with the value's first line.
+  - In a narrower list (the docked inspector) the fields stay stacked, so the label column never narrows the value column.
+  - Long paths, commands and hashes still wrap anywhere, in both styles, and are never truncated.
+  - The two lists that hold cards (`.approvals-panel` and `.approval-tray-cards`) are the size containers, not the cards, so a card is never its own stacking context.
+  - In Comfortable the narrow values equal the wide ones, so nothing changes. Against the same build with the containers removed, 25 of the 27 captures match at tolerance 8. Two of those differ by one or two isolated pixels.
+    - The two coordinated captures differ because the run moves on between captures: one approval was waiting in one capture and two in the other.
+    - In the inspector, the tabs and the approval card both captures show are identical, apart from the count in the tab label.
+    - The keyboard-focused Pending actions tray is pixel-identical, focused and blurred.
+- **The rail.** Compact's rail is 240/224px. App reads the rail widths again when the style changes, and keeps the stored inspector width inside the new limits.
+
+Measured at 125% display scaling, with Comfortable first and Compact second.
+- The header and composer rows come from a plain chat. The Approve rows come from the demo command card.
+- "In view" means the whole Approve button is inside its scrolling list. Otherwise the table gives how far its bottom edge sits below the list's visible edge, to within about 2px.
+- Approve is 34px tall in Comfortable and 30px in Compact.
+
+| | 1480×940 | 1000×680 |
+|---|---|---|
+| Task header | 120 → 73px | 172 → 129px |
+| Composer | 85 → 47px | 85 → 47px |
+| Approve, docked inspector | in view → in view | 109 → 14px below |
+| Approve, Focus | 45px below → in view | 260 → 3px below |
+| Inbox rail rows | 6 → 8 | 2 → 4 |
+
+At 1000×680, whether Approve fits depends on the card's content. A path that wraps one more line moves it by about 16px. Neither style claims Approve stays in view there, so the list still scrolls.
+
+In Focus, Compact lowers the transcript's minimum height while the Pending actions tray is open (96 to 72px). It also lets the tray take up to 68% of the window rather than 60%. The latest message can be clipped at 1000×680; the card carries the exact action.
+
+Validation:
+- `styles.test.ts` checks every style block:
+  - it sets only size-role names, which catches names that no longer exist;
+  - no colour, no `--target-min` and no ladder change;
+  - under it, every control height stays at least 24px, every type role at least 11px, prose at least 14px and evidence at least 12px;
+  - narrow approval fields stay stacked;
+  - it sits at the top level of the stylesheet, so no `forced-colors: none`, `@media` or `@supports` wrapper can switch it off;
+  - the Style list matches the blocks.
+
+  Each check fails on a mutation of what it guards. The mutations are recorded in the verification notes.
+- `theme.test.ts`:
+  - the style list, the fallback and blocked storage;
+  - the first-paint script for every stored style;
+  - the theme and the style staying independent, for every stored pair in both Windows modes.
+- `styles.test.ts` also checks:
+  - every `[data-style]` in the stylesheet opens one of the blocks;
+  - both card lists are size containers;
+  - the narrow field tokens alias the wide ones;
+  - the 560px rule sets the wide field layout.
+- `style.spec.ts` (e2e):
+  - the Style group offers two choices;
+  - Compact and Dark apply together and survive a reload, from the first paint;
+  - the inspector's End key and `aria-valuemax` follow Compact's 240px rail, and returning to Comfortable clamps the inspector to the wider rail's limit. Disabling the re-read fails this;
+  - in the real stylesheet, a 900px list puts labels beside values and a 400px list stacks them;
+  - Send is shorter than Comfortable's and stays inside an emulated 880px viewport;
+  - the rail footer stays inside the window at 1000×680 and 200% zoom. It is measured once the viewport is 340 CSS px tall, before any viewport emulation;
+  - an unknown stored style means Comfortable.
+- Harness: the contrast, overflow and 24×24 target lists are empty for Compact, Compact on Dark and Compact under emulated Windows contrast, in all 27 captures and on the states sheet.
+
+Known limits:
+- 145 padding, margin and gap declarations outside the token blocks still use literal px values, so they keep Comfortable's spacing in Compact. Most are on secondary surfaces: assignment cards, browser chrome, the manage, automation and review dialogs, the Usage page, and the channel composer.
+- Compact's one-line header, hanging transcript column and wider default inspector from the density round need markup or `layout.ts` changes. They are not included.
+- `style.spec.ts` checks the rail footer at 1000×680 and 200% zoom without the upgrade banner that `orchestration.spec.ts` uses.
+- Seen in review and left alone, because they are not Compact's own and the fix would change Comfortable too:
+  - in Compact the header's status line can wrap with a trailing "·";
+  - the Inbox row titles inherit the 16px button text in both styles;
+  - Cancel task has no confirmation, and Compact puts it 6px from the other header buttons (8px in Comfortable);
+  - under a Windows contrast theme, Approve and Reject both render as outlined buttons. The forced-colors rules that do this do not depend on the style. Only Compact was captured under emulated contrast, and the High contrast step covers this.
+
+Not verified: the packaged app; the installer.
+
 ## Size and spacing tokens, normalised — 26 October 2026
 
 The third step of the preset themes plan and the prerequisite for a Compact style. Task id `ui-theme-space-20261026`. Renderer only: `styles.css`, `layout.ts` and a few lines of `App.tsx`. No protocol, IPC channel, runtime, provider, schema, dependency or main-process change.

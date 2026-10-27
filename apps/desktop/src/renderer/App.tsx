@@ -32,7 +32,7 @@ import { ApprovalTray } from './ApprovalTray';
 import { Disclosure, disclosureLabel } from './Disclosure';
 import { ToolReadinessNotes } from './ToolReadiness';
 import { AppearanceSettings } from './Appearance';
-import { applyTheme, documentThemeHost, readTheme, saveTheme, type ThemePreference } from './theme';
+import { applyStyle, applyTheme, documentThemeHost, readStyle, readTheme, saveStyle, saveTheme, type StylePreference, type ThemePreference } from './theme';
 import { decidedSummaryDetail, foldableDecided, partitionApprovals, trayOrder } from './approvalGroups';
 import { attentionBanner, cardsShown, decisionWhere, inboxChipLabel, inspectLabel, needsYou, statusWarnings, taskAttention, useAttentionAnnouncements, windowTitle, type DecisionSurface, type InboxCount } from './attention';
 
@@ -125,12 +125,22 @@ function App() {
   const [currentPath, setCurrentPath] = useState('');
   const [rightTab, setRightTab] = useState<'files' | 'changes' | 'approvals' | 'usage' | 'activity' | 'continuity' | 'publish' | 'channel' | 'browser'>('files');
   // The rail width comes from the page's tokens, so the inspector's limits follow a style that changes it.
-  const [railWidths] = useState(() => documentRailWidths());
+  const [railWidths, setRailWidths] = useState(() => documentRailWidths());
   const [inspectorWidth, setInspectorWidth] = useState(() => initialInspectorWidth(window.innerWidth, viewerStorage(), railWidths));
   // The theme is a closed choice kept like the inspector width; public/theme-boot.js already applied it before the first paint.
   const [theme, setTheme] = useState<ThemePreference>(() => readTheme(viewerStorage()));
   useEffect(() => applyTheme(theme, documentThemeHost()), [theme]);
   const chooseTheme = (next: ThemePreference) => { saveTheme(next, viewerStorage()); setTheme(next); };
+  const [style, setStyle] = useState<StylePreference>(() => readStyle(viewerStorage()));
+  useEffect(() => {
+    applyStyle(style, document.documentElement);
+    // A style may change the rail; read it again and keep the inspector inside the new limits. The stored width is not
+    // overwritten, so a style with a narrower rail can restore it on the next start.
+    const rail = documentRailWidths();
+    setRailWidths(current => current.wide === rail.wide && current.narrow === rail.narrow ? current : rail);
+    setInspectorWidth(width => clampInspectorWidth(width, window.innerWidth, rail));
+  }, [style]);
+  const chooseStyle = (next: StylePreference) => { saveStyle(next, viewerStorage()); setStyle(next); };
   const [inspectorDragging, setInspectorDragging] = useState(false);
   const [browserExpanded, setBrowserExpanded] = useState(false);
   /** Focus mode hides the sidebar and makes the inspector a slide-over. Session memory only: every launch starts with the full picture. */
@@ -1005,7 +1015,7 @@ function App() {
         <div className="dialog-actions"><button type="button" className="secondary" onClick={newProfile}>New profile</button><button type="submit" className="secondary">Close settings</button></div>
       </form>
       {dialogNotice('settings')}
-      <AppearanceSettings theme={theme} onChange={chooseTheme} />
+      <AppearanceSettings theme={theme} onChange={chooseTheme} style={style} onStyleChange={chooseStyle} />
       <form onSubmit={saveProfile} className="profile-form">
         <label>Name <input value={profileDraft.name} disabled={isBuiltinProfile} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} required maxLength={100} /></label>
         <label>API kind <select value={profileDraft.apiKind} disabled={isBuiltinProfile} onChange={(e) => { const apiKind = e.target.value as ModelProfile['apiKind']; setProfileDraft({ ...profileDraft, apiKind, effort: profileDraft.effort && supportedEfforts(apiKind).includes(profileDraft.effort) ? profileDraft.effort : undefined }); }}><option value="fake">Offline fake</option><option value="responses">Responses API</option><option value="chat-completions">Chat completions</option><option value="anthropic">Anthropic</option></select></label>
