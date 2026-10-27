@@ -141,7 +141,8 @@ test('the settings dialog lays its fields out in label-left rows in both styles'
       });
       const options = [...dialog.querySelectorAll('.appearance-settings')].map(fieldset => Math.round(fieldset.querySelector('.appearance-options')!.getBoundingClientRect().left));
       const key = document.querySelector('[aria-label="MCP key"]')!; const keyLabel = key.closest('label')!;
-      return { width: Math.round(dialog.getBoundingClientRect().width), sideways: dialog.scrollWidth > dialog.clientWidth, rows, options, mcpStacked: key.getBoundingClientRect().top >= textBox(keyLabel).bottom };
+      const heights = [...dialog.querySelectorAll('.profile-form > label > input, .profile-form > label > select, .profile-form > .limits input')].map(control => Math.round(control.getBoundingClientRect().height));
+      return { width: Math.round(dialog.getBoundingClientRect().width), sideways: dialog.scrollWidth > dialog.clientWidth, rows, options, heights: [...new Set(heights)], mcpStacked: key.getBoundingClientRect().top >= textBox(keyLabel).bottom };
     });
     for (const choice of ['Comfortable', 'Compact'] as const) {
       await dialog.getByRole('group', { name: 'Style' }).getByRole('radio', { name: choice }).check();
@@ -153,6 +154,8 @@ test('the settings dialog lays its fields out in label-left rows in both styles'
       const edges = [...layout.rows.map(row => row.inputLeft), ...layout.options];
       expect(Math.max(...edges) - Math.min(...edges), `${choice}: fields and radios share one edge ${JSON.stringify(edges)}`).toBeLessThanOrEqual(1);
       expect(layout.mcpStacked, `${choice}: the MCP form keeps its labels above`).toBe(true);
+      // Inputs and selects share one height, so the rows keep one rhythm.
+      expect(layout.heights, `${choice}: field heights`).toEqual([choice === 'Comfortable' ? 29 : 27]);
     }
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
 });

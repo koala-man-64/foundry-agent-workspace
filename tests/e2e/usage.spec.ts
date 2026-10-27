@@ -121,6 +121,20 @@ test('seeded usage shows sparse days, partial metrics, pagination, and child dri
       return { beside: figure!.left >= label!.right, sameRow: figure!.top < label!.bottom && figure!.bottom > label!.top };
     });
     expect(card).toEqual({ beside: true, sameRow: true });
+    // A long figure ('1/55 reported') wraps in its own column and never squeezes a label onto more lines.
+    expect(await overview.locator('.usage-cards > div > span').evaluateAll(labels => labels.filter(label => { const range = document.createRange(); range.selectNodeContents(label); return range.getClientRects().length > 1; }).map(label => label.textContent))).toEqual([]);
+    // The seeded figures fit beside their labels at every supported width, so a longer one in a narrow card shows that the
+    // label keeps its track and the figure wraps inside the card.
+    expect(await page.evaluate(() => {
+      const cards = document.createElement('div');
+      cards.className = 'usage-cards'; Object.assign(cards.style, { width: '300px', gridTemplateColumns: '1fr' });
+      cards.innerHTML = '<div><span>Cache creation</span><strong>1,234,567 · 12/55 reported</strong><small>Included in input tokens</small></div>';
+      document.body.append(cards);
+      const range = document.createRange(); range.selectNodeContents(cards.querySelector('span')!);
+      const result = { labelLines: range.getClientRects().length, figureInside: cards.querySelector('strong')!.getBoundingClientRect().right <= cards.getBoundingClientRect().right + 0.5 };
+      cards.remove();
+      return result;
+    })).toEqual({ labelLines: 1, figureInside: true });
     expect(await overview.getByRole('region', { name: 'Usage breakdown' }).getByRole('listitem').first().evaluate(item => item.getBoundingClientRect().height)).toBeLessThan(40);
     await overview.getByRole('button', { name: 'Custom' }).click();
     await overview.getByLabel('From').fill(localDate(noon(-3)));

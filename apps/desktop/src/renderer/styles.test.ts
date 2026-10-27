@@ -273,6 +273,18 @@ describe('size tokens', () => {
     expect(/\n\.profile-form > label, \.profile-form > \.limits label \{[^}]*grid-template-columns: var\(--form-columns\);/.test(plain)).toBe(true);
     // A descendant selector would also turn the MCP form (nested inside the profile form's dialog) label-left.
     expect(/\n\.profile-form label \{[^}]*grid-template-columns/.test(plain)).toBe(false);
+    // Inputs and selects share one height in every style; the eyebrow and title share a baseline.
+    expect(/\n\.profile-form input:not\(\[type="checkbox"\]\), \.profile-form select \{ height: var\(--h-input-form\); \}/.test(plain)).toBe(true);
+    expect(/\n\.dialog-head > div:first-child \{[^}]*align-items: baseline;/.test(plain)).toBe(true);
+  });
+
+  it('runs the child view\'s banner and tray to the pane edges, as the coordinator\'s do, and back into the Focus column', () => {
+    const plain = uncommented(css);
+    for (const part of ['banner', 'tray']) expect(plain, part).toContain(`\n.coordinator-detail > .approval-${part}, .child-panel > .approval-${part} { margin: 0 calc(-1 * var(--gutter)); }`);
+    const start = plain.indexOf('\n.workspace[data-focus="on"] .coordinator-detail > .approval-tray');
+    const focus = start < 0 ? '' : plain.slice(start, plain.indexOf('}', start));
+    expect(focus).toContain('margin-inline: 0;');
+    for (const selector of ['.coordinator-detail > .approval-tray', '.coordinator-detail > .approval-banner', '.child-panel > .approval-tray', '.child-panel > .approval-banner']) expect(focus, selector).toContain(`.workspace[data-focus="on"] ${selector}`);
   });
 
   it('marks the selected agent by a bar and a border as well as a fill, and restates it for Windows contrast themes', () => {

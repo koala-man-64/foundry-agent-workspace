@@ -232,7 +232,8 @@
   --gap-form: var(--space-2);
   --form-columns: var(--form-label-col) minmax(0, 1fr);  /* label-left rows of the settings form */
   --form-label-col: 112px;                           /* its label column, shared by the Appearance rows */
-  --pad-input-form: 5px var(--space-2);              /* inputs in a dialog form: 29px high */
+  --pad-input-form: 5px var(--space-2);              /* inputs in a dialog form */
+  --h-input-form: 29px;                              /* ... and their height, selects included */
   --pad-appearance: var(--space-2) 20px;             /* the Theme and Style rows */
 
   /* ---- Activity, Usage ---- */
@@ -1022,6 +1023,7 @@
   --gap-form: var(--space-1-5);
   --form-label-col: 104px;
   --pad-input-form: var(--space-1) var(--space-2);
+  --h-input-form: 27px;
   --pad-appearance: var(--space-1-5) var(--space-4);
   --gap-chips: 3px;
   --gap-activity-item: 0 var(--space-1-5);
@@ -1525,7 +1527,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .settings-dialog::backdrop { background: var(--scrim); }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: var(--gap-dialog-head); padding: var(--pad-dialog-head); border-bottom: 1px solid var(--line-soft); }
 /* The eyebrow and the title share a baseline; a narrow dialog wraps them. */
-.dialog-head > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); }
+.dialog-head > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-0-5) var(--space-3); }
 .dialog-head h2 { font-size: var(--fs-section); font-weight: normal; }
 .dialog-head .dialog-actions { display: flex; gap: 8px; }
 .dialog-head .dialog-actions button { min-width: auto; padding: var(--pad-btn); }
@@ -1536,6 +1538,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .profile-form > label, .profile-form > .limits label { align-items: center; grid-template-columns: var(--form-columns); column-gap: var(--gap-inline); }
 .profile-form > label > small { grid-column: 2; }
 .profile-form input:not([type="checkbox"]), .profile-form select, .profile-form textarea { padding: var(--pad-input-form); }
+.profile-form input:not([type="checkbox"]), .profile-form select { height: var(--h-input-form); }
 .profile-form small { color: var(--ink-muted); font-size: var(--fs-xs); text-transform: none; letter-spacing: 0; }
 .limits { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-form-pair); }
 .probe-note { color: var(--ink-muted); font-size: var(--fs-xs); line-height: 1.45; }
@@ -1786,5 +1789,6 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
   .workspace-views[data-decisions="pending"] > button:first-child { border-bottom: 3px solid Highlight; }
   .approval-card.awaiting-approval, .approval-card.unknown, .approval-card.failed, .approval-banner { outline: 2px solid Highlight; outline-offset: -2px; }
   .approval-state { border: 1px solid CanvasText; }
+  .swatch.bar-reported { border: 6px solid CanvasText; }
   .status-dot { forced-color-adjust: none; }
 }
