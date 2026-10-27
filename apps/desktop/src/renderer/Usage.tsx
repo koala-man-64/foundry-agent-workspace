@@ -110,7 +110,7 @@ export function UsageView({ api, refreshKey, onOpenTask, notice }: { api: Deskto
   const chartStep = chartWidth / chartSpan;
   return <section className="usage-page" aria-label="Usage overview">
     {notice}
-    <header className="usage-page-header"><div><p className="eyebrow">LOCAL REQUEST HISTORY</p><h1>Usage</h1><p>Measured tokens from this workspace. Unknown usage and budget reservations are shown separately.</p></div><small>Calendar days in {timeZone}</small></header>
+    <header className="usage-page-header"><div><p className="eyebrow">Local request history</p><h1>Usage</h1><p>Measured tokens from this workspace. Unknown usage and budget reservations are shown separately.</p></div><small>Calendar days in {timeZone}</small></header>
     <div className="usage-controls" role="group" aria-label="Date range">
       {([['today', 'Today'], ['7', '7 days'], ['30', '30 days'], ['all', 'All'], ['custom', 'Custom']] as const).map(([value, label]) => <button key={value} type="button" className={period === value ? 'active' : ''} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}
       {period === 'custom' && <><label>From <input type="date" value={from} onChange={event => setFrom(event.target.value)} /></label><label>Through <input type="date" value={to} onChange={event => setTo(event.target.value)} /></label></>}
