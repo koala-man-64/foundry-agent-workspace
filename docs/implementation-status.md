@@ -1,5 +1,79 @@
 # Implementation status
 
+## Default look, part 1: the minimal hybrid as Foundry Light — 27 October 2026
+
+Task id `ui-look-hybrid-20261027`. On 27 October Rudy chose the minimalism round's hybrid, combined with the density round's Balanced, as the default look, with a dark rail, a hanging author and time column and two-pane Focus. This first of five slices lands the hybrid's colours, type grammar and flat structure on the token system. Balanced's sizes and shell, the transcript column and panels, two-pane Focus and the documentation screenshots follow as separate PRs.
+
+The port decisions are in `.local/verification/ui-look-20261027/decisions.md`. Renderer CSS and eight eyebrow strings only: no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#, because the WebView2 host loads the same renderer.
+
+**What changed**
+- **Foundry Light's colour tokens** take the hybrid's values:
+  - warm cream canvas and warm ink;
+  - a near-black warm rail;
+  - terracotta for needs-you only, ochre for warnings, and crimson for danger.
+  - The danger values are `#ba193c` and `#9f1337`. The hybrid's own crimson failed the distinctness test against terracotta, by ΔE 13.7 and 12.4 where 15 is required; these are the nearest values that pass.
+  - The hairlines keep main's strength: the hybrid's were fainter than today's.
+  - `--canvas-deep` stays `#e8e2d4`, so the window underlay is unchanged.
+- **Selection and focus are ink**, drawn as weight 600 plus a 2px rule.
+  - Fills that mark selection keep reading tokens (`--rail-selected`, `--select-soft`, `--choice-soft`, and the new `--bubble-*` for the user's message). Light's values equal the surface beneath, so Light is flat, and Dark and High contrast keep the fills they were reviewed with.
+  - The Focus toggle and the Usage period buttons are underlined like any selection.
+- **Shared structure, in every theme:**
+  - Decided approval cards are flat rows on a hairline. The card that needs a decision, and unknown and failed outcomes, keep their box, 3px edge, inset ring and 12px spacing.
+  - Inbox rows sit on hairlines. Only the needs-decision row is boxed and tinted (the new `--rail-needs-bg`).
+  - Usage cards and lists are flat.
+  - Badges are rings, except the filled needs-you badge.
+  - Disabled controls are a dashed outline with no fill.
+  - The database upgrade banner is ochre with a 4px rule.
+  - The needs-you chip is the only filled header control.
+  - The rail search field is outlined.
+  - The agent's text has no left rule.
+  - The privilege disclosure sits on the surface with weight 600 and its crimson rule; its wording is unchanged.
+  - While a decision is pending, the open Inbox view keeps its selection bar with a terracotta stripe beside it. The closed Inbox view is terracotta ink beside its count, so open and pending never differ by hue alone.
+- **Type:**
+  - two weights, 400 and 600;
+  - sentence-case labels instead of capitals and tracking;
+  - state words capitalised by CSS, so the DOM text from `labels.ts` is unchanged;
+  - evidence at 12px with a line height of 1.4;
+  - radii of 3, 3, 4 and 8px;
+  - a zero-specificity 24px minimum height for buttons and summaries.
+  - The decorative large mark is hidden. Font families and the type scale are unchanged.
+- **Windows contrast themes:** the forced-colours block restates the marks the flat styling draws with shadows: selection, the needs-decision row, the pending Inbox view, the tray, and disabled controls.
+- **Rail Retry:** the button is drawn by the stylesheet, so its contrast is the tested error-box pair rather than Chromium's dark button face.
+
+**Validation** (local, Windows, isolated fixtures, at `d69a218`)
+- **`pnpm check`:** typecheck and lint pass. Vitest: 829 of 832 pass.
+  - The 3 failures are load timeouts in runtime git and publish tests this change does not touch. Rerun serially, those files pass 47 of 47.
+  - New tests:
+    - pairs for the user bubble, the complete badge's ring, the needs-decision row's inks, outline and focus ring, and the upgrade banner rule;
+    - checks for two weights, sentence case, the evidence values in every evidence rule, and the approval-card cascade order;
+    - the forced-colours needs-decision marks.
+  - Ten mutants all fail those tests.
+- **`pnpm test:e2e`:** 30 of 30 pass.
+- **Harness on the built app.**
+  - The app captures (27 per preset, plus the keyboard-focused tray) have empty contrast, overflow and 24×24 target lists. The presets: Light, Dark, High contrast, Compact, Dark with Compact, and Light and Dark under forced colours.
+  - The states, coverage, extras and dialog sheets are clean as well.
+  - Under forced colours, Light and Dark render identically: 29 of 29 captures.
+  - High contrast at 7:1 has no app text node below 7:1. On the sheets, only the rail "+" glyph is below (5.5:1, as before). Its rail Retry now passes, where before it was 4.6:1.
+  - The evidence is in `.local/verification/ui-look-hybrid-20261027/render2`.
+- **Independent review:** three reviewers (Sonnet, high, from their agent definitions) on visual fidelity and themes, trust and accessibility, and code and tests. All three said GO with no P0 or P1.
+  - The two P2s were one issue: the open and pending Inbox views differed only by hue. It is fixed.
+  - The P3s are fixed or recorded in the decisions file:
+    - the last capitalised eyebrow;
+    - lowercase status words;
+    - a disabled subdued button with no disabled cue;
+    - the New chat disc vanishing on hover;
+    - the Retry margin;
+    - the duplicate "No folder";
+    - tests that could pass vacuously.
+- **Not run:** `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed. The packaged app and the installer are not verified.
+
+**Known limits**
+- **Secondary buttons** stay filled and unoutlined in Light, as Rudy decided earlier. The prototype outlines them.
+- **The agent tree** in the coordinated view still sits on a tinted band, and its selected chip is darker than the unselected ones. It moves to the hybrid's flat rows in the panels slice.
+- **Documentation screenshots** are now out of date. They are refreshed through `pnpm docs:screenshots` in the last slice.
+- **Ink focus rings** on a selected row or tab sit on the same edge as its ink selection rule. The ring still reads as a full box against a single bar, with less margin than the old blue ring had against green.
+- **Danger and needs-you** sit close in luminance (about 1.14:1). They are told apart by hue, fill against outline, and the written state word.
+
 ## Clear site data: the `browser.spec` wait, and pages that ask to stay — 26–27 October 2026
 
 Task id `browser-clear-wait-20261026`. Two parts:
