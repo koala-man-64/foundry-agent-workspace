@@ -1362,10 +1362,10 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
    A container query, not the viewport: a dragged-wide inspector or the expanded browser fall back to the line above. */
 @container transcript (min-width: 620px) {
   .message, .message.user { display: grid; grid-template-columns: var(--meta-col) minmax(0, 1fr); column-gap: var(--gap-meta-col); align-items: start; margin-left: 0; }
-  .message > .message-meta { grid-column: 1; grid-row: 1 / span 4; margin: 3px 0 0; }
+  .message:not(.compaction-summary) > .message-meta { grid-column: 1; grid-row: 1 / span 4; margin: 3px 0 0; }
   .message > :not(.message-meta) { grid-column: 2; }
+  .message > button { justify-self: start; }
   .message-author, .message-meta > :not(.message-author) { display: block; margin-left: 0; }
-  .message-meta > time { white-space: nowrap; }
   .message.user p { justify-self: start; }
   .message.compacted { padding-left: 0; border-left: 0; }
   .message.compacted > p { padding-left: var(--pad-message-rule); border-left: 2px dashed var(--line-compacted); }
@@ -1533,6 +1533,7 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .agent-detail { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--gutter) var(--pad-agent-detail-bottom); }
 .coordinator-detail { display: flex; flex-direction: column; overflow: hidden; }
 .coordinator-detail > .messages { padding: var(--pad-coordinator-messages); }
+.child-panel .messages { padding-inline: 0; }
 .coordinator-detail > .composer { flex: 0 0 auto; }
 .child-panel { display: grid; gap: 12px; padding-top: 16px; }
 .child-note { color: var(--ink-muted); font-size: var(--fs-xs); font-style: italic; }
