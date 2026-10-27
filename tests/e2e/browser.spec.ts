@@ -144,7 +144,11 @@ test('persistent browser storage, blank restart, manual navigation, popup and is
     expect(await browserValue(app, `${base}/read`, "({cookie:document.cookie,stored:localStorage.getItem('fixture-value'),indexed:window.storedValue})")).toEqual({ cookie: 'fixture-login=remembered', stored: 'persisted', indexed: 'indexed-persisted' });
     await page.getByRole('button', { name: 'Clear site data…', exact: true }).click();
     await page.getByRole('button', { name: 'Clear data', exact: true }).click();
-    await expect.poll(async () => (await state(page)).tabs.every(tab => !tab.attachedTaskId)).toBe(true);
+    // Closing the confirmation marks the panel busy in the same render, and the panel stays busy until the clear
+    // resolves. A navigation sent before then aborts the clear's blanking of the tab, and nothing is cleared.
+    await expect(page.getByRole('dialog', { name: 'Confirm browser action' })).toBeHidden();
+    await expect(page.getByLabel('Website address')).toBeEnabled();
+    await expect.poll(async () => (await state(page)).tabs.map(tab => [tab.url, tab.loading])).toEqual([['about:blank', false]]);
     const current = (await state(page)).activeTabId!;
     await page.evaluate(input => window.workspace.browser({ kind: 'navigate', tabId: input.id, url: input.url }), { id: current, url: `${base}/read` });
     await browserValue(app, `${base}/read`, 'window.storageReady');
