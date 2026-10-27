@@ -21,6 +21,28 @@ export function notice(page: Page): Locator {
   return page.getByRole('status').and(page.locator('.notice'));
 }
 
+export const box = async (locator: Locator) => (await locator.boundingBox())!;
+
+/**
+ * Where the first pending card's Approve sits against the Focus tray's own scroll area and the window, and the given transcript's
+ * height against its floor. The cards are scrolled to the top first: a decision moves focus to the next card, which may scroll them.
+ */
+export function approveFit(page: Page, transcript: string) {
+  return page.evaluate(selector => {
+    const cards = document.querySelector<HTMLElement>('.approval-tray-cards')!;
+    cards.scrollTop = 0;
+    const card = document.querySelector('.approval-tray article.approval-card.awaiting-approval')!;
+    const approve = [...card.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Approve')!.getBoundingClientRect();
+    const port = cards.getBoundingClientRect(), messages = document.querySelector<HTMLElement>(selector)!;
+    return { above: approve.top - port.top, below: Math.min(port.bottom, window.innerHeight) - approve.bottom, transcript: messages.getBoundingClientRect().height, floor: Number.parseFloat(getComputedStyle(messages).minHeight) };
+  }, transcript);
+}
+
+/** Every child of a two-pane Focus grid is placed by its own area, so none is auto-placed into a free cell or an implicit row. */
+export function placedByArea(grid: Locator) {
+  return grid.evaluate(element => [...element.children].filter(child => getComputedStyle(child).gridRowStart === 'auto').map(child => child.className));
+}
+
 /** Existing approval/publishing scenarios use explicit fixtures; projects.spec covers draft creation through the UI. */
 export async function createFixtureTask(page: Page, projectPath: string, title: string, mode: 'chat' | 'coding' | 'coordinated', coordination?: CoordinationConfig) {
   const task = await page.evaluate(async (input) => window.workspace.invoke('task.create', {

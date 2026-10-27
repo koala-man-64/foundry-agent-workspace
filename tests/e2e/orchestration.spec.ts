@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import type { Approval } from '../../packages/protocol/src/index';
 import type { CoordinatedHandoffReport } from '../../apps/desktop/src/renderer/coordinatedHandoff';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
-import { createFixtureTask, waitForRuntimeReady } from './fixtures';
+import { approveFit, box, createFixtureTask, placedByArea, waitForRuntimeReady } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 // The Changes tab's words for an empty diff (worktree.tsx); it must not read as a clean worktree.
@@ -604,7 +604,6 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     const first = tray.locator('article.approval-card.awaiting-approval').first();
 
     // From 1180px the coordinator's tray is a pane beside its transcript, above a composer that spans both, under the agent tree.
-    const box = async (locator: Locator) => (await locator.boundingBox())!;
     const agentTree = page.getByRole('navigation', { name: 'Agent tree' });
     const coordinatorChip = agentTree.locator('.agent-row').first();
     const [m, t, c, tree, chip] = await Promise.all([box(page.locator('.coordinator-detail > .messages')), box(tray), box(page.locator('.coordinator-detail > .composer')), box(agentTree), box(coordinatorChip)]);
@@ -613,6 +612,7 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     expect(c.x <= m.x + 1 && c.x + c.width >= t.x + t.width - 1, 'the composer spans both panes').toBe(true);
     expect(tree.y + tree.height, 'the agent tree is above both panes').toBeLessThanOrEqual(Math.min(m.y, t.y) + 1);
     await expect(first.getByRole('button', { name: 'Approve', exact: true })).toBeInViewport({ ratio: 1 });
+    expect(await placedByArea(page.locator('.coordinator-detail')), 'every child of the coordinator detail has its area').toEqual([]);
     // A child's view keeps its tray stacked inside the child panel, and choosing it does not move the agent tree.
     await agentTree.locator('.agent-row').nth(1).click();
     await expect(page.locator('.child-panel')).toBeVisible();
@@ -634,13 +634,7 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1000, 680));
     await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual([1000, 680]);
     await page.evaluate(() => { const filler = document.createElement('div'); filler.style.height = '3000px'; document.querySelector('.coordinator-detail > .messages')!.append(filler); });
-    const fit = await page.evaluate(() => {
-      const cards = document.querySelector<HTMLElement>('.approval-tray-cards')!; cards.scrollTop = 0;
-      const card = document.querySelector('.approval-tray article.approval-card.awaiting-approval')!;
-      const approve = [...card.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Approve')!.getBoundingClientRect();
-      const port = cards.getBoundingClientRect(), messages = document.querySelector<HTMLElement>('.coordinator-detail > .messages')!;
-      return { above: approve.top - port.top, below: Math.min(port.bottom, window.innerHeight) - approve.bottom, transcript: messages.getBoundingClientRect().height, floor: Number.parseFloat(getComputedStyle(messages).minHeight) };
-    });
+    const fit = await approveFit(page, '.coordinator-detail > .messages');
     expect(fit.above, 'Approve starts inside the tray').toBeGreaterThanOrEqual(0);
     expect(fit.below, 'Approve ends inside the tray and the window').toBeGreaterThanOrEqual(0);
     expect(fit.transcript, 'the coordinator transcript keeps its floor').toBeGreaterThanOrEqual(fit.floor - 0.5);

@@ -1774,10 +1774,11 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
 .workspace[data-focus="on"] .child-panel > .approval-tray, .workspace[data-focus="on"] .child-panel > .approval-banner { margin-inline: 0; }
 
 /* Two panes from 1180px, in Focus while the tray is on screen. data-tray on the section says where the tray sits: "conversation"
-   (the chat view: the section is the grid) or "detail" (the coordinated view: its coordinator detail is the grid). Placement only:
-   the DOM order (header, notice, transcript, older messages, tray, banner, composer) is still the reading and Tab order, and the
-   areas read the left pane, the right pane, then the rows below in that order. The banner takes a full row of its own so it never
-   sits beside the tray ahead of it. Below 1180px the tray stays stacked above the composer. */
+   (the chat view: the section is the grid) or "detail" (the coordinated view: its coordinator detail is the grid). The DOM order
+   (header, notice, transcript, older messages, tray, banner, composer) is still the reading and Tab order, and the areas read the
+   left pane, the right pane, then the rows below in that order; every child of a grid has an area of its own. The banner takes a
+   full row so it never sits beside the tray ahead of it. The [data-tray] attribute is what lifts these rules above the Focus
+   measure padding. Below 1180px the tray stays stacked above the composer. */
 @media (min-width: 1180px) {
   .workspace[data-focus="on"] > .conversation[data-tray="conversation"] { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; grid-template-areas: "head head" "notice notice" "msgs tray" "older tray" "banner banner" "composer composer"; }
   .workspace[data-focus="on"] > .conversation[data-tray="conversation"] > :is(.task-header, .notice, .messages, .approval-tray, .approval-banner, .composer) { padding-inline: var(--gutter); }
@@ -1803,9 +1804,10 @@ dialog .notice { padding-inline: var(--pad-notice-dialog); }
   .workspace[data-focus="on"] > .conversation[data-tray="detail"] .child-panel { max-width: var(--measure-focus); }
 }
 
-/* Short windows, the stacked tray: the pending Approve stays in view at 1000x680. Chrome spacing pays for it, never evidence
-   text, a card's padding, the decision buttons or the limits note's wording. These rules only read *-short roles and set none,
-   so a style keeps its own, denser values. After the tray and card rules, which they override at equal specificity. */
+/* Short windows: the pending Approve stays in view in the stacked tray at 1000x680 (the side pane, which has the height, is
+   tightened too). Chrome spacing pays for it, never evidence text, a card's padding, the decision buttons or the limits note's
+   wording. These rules only read *-short roles and set none, so a style keeps its own, denser values. The summary and the
+   transcript floor tie with their base rules on specificity, so this block stays after them; the other rules win outright. */
 @media (max-height: 760px) {
   .workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] .coordinator-detail > .messages { min-height: var(--h-focus-messages-min-short); }
   .tray-summary { padding: var(--pad-tray-summary-short); }

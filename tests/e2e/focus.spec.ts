@@ -1,10 +1,10 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createFixtureTask, waitForRuntimeReady } from './fixtures';
+import { approveFit, box, createFixtureTask, placedByArea, waitForRuntimeReady } from './fixtures';
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'foundry-focus-e2e-'));
@@ -91,22 +91,6 @@ test('Focus mode keeps a pending decision and its evidence on screen, one copy, 
   } finally { await app.close(); await rm(state.root, { recursive: true, force: true }); }
 });
 
-const box = async (locator: Locator) => (await locator.boundingBox())!;
-
-// Where the pending card's Approve sits against the tray's own scroll area and the window. The cards are scrolled to the top
-// first: a decision moves focus to the next card, which may scroll the cards.
-async function approveFit(page: Page) {
-  return page.evaluate(() => {
-    const cards = document.querySelector<HTMLElement>('.approval-tray-cards')!;
-    cards.scrollTop = 0;
-    const card = document.querySelector('.approval-tray article.approval-card.awaiting-approval')!;
-    const approve = [...card.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Approve')!.getBoundingClientRect();
-    const port = cards.getBoundingClientRect();
-    const messages = document.querySelector<HTMLElement>('.conversation > .messages')!;
-    return { above: approve.top - port.top, below: Math.min(port.bottom, window.innerHeight) - approve.bottom, transcript: messages.getBoundingClientRect().height, floor: Number.parseFloat(getComputedStyle(messages).minHeight) };
-  });
-}
-
 // From 1180px the Focus tray is a pane beside the transcript, under the header and above the composer, which both span the two
 // panes; below it the tray is stacked above the composer. Either way the pending Approve is in view, in both styles, at the
 // default size and at the minimum window, beside a long transcript.
@@ -119,9 +103,12 @@ test('Focus mode puts the tray beside the transcript from 1180px and keeps the p
     await waitForRuntimeReady(page);
     await createFixtureTask(page, state.project, 'Focus panes', 'coding');
     const focusToggle = page.getByRole('button', { name: 'Focus mode', exact: true });
+    // A tall size is polled by its width only: a screen shorter than 940px may cap the window's height, which the panes do not
+    // depend on. The minimum window's height is what the stacked tray is measured against, so it is polled exactly.
     const setSize = async (width: number, height: number) => {
       await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height });
-      await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual([width, height]);
+      await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width);
+      if (height <= 720) await expect.poll(() => page.evaluate(() => window.innerHeight)).toBe(height);
     };
     const measureFocus = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--measure-focus').trim());
     const section = page.locator('section.conversation');
@@ -136,6 +123,7 @@ test('Focus mode puts the tray beside the transcript from 1180px and keeps the p
       expect(c.x <= m.x + 1 && c.x + c.width >= t.x + t.width - 1 && h.x + h.width >= t.x + t.width - 1, `${label}: the header and composer span both panes`).toBe(true);
       await expect(approve).toBeInViewport({ ratio: 1 });
       expect((await box(approve)).y + (await box(approve)).height, `${label}: Approve is above the composer`).toBeLessThanOrEqual(c.y);
+      expect(await placedByArea(section), `${label}: every child has its area`).toEqual([]);
     };
     const stacked = async (label: string) => {
       const [m, t] = await Promise.all([box(transcript), box(tray)]);
@@ -181,12 +169,12 @@ test('Focus mode puts the tray beside the transcript from 1180px and keeps the p
         await expect(tray.locator('article.approval-card.awaiting-approval')).toHaveCount(1);
         expect(await measureFocus()).toBe('1180px');
       }
-      const fit = await approveFit(page);
+      const fit = await approveFit(page, '.conversation > .messages');
       expect(fit.above, `${choice}: Approve starts inside the tray`).toBeGreaterThanOrEqual(0);
       expect(fit.below, `${choice}: Approve ends inside the tray and the window`).toBeGreaterThanOrEqual(0);
       // A long transcript keeps its floor and cannot squeeze the decision: the tray is not sized against the transcript's length.
       await page.evaluate(() => { const filler = document.createElement('div'); filler.dataset.filler = ''; filler.style.height = '3000px'; document.querySelector('.conversation > .messages')!.append(filler); });
-      const long = await approveFit(page);
+      const long = await approveFit(page, '.conversation > .messages');
       expect(long.below, `${choice}: Approve beside a long transcript`).toBeGreaterThanOrEqual(0);
       expect(long.transcript, `${choice}: the transcript keeps its floor`).toBeGreaterThanOrEqual(long.floor - 0.5);
       await page.evaluate(() => document.querySelector('[data-filler]')?.remove());

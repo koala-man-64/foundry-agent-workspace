@@ -105,17 +105,6 @@ const uncommented = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '');
 const sizeBlock = uncommented(rootBlock.slice(rootBlock.indexOf('Size and spacing roles'), rootBlock.indexOf('/* Light surfaces */')));
 const sizeTokens = new Map([...sizeBlock.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
 const rootTokens = new Map([...uncommented(rootBlock).matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
-/** A token's value in px when it is one px length, following var() aliases. */
-function px(name: string): number | undefined {
-  let value = rootTokens.get(name);
-  for (let hop = 0; hop < 8 && value; hop++) {
-    const alias = /^var\(--([\w-]+)\)$/.exec(value);
-    if (!alias) return /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
-    value = rootTokens.get(alias[1]!);
-  }
-  return undefined;
-}
-
 /** A token's value with var() aliases followed, or undefined. */
 const follow = (map: Map<string, string>, value: string | undefined) => {
   for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value.trim()); if (!alias) return value.trim(); value = map.get(alias[1]!); }
@@ -132,6 +121,11 @@ const lengths = (map: Map<string, string>, value: string | undefined) => {
   const [a, b = a, c = a, d = b] = parts;
   return parts.length >= 1 && parts.length <= 4 ? [a, b, c, d] : parts;
 };
+/** A token's value in px when it is one px length, following var() aliases. */
+function px(name: string): number | undefined {
+  const value = follow(rootTokens, rootTokens.get(name));
+  return value && /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
+}
 
 // Style blocks (:root[data-style="..."]): token values only, set on the size roles.
 const styleBlocks = new Map([...uncommented(css).matchAll(/:root\[data-style="([\w-]+)"\]\s*{([^}]*)}/g)].map(match => [match[1]!, new Map([...match[2]!.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(declaration => [declaration[1]!, declaration[2]!.trim()]))]));
@@ -259,6 +253,10 @@ describe('size tokens', () => {
     }
     // The decision buttons, the evidence text and a card's padding are never tightened.
     expect(inside).not.toMatch(/h-decision|pad-decision|fs-evidence|lh-evidence|pad-card|pad-evidence/);
+    // The summary and the transcript floor tie with their base rules on specificity, so the tray's short block comes after both.
+    const trayShort = plain.lastIndexOf('@media (max-height: 760px)');
+    expect(trayShort).toBeGreaterThan(plain.indexOf('\n.tray-summary {'));
+    expect(trayShort).toBeGreaterThan(plain.indexOf('\n.workspace[data-focus="on"] > .conversation > .messages,'));
   });
 
   it('sizes the Focus column and the transcript floor, and gives the transcript no claim on the tray by its length', () => {
@@ -271,7 +269,7 @@ describe('size tokens', () => {
     expect(Number.parseFloat(compact.get('h-tray-max')!)).toBeLessThanOrEqual(Number.parseFloat(rootTokens.get('h-tray-max')!));
     // A flex basis of 0: sized by its content, a long transcript would shrink the tray in proportion to its length.
     // The coordinator's transcript, inside its detail, too.
-    expect(plain).toContain('\n.workspace[data-focus="on"] > .conversation > .messages, .workspace[data-focus="on"] .coordinator-detail > .messages { flex-basis: 0; min-height: var(--h-focus-messages-min); }');
+    expect(plain).toMatch(/\n\.workspace\[data-focus="on"\] > \.conversation > \.messages, \.workspace\[data-focus="on"\] \.coordinator-detail > \.messages \{[^}]*flex-basis: 0;[^}]*min-height: var\(--h-focus-messages-min\);/);
   });
 
   it('puts the Focus tray beside the transcript from 1180px by a data attribute, in grid areas that keep the DOM order', () => {
@@ -280,7 +278,12 @@ describe('size tokens', () => {
     const start = plain.indexOf('@media (min-width: 1180px) {\n  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] {');
     expect(start).toBeGreaterThanOrEqual(0);
     const block = plain.slice(start, plain.indexOf('\n}', start));
-    expect(block).toContain('grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);');
+    // Both grids, the chat section and the coordinator detail, share the ratio, and each has one row track per row of areas.
+    expect(block.match(/grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\);/g)).toHaveLength(2);
+    const grids = [...block.matchAll(/grid-template-rows: ([^;]+); grid-template-areas: ([^;]+);/g)];
+    expect(grids.map(grid => [grid[1]!.replace(/minmax\([^)]*\)/g, 'track').split(' ').length, grid[2]!.match(/"[^"]*"/g)!.length])).toEqual([[6, 6], [4, 4]]);
+    expect(rootTokens.get('measure-note')).toBe('80ch');
+    expect(block).toContain('[data-tray="conversation"] > .approval-tray .tool-readiness { max-width: var(--measure-note); }');
     // The banner has a full row of its own, so the visual order is the DOM order.
     expect(block).toContain('grid-template-areas: "head head" "notice notice" "msgs tray" "older tray" "banner banner" "composer composer";');
     for (const [part, area] of [['task-header', 'head'], ['notice', 'notice'], ['messages', 'msgs'], ['older-messages', 'older'], ['approval-tray', 'tray'], ['approval-banner', 'banner'], ['composer', 'composer']] as const) {
