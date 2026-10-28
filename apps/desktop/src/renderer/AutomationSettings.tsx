@@ -8,7 +8,9 @@ const triggers = ['task.started', 'task.completed', 'task.stopped', 'approval.ch
 const scriptInputFields = ['sequence', 'type', 'taskId', 'createdAt', 'projectPath', 'title', 'status', 'approvalId', 'approvalState'] as const;
 const defaultScriptFields: ScriptRegistration['inputFields'] = ['sequence', 'type', 'taskId', 'createdAt', 'projectPath', 'title', 'status'];
 const defaultZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+/** The runtime refuses an expiry past its own clock plus 30 days, and its clock can read behind this one, so a grant request stays this far inside the chosen days. */
+export const GRANT_EXPIRY_MARGIN_MS = 60_000;
+export const grantExpiresAt = (days: number, now = Date.now()) => new Date(now + days * 86_400_000 - GRANT_EXPIRY_MARGIN_MS).toISOString();
 const dateInZone = (value: Date, timeZone: string) => {
   const parts = Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value);
   const part = (type: string) => parts.find(item => item.type === type)?.value ?? '';
@@ -173,7 +175,7 @@ export function AutomationSettings({ api, onDraft, onPrepared, setNotice }: {
   const grant = async () => {
     if (!review || busy) return; setBusy(true); setGrantError('');
     try {
-      await api.invoke('automation.script.grant', { revisionId: review.revision.id, expiresAt: inDays(grantDays), maxRunsPer24h: grantDaily });
+      await api.invoke('automation.script.grant', { revisionId: review.revision.id, expiresAt: grantExpiresAt(grantDays), maxRunsPer24h: grantDaily });
       closeReview(); await reload();
     } catch (cause) { setGrantError(`Could not grant script trust: ${errorMessage(cause)}`); setNotice(`Could not grant script trust: ${errorMessage(cause)}`); }
     finally { setBusy(false); }

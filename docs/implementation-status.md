@@ -1,5 +1,22 @@
 # Implementation status
 
+## Script trust at the 30-day limit — 27 October 2026
+
+Task id `script-grant-expiry-20261027`. A renderer fix. No protocol, IPC channel, runtime behaviour, schema or dependency change.
+
+- **The failure.** Granting trust with the default 30 days was refused now and then with "Grant must expire within 30 days."
+  - The review dialog asked for its own clock plus exactly 30 days. The runtime refuses any expiry past its own clock plus 30 days (`grant` in `packages/runtime/src/automation.ts`).
+  - The two clocks are read in different processes. The refusal means the runtime's reading was behind the renderer's, though it was taken later, so the request was past the limit. Why the two readings differ was not established; the margin below covers any skew under a minute, whatever its cause.
+  - `personal-workspace.spec.ts` ("pinned script remains untrusted until explicit reviewed grant") failed this way once in a full `pnpm test:e2e` run on 27 October, during the default-look work, and then passed 5 of 5 alone.
+- **The fix.** The dialog asks for the chosen days less one minute (`grantExpiresAt`, `GRANT_EXPIRY_MARGIN_MS` in `AutomationSettings.tsx`). A default grant now expires 29 days, 23 hours and 59 minutes after the click. The dialog never shows the exact expiry.
+  - The runtime check is unchanged. No grant can expire later than 30 days after the runtime's own clock when it checks the request, and a request over 30 days is still refused.
+  - A runtime tolerance that clamps the stored expiry would also work. The margin was chosen because it leaves the security check and the frozen runtime as they are. The renderer moves to the WebView2 host with the UI, so both hosts get it.
+- **Tests.**
+  - Runtime: "holds the 30-day grant limit to its own clock…" reproduces the refusal with the injected clock. At runtime time T, a request for T + 30 days + 1 ms (what a renderer clock 1 ms ahead sends) is refused and stores no grant. A request for T + 30 days is accepted. The test also pins the limit, so a change that widens it fails.
+  - Renderer: `AutomationSettings.test.ts` checks that the default request passes the runtime's limit when the runtime clock reads between 0 ms and 60 s behind. With the margin set to 0, it fails at 1 ms.
+- **C#.** Nothing to land. The native runtime has no automation handler: `automation.script.grant` reaches the `NotSupportedException` default in `DevelopmentChat.Dispatch`. Its future port must keep the same strict check, with no tolerance, and port the runtime test above.
+- **Found, not changed.** The dialog's "Days until expiry" field accepts up to 365. The runtime refuses anything over 30 with the message above.
+
 ## Default look, part 4a: Balanced's inspector — 27 October 2026
 
 Task id `ui-look-inspector-20261027`, the first half of the fourth slice of the default look Rudy chose on 27 October.
