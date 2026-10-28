@@ -201,8 +201,15 @@ test('coordinated workflow: delegation, review, serial integration and restart e
     await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
     await page.locator('nav[aria-label="Agent tree"] .agent-row').filter({ hasNotText: 'Coordinator' }).first().click();
     await expect(page.getByLabel('Conversation transcript').locator('article.message.assistant').first()).toBeVisible();
+    // The child's assignment summary packs its fields: no browser list margins between them.
+    const summaryGaps = await page.locator('.assignment-summary').first().locator(':scope > dl').evaluateAll(lists => lists.slice(1).map((list, index) => list.getBoundingClientRect().top - lists[index]!.getBoundingClientRect().bottom));
+    expect(summaryGaps.length).toBeGreaterThan(0);
+    expect(Math.max(...summaryGaps)).toBeLessThan(20);
     await page.getByRole('button', { name: /^Coordinator/ }).click();
     await expect(page.getByLabel('Conversation transcript')).toContainText(finalReply!);
+    // The coordinator's composer sits on the transcript's lane, not a second gutter in.
+    const [composerLeft, transcriptLeft] = await Promise.all([page.getByLabel('Message coordinator').boundingBox(), page.getByLabel('Conversation transcript').boundingBox()]).then(boxes => boxes.map(box => box!.x));
+    expect(Math.abs(composerLeft! - transcriptLeft!)).toBeLessThan(1);
 
     await page.screenshot({ path: 'test-results/orchestration-complete.png', fullPage: true });
     await page.getByRole('button', { name: 'Orchestration', exact: true }).click();

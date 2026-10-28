@@ -73,9 +73,9 @@ const NEEDS_ROW = 'rail-needs-bg';
 type Pair = readonly [foreground: string, backgrounds: readonly string[], minimum: number, kind: 'text' | 'ui'];
 // WCAG 1.4.3 text at 4.5:1 and 1.4.11 boundaries, rings and marks at 3:1, on every surface each token is drawn on.
 const PAIRS: readonly Pair[] = [
-  ['ink', [...PAGE, 'surface-hover', 'select-soft', 'warn-soft', 'notice-error-bg', 'ok-soft', 'choice-soft', 'patch-add-bg', 'patch-del-bg'], 4.5, 'text'],
+  ['ink', [...PAGE, 'surface-hover', 'select-soft', 'select-chip-bg', 'warn-soft', 'notice-error-bg', 'ok-soft', 'choice-soft', 'patch-add-bg', 'patch-del-bg'], 4.5, 'text'],
   ['ink-2', [...PAGE, 'surface-hover', 'notice-warning-bg'], 4.5, 'text'],
-  ['ink-muted', [...PAGE, 'notice-error-bg', 'warn-soft', 'choice-soft', 'browser-ground'], 4.5, 'text'],
+  ['ink-muted', [...PAGE, 'notice-error-bg', 'warn-soft', 'choice-soft', 'browser-ground', 'select-chip-bg'], 4.5, 'text'],
   ['ink-eyebrow', PAGE, 4.5, 'text'],
   ['ink-content', ['surface', 'surface-inspector', 'browser-tab-bg', 'patch-add-bg', 'patch-del-bg'], 4.5, 'text'],
   ['warn-ink', [...PAGE, 'warn-soft', 'notice-warning-bg'], 4.5, 'text'],
@@ -119,7 +119,7 @@ const PAIRS: readonly Pair[] = [
   ['rail-error-ink', ['rail-error-bg'], 4.5, 'text'],
   ['line-strong', ['canvas', 'surface', 'surface-card', 'surface-inspector'], 3, 'ui'],
   ['focus', PAGE.filter(surface => surface !== 'surface-well'), 3, 'ui'],
-  ['select', [...PAGE, 'select-soft'], 3, 'ui'],
+  ['select', [...PAGE, 'select-soft', 'select-chip-bg'], 3, 'ui'],
   ['accent', PAGE, 3, 'ui'],
   ['danger', PAGE, 3, 'ui'],
   // The complete badge's ring: on cards, panels and the tray, never on an evidence well.
