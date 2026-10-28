@@ -206,6 +206,16 @@ describe('automation authority and recovery', () => {
     expect(automation.view().scripts[0]?.grant).toBeNull();
   });
 
+  it('holds the 30-day grant limit to its own clock, refusing a request read one millisecond ahead of it', async () => {
+    // A renderer whose clock reads 1 ms ahead of the runtime's and asks for exactly 30 days sends this request.
+    const revision = await automation.dispatch('automation.script.register', script()) as { id: string };
+    const limit = clock.getTime() + 30 * 86_400_000;
+    await expect(automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: new Date(limit + 1).toISOString(), maxRunsPer24h: 100 })).rejects.toThrow('Grant must expire within 30 days.');
+    expect(automation.view().scripts[0]?.grant).toBeNull();
+    await automation.dispatch('automation.script.grant', { revisionId: revision.id, expiresAt: new Date(limit).toISOString(), maxRunsPer24h: 100 });
+    expect(automation.view().scripts[0]?.grant?.expiresAt).toBe(new Date(limit).toISOString());
+  });
+
   it('rejects changed interpreter bytes and exposes reviewed source only through the explicit read', async () => {
     const interpreter = join(directory, 'interpreter.exe'); await writeFile(interpreter, 'version-one');
     automation = new AutomationService(store, redactor, () => {}, { scriptDirectory: join(directory, 'scripts'), executor, now: () => clock, resolveInterpreter: async () => ({ path: interpreter, version: 'test' }) });

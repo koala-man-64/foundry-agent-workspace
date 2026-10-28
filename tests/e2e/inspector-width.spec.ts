@@ -94,7 +94,9 @@ test('narrowing the window keeps the whole inspector on screen, and widening it 
     await expect.poll(shown).toBe(chosen);
 
     // Keys step from the width on screen; the user acted on what they saw, so that width becomes the chosen one.
+    // innerWidth changes before the resize event re-renders, so wait until the narrowed width is shown.
     await resize(1100, 760);
+    await expect.poll(shown).toBe(compactLimit);
     await separator.focus();
     await page.keyboard.press('ArrowRight');
     await expect.poll(shown).toBe(compactLimit - 16);
