@@ -266,8 +266,7 @@ public sealed class BrowserParityTests
         rig.OnDownload = e => e.Cancel = true;
         await rig.EvaluateAsync(click);
         await rig.WaitForAsync(item => item.Kind == "download", "the attached tab's download");
-        await Task.Delay(1000, TestContext.Current.CancellationToken);
-        Assert.Empty(Directory.EnumerateFileSystemEntries(rig.DownloadFolder));
+        Assert.Empty(await RemainingAsync(rig.DownloadFolder));
 
         // Manual control, after a fresh navigation: the host holds the download until its save dialog answers.
         await rig.NavigateAsync($"{server.Origin}/read");
@@ -329,9 +328,8 @@ public sealed class BrowserParityTests
         }
         await rig.EvaluateAsync(click);
         await declined.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
-        await Task.Delay(1000, TestContext.Current.CancellationToken);
         Assert.Matches(TemporaryDownload, Assert.Single(rig.Observations, item => item.Kind == "held-then-declined").Text);
-        Assert.Empty(Directory.EnumerateFileSystemEntries(rig.DownloadFolder));
+        Assert.Empty(await RemainingAsync(rig.DownloadFolder));
 
         // Without a fresh navigation, another download needs the multiple-downloads permission, which the rig denies.
         await rig.EvaluateAsync(click);
@@ -454,6 +452,26 @@ public sealed class BrowserParityTests
     };
 
     private static string Entries(string folder) => string.Join(",", Directory.EnumerateFileSystemEntries(folder).Select(Path.GetFileName));
+
+    /// <summary>
+    /// The names left in a download folder once a cancelled download's temporary file is gone, or after 15 seconds. The file
+    /// already exists when <c>DownloadStarting</c> is raised, so an empty folder means WebView2 deleted it. It does so on its
+    /// own schedule, after the download reports it was interrupted; on a loaded machine the cancel or the deletion can land
+    /// more than a second later.
+    /// </summary>
+    private static async Task<string?[]> RemainingAsync(string folder)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (true)
+        {
+            var names = Directory.EnumerateFileSystemEntries(folder).Select(Path.GetFileName).ToArray();
+            if (names.Length == 0 || DateTime.UtcNow >= deadline)
+            {
+                return names;
+            }
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+    }
 
     private static string Redirect(WebServer server, string target) => $"{server.Origin}/redirect?to={Uri.EscapeDataString(target)}";
 
