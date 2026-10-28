@@ -1,5 +1,91 @@
 # Implementation status
 
+## Default look, part 5: two-pane Focus and short windows — 27 October 2026
+
+Task id `ui-look-focus-20261027`, the fifth slice of the default look Rudy chose on 27 October.
+- **Scope.** Renderer only: `styles.css`, and one `data-tray` attribute each in `App.tsx` and `Orchestration.tsx`. There is no protocol, IPC channel, runtime, provider, schema, dependency or main-process change. Nothing is dual-landed in C#.
+- **Source.** Two read-only analysts specified the two panes and the short-window tier against the current stylesheet. Where they differed, the owner chose on measured evidence.
+
+**What changed**
+- **Two panes from 1180px.** In Focus, while the tray is on screen, the tray becomes a pane beside the transcript, at 5fr to 7fr (491 and 689px at 1180, 617 and 863px at 1480). The header and composer span both panes on the 24px lane.
+  - **The switch.** It is a `data-tray` attribute, set from the same condition that renders the tray, so the two cannot disagree. There is no `:has()`.
+  - **Placement only.** The DOM order, and so the reading and Tab order, is unchanged. The attention banner keeps a full row of its own under the panes, so it never sits beside the tray ahead of it.
+  - **The pane.** It fills its rows instead of stopping at the 70vh cap, and a hairline marks its left edge. The limits note is capped at 80ch there.
+  - **Coordinated view.** The coordinator detail is the grid, under the header and agent tree. A child's view keeps its tray stacked, capped at the Focus measure, and choosing a chip moves nothing.
+  - **Transcript meta.** In the 5fr pane at 1480 the transcript is under 620px, so the author and time sit inline above the text. The hanging column returns from about 1640px.
+- **Short windows.** At 760px tall and below, the stacked tray tightens only its chrome spacing, through new `*-short` roles:
+  - the summary line;
+  - the limits note's vertical padding and margin;
+  - the first live card's top margin;
+  - the card heading and field gaps;
+  - the Approve row's top margin.
+  - Evidence text, card padding, the decision buttons and the note's wording are unchanged. The transcript floor drops to 84px, 64px in Compact.
+  - **760px, not 700px.** A height sweep put Approve out of view just above a 700px tier, which is the prototype's.
+- **Transcript fix.** In Focus the transcript is sized from a flex basis of 0. Sized by its content, a long transcript took space from the tray in proportion to its length and squeezed a pending decision to a strip, whatever the floor. The defect is on main too.
+- **Sizes.**
+  - The Focus column is 1100px, 1180px in Compact.
+  - The stacked tray cap is 70vh, 68vh in Compact.
+  - The transcript floor is 92px, 72px in Compact.
+
+**Validation** (local, Windows, isolated fixtures)
+- **`pnpm check`** (at `8d1b38e`): typecheck and lint pass. Vitest: 846 of 850 in the parallel run.
+  - **The 4 failures.** They are load timeouts in the runtime git-operations and publish tests, which this change does not touch. Serially those files pass, 47 of 47.
+  - **An earlier run.** At `a50bbdf`, while four reviewers' probes ran beside it, 129 tests failed in 23 runtime and integration files. Serially those files passed, 294 of 294.
+  - **New unit checks.**
+    - **Short roles.** All 14 are read only inside a max-height query, never set there, and never above their base in either style.
+    - **Sizes and the fix.** The Focus sizes are pinned, as is the transcript's flex-basis rule in both views.
+    - **The two-pane block.** It checks the areas in DOM order, the banner's own row, one row track per row of areas in both grids, the ratio in both grids and the note cap. It also checks for no `:has()`, no `order`, no `display: none` and no colour.
+    - **Block order.** The short block comes after the two base rules it ties with.
+- **`pnpm test:e2e`**: 35 of 35 pass, at `8d1b38e`.
+  - **New `focus.spec.ts` test.**
+    - At 1480×940 the tray sits beside the transcript, under the header and above the composer, which both span the panes. Every child has its own area, and the DOM order is unchanged.
+    - It is stacked at 1176px and beside again at 1180px.
+    - At 1000×680 the command card's Approve is inside the tray and the window, in Comfortable and in Compact, beside a 3000px transcript that keeps its floor.
+    - The Focus column is 1100px, 1180px in Compact.
+  - **`orchestration.spec.ts`.**
+    - At 1480×940 the coordinator's tray sits beside its transcript under the agent tree, and every child has its area.
+    - A child's view keeps its tray stacked, and the agent tree does not move.
+    - At 1000×680 a long coordinator transcript keeps its floor, and Approve stays in view.
+  - **An earlier run.** At `a50bbdf` one test failed: personal-workspace's script grant, refused with "Grant must expire within 30 days." That is the race #72 fixes, and the test passes alone.
+- **Measurements** (`logs/probe-fit*.log`, `logs/probe-coord1.log`). Approve's slack in the stacked tray, at 1000×680 and at the 644px floor:
+
+  | Stacked tray | 1000×680 | 644px floor |
+  |---|---|---|
+  | Chat, Comfortable | 40px | 4px |
+  | Chat, Comfortable, with Load older messages | 16px | −20px |
+  | Chat, Compact (either way) | 56px | 31px |
+  | Coordinated, Comfortable, long history | 66px | 30px |
+
+  - **Before the fix.** In the coordinated view, a long history shrank the tray to 69px, and Approve sat 217px out of view.
+- **Mutants.** Thirteen mutants were run. Eleven fail a test:
+  - the flex basis, in both views;
+  - the short tier and the 70vh cap;
+  - the breakpoint;
+  - both `data-tray` attributes;
+  - the banner's own row;
+  - the coordinator grid;
+  - an extra row track;
+  - a composer without an area.
+  - The two that survive are single short-tier rules (see known limits).
+- **Harness** (`.local/verification/ui-look-focus-20261027/render1`): 252 captures in seven presets, including the new coordinated Focus state and the 1000×644 floor.
+  - Contrast, overflow and 24×24 target lists are empty. Under forced colours, Light and Dark match in 36 of 36 captures.
+  - Approve is flagged out of view only at the floor, in Comfortable, with Load older messages shown: the known limit.
+- **Independent review**: four reviewers (Sonnet, high, from their agent definitions), on code and tests, the approval surface, the rendered result and maintainability.
+  - All four said GO with no P0 to P2, so nothing needed adversarial verification.
+  - Fixed from their P3s: the grid placement and row checks, the block-order guard, the shared e2e helpers, polling a tall size by its width only, and the comments.
+- **Not run**: `package:dir` and `smoke:package`, because nothing in packaging or dependencies changed.
+
+**Known limits**
+- **The true minimum window.** The window's 680px minimum is an outer height, so the smallest content is about 644–650px at any display scale (measured at 125%: 644px).
+  - There, with Load older messages shown (24px), Comfortable's Approve for the tallest card (the command) sits about 20px below the tray's visible area. A notice above the transcript costs the same way (31px, 27px in Compact). The cards scroll, a scrollbar shows it, and the tray is reachable by keyboard.
+  - Without that button it has 4px to spare. Compact has 31px either way, and at 680px of content Comfortable keeps 16px with the button.
+  - Closing it would take the transcript floor to 64px or a third height tier; neither is done, and there is no sticky Approve by decision.
+- **Layout shift.** In windows wider than about 1150px, the header and composer move from the centred 1100px column to the full-width lane when a tray appears, and back when it clears.
+- **Child view.** It stays stacked. At 1480 its panel sits on the left lane, capped at 1100px.
+- **No tonal band on the pane, Rudy's call.** In Light the tray pane stays on `--surface-inspector`, the canvas, where the prototype draws a tonal band. The pane is marked by the 2px needs-you rule, a hairline and the white awaiting card. A sunken band would hide decided cards' evidence wells, which share that fill; adding it is one background token plus well tokens.
+- **Seen in the new captures, not changed here.** Below 1180px, and in a child's view, the coordinated tray is inset twice: its cards sit 48px in, where the chat tray's sit 24px in.
+- **Tests.** Removing a single short-tier rule (the first card's margin or the summary padding) leaves Approve in view at 1000×680, which has about 40px to spare, so no e2e check fails for it. The unit checks still require every short role to be read. Removing the whole tier fails.
+
 ## Default look, part 4b: Balanced's Usage page, Settings dialog and coordinated view — 27 October 2026
 
 Task id `ui-look-panels-20261027`, the second half of the fourth slice of the default look Rudy chose on 27 October.
