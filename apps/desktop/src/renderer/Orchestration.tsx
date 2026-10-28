@@ -484,7 +484,7 @@ export function CoordinatedTaskView({ api, task, profiles, notice, setNotice, co
   const completion = view?.completion;
 
   return <>
-    <section className="conversation orchestration-conversation" role="main" aria-label="Coordinated conversation" data-attention={needsYou(attention) ? 'decision' : undefined}>
+    <section className="conversation orchestration-conversation" role="main" aria-label="Coordinated conversation" data-attention={needsYou(attention) ? 'decision' : undefined} data-tray={trayActive ? 'detail' : undefined}>
       <header className="task-header orchestration-header">
         <p className="eyebrow">{task.projectPath}</p>
         <h1>{task.title}</h1>

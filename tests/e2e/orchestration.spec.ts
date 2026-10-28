@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import type { Approval } from '../../packages/protocol/src/index';
 import type { CoordinatedHandoffReport } from '../../apps/desktop/src/renderer/coordinatedHandoff';
 import { V1_SCHEMA } from '../../packages/runtime/src/schema';
-import { createFixtureTask, waitForRuntimeReady } from './fixtures';
+import { approveFit, box, createFixtureTask, placedByArea, waitForRuntimeReady } from './fixtures';
 
 const FAKE_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 // The Changes tab's words for an empty diff (worktree.tsx); it must not read as a clean worktree.
@@ -591,6 +591,8 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
   const { app, page, errors } = await launch(join(fixture, 'state'));
   try {
     await createCoordinatedTask(page, project, 'Focused coordinated task');
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1480, 940));
+    await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(1480);
     await page.getByRole('button', { name: 'Focus mode', exact: true }).click();
     await expect(page.locator('.sidebar-shell')).toBeHidden();
     await page.getByLabel('Message coordinator').fill('/orchestrate-demo');
@@ -600,6 +602,26 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     await expect(page.getByLabel('Coordinated task inspector').locator('article.approval-card')).toHaveCount(0);
     await expect(page.locator('.approval-banner')).toHaveCount(0);
     const first = tray.locator('article.approval-card.awaiting-approval').first();
+
+    // From 1180px the coordinator's tray is a pane beside its transcript, above a composer that spans both, under the agent tree.
+    const agentTree = page.getByRole('navigation', { name: 'Agent tree' });
+    const coordinatorChip = agentTree.locator('.agent-row').first();
+    const [m, t, c, tree, chip] = await Promise.all([box(page.locator('.coordinator-detail > .messages')), box(tray), box(page.locator('.coordinator-detail > .composer')), box(agentTree), box(coordinatorChip)]);
+    expect(t.x, 'the tray is right of the coordinator transcript').toBeGreaterThanOrEqual(m.x + m.width - 1);
+    expect(t.y + t.height, 'the tray ends at the composer').toBeLessThanOrEqual(c.y + 1);
+    expect(c.x <= m.x + 1 && c.x + c.width >= t.x + t.width - 1, 'the composer spans both panes').toBe(true);
+    expect(tree.y + tree.height, 'the agent tree is above both panes').toBeLessThanOrEqual(Math.min(m.y, t.y) + 1);
+    await expect(first.getByRole('button', { name: 'Approve', exact: true })).toBeInViewport({ ratio: 1 });
+    expect(await placedByArea(page.locator('.coordinator-detail')), 'every child of the coordinator detail has its area').toEqual([]);
+    // A child's view keeps its tray stacked inside the child panel, and choosing it does not move the agent tree.
+    await agentTree.locator('.agent-row').nth(1).click();
+    await expect(page.locator('.child-panel')).toBeVisible();
+    await expect(page.locator('section.orchestration-conversation')).toHaveAttribute('data-tray', 'detail');
+    const [panel, childTray, childChip] = await Promise.all([box(page.locator('.child-panel')), box(tray), box(coordinatorChip)]);
+    expect(Math.abs(childTray.width - panel.width), 'the child tray spans its panel').toBeLessThanOrEqual(2);
+    expect(Math.abs(childChip.x - chip.x), 'the agent tree stays put').toBeLessThanOrEqual(1);
+    await coordinatorChip.click();
+    await expect(page.locator('.coordinator-detail')).toBeVisible();
     const id = await first.getAttribute('data-approval-id');
     await first.getByRole('button', { name: 'Approve', exact: true }).click();
     await expect(page.locator(`article.approval-card[data-approval-id="${id}"]`)).not.toHaveClass(/awaiting-approval/, { timeout: 30_000 });
@@ -607,6 +629,15 @@ test('Focus mode keeps coordinated child approvals on screen, one copy each', as
     // The other child's approval is still waiting, so it leads the tray ahead of the card just decided.
     await expect(tray.locator('article.approval-card').first()).toHaveClass(/awaiting-approval/);
     await expect(tray.locator('article.approval-card').first()).not.toHaveAttribute('data-approval-id', id!);
+    // Stacked in the minimum window, a long coordinator transcript keeps its floor and cannot squeeze the pending Approve
+    // out of the tray: the transcript is not sized by its length.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1000, 680));
+    await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual([1000, 680]);
+    await page.evaluate(() => { const filler = document.createElement('div'); filler.style.height = '3000px'; document.querySelector('.coordinator-detail > .messages')!.append(filler); });
+    const fit = await approveFit(page, '.coordinator-detail > .messages');
+    expect(fit.above, 'Approve starts inside the tray').toBeGreaterThanOrEqual(0);
+    expect(fit.below, 'Approve ends inside the tray and the window').toBeGreaterThanOrEqual(0);
+    expect(fit.transcript, 'the coordinator transcript keeps its floor').toBeGreaterThanOrEqual(fit.floor - 0.5);
     expect(errors).toEqual([]);
   } finally { await app.close(); await rm(fixture, { recursive: true, force: true }); }
 });

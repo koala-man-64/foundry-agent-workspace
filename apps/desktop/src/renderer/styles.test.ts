@@ -105,15 +105,26 @@ const uncommented = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '');
 const sizeBlock = uncommented(rootBlock.slice(rootBlock.indexOf('Size and spacing roles'), rootBlock.indexOf('/* Light surfaces */')));
 const sizeTokens = new Map([...sizeBlock.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
 const rootTokens = new Map([...uncommented(rootBlock).matchAll(/--([\w-]+):\s*([^;]+);/g)].map(match => [match[1]!, match[2]!.trim()]));
+/** A token's value with var() aliases followed, or undefined. */
+const follow = (map: Map<string, string>, value: string | undefined) => {
+  for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value.trim()); if (!alias) return value.trim(); value = map.get(alias[1]!); }
+  return value?.trim();
+};
+/** A role's px lengths and unitless numbers, a one- to four-value shorthand expanded to its four sides; undefined where a part is not one. */
+const lengths = (map: Map<string, string>, value: string | undefined) => {
+  const parts = (follow(map, value)?.match(/var\(--[\w-]+\)|\S+/g) ?? []).map(part => {
+    const resolved = follow(map, part);
+    // px lengths, and unitless numbers (line heights); a bare zero counts as 0.
+    return resolved && /^-?\d+(\.\d+)?(px)?$/.test(resolved) ? Number.parseFloat(resolved) : undefined;
+  });
+  // A one- to four-value shorthand, expanded to its four sides (or a gap's two axes, twice).
+  const [a, b = a, c = a, d = b] = parts;
+  return parts.length >= 1 && parts.length <= 4 ? [a, b, c, d] : parts;
+};
 /** A token's value in px when it is one px length, following var() aliases. */
 function px(name: string): number | undefined {
-  let value = rootTokens.get(name);
-  for (let hop = 0; hop < 8 && value; hop++) {
-    const alias = /^var\(--([\w-]+)\)$/.exec(value);
-    if (!alias) return /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
-    value = rootTokens.get(alias[1]!);
-  }
-  return undefined;
+  const value = follow(rootTokens, rootTokens.get(name));
+  return value && /^\d+(\.\d+)?px$/.test(value) ? Number.parseFloat(value) : undefined;
 }
 
 // Style blocks (:root[data-style="..."]): token values only, set on the size roles.
@@ -186,20 +197,6 @@ describe('size tokens', () => {
     ]);
     const compact = styleBlocks.get('compact')!;
     const values = new Map([...rootTokens, ...compact]);
-    const follow = (map: Map<string, string>, value: string | undefined) => {
-      for (let hop = 0; hop < 8 && value; hop++) { const alias = /^var\(--([\w-]+)\)$/.exec(value.trim()); if (!alias) return value.trim(); value = map.get(alias[1]!); }
-      return value?.trim();
-    };
-    const lengths = (map: Map<string, string>, value: string | undefined) => {
-      const parts = (follow(map, value)?.match(/var\(--[\w-]+\)|\S+/g) ?? []).map(part => {
-        const resolved = follow(map, part);
-        // px lengths, and unitless numbers (line heights); a bare zero counts as 0.
-        return resolved && /^-?\d+(\.\d+)?(px)?$/.test(resolved) ? Number.parseFloat(resolved) : undefined;
-      });
-      // A one- to four-value shorthand, expanded to its four sides (or a gap's two axes, twice).
-      const [a, b = a, c = a, d = b] = parts;
-      return parts.length >= 1 && parts.length <= 4 ? [a, b, c, d] : parts;
-    };
     const compared: string[] = [], skipped: string[] = [], looser: string[] = [];
     for (const name of compact.keys()) {
       const comfortable = lengths(rootTokens, rootTokens.get(name)), dense = lengths(values, compact.get(name));
@@ -226,11 +223,83 @@ describe('size tokens', () => {
       expect(start >= 0 && plain.slice(start, plain.indexOf('}', start)).includes(declarations), selector).toBe(true);
     }
     expect(/@container task-header \(max-width: 640px\)\s*{\s*\.task-header > \.header-actions \{ order: 5; \}/.test(plain)).toBe(true);
-    const short = /@media \(max-height: 760px\)\s*{([\s\S]*?)\n}/.exec(plain)?.[1] ?? '';
-    const outside = plain.replace(/@media \(max-height: 760px\)\s*{[\s\S]*?\n}/, '').replace(/:root[^{]*{[^}]*}/g, '');
+    // Every 760px query: the header and composer first, then the stacked tray.
+    const short = [...plain.matchAll(/@media \(max-height: 760px\)\s*{([\s\S]*?)\n}/g)].map(match => match[1]!).join('\n');
+    const outside = plain.replace(/@media \(max-height: 760px\)\s*{[\s\S]*?\n}/g, '').replace(/:root[^{]*{[^}]*}/g, '');
     for (const name of ['header-pad-top-short', 'header-pad-bottom-short', 'fs-title-short', 'pad-composer-y-short', 'h-composer-short']) {
       expect(short.includes(`var(--${name})`) && !outside.includes(`var(--${name})`), name).toBe(true);
     }
+  });
+
+  it('reads a short-window role only inside a max-height query, never above its base in any style, and never sets a role there', () => {
+    const plain = uncommented(css);
+    const blocks = [...plain.matchAll(/@media \(max-height: \d+px\)\s*{([\s\S]*?)\n}/g)].map(match => match[1]!);
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    // A query reads roles. A role set inside it would beat the value a style gave that role.
+    expect(blocks.filter(block => /--[\w-]+\s*:/.test(block))).toEqual([]);
+    const inside = blocks.join('\n');
+    const outside = plain.replace(/@media \(max-height: \d+px\)\s*{[\s\S]*?\n}/g, '').replace(/:root[^{]*{[^}]*}/g, '');
+    const shortRoles = [...rootTokens.keys()].filter(name => name.endsWith('-short'));
+    expect(shortRoles.length).toBeGreaterThanOrEqual(14);
+    expect(shortRoles.filter(name => !inside.includes(`var(--${name})`) || outside.includes(`var(--${name})`))).toEqual([]);
+    // Entering the short tier never enlarges a role, in Comfortable or in a style.
+    for (const [style, block] of [['comfortable', new Map<string, string>()], ...styleBlocks] as const) {
+      const values = new Map([...rootTokens, ...block]);
+      const grew = shortRoles.filter(name => {
+        const base = name.slice(0, -'-short'.length), short = lengths(values, values.get(name)), full = lengths(values, values.get(base));
+        return values.has(base) && short.length === full.length && !short.concat(full).includes(undefined) && short.some((part, index) => part! > full[index]!);
+      });
+      expect(grew, `${style}: short roles above their base`).toEqual([]);
+    }
+    // The decision buttons, the evidence text and a card's padding are never tightened.
+    expect(inside).not.toMatch(/h-decision|pad-decision|fs-evidence|lh-evidence|pad-card|pad-evidence/);
+    // The summary and the transcript floor tie with their base rules on specificity, so the tray's short block comes after both.
+    const trayShort = plain.lastIndexOf('@media (max-height: 760px)');
+    expect(trayShort).toBeGreaterThan(plain.indexOf('\n.tray-summary {'));
+    expect(trayShort).toBeGreaterThan(plain.indexOf('\n.workspace[data-focus="on"] > .conversation > .messages,'));
+  });
+
+  it('sizes the Focus column and the transcript floor, and gives the transcript no claim on the tray by its length', () => {
+    const plain = uncommented(css);
+    expect([px('measure-focus'), px('h-focus-messages-min'), px('h-focus-messages-min-short'), rootTokens.get('h-tray-max')]).toEqual([1100, 92, 84, '70vh']);
+    // Compact is the denser style: a wider Focus column (a named exception to the ordering above), a lower floor and a tray cap no
+    // taller (a vh value, which the ordering test cannot compare).
+    const compact = styleBlocks.get('compact')!;
+    expect([compact.get('measure-focus'), compact.get('h-focus-messages-min'), compact.get('h-focus-messages-min-short')]).toEqual(['1180px', '72px', '64px']);
+    expect(Number.parseFloat(compact.get('h-tray-max')!)).toBeLessThanOrEqual(Number.parseFloat(rootTokens.get('h-tray-max')!));
+    // A flex basis of 0: sized by its content, a long transcript would shrink the tray in proportion to its length.
+    // The coordinator's transcript, inside its detail, too.
+    expect(plain).toMatch(/\n\.workspace\[data-focus="on"\] > \.conversation > \.messages, \.workspace\[data-focus="on"\] \.coordinator-detail > \.messages \{[^}]*flex-basis: 0;[^}]*min-height: var\(--h-focus-messages-min\);/);
+  });
+
+  it('puts the Focus tray beside the transcript from 1180px by a data attribute, in grid areas that keep the DOM order', () => {
+    const plain = uncommented(css);
+    expect(plain).not.toMatch(/:has\(\s*>\s*\.approval-tray/);
+    const start = plain.indexOf('@media (min-width: 1180px) {\n  .workspace[data-focus="on"] > .conversation[data-tray="conversation"] {');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const block = plain.slice(start, plain.indexOf('\n}', start));
+    // Both grids, the chat section and the coordinator detail, share the ratio, and each has one row track per row of areas.
+    expect(block.match(/grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\);/g)).toHaveLength(2);
+    const grids = [...block.matchAll(/grid-template-rows: ([^;]+); grid-template-areas: ([^;]+);/g)];
+    expect(grids.map(grid => [grid[1]!.replace(/minmax\([^)]*\)/g, 'track').split(' ').length, grid[2]!.match(/"[^"]*"/g)!.length])).toEqual([[6, 6], [4, 4]]);
+    expect(rootTokens.get('measure-note')).toBe('80ch');
+    expect(block).toContain('[data-tray="conversation"] > .approval-tray .tool-readiness { max-width: var(--measure-note); }');
+    // The banner has a full row of its own, so the visual order is the DOM order.
+    expect(block).toContain('grid-template-areas: "head head" "notice notice" "msgs tray" "older tray" "banner banner" "composer composer";');
+    for (const [part, area] of [['task-header', 'head'], ['notice', 'notice'], ['messages', 'msgs'], ['older-messages', 'older'], ['approval-tray', 'tray'], ['approval-banner', 'banner'], ['composer', 'composer']] as const) {
+      expect(block, part).toMatch(new RegExp(`\\[data-tray="conversation"\\] > \\.${part} \\{[^}]*grid-area: ${area};`));
+    }
+    expect(block).toMatch(/\[data-tray="conversation"\] > \.approval-tray \{[^}]*max-height: none;[^}]*border-left: 1px solid var\(--line-soft\);/);
+    // The coordinated view: the coordinator detail is the grid, with the same order.
+    expect(block).toMatch(/\[data-tray="detail"\] > \.agent-detail\.coordinator-detail \{[^}]*display: grid;[^}]*grid-template-areas: "msgs tray" "older tray" "banner banner" "composer composer";[^}]*padding-inline: 0;/);
+    for (const [part, area] of [['messages', 'msgs'], ['older-messages', 'older'], ['approval-tray', 'tray'], ['approval-banner', 'banner'], ['composer', 'composer']] as const) {
+      expect(block, `coordinator ${part}`).toMatch(new RegExp(`\\[data-tray="detail"\\] > \\.coordinator-detail > \\.${part} \\{[^}]*grid-area: ${area};`));
+    }
+    // Placement only: nothing reorders, hides or colours.
+    expect(block).not.toMatch(/\border\s*:/);
+    expect(block).not.toMatch(/display:\s*none/);
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b|\brgba?\(/i);
+    expect(start).toBeLessThan(plain.lastIndexOf('@media (forced-colors: active)'));
   });
 
   it('hangs the transcript author and time in a column only from a 620px transcript, measured on the transcript itself', () => {
